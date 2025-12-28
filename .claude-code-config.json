@@ -1,0 +1,43 @@
+{
+  "workspaceRoot": "/Users/pit/PycharmProjects/My Task Manager App",
+  "environment": "local",
+  "allowCommands": true,
+  "shell": "/bin/zsh",
+  "pythonPath": "/Users/pit/PycharmProjects/My Task Manager App/backend/venv/bin/python3",
+  "nodeVersion": "system",
+  "projectContext": {
+    "type": "fullstack",
+    "backend": {
+      "directory": "backend",
+      "runtime": "python3",
+      "framework": "flask",
+      "port": 5001,
+      "virtualenv": "backend/venv",
+      "database": "mysql",
+      "charset": "utf8mb4"
+    },
+    "frontend": {
+      "directory": "frontend",
+      "runtime": "node",
+      "framework": "react+vite",
+      "port": 3000,
+      "packageManager": "npm"
+    }
+  },
+  "ignorePatterns": [
+    "node_modules/**",
+    "venv/**",
+    "**/__pycache__/**",
+    "**/*.pyc",
+    ".git/**",
+    "dist/**",
+    "build/**",
+    "*.sql.gz",
+    "Documents/TaskTracker_Backups/**"
+  ],
+  "languages": {
+    "primary": ["python", "javascript", "jsx"],
+    "secondary": ["html", "css", "sql"]
+  },
+  "notes": "Hebrew language support required for task content. Auto-backup on every task save."
+}
