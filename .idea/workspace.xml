@@ -4,9 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e1b3cef8-89ee-479c-bb86-3f137da34457" name="Changes" comment="Initial commit: My Task Manager App - Complete rewrite">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-    </list>
+    <list default="true" id="e1b3cef8-89ee-479c-bb86-3f137da34457" name="Changes" comment="Initial commit: My Task Manager App - Complete rewrite" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -133,7 +131,7 @@
       <workItem from="1767133079676" duration="8328000" />
       <workItem from="1767192431179" duration="32000" />
       <workItem from="1767192470759" duration="74000" />
-      <workItem from="1767193163096" duration="1524000" />
+      <workItem from="1767193163096" duration="1830000" />
     </task>
     <task id="LOCAL-00001" summary="Initial commit: My Task Manager App - Complete rewrite">
       <option name="closed" value="true" />
