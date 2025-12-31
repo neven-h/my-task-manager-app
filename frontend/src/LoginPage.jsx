@@ -15,14 +15,14 @@ const LoginPage = ({ onLogin, onBack }) => {
 
     // Simulate a brief loading delay
     setTimeout(() => {
-      if (username && password) {
-        // Accept any username/password
-        const token = 'demo-token-' + Date.now();
+      // Hardcoded credentials check
+      if (username === 'pitz' && password === 'worldwidepitz2025') {
+        const token = 'auth-token-' + Date.now();
         localStorage.setItem('authToken', token);
         localStorage.setItem('authUser', username);
         onLogin(token, username);
       } else {
-        setError('Please enter username and password');
+        setError('Invalid username or password');
         setLoading(false);
       }
     }, 500);
