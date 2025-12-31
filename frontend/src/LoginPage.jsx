@@ -29,19 +29,30 @@ const LoginPage = ({ onLogin, onBack }) => {
   };
 
   return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
-      `}</style>
     <div style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%)',
+      background: 'url(/background.jpg)',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontFamily: '"Inter", "Helvetica Neue", Arial, sans-serif',
-      padding: '20px'
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+      padding: '20px',
+      position: 'relative'
     }}>
+      {/* Dark overlay */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0, 0, 0, 0.5)',
+        pointerEvents: 'none'
+      }} />
+
       {/* Back button */}
       <button
         onClick={onBack}
@@ -52,14 +63,18 @@ const LoginPage = ({ onLogin, onBack }) => {
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          padding: '10px 20px',
+          padding: '12px 24px',
           background: 'rgba(255, 255, 255, 0.1)',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          borderRadius: '25px',
+          border: '1px solid rgba(255, 255, 255, 0.3)',
+          borderRadius: '30px',
           color: 'white',
           cursor: 'pointer',
-          fontSize: '0.9rem',
-          transition: 'all 0.3s ease'
+          fontSize: '1rem',
+          fontWeight: '700',
+          transition: 'all 0.3s ease',
+          zIndex: 20,
+          textTransform: 'uppercase',
+          letterSpacing: '1px'
         }}
         onMouseEnter={(e) => {
           e.target.style.background = 'rgba(255, 255, 255, 0.2)';
@@ -74,14 +89,13 @@ const LoginPage = ({ onLogin, onBack }) => {
 
       {/* Login card */}
       <div style={{
-        background: 'rgba(255, 255, 255, 0.05)',
-        backdropFilter: 'blur(10px)',
+        background: 'rgba(255, 255, 255, 0.95)',
         borderRadius: '24px',
         padding: '50px 40px',
         width: '100%',
         maxWidth: '420px',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3)'
+        boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3)',
+        zIndex: 10
       }}>
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
@@ -99,19 +113,21 @@ const LoginPage = ({ onLogin, onBack }) => {
             <Lock size={36} color="white" />
           </div>
           <h2 style={{
-            color: 'white',
+            color: '#1a1a1a',
             fontSize: '1.8rem',
-            fontWeight: '700',
-            margin: '0 0 10px 0'
+            fontWeight: '900',
+            margin: '0 0 10px 0',
+            textTransform: 'uppercase',
+            letterSpacing: '-1px'
           }}>
-            Login to System
+            Login
           </h2>
           <p style={{
-            color: 'rgba(255, 255, 255, 0.5)',
+            color: '#666',
             fontSize: '0.95rem',
             margin: 0
           }}>
-            Enter your login credentials
+            Enter your credentials
           </p>
         </div>
 
@@ -122,11 +138,11 @@ const LoginPage = ({ onLogin, onBack }) => {
             alignItems: 'center',
             gap: '10px',
             padding: '12px 16px',
-            background: 'rgba(220, 53, 69, 0.2)',
+            background: 'rgba(220, 53, 69, 0.1)',
             border: '1px solid rgba(220, 53, 69, 0.3)',
             borderRadius: '12px',
             marginBottom: '20px',
-            color: '#ff6b6b'
+            color: '#dc3545'
           }}>
             <AlertCircle size={20} />
             <span>{error}</span>
@@ -139,9 +155,12 @@ const LoginPage = ({ onLogin, onBack }) => {
           <div style={{ marginBottom: '20px' }}>
             <label style={{
               display: 'block',
-              color: 'rgba(255, 255, 255, 0.7)',
+              color: '#333',
               fontSize: '0.9rem',
-              marginBottom: '8px'
+              fontWeight: '600',
+              marginBottom: '8px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
             }}>
               Username
             </label>
@@ -153,7 +172,7 @@ const LoginPage = ({ onLogin, onBack }) => {
                   left: '16px',
                   top: '50%',
                   transform: 'translateY(-50%)',
-                  color: 'rgba(255, 255, 255, 0.4)'
+                  color: '#999'
                 }}
               />
               <input
@@ -164,10 +183,10 @@ const LoginPage = ({ onLogin, onBack }) => {
                 style={{
                   width: '100%',
                   padding: '14px 16px 14px 48px',
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  background: '#f5f5f5',
+                  border: '2px solid #e0e0e0',
                   borderRadius: '12px',
-                  color: 'white',
+                  color: '#1a1a1a',
                   fontSize: '1rem',
                   outline: 'none',
                   transition: 'all 0.3s ease',
@@ -175,10 +194,10 @@ const LoginPage = ({ onLogin, onBack }) => {
                 }}
                 onFocus={(e) => {
                   e.target.style.borderColor = '#ffc107';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(255, 193, 7, 0.1)';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(255, 193, 7, 0.2)';
                 }}
                 onBlur={(e) => {
-                  e.target.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                  e.target.style.borderColor = '#e0e0e0';
                   e.target.style.boxShadow = 'none';
                 }}
                 placeholder="Enter username"
@@ -190,9 +209,12 @@ const LoginPage = ({ onLogin, onBack }) => {
           <div style={{ marginBottom: '30px' }}>
             <label style={{
               display: 'block',
-              color: 'rgba(255, 255, 255, 0.7)',
+              color: '#333',
               fontSize: '0.9rem',
-              marginBottom: '8px'
+              fontWeight: '600',
+              marginBottom: '8px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
             }}>
               Password
             </label>
@@ -204,7 +226,7 @@ const LoginPage = ({ onLogin, onBack }) => {
                   left: '16px',
                   top: '50%',
                   transform: 'translateY(-50%)',
-                  color: 'rgba(255, 255, 255, 0.4)'
+                  color: '#999'
                 }}
               />
               <input
@@ -215,10 +237,10 @@ const LoginPage = ({ onLogin, onBack }) => {
                 style={{
                   width: '100%',
                   padding: '14px 48px 14px 48px',
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  background: '#f5f5f5',
+                  border: '2px solid #e0e0e0',
                   borderRadius: '12px',
-                  color: 'white',
+                  color: '#1a1a1a',
                   fontSize: '1rem',
                   outline: 'none',
                   transition: 'all 0.3s ease',
@@ -226,10 +248,10 @@ const LoginPage = ({ onLogin, onBack }) => {
                 }}
                 onFocus={(e) => {
                   e.target.style.borderColor = '#ffc107';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(255, 193, 7, 0.1)';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(255, 193, 7, 0.2)';
                 }}
                 onBlur={(e) => {
-                  e.target.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                  e.target.style.borderColor = '#e0e0e0';
                   e.target.style.boxShadow = 'none';
                 }}
                 placeholder="Enter password"
@@ -246,7 +268,7 @@ const LoginPage = ({ onLogin, onBack }) => {
                   border: 'none',
                   cursor: 'pointer',
                   padding: '5px',
-                  color: 'rgba(255, 255, 255, 0.4)'
+                  color: '#999'
                 }}
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -262,30 +284,32 @@ const LoginPage = ({ onLogin, onBack }) => {
               width: '100%',
               padding: '16px',
               background: loading 
-                ? 'rgba(255, 193, 7, 0.5)' 
-                : 'linear-gradient(135deg, #ffc107 0%, #ffca2c 100%)',
+                ? 'rgba(220, 53, 69, 0.5)' 
+                : 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
               border: 'none',
               borderRadius: '12px',
-              color: '#1a1a2e',
+              color: 'white',
               fontSize: '1.1rem',
-              fontWeight: '600',
+              fontWeight: '700',
               cursor: loading ? 'not-allowed' : 'pointer',
               transition: 'all 0.3s ease',
-              boxShadow: '0 10px 30px rgba(255, 193, 7, 0.3)',
+              boxShadow: '0 10px 30px rgba(220, 53, 69, 0.3)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '10px'
+              gap: '10px',
+              textTransform: 'uppercase',
+              letterSpacing: '1px'
             }}
             onMouseEnter={(e) => {
               if (!loading) {
                 e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 15px 40px rgba(255, 193, 7, 0.4)';
+                e.target.style.boxShadow = '0 15px 40px rgba(220, 53, 69, 0.4)';
               }
             }}
             onMouseLeave={(e) => {
               e.target.style.transform = 'translateY(0)';
-              e.target.style.boxShadow = '0 10px 30px rgba(255, 193, 7, 0.3)';
+              e.target.style.boxShadow = '0 10px 30px rgba(220, 53, 69, 0.3)';
             }}
           >
             {loading ? (
@@ -327,6 +351,18 @@ const LoginPage = ({ onLogin, onBack }) => {
         </div>
       </div>
 
+      {/* Footer */}
+      <div style={{
+        position: 'absolute',
+        bottom: '30px',
+        color: 'rgba(255, 255, 255, 0.4)',
+        fontSize: '0.9rem',
+        letterSpacing: '1px',
+        zIndex: 10
+      }}>
+        drpitz.club
+      </div>
+
       {/* CSS for spinner */}
       <style>{`
         @keyframes spin {
@@ -335,7 +371,6 @@ const LoginPage = ({ onLogin, onBack }) => {
         }
       `}</style>
     </div>
-    </>
   );
 };
 
