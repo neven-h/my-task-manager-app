@@ -1,12 +1,8 @@
 import React from 'react';
-import { Globe, Lock, Sparkles } from 'lucide-react';
+import { Globe, Lock, Sparkles, UserPlus } from 'lucide-react';
 
-const LandingPage = ({ onEnter }) => {
+const LandingPage = ({ onEnter, onSignUp }) => {
   return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
-      `}</style>
     <div style={{
       minHeight: '100vh',
       background: 'url(/background.jpg)',
@@ -17,7 +13,7 @@ const LandingPage = ({ onEnter }) => {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      fontFamily: '"Inter", "Helvetica Neue", Arial, sans-serif',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
       overflow: 'hidden',
       position: 'relative'
     }}>
@@ -69,8 +65,8 @@ const LandingPage = ({ onEnter }) => {
         {/* Title */}
         <h1 style={{
           fontSize: 'clamp(3rem, 10vw, 5rem)',
-          fontWeight: '800',
-          margin: '0 0 20px 0',
+          fontWeight: '900',
+          margin: '0 0 50px 0',
           background: 'linear-gradient(90deg, #dc3545, #ffc107, #0d6efd, #dc3545)',
           backgroundSize: '300% 100%',
           WebkitBackgroundClip: 'text',
@@ -78,22 +74,11 @@ const LandingPage = ({ onEnter }) => {
           backgroundClip: 'text',
           animation: 'gradient 4s ease infinite',
           letterSpacing: '-2px',
-          textShadow: '0 0 40px rgba(255, 193, 7, 0.3)'
+          textShadow: '0 0 40px rgba(255, 193, 7, 0.3)',
+          textTransform: 'uppercase'
         }}>
           World Wide Pitz
         </h1>
-
-        {/* Subtitle */}
-        <p style={{
-          fontSize: '1.3rem',
-          color: 'rgba(255, 255, 255, 0.7)',
-          marginBottom: '50px',
-          fontWeight: '300',
-          letterSpacing: '3px',
-          textTransform: 'uppercase'
-        }}>
-          Task Management System
-        </p>
 
         {/* Color bar */}
         <div style={{
@@ -125,38 +110,82 @@ const LandingPage = ({ onEnter }) => {
           }} />
         </div>
 
-        {/* Enter button */}
-        <button
-          onClick={onEnter}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '12px',
-            padding: '18px 50px',
-            fontSize: '1.2rem',
-            fontWeight: '600',
-            color: 'white',
-            background: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
-            border: 'none',
-            borderRadius: '50px',
-            cursor: 'pointer',
-            transition: 'all 0.3s ease',
-            boxShadow: '0 10px 40px rgba(220, 53, 69, 0.4)',
-            textTransform: 'uppercase',
-            letterSpacing: '2px'
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.transform = 'translateY(-3px) scale(1.02)';
-            e.target.style.boxShadow = '0 15px 50px rgba(220, 53, 69, 0.5)';
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.transform = 'translateY(0) scale(1)';
-            e.target.style.boxShadow = '0 10px 40px rgba(220, 53, 69, 0.4)';
-          }}
-        >
-          <Lock size={20} />
-          Enter System
-        </button>
+        {/* Buttons container */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '20px',
+          alignItems: 'center'
+        }}>
+          {/* Enter button */}
+          <button
+            onClick={onEnter}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '18px 50px',
+              fontSize: '1.2rem',
+              fontWeight: '700',
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+              color: 'white',
+              background: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
+              border: 'none',
+              borderRadius: '50px',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              boxShadow: '0 10px 40px rgba(220, 53, 69, 0.4)',
+              textTransform: 'uppercase',
+              letterSpacing: '2px'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.transform = 'translateY(-3px) scale(1.02)';
+              e.target.style.boxShadow = '0 15px 50px rgba(220, 53, 69, 0.5)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = 'translateY(0) scale(1)';
+              e.target.style.boxShadow = '0 10px 40px rgba(220, 53, 69, 0.4)';
+            }}
+          >
+            <Lock size={20} />
+            Enter System
+          </button>
+
+          {/* Sign Up button */}
+          <button
+            onClick={onSignUp}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '12px',
+              padding: '14px 40px',
+              fontSize: '1rem',
+              fontWeight: '700',
+              fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+              color: 'white',
+              background: 'transparent',
+              border: '2px solid rgba(255, 255, 255, 0.5)',
+              borderRadius: '50px',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              textTransform: 'uppercase',
+              letterSpacing: '2px'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.background = 'rgba(255, 255, 255, 0.1)';
+              e.target.style.borderColor = 'rgba(255, 255, 255, 0.8)';
+              e.target.style.transform = 'translateY(-2px)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.background = 'transparent';
+              e.target.style.borderColor = 'rgba(255, 255, 255, 0.5)';
+              e.target.style.transform = 'translateY(0)';
+            }}
+          >
+            <UserPlus size={18} />
+            Sign Up
+          </button>
+        </div>
       </div>
 
       {/* Footer */}
@@ -165,7 +194,8 @@ const LandingPage = ({ onEnter }) => {
         bottom: '30px',
         color: 'rgba(255, 255, 255, 0.4)',
         fontSize: '0.9rem',
-        letterSpacing: '1px'
+        letterSpacing: '1px',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
       }}>
         drpitz.club
       </div>
@@ -177,13 +207,8 @@ const LandingPage = ({ onEnter }) => {
           50% { background-position: 100% 50%; }
           100% { background-position: 0% 50%; }
         }
-        @keyframes float {
-          0%, 100% { transform: translateY(0) rotate(0deg); }
-          50% { transform: translateY(-30px) rotate(5deg); }
-        }
       `}</style>
     </div>
-    </>
   );
 };
 

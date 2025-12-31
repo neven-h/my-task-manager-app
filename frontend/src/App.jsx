@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import LandingPage from './LandingPage';
 import LoginPage from './LoginPage';
+import SignUpPage from './SignUpPage';
 import TaskTracker from './TaskTracker';
 
 const App = () => {
-  const [currentView, setCurrentView] = useState('landing'); // 'landing', 'login', 'app'
+  const [currentView, setCurrentView] = useState('landing'); // 'landing', 'login', 'signup', 'app'
   const [authToken, setAuthToken] = useState(null);
   const [authUser, setAuthUser] = useState(null);
 
@@ -23,6 +24,11 @@ const App = () => {
   const handleEnter = () => {
     // Go to login page
     setCurrentView('login');
+  };
+
+  const handleSignUp = () => {
+    // Go to sign up page
+    setCurrentView('signup');
   };
 
   const handleLogin = (token, username) => {
@@ -44,11 +50,15 @@ const App = () => {
   };
 
   if (currentView === 'landing') {
-    return <LandingPage onEnter={handleEnter} />;
+    return <LandingPage onEnter={handleEnter} onSignUp={handleSignUp} />;
   }
 
   if (currentView === 'login') {
     return <LoginPage onLogin={handleLogin} onBack={handleBackToLanding} />;
+  }
+
+  if (currentView === 'signup') {
+    return <SignUpPage onBack={handleBackToLanding} />;
   }
 
   if (currentView === 'app') {
