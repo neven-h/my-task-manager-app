@@ -1,11 +1,6 @@
 import React, { useState } from 'react';
 import { Lock, User, Eye, EyeOff, ArrowLeft, AlertCircle, Loader } from 'lucide-react';
 
-// Use the same API_BASE as App.jsx
-const API_BASE = process.env.NODE_ENV === 'production'
-  ? '/api'
-  : 'http://127.0.0.1:5001/api';
-
 const LoginPage = ({ onLogin, onBack }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -18,41 +13,33 @@ const LoginPage = ({ onLogin, onBack }) => {
     setError('');
     setLoading(true);
 
-    try {
-      const response = await fetch(`${API_BASE}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, password }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        // Store the token
-        localStorage.setItem('authToken', data.token);
+    // Simulate a brief loading delay
+    setTimeout(() => {
+      if (username && password) {
+        // Accept any username/password
+        const token = 'demo-token-' + Date.now();
+        localStorage.setItem('authToken', token);
         localStorage.setItem('authUser', username);
-        onLogin(data.token, username);
+        onLogin(token, username);
       } else {
-        setError(data.message || 'Invalid username or password');
+        setError('Please enter username and password');
+        setLoading(false);
       }
-    } catch (err) {
-      setError('Login error. Please try again.');
-      console.error('Login error:', err);
-    } finally {
-      setLoading(false);
-    }
+    }, 500);
   };
 
   return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+      `}</style>
     <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      fontFamily: '"Inter", "Helvetica Neue", Arial, sans-serif',
       padding: '20px'
     }}>
       {/* Back button */}
@@ -117,7 +104,7 @@ const LoginPage = ({ onLogin, onBack }) => {
             fontWeight: '700',
             margin: '0 0 10px 0'
           }}>
-            System Login
+            Login to System
           </h2>
           <p style={{
             color: 'rgba(255, 255, 255, 0.5)',
@@ -348,6 +335,7 @@ const LoginPage = ({ onLogin, onBack }) => {
         }
       `}</style>
     </div>
+    </>
   );
 };
 

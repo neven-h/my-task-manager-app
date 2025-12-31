@@ -3,9 +3,13 @@ import { Globe, Lock, Sparkles } from 'lucide-react';
 
 const LandingPage = ({ onEnter }) => {
   return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+      `}</style>
     <div style={{
       minHeight: '100vh',
-      backgroundImage: 'url(/background.jpg)',
+      background: 'url(/background.jpg)',
       backgroundSize: 'cover',
       backgroundPosition: 'center',
       backgroundRepeat: 'no-repeat',
@@ -13,54 +17,20 @@ const LandingPage = ({ onEnter }) => {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      fontFamily: '"Helvetica Neue", Arial, sans-serif',
+      fontFamily: '"Inter", "Helvetica Neue", Arial, sans-serif',
       overflow: 'hidden',
       position: 'relative'
     }}>
-      {/* Animated background elements */}
+      {/* Dark overlay for better text readability */}
       <div style={{
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        overflow: 'hidden',
+        background: 'rgba(0, 0, 0, 0.5)',
         pointerEvents: 'none'
-      }}>
-        {/* Red orb */}
-        <div style={{
-          position: 'absolute',
-          width: '400px',
-          height: '400px',
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(220, 53, 69, 0.3) 0%, transparent 70%)',
-          top: '-100px',
-          left: '-100px',
-          animation: 'float 8s ease-in-out infinite'
-        }} />
-        {/* Yellow orb */}
-        <div style={{
-          position: 'absolute',
-          width: '350px',
-          height: '350px',
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(255, 193, 7, 0.3) 0%, transparent 70%)',
-          top: '50%',
-          right: '-50px',
-          animation: 'float 6s ease-in-out infinite reverse'
-        }} />
-        {/* Blue orb */}
-        <div style={{
-          position: 'absolute',
-          width: '300px',
-          height: '300px',
-          borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(13, 110, 253, 0.3) 0%, transparent 70%)',
-          bottom: '-50px',
-          left: '30%',
-          animation: 'float 7s ease-in-out infinite'
-        }} />
-      </div>
+      }} />
 
       {/* Main content */}
       <div style={{
@@ -213,6 +183,7 @@ const LandingPage = ({ onEnter }) => {
         }
       `}</style>
     </div>
+    </>
   );
 };
 
