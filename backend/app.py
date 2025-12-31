@@ -5,17 +5,26 @@ from mysql.connector import Error
 from datetime import datetime
 import csv
 import io
+import os
 from contextlib import contextmanager
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
 
-# Database configuration
+# Configure CORS - allow frontend origins
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3004')
+CORS(app, origins=[FRONTEND_URL, 'http://localhost:3004', 'https://drpitz.club', 'https://www.drpitz.club'])
+
+# Database configuration - uses environment variables in production, defaults for local dev
 DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': '',  # Empty - no password
-    'database': 'task_tracker'
+    'host': os.getenv('DB_HOST', 'localhost'),
+    'user': os.getenv('DB_USER', 'root'),
+    'password': os.getenv('DB_PASSWORD', ''),
+    'database': os.getenv('DB_NAME', 'task_tracker'),
+    'port': int(os.getenv('DB_PORT', 3306))
 }
 
 @contextmanager

@@ -3,8 +3,7 @@ import {
   Search, Plus, Calendar, Clock, X, BarChart3, 
   Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save
 } from 'lucide-react';
-
-const API_BASE = 'http://192.168.31.152:5001/api';
+import API_BASE from './config';
 const DRAFT_STORAGE_KEY = 'taskTracker_draft';
 
 const TaskTracker = () => {
