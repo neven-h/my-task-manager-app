@@ -29,4 +29,6 @@ yarn-error.log*
 
 # Secrets
 .env
-.env.*
+.env.local
+.env.production
+!.env.example
