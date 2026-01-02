@@ -18,11 +18,17 @@ const ClientsManagement = ({ onBackToTasks }) => {
   const fetchClients = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await fetch(`${API_BASE}/clients/manage`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
-      setClients(data);
+      setClients(data || []);
     } catch (err) {
-      setError('Failed to fetch clients');
+      console.error('Error fetching clients:', err);
+      setError('Failed to fetch clients: ' + err.message);
+      setClients([]);
     } finally {
       setLoading(false);
     }
@@ -31,12 +37,18 @@ const ClientsManagement = ({ onBackToTasks }) => {
   const fetchClientTasks = async (clientName) => {
     try {
       setLoading(true);
+      setError(null);
       const response = await fetch(`${API_BASE}/clients/${encodeURIComponent(clientName)}/tasks`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
-      setClientTasks(data);
+      setClientTasks(data || []);
       setSelectedClient(clientName);
     } catch (err) {
-      setError('Failed to fetch client tasks');
+      console.error('Error fetching client tasks:', err);
+      setError('Failed to fetch client tasks: ' + err.message);
+      setClientTasks([]);
     } finally {
       setLoading(false);
     }
@@ -66,7 +78,7 @@ const ClientsManagement = ({ onBackToTasks }) => {
   };
 
   const handleDeleteClient = async (clientName) => {
-    if (!confirm(`Are you sure you want to delete all tasks for "${clientName}"?`)) return;
+    if (!window.confirm(`Are you sure you want to delete all tasks for "${clientName}"?`)) return;
 
     try {
       setLoading(true);
@@ -185,7 +197,18 @@ const ClientsManagement = ({ onBackToTasks }) => {
             All Clients
           </h2>
 
-          {clients.length === 0 ? (
+          {loading ? (
+            <div style={{
+              border: '3px solid #000',
+              padding: '48px',
+              textAlign: 'center',
+              background: '#f8f8f8'
+            }}>
+              <p style={{ fontSize: '1.2rem', fontWeight: 600, color: '#666' }}>
+                Loading clients...
+              </p>
+            </div>
+          ) : clients.length === 0 ? (
             <div style={{
               border: '3px solid #000',
               padding: '48px',
