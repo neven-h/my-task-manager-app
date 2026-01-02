@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Search, Plus, Calendar, Clock, X, BarChart3,
-  Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload
+  Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut
 } from 'lucide-react';
 import BankTransactions from './BankTransactions';
 import ClientsManagement from './ClientsManagement';
@@ -9,7 +9,7 @@ import API_BASE from './config';
 const DRAFT_STORAGE_KEY = 'taskTracker_draft';
 const BULK_DRAFT_STORAGE_KEY = 'taskTracker_bulkDraft';
 
-const TaskTracker = () => {
+const TaskTracker = ({ onLogout }) => {
   const [appView, setAppView] = useState('tasks'); // 'tasks', 'transactions', or 'clients'
   const [tasks, setTasks] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
@@ -951,6 +951,12 @@ const TaskTracker = () => {
                 <>Tasks</>
               )}
             </button>
+            {onLogout && (
+              <button className="btn btn-white" onClick={onLogout}>
+                <LogOut size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />
+                Logout
+              </button>
+            )}
           </div>
         </div>
       </header>
