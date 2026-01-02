@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Search, Plus, Calendar, Clock, X, BarChart3,
-  Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut
+  Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut, Menu, Filter
 } from 'lucide-react';
 import BankTransactions from './BankTransactions';
 import ClientsManagement from './ClientsManagement';
@@ -17,6 +17,8 @@ const TaskTracker = ({ onLogout }) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
@@ -892,6 +894,121 @@ const TaskTracker = ({ onLogout }) => {
           border-right: 3px solid #000;
           background: #f8f8f8;
         }
+        
+        /* Mobile Responsive Styles */
+        @media (max-width: 768px) {
+          .desktop-header-buttons {
+            display: none !important;
+          }
+          
+          .mobile-menu-btn {
+            display: flex !important;
+          }
+          
+          .sidebar {
+            position: fixed;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100vh;
+            z-index: 200;
+            transition: left 0.3s ease;
+            border-right: none;
+          }
+          
+          .sidebar.mobile-open {
+            left: 0;
+          }
+          
+          .main-content {
+            flex-direction: column !important;
+          }
+          
+          .main-area {
+            padding: 16px !important;
+          }
+          
+          .task-card {
+            padding: 16px !important;
+          }
+          
+          .task-card:hover {
+            box-shadow: none;
+            transform: none;
+          }
+          
+          .btn {
+            padding: 10px 16px;
+            font-size: 0.75rem;
+          }
+          
+          .modal-overlay {
+            padding: 0.5rem;
+          }
+          
+          .modal-content {
+            max-height: 100vh;
+            border-width: 2px;
+          }
+          
+          .modal-header {
+            padding: 16px !important;
+          }
+          
+          .modal-body {
+            padding: 16px !important;
+          }
+          
+          .task-view-toggle {
+            flex-wrap: wrap;
+          }
+          
+          .task-view-toggle .btn {
+            flex: 1;
+            min-width: 80px;
+            padding: 8px 12px;
+          }
+          
+          .stats-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+          
+          .stats-card {
+            padding: 16px !important;
+          }
+          
+          .stats-number {
+            font-size: 2rem !important;
+          }
+          
+          .task-actions {
+            margin-left: 8px !important;
+            gap: 4px !important;
+          }
+          
+          .task-actions .btn {
+            padding: 8px !important;
+          }
+          
+          .task-meta-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            padding: 12px !important;
+          }
+        }
+        
+        @media (min-width: 769px) {
+          .mobile-menu-btn {
+            display: none !important;
+          }
+          
+          .mobile-overlay {
+            display: none !important;
+          }
+          
+          .mobile-sidebar-close {
+            display: none !important;
+          }
+        }
       `}</style>
 
       {/* Color Bar */}
@@ -901,33 +1018,45 @@ const TaskTracker = ({ onLogout }) => {
       <header style={{
         background: '#fff',
         borderBottom: '4px solid #000',
-        padding: '32px 48px',
+        padding: '16px',
         position: 'sticky',
         top: 0,
         zIndex: 100
       }}>
-        <div style={{ maxWidth: '1600px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
+        <div style={{ maxWidth: '1600px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 16px' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <h1 style={{
               fontFamily: '"Inter", sans-serif',
-              fontSize: '3rem',
+              fontSize: 'clamp(1.5rem, 5vw, 3rem)',
               fontWeight: 900,
-              margin: '0 0 8px 0',
+              margin: '0 0 4px 0',
               letterSpacing: '-1px',
               textTransform: 'uppercase'
             }}>
               Task Tracker
             </h1>
             <p style={{
-              fontSize: '1rem',
+              fontSize: 'clamp(0.7rem, 2vw, 1rem)',
               margin: 0,
               fontWeight: 400,
-              color: '#666'
-            }}>
+              color: '#666',
+              display: 'none'
+            }} className="desktop-subtitle">
               Personal Assistant Management System
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
+          
+          {/* Mobile Menu Button */}
+          <button 
+            className="mobile-menu-btn btn btn-white" 
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            style={{ padding: '10px', minWidth: 'auto', display: 'none' }}
+          >
+            <Menu size={24} />
+          </button>
+          
+          {/* Desktop Header Buttons */}
+          <div className="desktop-header-buttons" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <button className="btn btn-blue" onClick={() => setAppView('transactions')}>
               <DollarSign size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />
               Bank Transactions
@@ -961,6 +1090,76 @@ const TaskTracker = ({ onLogout }) => {
         </div>
       </header>
 
+      {/* Mobile Menu Overlay */}
+      {showMobileMenu && (
+        <div 
+          className="mobile-overlay"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.9)',
+            zIndex: 150,
+            display: 'flex',
+            flexDirection: 'column',
+            padding: '20px'
+          }}
+        >
+          <button 
+            onClick={() => setShowMobileMenu(false)}
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '20px',
+              background: 'transparent',
+              border: 'none',
+              color: '#fff',
+              cursor: 'pointer'
+            }}
+          >
+            <X size={32} />
+          </button>
+          
+          <div style={{ marginTop: '60px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <button className="btn btn-red" onClick={() => { openNewTaskForm(); setShowMobileMenu(false); }} style={{ width: '100%' }}>
+              <Plus size={18} style={{ marginRight: '8px' }} />
+              New Task
+            </button>
+            <button className="btn btn-white" onClick={() => { setShowBulkInput(true); setShowMobileMenu(false); }} style={{ width: '100%' }}>
+              <Plus size={18} style={{ marginRight: '8px' }} />
+              Bulk Add
+            </button>
+            <button className="btn btn-blue" onClick={() => { setAppView('transactions'); setShowMobileMenu(false); }} style={{ width: '100%' }}>
+              <DollarSign size={18} style={{ marginRight: '8px' }} />
+              Bank Transactions
+            </button>
+            <button className="btn btn-green" onClick={() => { setAppView('clients'); setShowMobileMenu(false); }} style={{ width: '100%' }}>
+              <Tag size={18} style={{ marginRight: '8px' }} />
+              Clients
+            </button>
+            <button className="btn btn-yellow" onClick={() => { setView(view === 'list' ? 'stats' : 'list'); setShowMobileMenu(false); }} style={{ width: '100%' }}>
+              {view === 'list' ? (
+                <><BarChart3 size={18} style={{ marginRight: '8px' }} />Stats</>
+              ) : (
+                <>Tasks</>
+              )}
+            </button>
+            <button className="btn btn-white" onClick={() => { setShowMobileSidebar(true); setShowMobileMenu(false); }} style={{ width: '100%' }}>
+              <Filter size={18} style={{ marginRight: '8px' }} />
+              Filters & Export
+            </button>
+            {onLogout && (
+              <button className="btn btn-white" onClick={() => { onLogout(); setShowMobileMenu(false); }} style={{ width: '100%', marginTop: '20px' }}>
+                <LogOut size={18} style={{ marginRight: '8px' }} />
+                Logout
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Error Banner */}
       {error && (
         <div style={{
@@ -986,6 +1185,95 @@ const TaskTracker = ({ onLogout }) => {
           >
             <X size={20} />
           </button>
+        </div>
+      )}
+
+      {/* Mobile Sidebar Overlay */}
+      {showMobileSidebar && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: '#f8f8f8',
+            zIndex: 200,
+            overflowY: 'auto',
+            padding: '20px'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900 }}>Filters & Export</h2>
+            <button 
+              onClick={() => setShowMobileSidebar(false)}
+              className="btn btn-white"
+              style={{ padding: '10px', minWidth: 'auto' }}
+            >
+              <X size={24} />
+            </button>
+          </div>
+          
+          <div style={{ marginBottom: '32px' }}>
+            <h3 style={{ fontSize: '0.75rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Filters</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem' }}>Search</label>
+                <input type="text" placeholder="Keywords..." value={filters.search} onChange={(e) => setFilters({...filters, search: e.target.value})} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem' }}>Status</label>
+                <select value={filters.status} onChange={(e) => setFilters({...filters, status: e.target.value})}>
+                  <option value="all">All Status</option>
+                  <option value="uncompleted">Uncompleted</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem' }}>Category</label>
+                <select value={filters.category} onChange={(e) => setFilters({...filters, category: e.target.value})}>
+                  <option value="all">All Categories</option>
+                  {allCategories.map(cat => (<option key={cat.id} value={cat.id}>{cat.label}</option>))}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem' }}>Client</label>
+                <input type="text" placeholder="Client name..." value={filters.client} onChange={(e) => setFilters({...filters, client: e.target.value})} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem' }}>Date From</label>
+                <input type="date" value={filters.dateStart} onChange={(e) => setFilters({...filters, dateStart: e.target.value})} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem' }}>Date To</label>
+                <input type="date" value={filters.dateEnd} onChange={(e) => setFilters({...filters, dateEnd: e.target.value})} />
+              </div>
+              {(filters.search || filters.category !== 'all' || filters.status !== 'all' || filters.client || filters.dateStart || filters.dateEnd) && (
+                <button className="btn btn-white" onClick={() => setFilters({ search: '', category: 'all', status: 'all', client: '', dateStart: '', dateEnd: '' })} style={{ width: '100%' }}>Clear Filters</button>
+              )}
+            </div>
+          </div>
+          
+          <div style={{ marginBottom: '24px' }}>
+            <h3 style={{ fontSize: '0.75rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Export / Import</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <button className="btn btn-yellow" onClick={() => { exportHoursReport(); setShowMobileSidebar(false); }} disabled={tasks.length === 0} style={{ width: '100%' }}>
+                <Download size={16} style={{ marginRight: '8px' }} />Export Hours Report
+              </button>
+              <button className="btn btn-yellow" onClick={() => document.getElementById('import-hours-report-mobile').click()} disabled={loading} style={{ width: '100%' }}>
+                <Upload size={16} style={{ marginRight: '8px' }} />Import Hours Report
+              </button>
+              <input type="file" id="import-hours-report-mobile" accept=".csv,.xlsx,.xls" onChange={(e) => { importHoursReport(e); setShowMobileSidebar(false); }} style={{ display: 'none' }} />
+              <button className="btn btn-blue" onClick={() => { exportToCSV(); setShowMobileSidebar(false); }} disabled={tasks.length === 0} style={{ width: '100%' }}>
+                <Download size={16} style={{ marginRight: '8px' }} />Export CSV
+              </button>
+              <button className="btn btn-white" onClick={() => { fetchTasks(); fetchStats(); setShowMobileSidebar(false); }} disabled={loading} style={{ width: '100%' }}>
+                <RefreshCw size={16} style={{ marginRight: '8px' }} />Refresh
+              </button>
+            </div>
+          </div>
+          
+          <button className="btn btn-red" onClick={() => setShowMobileSidebar(false)} style={{ width: '100%', marginTop: '20px' }}>Apply & Close</button>
         </div>
       )}
 
