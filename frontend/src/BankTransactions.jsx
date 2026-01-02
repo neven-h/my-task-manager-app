@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, DollarSign, Calendar, TrendingUp, Trash2, Download, FileText, AlertCircle, CheckCircle, ArrowLeft, Plus, Edit2, Save, X } from 'lucide-react';
+import { Upload, DollarSign, Calendar, TrendingUp, Trash2, Download, FileText, AlertCircle, CheckCircle, ArrowLeft, Plus, Edit2, Save, X, FileDown } from 'lucide-react';
 import API_BASE from './config';
 
 const BankTransactions = ({ onBackToTasks }) => {
@@ -318,6 +318,110 @@ const BankTransactions = ({ onBackToTasks }) => {
     const [year, month] = monthYear.split('-');
     const date = new Date(year, month - 1);
     return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  };
+
+  const exportToPDF = async (transactions, title) => {
+    // Create PDF content as HTML
+    const totalSpending = transactions.reduce((sum, t) => sum + t.amount, 0);
+    
+    // Group by description
+    const spendingByDescription = {};
+    transactions.forEach(trans => {
+      if (!spendingByDescription[trans.description]) {
+        spendingByDescription[trans.description] = { total: 0, count: 0, transactions: [] };
+      }
+      spendingByDescription[trans.description].total += trans.amount;
+      spendingByDescription[trans.description].count += 1;
+      spendingByDescription[trans.description].transactions.push(trans);
+    });
+
+    const sortedGroups = Object.entries(spendingByDescription)
+      .sort((a, b) => b[1].total - a[1].total);
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>${title} - Bank Transactions Report</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: Arial, sans-serif; padding: 40px; color: #000; }
+          h1 { font-size: 28px; margin-bottom: 8px; text-transform: uppercase; }
+          .subtitle { color: #666; margin-bottom: 30px; }
+          .summary { display: flex; gap: 30px; margin-bottom: 40px; }
+          .summary-card { background: #f8f8f8; padding: 20px; border: 2px solid #000; flex: 1; }
+          .summary-label { font-size: 12px; color: #666; text-transform: uppercase; margin-bottom: 8px; }
+          .summary-value { font-size: 28px; font-weight: bold; }
+          .summary-value.red { color: #FF0000; }
+          h2 { font-size: 18px; margin: 30px 0 20px; text-transform: uppercase; border-bottom: 3px solid #000; padding-bottom: 10px; }
+          .group { margin-bottom: 25px; border: 2px solid #000; }
+          .group-header { background: #f8f8f8; padding: 15px; display: flex; justify-content: space-between; border-bottom: 2px solid #000; }
+          .group-name { font-weight: bold; font-size: 16px; }
+          .group-total { font-weight: bold; font-size: 18px; color: #FF0000; }
+          .group-count { font-size: 12px; color: #666; }
+          .transaction { padding: 12px 15px; display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; }
+          .transaction:last-child { border-bottom: none; }
+          .trans-date { color: #666; }
+          .trans-amount { font-weight: bold; }
+          .footer { margin-top: 40px; text-align: center; color: #666; font-size: 12px; }
+          @media print { body { padding: 20px; } }
+        </style>
+      </head>
+      <body>
+        <h1>Bank Transactions Report</h1>
+        <p class="subtitle">${title} | Generated on ${new Date().toLocaleDateString('en-GB')}</p>
+        
+        <div class="summary">
+          <div class="summary-card">
+            <div class="summary-label">Total Spending</div>
+            <div class="summary-value red">${formatCurrency(totalSpending)}</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">Transactions</div>
+            <div class="summary-value">${transactions.length}</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">Categories</div>
+            <div class="summary-value">${sortedGroups.length}</div>
+          </div>
+        </div>
+
+        <h2>Transactions by Category</h2>
+        ${sortedGroups.map(([description, data]) => `
+          <div class="group">
+            <div class="group-header">
+              <div>
+                <div class="group-name">${description}</div>
+                <div class="group-count">${data.count} transaction${data.count > 1 ? 's' : ''}</div>
+              </div>
+              <div class="group-total">${formatCurrency(data.total)}</div>
+            </div>
+            ${data.transactions.map(trans => `
+              <div class="transaction">
+                <span class="trans-date">${new Date(trans.transaction_date).toLocaleDateString('en-GB')}</span>
+                <span class="trans-amount">${formatCurrency(trans.amount)}</span>
+              </div>
+            `).join('')}
+          </div>
+        `).join('')}
+
+        <div class="footer">
+          World Wide Pitz Task Manager | drpitz.club
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Open in new window for printing
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    
+    // Wait for content to load, then trigger print
+    printWindow.onload = () => {
+      printWindow.print();
+    };
   };
 
   return (
@@ -984,9 +1088,21 @@ const BankTransactions = ({ onBackToTasks }) => {
                       fontSize: '1.8rem',
                       fontWeight: 900,
                       marginBottom: '24px',
-                      textTransform: 'UPPERCASE'
+                      textTransform: 'UPPERCASE',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
                     }}>
-                      {selectedMonth === 'all' ? 'ALL TRANSACTIONS' : formatMonthYear(selectedMonth)}
+                      <span>{selectedMonth === 'all' ? 'ALL TRANSACTIONS' : formatMonthYear(selectedMonth)}</span>
+                      <button
+                        className="btn btn-red"
+                        onClick={() => exportToPDF(filteredTransactions, selectedMonth === 'all' ? 'All Transactions' : formatMonthYear(selectedMonth))}
+                        disabled={filteredTransactions.length === 0}
+                        style={{ fontSize: '0.85rem' }}
+                      >
+                        <FileDown size={18} style={{ marginRight: '8px' }} />
+                        Export PDF
+                      </button>
                     </h3>
 
                     {/* Date Range Filters */}
