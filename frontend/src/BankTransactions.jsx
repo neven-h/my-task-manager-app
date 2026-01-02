@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, DollarSign, Calendar, TrendingUp, Trash2, Download, FileText, AlertCircle, CheckCircle, ArrowLeft, Plus, Edit2, Save, X, FileDown } from 'lucide-react';
+import { Upload, DollarSign, Calendar, TrendingUp, Trash2, Download, FileText, AlertCircle, CheckCircle, ArrowLeft, Plus, Edit2, Save, X, FileDown, Banknote, CreditCard, PieChart, Filter } from 'lucide-react';
 import API_BASE from './config';
 
 const BankTransactions = ({ onBackToTasks }) => {
@@ -11,26 +11,29 @@ const BankTransactions = ({ onBackToTasks }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [previewFilter, setPreviewFilter] = useState('all');
-  const [encodingPreviews, setEncodingPreviews] = useState(null);
-  const [tempFilename, setTempFilename] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [descriptionFilter, setDescriptionFilter] = useState('');
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [allDescriptions, setAllDescriptions] = useState([]);
+  const [transactionType, setTransactionType] = useState('credit');
+  const [transactionStats, setTransactionStats] = useState(null);
+  const [typeFilter, setTypeFilter] = useState('all');
   const [newTransaction, setNewTransaction] = useState({
     transaction_date: new Date().toISOString().split('T')[0],
     description: '',
     amount: '',
     account_number: '',
-    month_year: new Date().toISOString().slice(0, 7)
+    month_year: new Date().toISOString().slice(0, 7),
+    transaction_type: 'credit'
   });
-  const [dateRangeFilter, setDateRangeFilter] = useState('all'); // 1day, 3days, 7days, 30days, 3months, 6months, all
+  const [dateRangeFilter, setDateRangeFilter] = useState('all');
 
   useEffect(() => {
     fetchSavedMonths();
     fetchAllDescriptions();
-    fetchAllTransactions(); // Load all transactions on mount
+    fetchAllTransactions();
+    fetchTransactionStats();
   }, []);
 
   const fetchAllDescriptions = async () => {
@@ -40,6 +43,16 @@ const BankTransactions = ({ onBackToTasks }) => {
       setAllDescriptions(data);
     } catch (err) {
       console.error('Error fetching descriptions:', err);
+    }
+  };
+
+  const fetchTransactionStats = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/transactions/stats`);
+      const data = await response.json();
+      setTransactionStats(data);
+    } catch (err) {
+      console.error('Error fetching stats:', err);
     }
   };
 
@@ -59,7 +72,7 @@ const BankTransactions = ({ onBackToTasks }) => {
       const response = await fetch(`${API_BASE}/transactions/all`);
       const data = await response.json();
       setMonthTransactions(data);
-      setSelectedMonth('all'); // Indicate we're showing all transactions
+      setSelectedMonth('all');
     } catch (err) {
       setError('Failed to fetch transactions');
     } finally {
@@ -87,6 +100,7 @@ const BankTransactions = ({ onBackToTasks }) => {
 
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('transaction_type', transactionType);
 
     try {
       setLoading(true);
@@ -113,40 +127,8 @@ const BankTransactions = ({ onBackToTasks }) => {
 
       setUploadedData(data);
       setPreviewFilter('all');
-      setSuccess(`Successfully parsed ${data.transaction_count} transactions. NOTE: If Hebrew text shows as ????, please export the file as Excel (.xlsx) from your bank or use the original unedited CSV file.`);
-
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEncodingSelect = async (encoding) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch(`${API_BASE}/transactions/upload-with-encoding`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          temp_filename: tempFilename,
-          encoding: encoding
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to parse with selected encoding');
-      }
-
-      setUploadedData(data);
-      setPreviewFilter('all');
-      setEncodingPreviews(null);
-      setTempFilename(null);
-      setSuccess(`Successfully parsed ${data.transaction_count} transactions using ${encoding} encoding`);
+      const typeLabel = transactionType === 'cash' ? 'cash' : 'credit card';
+      setSuccess(`Successfully parsed ${data.transaction_count} ${typeLabel} transactions.`);
 
     } catch (err) {
       setError(err.message);
@@ -177,6 +159,8 @@ const BankTransactions = ({ onBackToTasks }) => {
       setSuccess(data.message);
       setUploadedData(null);
       await fetchSavedMonths();
+      await fetchTransactionStats();
+      await fetchAllTransactions();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -196,7 +180,6 @@ const BankTransactions = ({ onBackToTasks }) => {
       });
 
       const data = await response.json();
-
       if (!response.ok) throw new Error(data.error || 'Failed to add transaction');
 
       setSuccess('Transaction added successfully');
@@ -206,11 +189,13 @@ const BankTransactions = ({ onBackToTasks }) => {
         description: '',
         amount: '',
         account_number: '',
-        month_year: new Date().toISOString().slice(0, 7)
+        month_year: new Date().toISOString().slice(0, 7),
+        transaction_type: 'credit'
       });
+      
       await fetchSavedMonths();
       await fetchAllDescriptions();
-      // Refresh current view
+      await fetchTransactionStats();
       if (selectedMonth === 'all') {
         await fetchAllTransactions();
       } else if (selectedMonth) {
@@ -235,18 +220,18 @@ const BankTransactions = ({ onBackToTasks }) => {
       });
 
       const data = await response.json();
-
       if (!response.ok) throw new Error(data.error || 'Failed to update transaction');
 
       setSuccess('Transaction updated successfully');
       setEditingTransaction(null);
-      // Refresh current view
+      
       if (selectedMonth === 'all') {
         await fetchAllTransactions();
       } else {
         await fetchMonthTransactions(selectedMonth);
       }
       await fetchAllDescriptions();
+      await fetchTransactionStats();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -268,13 +253,14 @@ const BankTransactions = ({ onBackToTasks }) => {
       if (!response.ok) throw new Error('Failed to delete transaction');
 
       setSuccess('Transaction deleted successfully');
-      // Refresh current view
+      
       if (selectedMonth === 'all') {
         await fetchAllTransactions();
       } else {
         await fetchMonthTransactions(selectedMonth);
       }
       await fetchSavedMonths();
+      await fetchTransactionStats();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -283,7 +269,7 @@ const BankTransactions = ({ onBackToTasks }) => {
   };
 
   const handleDeleteMonth = async (monthYear) => {
-    if (!window.confirm(`Delete all transactions for ${monthYear}?`)) return;
+    if (!window.confirm(`Delete all transactions for ${formatMonthYear(monthYear)}?`)) return;
 
     try {
       setLoading(true);
@@ -299,6 +285,7 @@ const BankTransactions = ({ onBackToTasks }) => {
         setMonthTransactions([]);
       }
       await fetchSavedMonths();
+      await fetchTransactionStats();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -307,7 +294,7 @@ const BankTransactions = ({ onBackToTasks }) => {
   };
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('he-IL', {
       style: 'currency',
       currency: 'ILS',
       minimumFractionDigits: 2
@@ -315,1097 +302,963 @@ const BankTransactions = ({ onBackToTasks }) => {
   };
 
   const formatMonthYear = (monthYear) => {
+    if (!monthYear || monthYear === 'all') return 'All Transactions';
     const [year, month] = monthYear.split('-');
     const date = new Date(year, month - 1);
     return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   };
 
-  const exportToPDF = async (transactions, title) => {
-    // Create PDF content as HTML
-    const totalSpending = transactions.reduce((sum, t) => sum + t.amount, 0);
+  const exportToPDF = () => {
+    const filtered = getFilteredTransactions();
+    const printWindow = window.open('', '_blank');
     
-    // Group by description
-    const spendingByDescription = {};
-    transactions.forEach(trans => {
-      if (!spendingByDescription[trans.description]) {
-        spendingByDescription[trans.description] = { total: 0, count: 0, transactions: [] };
+    const totalCredit = filtered.filter(t => t.transaction_type === 'credit').reduce((sum, t) => sum + t.amount, 0);
+    const totalCash = filtered.filter(t => t.transaction_type === 'cash').reduce((sum, t) => sum + t.amount, 0);
+    const total = filtered.reduce((sum, t) => sum + t.amount, 0);
+
+    const categories = {};
+    filtered.forEach(t => {
+      const desc = t.description || 'Other';
+      if (!categories[desc]) {
+        categories[desc] = { count: 0, total: 0, credit: 0, cash: 0 };
       }
-      spendingByDescription[trans.description].total += trans.amount;
-      spendingByDescription[trans.description].count += 1;
-      spendingByDescription[trans.description].transactions.push(trans);
+      categories[desc].count++;
+      categories[desc].total += t.amount;
+      if (t.transaction_type === 'cash') {
+        categories[desc].cash += t.amount;
+      } else {
+        categories[desc].credit += t.amount;
+      }
     });
 
-    const sortedGroups = Object.entries(spendingByDescription)
-      .sort((a, b) => b[1].total - a[1].total);
+    const sortedCategories = Object.entries(categories).sort((a, b) => b[1].total - a[1].total);
 
-    const htmlContent = `
-      <!DOCTYPE html>
+    printWindow.document.write(`
       <html>
       <head>
-        <meta charset="UTF-8">
-        <title>${title} - Bank Transactions Report</title>
+        <title>Bank Transactions Report - ${selectedMonth === 'all' ? 'All' : formatMonthYear(selectedMonth)}</title>
         <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: Arial, sans-serif; padding: 40px; color: #000; }
-          h1 { font-size: 28px; margin-bottom: 8px; text-transform: uppercase; }
-          .subtitle { color: #666; margin-bottom: 30px; }
-          .summary { display: flex; gap: 30px; margin-bottom: 40px; }
-          .summary-card { background: #f8f8f8; padding: 20px; border: 2px solid #000; flex: 1; }
-          .summary-label { font-size: 12px; color: #666; text-transform: uppercase; margin-bottom: 8px; }
-          .summary-value { font-size: 28px; font-weight: bold; }
-          .summary-value.red { color: #FF0000; }
-          h2 { font-size: 18px; margin: 30px 0 20px; text-transform: uppercase; border-bottom: 3px solid #000; padding-bottom: 10px; }
-          .group { margin-bottom: 25px; border: 2px solid #000; }
-          .group-header { background: #f8f8f8; padding: 15px; display: flex; justify-content: space-between; border-bottom: 2px solid #000; }
-          .group-name { font-weight: bold; font-size: 16px; }
-          .group-total { font-weight: bold; font-size: 18px; color: #FF0000; }
-          .group-count { font-size: 12px; color: #666; }
-          .transaction { padding: 12px 15px; display: flex; justify-content: space-between; border-bottom: 1px solid #ddd; }
-          .transaction:last-child { border-bottom: none; }
-          .trans-date { color: #666; }
-          .trans-amount { font-weight: bold; }
-          .footer { margin-top: 40px; text-align: center; color: #666; font-size: 12px; }
-          @media print { body { padding: 20px; } }
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          h1 { color: #333; border-bottom: 2px solid #333; padding-bottom: 10px; }
+          .summary { display: flex; gap: 20px; margin-bottom: 30px; }
+          .summary-box { background: #f5f5f5; padding: 15px 25px; border-radius: 8px; }
+          .summary-box h3 { margin: 0 0 5px 0; font-size: 14px; color: #666; }
+          .summary-box p { margin: 0; font-size: 24px; font-weight: bold; }
+          .credit { color: #2563eb; }
+          .cash { color: #059669; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+          th { background: #333; color: white; }
+          tr:nth-child(even) { background: #f9f9f9; }
+          .amount { text-align: right; font-family: monospace; }
+          @media print { body { padding: 0; } }
         </style>
       </head>
       <body>
         <h1>Bank Transactions Report</h1>
-        <p class="subtitle">${title} | Generated on ${new Date().toLocaleDateString('en-GB')}</p>
+        <p><strong>Period:</strong> ${selectedMonth === 'all' ? 'All Transactions' : formatMonthYear(selectedMonth)}</p>
+        <p><strong>Generated:</strong> ${new Date().toLocaleDateString()}</p>
         
         <div class="summary">
-          <div class="summary-card">
-            <div class="summary-label">Total Spending</div>
-            <div class="summary-value red">${formatCurrency(totalSpending)}</div>
+          <div class="summary-box">
+            <h3>Total Spending</h3>
+            <p>${formatCurrency(total)}</p>
           </div>
-          <div class="summary-card">
-            <div class="summary-label">Transactions</div>
-            <div class="summary-value">${transactions.length}</div>
+          <div class="summary-box">
+            <h3 class="credit">Credit Card</h3>
+            <p class="credit">${formatCurrency(totalCredit)}</p>
           </div>
-          <div class="summary-card">
-            <div class="summary-label">Categories</div>
-            <div class="summary-value">${sortedGroups.length}</div>
+          <div class="summary-box">
+            <h3 class="cash">Cash</h3>
+            <p class="cash">${formatCurrency(totalCash)}</p>
+          </div>
+          <div class="summary-box">
+            <h3>Transaction Count</h3>
+            <p>${filtered.length}</p>
           </div>
         </div>
 
-        <h2>Transactions by Category</h2>
-        ${sortedGroups.map(([description, data]) => `
-          <div class="group">
-            <div class="group-header">
-              <div>
-                <div class="group-name">${description}</div>
-                <div class="group-count">${data.count} transaction${data.count > 1 ? 's' : ''}</div>
-              </div>
-              <div class="group-total">${formatCurrency(data.total)}</div>
-            </div>
-            ${data.transactions.map(trans => `
-              <div class="transaction">
-                <span class="trans-date">${new Date(trans.transaction_date).toLocaleDateString('en-GB')}</span>
-                <span class="trans-amount">${formatCurrency(trans.amount)}</span>
-              </div>
+        <h2>By Category</h2>
+        <table>
+          <thead>
+            <tr><th>Category</th><th>Count</th><th>Credit</th><th>Cash</th><th>Total</th></tr>
+          </thead>
+          <tbody>
+            ${sortedCategories.map(([cat, data]) => `
+              <tr>
+                <td>${cat}</td>
+                <td>${data.count}</td>
+                <td class="amount credit">${formatCurrency(data.credit)}</td>
+                <td class="amount cash">${formatCurrency(data.cash)}</td>
+                <td class="amount">${formatCurrency(data.total)}</td>
+              </tr>
             `).join('')}
-          </div>
-        `).join('')}
+          </tbody>
+        </table>
 
-        <div class="footer">
-          World Wide Pitz Task Manager | drpitz.club
-        </div>
+        <h2>All Transactions</h2>
+        <table>
+          <thead>
+            <tr><th>Date</th><th>Description</th><th>Type</th><th>Amount</th></tr>
+          </thead>
+          <tbody>
+            ${filtered.map(t => `
+              <tr>
+                <td>${new Date(t.transaction_date).toLocaleDateString()}</td>
+                <td>${t.description}</td>
+                <td>${t.transaction_type === 'cash' ? '💵 Cash' : '💳 Credit'}</td>
+                <td class="amount">${formatCurrency(t.amount)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
       </body>
       </html>
-    `;
-
-    // Open in new window for printing
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(htmlContent);
+    `);
     printWindow.document.close();
-    
-    // Wait for content to load, then trigger print
-    printWindow.onload = () => {
-      printWindow.print();
-    };
+    printWindow.print();
   };
+
+  const getFilteredTransactions = () => {
+    return monthTransactions.filter(t => {
+      if (typeFilter !== 'all' && t.transaction_type !== typeFilter) return false;
+      if (searchTerm && !t.description?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      if (descriptionFilter && t.description !== descriptionFilter) return false;
+      return true;
+    });
+  };
+
+  const getFilteredPreview = () => {
+    if (!uploadedData?.transactions) return [];
+    return uploadedData.transactions.filter(t => {
+      if (previewFilter === 'positive' && t.amount < 0) return false;
+      if (previewFilter === 'negative' && t.amount >= 0) return false;
+      return true;
+    });
+  };
+
+  const filteredTransactions = getFilteredTransactions();
+  const totalFiltered = filteredTransactions.reduce((sum, t) => sum + t.amount, 0);
+  const creditTotal = filteredTransactions.filter(t => t.transaction_type === 'credit').reduce((sum, t) => sum + t.amount, 0);
+  const cashTotal = filteredTransactions.filter(t => t.transaction_type === 'cash').reduce((sum, t) => sum + t.amount, 0);
 
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#fff',
-      fontFamily: '"Inter", "Helvetica Neue", Arial, sans-serif',
-      color: '#000'
+      background: '#f5f5f5',
+      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }}>
-      <style>{`
-        .btn {
-          transition: all 0.15s ease;
-          cursor: pointer;
-          border: 3px solid #000;
-          font-family: 'Inter', sans-serif;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          font-size: 0.85rem;
-          padding: 14px 28px;
-          background: #fff;
-          color: #000;
-        }
-
-        .btn:hover:not(:disabled) {
-          box-shadow: 4px 4px 0px #000;
-          transform: translate(-2px, -2px);
-        }
-
-        .btn:disabled {
-          opacity: 0.4;
-          cursor: not-allowed;
-        }
-
-        .btn-red {
-          background: #FF0000;
-          color: #fff;
-          border-color: #000;
-        }
-
-        .btn-yellow {
-          background: #FFD500;
-          color: #000;
-          border-color: #000;
-        }
-
-        .btn-blue {
-          background: #0000FF;
-          color: #fff;
-          border-color: #000;
-        }
-
-        .btn-white {
-          background: #fff;
-          color: #000;
-          border-color: #000;
-        }
-
-        .transaction-card {
-          transition: all 0.2s ease;
-          border: 3px solid #000;
-        }
-
-        .transaction-card:hover {
-          box-shadow: 6px 6px 0px #000;
-          transform: translate(-3px, -3px);
-        }
-
-        .month-card {
-          transition: all 0.2s ease;
-          border: 3px solid #000;
-          cursor: pointer;
-        }
-
-        .month-card:hover {
-          box-shadow: 6px 6px 0px #000;
-          transform: translate(-3px, -3px);
-        }
-
-        .month-card.selected {
-          background: #FFD500;
-        }
-      `}</style>
-
-      {/* Color Bar */}
-      <div style={{
-        height: '12px',
-        width: '100%',
-        background: 'linear-gradient(90deg, #FF0000 0%, #FF0000 33.33%, #FFD500 33.33%, #FFD500 66.66%, #0000FF 66.66%, #0000FF 100%)'
-      }}></div>
-
       {/* Header */}
       <header style={{
-        background: '#fff',
-        borderBottom: '4px solid #000',
-        padding: '32px 48px'
+        background: '#000',
+        color: '#fff',
+        padding: '1.5rem 2rem',
+        borderBottom: '4px solid #FFD700',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
       }}>
-        <div style={{ maxWidth: '1600px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h1 style={{
-              fontFamily: '"Inter", sans-serif',
-              fontSize: '3rem',
-              fontWeight: 900,
-              margin: '0 0 8px 0',
-              letterSpacing: '-1px',
-              textTransform: 'uppercase'
-            }}>
-              Bank Transactions
-            </h1>
-            <p style={{
-              fontSize: '1rem',
-              margin: 0,
-              fontWeight: 400,
-              color: '#666'
-            }}>
-              Upload, manage and compare monthly bank transactions
-            </p>
-          </div>
-          {onBackToTasks && (
-            <button className="btn btn-white" onClick={onBackToTasks}>
-              <ArrowLeft size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />
-              Back to Tasks
-            </button>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <button
+            onClick={onBackToTasks}
+            style={{
+              background: 'transparent',
+              border: '2px solid #FFD700',
+              color: '#FFD700',
+              padding: '0.5rem 1rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontWeight: 'bold'
+            }}
+          >
+            <ArrowLeft size={18} /> Back
+          </button>
+          <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '800' }}>
+            BANK TRANSACTIONS
+          </h1>
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button
+            onClick={() => setShowAddForm(true)}
+            style={{
+              background: '#FFD700',
+              border: 'none',
+              color: '#000',
+              padding: '0.75rem 1.5rem',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}
+          >
+            <Plus size={18} /> Add Transaction
+          </button>
+          <button
+            onClick={exportToPDF}
+            disabled={filteredTransactions.length === 0}
+            style={{
+              background: '#dc2626',
+              border: 'none',
+              color: '#fff',
+              padding: '0.75rem 1.5rem',
+              cursor: filteredTransactions.length === 0 ? 'not-allowed' : 'pointer',
+              fontWeight: 'bold',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              opacity: filteredTransactions.length === 0 ? 0.5 : 1
+            }}
+          >
+            <FileDown size={18} /> Export PDF
+          </button>
         </div>
       </header>
 
-      {/* Alerts */}
+      {/* Messages */}
       {error && (
         <div style={{
-          background: '#FF0000',
-          color: '#fff',
-          padding: '16px 48px',
+          background: '#fee2e2',
+          color: '#dc2626',
+          padding: '1rem 2rem',
           display: 'flex',
           alignItems: 'center',
-          gap: '12px',
-          borderBottom: '3px solid #000'
+          gap: '0.5rem'
         }}>
           <AlertCircle size={20} />
-          <span style={{ fontWeight: 600 }}>{error}</span>
+          {error}
+          <button onClick={() => setError(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer' }}>
+            <X size={18} />
+          </button>
         </div>
       )}
 
       {success && (
         <div style={{
-          background: '#00FF00',
-          color: '#000',
-          padding: '16px 48px',
+          background: '#d1fae5',
+          color: '#059669',
+          padding: '1rem 2rem',
           display: 'flex',
           alignItems: 'center',
-          gap: '12px',
-          borderBottom: '3px solid #000'
+          gap: '0.5rem'
         }}>
           <CheckCircle size={20} />
-          <span style={{ fontWeight: 600 }}>{success}</span>
+          {success}
+          <button onClick={() => setSuccess(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer' }}>
+            <X size={18} />
+          </button>
         </div>
       )}
 
-      <div style={{ padding: '48px', maxWidth: '1600px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '2rem' }}>
+        {/* Stats Cards */}
+        {transactionStats && transactionStats.by_type && (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1rem',
+            marginBottom: '2rem'
+          }}>
+            {transactionStats.by_type.map(stat => (
+              <div key={stat.transaction_type} style={{
+                background: '#fff',
+                border: `3px solid ${stat.transaction_type === 'cash' ? '#059669' : '#2563eb'}`,
+                padding: '1.5rem',
+                textAlign: 'center'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.5rem' }}>
+                  {stat.transaction_type === 'cash' ? 
+                    <Banknote size={32} color="#059669" /> : 
+                    <CreditCard size={32} color="#2563eb" />
+                  }
+                </div>
+                <div style={{
+                  fontSize: '1.8rem',
+                  fontWeight: '800',
+                  color: stat.transaction_type === 'cash' ? '#059669' : '#2563eb'
+                }}>
+                  {formatCurrency(stat.total_amount || 0)}
+                </div>
+                <div style={{ color: '#666', textTransform: 'uppercase', fontSize: '0.85rem', fontWeight: '600' }}>
+                  {stat.transaction_type === 'cash' ? 'Cash Total' : 'Credit Total'}
+                </div>
+                <div style={{ color: '#999', fontSize: '0.8rem', marginTop: '0.25rem' }}>
+                  {stat.transaction_count} transactions
+                </div>
+              </div>
+            ))}
+            <div style={{
+              background: '#fff',
+              border: '3px solid #000',
+              padding: '1.5rem',
+              textAlign: 'center'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.5rem' }}>
+                <PieChart size={32} />
+              </div>
+              <div style={{ fontSize: '1.8rem', fontWeight: '800' }}>
+                {formatCurrency(transactionStats.by_type.reduce((sum, s) => sum + (s.total_amount || 0), 0))}
+              </div>
+              <div style={{ color: '#666', textTransform: 'uppercase', fontSize: '0.85rem', fontWeight: '600' }}>
+                Grand Total
+              </div>
+              <div style={{ color: '#999', fontSize: '0.8rem', marginTop: '0.25rem' }}>
+                {transactionStats.by_type.reduce((sum, s) => sum + (s.transaction_count || 0), 0)} transactions
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Upload Section */}
         <div style={{
-          border: '4px solid #000',
-          padding: '32px',
-          marginBottom: '48px',
-          background: '#f8f8f8'
+          background: '#fff',
+          border: '3px solid #000',
+          padding: '2rem',
+          marginBottom: '2rem'
         }}>
-          <h2 style={{
-            fontSize: '1.8rem',
-            fontWeight: 900,
-            marginBottom: '24px',
-            textTransform: 'uppercase'
-          }}>
-            Upload New Transactions
+          <h2 style={{ margin: '0 0 1.5rem 0', fontSize: '1.3rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Upload size={24} /> Upload Transactions
           </h2>
-
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-            <label className="btn btn-blue" style={{ display: 'inline-block', margin: 0 }}>
-              <Upload size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />
-              Choose File
-              <input
-                type="file"
-                accept=".csv,.xlsx,.xls"
-                onChange={handleFileUpload}
-                style={{ display: 'none' }}
-                disabled={loading}
-              />
+          
+          {/* Transaction Type Selector */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>
+              Transaction Type:
             </label>
-            <span style={{ fontSize: '0.9rem', color: '#666' }}>
-              Accepted formats: CSV, Excel (.xlsx, .xls)
-            </span>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button
+                onClick={() => setTransactionType('credit')}
+                style={{
+                  flex: 1,
+                  padding: '1rem',
+                  border: `3px solid ${transactionType === 'credit' ? '#2563eb' : '#ddd'}`,
+                  background: transactionType === 'credit' ? '#eff6ff' : '#fff',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  fontWeight: transactionType === 'credit' ? '700' : '400'
+                }}
+              >
+                <CreditCard size={20} color={transactionType === 'credit' ? '#2563eb' : '#666'} />
+                Credit Card
+              </button>
+              <button
+                onClick={() => setTransactionType('cash')}
+                style={{
+                  flex: 1,
+                  padding: '1rem',
+                  border: `3px solid ${transactionType === 'cash' ? '#059669' : '#ddd'}`,
+                  background: transactionType === 'cash' ? '#ecfdf5' : '#fff',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  fontWeight: transactionType === 'cash' ? '700' : '400'
+                }}
+              >
+                <Banknote size={20} color={transactionType === 'cash' ? '#059669' : '#666'} />
+                Cash
+              </button>
+            </div>
           </div>
 
-          {uploadedData && (
-            <div style={{ marginTop: '32px' }}>
-              <div style={{
-                border: '3px solid #000',
-                padding: '24px',
-                background: '#fff',
-                marginBottom: '24px'
-              }}>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                  gap: '24px',
-                  marginBottom: '24px'
-                }}>
-                  <div>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 900, textTransform: 'uppercase', color: '#666', marginBottom: '8px' }}>
-                      Total Amount
-                    </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 900, color: '#FF0000' }}>
-                      {formatCurrency(uploadedData.total_amount)}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 900, textTransform: 'uppercase', color: '#666', marginBottom: '8px' }}>
-                      Transactions
-                    </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 900 }}>
-                      {uploadedData.transaction_count}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 900, textTransform: 'uppercase', color: '#666', marginBottom: '8px' }}>
-                      Month
-                    </div>
-                    <div style={{ fontSize: '2rem', fontWeight: 900 }}>
-                      {uploadedData.month_year ? formatMonthYear(uploadedData.month_year) : 'N/A'}
-                    </div>
-                  </div>
-                </div>
+          <div style={{
+            border: '2px dashed #ccc',
+            padding: '2rem',
+            textAlign: 'center',
+            background: '#fafafa'
+          }}>
+            <input
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              onChange={handleFileUpload}
+              style={{ display: 'none' }}
+              id="file-upload"
+            />
+            <label htmlFor="file-upload" style={{
+              cursor: 'pointer',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '0.5rem'
+            }}>
+              <FileText size={48} color="#666" />
+              <span style={{ fontWeight: '600' }}>
+                Click to upload {transactionType === 'cash' ? 'cash' : 'credit card'} transactions
+              </span>
+              <span style={{ color: '#888', fontSize: '0.9rem' }}>
+                CSV or Excel files supported
+              </span>
+            </label>
+          </div>
 
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  <button
-                    className="btn btn-yellow"
-                    onClick={handleSaveTransactions}
-                    disabled={loading}
-                  >
-                    Save to Database
-                  </button>
-                  <button
-                    className="btn btn-white"
-                    onClick={() => setUploadedData(null)}
-                    disabled={loading}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-
-              {/* Search Input */}
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{
-                  display: 'block',
-                  fontWeight: 700,
-                  marginBottom: '8px',
-                  fontSize: '0.9rem',
-                  textTransform: 'uppercase'
-                }}>
-                  Search Transactions
-                </label>
-                <input
-                  type="text"
-                  placeholder="Search by description or amount..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    border: '3px solid #000',
-                    fontSize: '1rem',
-                    fontWeight: 600
-                  }}
-                />
-                {(searchTerm || descriptionFilter) && (
-                  <button
-                    className="btn btn-white"
-                    onClick={() => {
-                      setSearchTerm('');
-                      setDescriptionFilter('');
-                    }}
-                    style={{ marginTop: '8px', width: '100%' }}
-                  >
-                    Clear Filters
-                  </button>
-                )}
-              </div>
-
-              {/* Month Filter for Preview */}
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{
-                  display: 'block',
-                  fontWeight: 700,
-                  marginBottom: '8px',
-                  fontSize: '0.9rem',
-                  textTransform: 'uppercase'
-                }}>
-                  Filter by Month
-                </label>
-                <select
-                  value={previewFilter}
-                  onChange={(e) => setPreviewFilter(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    border: '3px solid #000',
-                    fontSize: '1rem',
-                    fontWeight: 600,
-                    background: '#fff'
-                  }}
-                >
-                  <option value="all">All Transactions</option>
-                  {/* Get unique months from uploaded transactions */}
-                  {[...new Set(uploadedData.transactions.map(t => t.month_year))].sort().reverse().map(month => (
-                    <option key={month} value={month}>
-                      {new Date(month + '-01').toLocaleDateString('en-US', { year: 'numeric', month: 'long' })}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Transaction Preview */}
-              <div style={{
-                maxHeight: '400px',
-                overflowY: 'auto',
-                border: '3px solid #000',
-                background: '#fff'
-              }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ background: '#000', color: '#fff' }}>
-                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: 900, fontSize: '0.85rem', textTransform: 'uppercase' }}>Date</th>
-                      <th style={{ padding: '12px', textAlign: 'left', fontWeight: 900, fontSize: '0.85rem', textTransform: 'uppercase' }}>Description</th>
-                      <th style={{ padding: '12px', textAlign: 'right', fontWeight: 900, fontSize: '0.85rem', textTransform: 'uppercase' }}>Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {uploadedData.transactions
-                      .filter(trans => previewFilter === 'all' || trans.month_year === previewFilter)
-                      .filter(trans => {
-                        // Search filter
-                        if (searchTerm) {
-                          const search = searchTerm.toLowerCase();
-                          return trans.description.toLowerCase().includes(search) ||
-                                 trans.amount.toString().includes(search);
-                        }
-                        return true;
-                      })
-                      .filter(trans => {
-                        // Description filter (when clicking a description)
-                        if (descriptionFilter) {
-                          return trans.description === descriptionFilter;
-                        }
-                        return true;
-                      })
-                      .map((trans, idx) => (
-                        <tr key={idx} style={{ borderBottom: '2px solid #e0e0e0' }}>
-                          <td style={{ padding: '12px', fontWeight: 600, fontSize: '0.9rem' }}>
-                            {new Date(trans.transaction_date).toLocaleDateString('en-GB')}
-                          </td>
-                          <td
-                            style={{
-                              padding: '12px',
-                              fontSize: '0.9rem',
-                              cursor: 'pointer',
-                              textDecoration: descriptionFilter === trans.description ? 'underline' : 'none',
-                              fontWeight: descriptionFilter === trans.description ? 700 : 400
-                            }}
-                            onClick={() => {
-                              if (descriptionFilter === trans.description) {
-                                setDescriptionFilter('');
-                              } else {
-                                setDescriptionFilter(trans.description);
-                              }
-                            }}
-                            title="Click to filter by this description"
-                          >
-                            {trans.description}
-                          </td>
-                          <td style={{ padding: '12px', textAlign: 'right', fontWeight: 700, fontSize: '0.9rem' }}>
-                            {formatCurrency(trans.amount)}
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
+          {loading && (
+            <div style={{ textAlign: 'center', padding: '2rem', color: '#666' }}>
+              Processing...
             </div>
           )}
         </div>
 
-        {/* Saved Months Section */}
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <h2 style={{
-              fontSize: '1.8rem',
-              fontWeight: 900,
-              textTransform: 'uppercase',
-              margin: 0
-            }}>
-              Saved Transactions by Month
+        {/* Upload Preview */}
+        {uploadedData && (
+          <div style={{
+            background: '#fff',
+            border: '3px solid #059669',
+            padding: '2rem',
+            marginBottom: '2rem'
+          }}>
+            <h2 style={{ margin: '0 0 1rem 0', color: '#059669', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <CheckCircle size={24} /> Preview: {uploadedData.transaction_count} transactions ready
+              <span style={{
+                marginLeft: 'auto',
+                padding: '0.25rem 0.75rem',
+                background: uploadedData.transaction_type === 'cash' ? '#059669' : '#2563eb',
+                color: '#fff',
+                fontSize: '0.8rem',
+                fontWeight: '600'
+              }}>
+                {uploadedData.transaction_type === 'cash' ? 'CASH' : 'CREDIT'}
+              </span>
             </h2>
-            <button
-              className="btn btn-yellow"
-              onClick={() => setShowAddForm(true)}
-              disabled={loading}
-            >
-              <Plus size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />
-              Add Transaction
-            </button>
-          </div>
-
-          {/* Add Transaction Form Modal */}
-          {showAddForm && (
-            <div style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0,0,0,0.8)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 1000
-            }}>
-              <div style={{
-                background: '#fff',
-                border: '4px solid #000',
-                padding: '32px',
-                maxWidth: '600px',
-                width: '90%'
-              }}>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '24px', textTransform: 'uppercase' }}>
-                  Add New Transaction
-                </h3>
-
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontWeight: 700, marginBottom: '8px' }}>Date</label>
-                  <input
-                    type="date"
-                    value={newTransaction.transaction_date}
-                    onChange={(e) => {
-                      const date = e.target.value;
-                      setNewTransaction({
-                        ...newTransaction,
-                        transaction_date: date,
-                        month_year: date.slice(0, 7)
-                      });
-                    }}
-                    style={{ width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem', fontWeight: 600 }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontWeight: 700, marginBottom: '8px' }}>Description</label>
-                  <input
-                    type="text"
-                    list="descriptions"
-                    value={newTransaction.description}
-                    onChange={(e) => setNewTransaction({ ...newTransaction, description: e.target.value })}
-                    placeholder="Enter or select description"
-                    style={{ width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem', fontWeight: 600 }}
-                  />
-                  <datalist id="descriptions">
-                    {allDescriptions.map(desc => (
-                      <option key={desc} value={desc} />
-                    ))}
-                  </datalist>
-                </div>
-
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontWeight: 700, marginBottom: '8px' }}>Amount</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={newTransaction.amount}
-                    onChange={(e) => setNewTransaction({ ...newTransaction, amount: e.target.value })}
-                    placeholder="0.00"
-                    style={{ width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem', fontWeight: 600 }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: '24px' }}>
-                  <label style={{ display: 'block', fontWeight: 700, marginBottom: '8px' }}>Account Number (Optional)</label>
-                  <input
-                    type="text"
-                    value={newTransaction.account_number}
-                    onChange={(e) => setNewTransaction({ ...newTransaction, account_number: e.target.value })}
-                    style={{ width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem', fontWeight: 600 }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  <button
-                    className="btn btn-yellow"
-                    onClick={handleAddTransaction}
-                    disabled={loading || !newTransaction.description || !newTransaction.amount}
-                    style={{ flex: 1 }}
-                  >
-                    <Save size={18} style={{ marginRight: '8px' }} />
-                    Save Transaction
-                  </button>
-                  <button
-                    className="btn btn-white"
-                    onClick={() => setShowAddForm(false)}
-                    style={{ flex: 1 }}
-                  >
-                    <X size={18} style={{ marginRight: '8px' }} />
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {savedMonths.length === 0 ? (
-            <div style={{
-              border: '3px solid #000',
-              padding: '48px',
-              textAlign: 'center',
-              background: '#f8f8f8'
-            }}>
-              <FileText size={48} style={{ marginBottom: '16px', opacity: 0.3 }} />
-              <p style={{ fontSize: '1.2rem', fontWeight: 600, color: '#666' }}>
-                No saved transactions yet
-              </p>
-              <p style={{ color: '#999' }}>Upload a file to get started</p>
-            </div>
-          ) : (
-            <>
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                gap: '20px',
-                marginBottom: '32px'
-              }}>
-                {/* All Transactions Card */}
-                <div
-                  className={`month-card ${selectedMonth === 'all' ? 'selected' : ''}`}
-                  onClick={() => fetchAllTransactions()}
+            
+            <div style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <span>Filter:</span>
+              {['all', 'positive', 'negative'].map(filter => (
+                <button
+                  key={filter}
+                  onClick={() => setPreviewFilter(filter)}
                   style={{
-                    padding: '24px',
-                    background: selectedMonth === 'all' ? '#0000FF' : '#fff',
-                    color: selectedMonth === 'all' ? '#fff' : '#000',
-                    cursor: 'pointer'
+                    padding: '0.5rem 1rem',
+                    border: '2px solid',
+                    borderColor: previewFilter === filter ? '#000' : '#ddd',
+                    background: previewFilter === filter ? '#000' : '#fff',
+                    color: previewFilter === filter ? '#fff' : '#000',
+                    cursor: 'pointer',
+                    fontWeight: previewFilter === filter ? '600' : '400'
                   }}
                 >
-                  <div style={{ fontSize: '1.3rem', fontWeight: 900, marginBottom: '4px' }}>
-                    ALL TRANSACTIONS
-                  </div>
-                  <div style={{ fontSize: '0.8rem', opacity: 0.8 }}>
-                    View all transactions across all months
-                  </div>
-                </div>
+                  {filter.charAt(0).toUpperCase() + filter.slice(1)}
+                </button>
+              ))}
+            </div>
 
-                {savedMonths.map(month => (
-                  <div
-                    key={month.month_year}
-                    className={`month-card ${selectedMonth === month.month_year ? 'selected' : ''}`}
+            <div style={{ maxHeight: '300px', overflow: 'auto', border: '1px solid #eee' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#f5f5f5' }}>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #000' }}>Date</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '2px solid #000' }}>Description</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '2px solid #000' }}>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {getFilteredPreview().slice(0, 50).map((t, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: '0.5rem 0.75rem' }}>{t.transaction_date}</td>
+                      <td style={{ padding: '0.5rem 0.75rem' }}>{t.description}</td>
+                      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: t.amount < 0 ? '#dc2626' : '#059669' }}>
+                        {formatCurrency(t.amount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem' }}>
+              <button
+                onClick={handleSaveTransactions}
+                disabled={loading}
+                style={{
+                  flex: 1,
+                  padding: '1rem',
+                  background: '#059669',
+                  color: '#fff',
+                  border: 'none',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  fontWeight: '700',
+                  fontSize: '1.1rem'
+                }}
+              >
+                {loading ? 'Saving...' : `Save ${uploadedData.transaction_count} Transactions`}
+              </button>
+              <button
+                onClick={() => setUploadedData(null)}
+                style={{
+                  padding: '1rem 2rem',
+                  background: '#fff',
+                  border: '2px solid #000',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Main Content Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '2rem' }}>
+          {/* Sidebar - Months */}
+          <div>
+            <div style={{
+              background: '#fff',
+              border: '3px solid #000',
+              padding: '1.5rem'
+            }}>
+              <h3 style={{ margin: '0 0 1rem 0', fontWeight: '700' }}>
+                <Calendar size={18} style={{ verticalAlign: 'middle', marginRight: '0.5rem' }} />
+                Saved Months
+              </h3>
+              
+              <button
+                onClick={fetchAllTransactions}
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  marginBottom: '0.5rem',
+                  border: `2px solid ${selectedMonth === 'all' ? '#000' : '#ddd'}`,
+                  background: selectedMonth === 'all' ? '#000' : '#fff',
+                  color: selectedMonth === 'all' ? '#fff' : '#000',
+                  cursor: 'pointer',
+                  fontWeight: selectedMonth === 'all' ? '700' : '400'
+                }}
+              >
+                All Transactions
+              </button>
+
+              {savedMonths.map(month => (
+                <div key={month.month_year} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  marginBottom: '0.5rem'
+                }}>
+                  <button
                     onClick={() => fetchMonthTransactions(month.month_year)}
                     style={{
-                      padding: '24px',
-                      background: selectedMonth === month.month_year ? '#FFD500' : '#fff'
+                      flex: 1,
+                      padding: '0.75rem',
+                      border: `2px solid ${selectedMonth === month.month_year ? '#000' : '#ddd'}`,
+                      background: selectedMonth === month.month_year ? '#000' : '#fff',
+                      color: selectedMonth === month.month_year ? '#fff' : '#000',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      fontWeight: selectedMonth === month.month_year ? '600' : '400'
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '16px' }}>
-                      <div>
-                        <div style={{ fontSize: '1.3rem', fontWeight: 900, marginBottom: '4px' }}>
-                          {formatMonthYear(month.month_year)}
-                        </div>
-                        <div style={{ fontSize: '0.8rem', color: '#666' }}>
-                          {month.transaction_count} transactions
-                        </div>
-                      </div>
-                      <button
-                        className="btn"
-                        style={{ padding: '8px', minWidth: 'auto' }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteMonth(month.month_year);
-                        }}
-                        title="Delete month"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                    <div>{formatMonthYear(month.month_year)}</div>
+                    <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>
+                      {month.transaction_count} • {formatCurrency(month.total_amount)}
                     </div>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#FF0000' }}>
-                      {formatCurrency(month.total_amount)}
-                    </div>
+                  </button>
+                  <button
+                    onClick={() => handleDeleteMonth(month.month_year)}
+                    style={{
+                      padding: '0.5rem',
+                      background: '#fee2e2',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#dc2626'
+                    }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+
+              {savedMonths.length === 0 && (
+                <p style={{ color: '#888', textAlign: 'center', padding: '1rem' }}>
+                  No transactions saved yet
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Main Content - Transactions */}
+          <div>
+            {selectedMonth && (
+              <div style={{
+                background: '#fff',
+                border: '3px solid #000',
+                padding: '1.5rem'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '1.5rem',
+                  flexWrap: 'wrap',
+                  gap: '1rem'
+                }}>
+                  <h3 style={{ margin: 0, fontWeight: '700', fontSize: '1.3rem' }}>
+                    {selectedMonth === 'all' ? 'ALL TRANSACTIONS' : formatMonthYear(selectedMonth)}
+                  </h3>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <span style={{ background: '#eff6ff', padding: '0.5rem 1rem', color: '#2563eb', fontWeight: '600' }}>
+                      💳 {formatCurrency(creditTotal)}
+                    </span>
+                    <span style={{ background: '#ecfdf5', padding: '0.5rem 1rem', color: '#059669', fontWeight: '600' }}>
+                      💵 {formatCurrency(cashTotal)}
+                    </span>
+                    <span style={{ background: '#000', padding: '0.5rem 1rem', color: '#FFD700', fontWeight: '700' }}>
+                      Total: {formatCurrency(totalFiltered)}
+                    </span>
                   </div>
-                ))}
-              </div>
+                </div>
 
-              {/* Selected Month Transactions */}
-              {selectedMonth && monthTransactions.length > 0 && (() => {
-                // Filter transactions by date range
-                const filterByDateRange = (transactions) => {
-                  if (dateRangeFilter === 'all') return transactions;
-
-                  const now = new Date();
-                  const startDate = new Date();
-
-                  switch(dateRangeFilter) {
-                    case '1day':
-                      startDate.setDate(now.getDate() - 1);
-                      break;
-                    case '3days':
-                      startDate.setDate(now.getDate() - 3);
-                      break;
-                    case '7days':
-                      startDate.setDate(now.getDate() - 7);
-                      break;
-                    case '30days':
-                      startDate.setDate(now.getDate() - 30);
-                      break;
-                    case '3months':
-                      startDate.setMonth(now.getMonth() - 3);
-                      break;
-                    case '6months':
-                      startDate.setMonth(now.getMonth() - 6);
-                      break;
-                    default:
-                      return transactions;
-                  }
-
-                  return transactions.filter(trans => {
-                    const transDate = new Date(trans.transaction_date);
-                    return transDate >= startDate && transDate <= now;
-                  });
-                };
-
-                const filteredTransactions = filterByDateRange(monthTransactions);
-
-                // Calculate top 5 spending by description
-                const spendingByDescription = {};
-                filteredTransactions.forEach(trans => {
-                  if (!spendingByDescription[trans.description]) {
-                    spendingByDescription[trans.description] = {
-                      total: 0,
-                      count: 0,
-                      transactions: []
-                    };
-                  }
-                  spendingByDescription[trans.description].total += trans.amount;
-                  spendingByDescription[trans.description].count += 1;
-                  spendingByDescription[trans.description].transactions.push(trans);
-                });
-
-                const top5 = Object.entries(spendingByDescription)
-                  .sort((a, b) => b[1].total - a[1].total)
-                  .slice(0, 5);
-
-                const totalSpending = filteredTransactions.reduce((sum, t) => sum + t.amount, 0);
-                const maxSpending = top5[0] ? top5[0][1].total : 0;
-
-                return (
-                  <div style={{
-                    border: '4px solid #000',
-                    background: '#fff',
-                    padding: '32px'
-                  }}>
-                    <h3 style={{
-                      fontSize: '1.8rem',
-                      fontWeight: 900,
-                      marginBottom: '24px',
-                      textTransform: 'UPPERCASE',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
-                      <span>{selectedMonth === 'all' ? 'ALL TRANSACTIONS' : formatMonthYear(selectedMonth)}</span>
-                      <button
-                        className="btn btn-red"
-                        onClick={() => exportToPDF(filteredTransactions, selectedMonth === 'all' ? 'All Transactions' : formatMonthYear(selectedMonth))}
-                        disabled={filteredTransactions.length === 0}
-                        style={{ fontSize: '0.85rem' }}
-                      >
-                        <FileDown size={18} style={{ marginRight: '8px' }} />
-                        Export PDF
-                      </button>
-                    </h3>
-
-                    {/* Date Range Filters */}
-                    <div style={{
-                      display: 'flex',
-                      gap: '8px',
-                      marginBottom: '32px',
-                      flexWrap: 'wrap'
-                    }}>
-                      {[
-                        { value: 'all', label: 'All Time' },
-                        { value: '1day', label: '1 Day' },
-                        { value: '3days', label: '3 Days' },
-                        { value: '7days', label: '7 Days' },
-                        { value: '30days', label: '30 Days' },
-                        { value: '3months', label: '3 Months' },
-                        { value: '6months', label: '6 Months' }
-                      ].map(range => (
-                        <button
-                          key={range.value}
-                          className="btn"
-                          onClick={() => setDateRangeFilter(range.value)}
-                          style={{
-                            padding: '8px 16px',
-                            background: dateRangeFilter === range.value ? '#FFD500' : '#fff',
-                            border: '3px solid #000',
-                            fontWeight: 700,
-                            fontSize: '0.85rem',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          {range.label}
-                        </button>
+                {/* Filters */}
+                <div style={{
+                  display: 'flex',
+                  gap: '1rem',
+                  marginBottom: '1.5rem',
+                  flexWrap: 'wrap',
+                  padding: '1rem',
+                  background: '#f9f9f9',
+                  border: '1px solid #eee'
+                }}>
+                  <div style={{ flex: 1, minWidth: '150px' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: '600' }}>
+                      <Filter size={14} style={{ verticalAlign: 'middle' }} /> Type
+                    </label>
+                    <select
+                      value={typeFilter}
+                      onChange={(e) => setTypeFilter(e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', border: '2px solid #ddd' }}
+                    >
+                      <option value="all">All Types</option>
+                      <option value="credit">💳 Credit Only</option>
+                      <option value="cash">💵 Cash Only</option>
+                    </select>
+                  </div>
+                  <div style={{ flex: 2, minWidth: '200px' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: '600' }}>
+                      Search
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Search descriptions..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', border: '2px solid #ddd' }}
+                    />
+                  </div>
+                  <div style={{ flex: 2, minWidth: '200px' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem', fontWeight: '600' }}>
+                      Category
+                    </label>
+                    <select
+                      value={descriptionFilter}
+                      onChange={(e) => setDescriptionFilter(e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', border: '2px solid #ddd' }}
+                    >
+                      <option value="">All Categories</option>
+                      {allDescriptions.map(desc => (
+                        <option key={desc} value={desc}>{desc}</option>
                       ))}
-                    </div>
-
-                    {/* Summary Cards */}
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                      gap: '20px',
-                      marginBottom: '40px'
-                    }}>
-                      <div style={{
-                        padding: '24px',
-                        background: '#f8f8f8',
-                        border: '3px solid #000'
-                      }}>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#666', marginBottom: '8px' }}>
-                          TOTAL SPENDING
-                        </div>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 900, color: '#FF0000' }}>
-                          {formatCurrency(totalSpending)}
-                        </div>
-                      </div>
-                      <div style={{
-                        padding: '24px',
-                        background: '#f8f8f8',
-                        border: '3px solid #000'
-                      }}>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#666', marginBottom: '8px' }}>
-                          TRANSACTIONS
-                        </div>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 900 }}>
-                          {filteredTransactions.length}
-                        </div>
-                      </div>
-                      <div style={{
-                        padding: '24px',
-                        background: '#f8f8f8',
-                        border: '3px solid #000'
-                      }}>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#666', marginBottom: '8px' }}>
-                          CATEGORIES
-                        </div>
-                        <div style={{ fontSize: '2.5rem', fontWeight: 900 }}>
-                          {Object.keys(spendingByDescription).length}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Top 5 Spending Chart */}
-                    <div style={{
-                      marginBottom: '40px',
-                      padding: '24px',
-                      background: '#fff',
-                      border: '3px solid #000'
-                    }}>
-                      <h4 style={{
-                        fontSize: '1.3rem',
-                        fontWeight: 900,
-                        marginBottom: '24px',
-                        textTransform: 'uppercase'
-                      }}>
-                        Top 5 Spending
-                      </h4>
-                      {top5.map(([description, data], idx) => {
-                        const percentage = (data.total / maxSpending) * 100;
-                        const colors = ['#FFD500', '#FF0000', '#00FF00', '#0000FF', '#FF00FF'];
-                        return (
-                          <div key={description} style={{ marginBottom: '20px' }}>
-                            <div style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              marginBottom: '8px'
-                            }}>
-                              <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{description}</span>
-                              <span style={{ fontWeight: 900, fontSize: '1.3rem', color: '#FF0000' }}>
-                                {formatCurrency(data.total)}
-                              </span>
-                            </div>
-                            <div style={{
-                              height: '40px',
-                              background: '#e0e0e0',
-                              border: '2px solid #000',
-                              position: 'relative'
-                            }}>
-                              <div style={{
-                                height: '100%',
-                                width: `${percentage}%`,
-                                background: colors[idx],
-                                border: '2px solid #000',
-                                display: 'flex',
-                                alignItems: 'center',
-                                paddingLeft: '12px',
-                                fontWeight: 700
-                              }}>
-                                {data.count} transaction{data.count > 1 ? 's' : ''}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Grouped Transactions */}
-                    <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                        <h4 style={{
-                          fontSize: '1.3rem',
-                          fontWeight: 900,
-                          textTransform: 'uppercase',
-                          margin: 0
-                        }}>
-                          All Transactions
-                        </h4>
-                        <input
-                          type="text"
-                          placeholder="Search by description..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          style={{
-                            padding: '10px',
-                            border: '3px solid #000',
-                            fontWeight: 600,
-                            width: '300px',
-                            fontSize: '0.9rem'
-                          }}
-                        />
-                      </div>
-                      {Object.entries(spendingByDescription)
-                        .filter(([description]) => {
-                          if (!searchTerm) return true;
-                          return description.toLowerCase().includes(searchTerm.toLowerCase());
-                        })
-                        .sort((a, b) => b[1].total - a[1].total)
-                        .map(([description, data]) => (
-                          <div key={description} style={{
-                            marginBottom: '16px',
-                            border: '3px solid #000',
-                            background: '#fff'
-                          }}>
-                            <div
-                              onClick={() => {
-                                const elem = document.getElementById(`group-${description}`);
-                                elem.style.display = elem.style.display === 'none' ? 'block' : 'none';
-                              }}
-                              style={{
-                                padding: '20px',
-                                cursor: 'pointer',
-                                background: '#f8f8f8',
-                                borderBottom: '3px solid #000'
-                              }}
-                            >
-                              <div style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center'
-                              }}>
-                                <div>
-                                  <div style={{ fontSize: '1.2rem', fontWeight: 900, marginBottom: '4px' }}>
-                                    {description}
-                                  </div>
-                                  <div style={{ fontSize: '0.9rem', color: '#666' }}>
-                                    {data.count} transaction{data.count > 1 ? 's' : ''}
-                                  </div>
-                                </div>
-                                <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#FF0000' }}>
-                                  {formatCurrency(data.total)}
-                                </div>
-                              </div>
-                            </div>
-                            <div id={`group-${description}`} style={{ display: 'none' }}>
-                              {data.transactions.map((trans) => (
-                                <div key={trans.id} style={{
-                                  padding: '16px 20px',
-                                  borderBottom: '2px solid #e0e0e0',
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  alignItems: 'center'
-                                }}>
-                                  {editingTransaction && editingTransaction.id === trans.id ? (
-                                    <div style={{ flex: 1, display: 'flex', gap: '12px', alignItems: 'center' }}>
-                                      <input
-                                        type="date"
-                                        value={editingTransaction.transaction_date}
-                                        onChange={(e) => setEditingTransaction({
-                                          ...editingTransaction,
-                                          transaction_date: e.target.value,
-                                          month_year: e.target.value.slice(0, 7)
-                                        })}
-                                        style={{ padding: '8px', border: '2px solid #000', fontWeight: 600, flex: 1 }}
-                                      />
-                                      <input
-                                        type="text"
-                                        list="descriptions-edit"
-                                        value={editingTransaction.description}
-                                        onChange={(e) => setEditingTransaction({ ...editingTransaction, description: e.target.value })}
-                                        style={{ padding: '8px', border: '2px solid #000', fontWeight: 600, flex: 2 }}
-                                      />
-                                      <datalist id="descriptions-edit">
-                                        {allDescriptions.map(desc => (
-                                          <option key={desc} value={desc} />
-                                        ))}
-                                      </datalist>
-                                      <input
-                                        type="number"
-                                        step="0.01"
-                                        value={editingTransaction.amount}
-                                        onChange={(e) => setEditingTransaction({ ...editingTransaction, amount: e.target.value })}
-                                        style={{ padding: '8px', border: '2px solid #000', fontWeight: 600, width: '120px' }}
-                                      />
-                                      <button
-                                        className="btn btn-yellow"
-                                        onClick={() => handleUpdateTransaction(trans.id)}
-                                        style={{ padding: '8px' }}
-                                      >
-                                        <Save size={16} />
-                                      </button>
-                                      <button
-                                        className="btn btn-white"
-                                        onClick={() => setEditingTransaction(null)}
-                                        style={{ padding: '8px' }}
-                                      >
-                                        <X size={16} />
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <>
-                                      <div style={{ fontWeight: 600, fontSize: '1rem' }}>
-                                        {new Date(trans.transaction_date).toLocaleDateString('en-GB')}
-                                      </div>
-                                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                                        <div style={{ fontSize: '1.3rem', fontWeight: 900 }}>
-                                          {formatCurrency(trans.amount)}
-                                        </div>
-                                        <button
-                                          className="btn btn-white"
-                                          onClick={() => setEditingTransaction({
-                                            id: trans.id,
-                                            transaction_date: trans.transaction_date,
-                                            description: trans.description,
-                                            amount: trans.amount,
-                                            account_number: trans.account_number || '',
-                                            month_year: trans.month_year
-                                          })}
-                                          style={{ padding: '8px' }}
-                                        >
-                                          <Edit2 size={14} />
-                                        </button>
-                                        <button
-                                          className="btn"
-                                          onClick={() => handleDeleteTransaction(trans.id)}
-                                          style={{ padding: '8px' }}
-                                        >
-                                          <Trash2 size={14} />
-                                        </button>
-                                      </div>
-                                    </>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                    </div>
+                    </select>
                   </div>
-                );
-              })()}
-            </>
-          )}
+                </div>
+
+                {/* Transactions Table */}
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: '#000', color: '#fff' }}>
+                        <th style={{ padding: '0.75rem', textAlign: 'left' }}>Date</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left' }}>Description</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'center' }}>Type</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'right' }}>Amount</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'center', width: '100px' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredTransactions.map(t => (
+                        <tr key={t.id} style={{ borderBottom: '1px solid #eee' }}>
+                          {editingTransaction?.id === t.id ? (
+                            <>
+                              <td style={{ padding: '0.5rem' }}>
+                                <input
+                                  type="date"
+                                  value={editingTransaction.transaction_date.split('T')[0]}
+                                  onChange={(e) => setEditingTransaction({
+                                    ...editingTransaction,
+                                    transaction_date: e.target.value,
+                                    month_year: e.target.value.slice(0, 7)
+                                  })}
+                                  style={{ padding: '0.25rem', border: '1px solid #ddd', width: '100%' }}
+                                />
+                              </td>
+                              <td style={{ padding: '0.5rem' }}>
+                                <input
+                                  type="text"
+                                  value={editingTransaction.description}
+                                  onChange={(e) => setEditingTransaction({...editingTransaction, description: e.target.value})}
+                                  style={{ padding: '0.25rem', border: '1px solid #ddd', width: '100%' }}
+                                />
+                              </td>
+                              <td style={{ padding: '0.5rem', textAlign: 'center' }}>
+                                <select
+                                  value={editingTransaction.transaction_type}
+                                  onChange={(e) => setEditingTransaction({...editingTransaction, transaction_type: e.target.value})}
+                                  style={{ padding: '0.25rem', border: '1px solid #ddd' }}
+                                >
+                                  <option value="credit">Credit</option>
+                                  <option value="cash">Cash</option>
+                                </select>
+                              </td>
+                              <td style={{ padding: '0.5rem' }}>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={editingTransaction.amount}
+                                  onChange={(e) => setEditingTransaction({...editingTransaction, amount: parseFloat(e.target.value)})}
+                                  style={{ padding: '0.25rem', border: '1px solid #ddd', width: '100%', textAlign: 'right' }}
+                                />
+                              </td>
+                              <td style={{ padding: '0.5rem', textAlign: 'center' }}>
+                                <button
+                                  onClick={() => handleUpdateTransaction(t.id)}
+                                  style={{ padding: '0.25rem 0.5rem', background: '#059669', color: '#fff', border: 'none', cursor: 'pointer', marginRight: '0.25rem' }}
+                                >
+                                  <Save size={14} />
+                                </button>
+                                <button
+                                  onClick={() => setEditingTransaction(null)}
+                                  style={{ padding: '0.25rem 0.5rem', background: '#666', color: '#fff', border: 'none', cursor: 'pointer' }}
+                                >
+                                  <X size={14} />
+                                </button>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td style={{ padding: '0.75rem' }}>
+                                {new Date(t.transaction_date).toLocaleDateString('he-IL')}
+                              </td>
+                              <td style={{ padding: '0.75rem' }}>{t.description}</td>
+                              <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                <span style={{
+                                  padding: '0.25rem 0.5rem',
+                                  background: t.transaction_type === 'cash' ? '#ecfdf5' : '#eff6ff',
+                                  color: t.transaction_type === 'cash' ? '#059669' : '#2563eb',
+                                  fontSize: '0.75rem',
+                                  fontWeight: '600'
+                                }}>
+                                  {t.transaction_type === 'cash' ? '💵 Cash' : '💳 Credit'}
+                                </span>
+                              </td>
+                              <td style={{
+                                padding: '0.75rem',
+                                textAlign: 'right',
+                                fontWeight: '600',
+                                fontFamily: 'monospace',
+                                color: t.amount < 0 ? '#dc2626' : '#059669'
+                              }}>
+                                {formatCurrency(t.amount)}
+                              </td>
+                              <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                <button
+                                  onClick={() => setEditingTransaction({...t})}
+                                  style={{
+                                    padding: '0.25rem 0.5rem',
+                                    background: '#eff6ff',
+                                    color: '#2563eb',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    marginRight: '0.25rem'
+                                  }}
+                                >
+                                  <Edit2 size={14} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteTransaction(t.id)}
+                                  style={{
+                                    padding: '0.25rem 0.5rem',
+                                    background: '#fee2e2',
+                                    color: '#dc2626',
+                                    border: 'none',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {filteredTransactions.length === 0 && (
+                  <p style={{ textAlign: 'center', color: '#888', padding: '2rem' }}>
+                    No transactions found
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Add Transaction Modal */}
+      {showAddForm && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#fff',
+            padding: '2rem',
+            width: '100%',
+            maxWidth: '500px',
+            border: '3px solid #000'
+          }}>
+            <h2 style={{ margin: '0 0 1.5rem 0', fontWeight: '700' }}>Add Transaction</h2>
+            
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Type</label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setNewTransaction({...newTransaction, transaction_type: 'credit'})}
+                  style={{
+                    flex: 1,
+                    padding: '0.75rem',
+                    border: `2px solid ${newTransaction.transaction_type === 'credit' ? '#2563eb' : '#ddd'}`,
+                    background: newTransaction.transaction_type === 'credit' ? '#eff6ff' : '#fff',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
+                  <CreditCard size={18} /> Credit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewTransaction({...newTransaction, transaction_type: 'cash'})}
+                  style={{
+                    flex: 1,
+                    padding: '0.75rem',
+                    border: `2px solid ${newTransaction.transaction_type === 'cash' ? '#059669' : '#ddd'}`,
+                    background: newTransaction.transaction_type === 'cash' ? '#ecfdf5' : '#fff',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem'
+                  }}
+                >
+                  <Banknote size={18} /> Cash
+                </button>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Date</label>
+              <input
+                type="date"
+                value={newTransaction.transaction_date}
+                onChange={(e) => setNewTransaction({
+                  ...newTransaction,
+                  transaction_date: e.target.value,
+                  month_year: e.target.value.slice(0, 7)
+                })}
+                style={{ width: '100%', padding: '0.75rem', border: '2px solid #ddd' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Description</label>
+              <input
+                type="text"
+                value={newTransaction.description}
+                onChange={(e) => setNewTransaction({...newTransaction, description: e.target.value})}
+                placeholder="Transaction description"
+                list="descriptions-list"
+                style={{ width: '100%', padding: '0.75rem', border: '2px solid #ddd' }}
+              />
+              <datalist id="descriptions-list">
+                {allDescriptions.map(desc => (
+                  <option key={desc} value={desc} />
+                ))}
+              </datalist>
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Amount (₪)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={newTransaction.amount}
+                onChange={(e) => setNewTransaction({...newTransaction, amount: e.target.value})}
+                placeholder="0.00"
+                style={{ width: '100%', padding: '0.75rem', border: '2px solid #ddd' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Account Number (optional)</label>
+              <input
+                type="text"
+                value={newTransaction.account_number}
+                onChange={(e) => setNewTransaction({...newTransaction, account_number: e.target.value})}
+                placeholder="Account number"
+                style={{ width: '100%', padding: '0.75rem', border: '2px solid #ddd' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button
+                onClick={handleAddTransaction}
+                disabled={!newTransaction.description || !newTransaction.amount || loading}
+                style={{
+                  flex: 1,
+                  padding: '1rem',
+                  background: newTransaction.transaction_type === 'cash' ? '#059669' : '#2563eb',
+                  color: '#fff',
+                  border: 'none',
+                  cursor: (!newTransaction.description || !newTransaction.amount || loading) ? 'not-allowed' : 'pointer',
+                  fontWeight: '700',
+                  opacity: (!newTransaction.description || !newTransaction.amount || loading) ? 0.5 : 1
+                }}
+              >
+                {loading ? 'Adding...' : 'Add Transaction'}
+              </button>
+              <button
+                onClick={() => setShowAddForm(false)}
+                style={{
+                  padding: '1rem 2rem',
+                  background: '#fff',
+                  border: '2px solid #000',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

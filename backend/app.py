@@ -106,12 +106,27 @@ def init_db():
                 description VARCHAR(500) NOT NULL,
                 amount DECIMAL(10,2) NOT NULL,
                 month_year VARCHAR(7) NOT NULL,
+                transaction_type ENUM('credit', 'cash') DEFAULT 'credit',
                 upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_transaction_date (transaction_date),
                 INDEX idx_month_year (month_year),
-                INDEX idx_account (account_number)
+                INDEX idx_account (account_number),
+                INDEX idx_transaction_type (transaction_type)
             )
         """)
+        
+        # Add transaction_type column if it doesn't exist (for existing databases)
+        try:
+            cursor.execute("""
+                ALTER TABLE bank_transactions 
+                ADD COLUMN transaction_type ENUM('credit', 'cash') DEFAULT 'credit'
+            """)
+            print("Added transaction_type column to bank_transactions")
+        except Error as e:
+            if 'Duplicate column' in str(e):
+                pass  # Column already exists
+            else:
+                print(f"Note: {e}")
         
         connection.commit()
         print("Database initialized successfully")
@@ -819,9 +834,96 @@ def clean_transaction_data(df):
 
     return df
 
-def parse_transaction_file(file_path):
+def parse_cash_transaction_file(file_path):
+    """Parse CSV file for cash transactions (special format with totals)"""
+    try:
+        # Read the CSV with all columns
+        with open(file_path, 'rb') as f:
+            raw_data = f.read()
+            result = chardet.detect(raw_data)
+            detected_encoding = result['encoding']
+
+            print(f"\n{'='*60}", flush=True)
+            print(f"[CASH TRANSACTIONS] Detected encoding: {detected_encoding}", flush=True)
+
+            # Try Hebrew encodings
+            encodings_to_try = ['windows-1255', 'utf-8-sig', 'utf-8', 'cp1255', 'iso-8859-8']
+            
+            df = None
+            for encoding in encodings_to_try:
+                try:
+                    df = pd.read_csv(file_path, encoding=encoding, header=None)
+                    print(f"[SUCCESS] Read cash CSV with encoding: {encoding}", flush=True)
+                    break
+                except:
+                    continue
+
+            if df is None:
+                df = pd.read_csv(file_path, encoding='utf-8', errors='replace', header=None)
+
+        # Filter out rows that are totals (contain "סה״כ") or are all empty
+        df = df[~df.iloc[:, 0].astype(str).str.contains('סה״כ', na=False)]
+        df = df.dropna(how='all')
+
+        # Keep only rows with valid date format in first column (DD.MM.YYYY)
+        date_pattern = r'\d{2}\.\d{2}\.\d{4}'
+        df = df[df.iloc[:, 0].astype(str).str.match(date_pattern, na=False)]
+
+        if len(df) == 0:
+            raise ValueError("No valid transactions found in file")
+
+        # Create structured dataframe
+        transactions = []
+        for _, row in df.iterrows():
+            try:
+                # Column 0: Date (DD.MM.YYYY)
+                date_str = str(row[0]).strip()
+                transaction_date = pd.to_datetime(date_str, format='%d.%m.%Y')
+                
+                # Column 1: Amount (may have commas)
+                amount_str = str(row[1]).strip().replace(',', '')
+                amount = float(amount_str)
+                
+                # Column 2: Account number
+                account_number = str(row[2]).strip() if pd.notna(row[2]) else ''
+                
+                # Column 3: Description
+                description = str(row[3]).strip() if pd.notna(row[3]) else 'משיכת מזומן'
+                
+                # Month year
+                month_year = transaction_date.strftime('%Y-%m')
+                
+                transactions.append({
+                    'transaction_date': transaction_date,
+                    'amount': amount,
+                    'account_number': account_number,
+                    'description': description,
+                    'month_year': month_year,
+                    'transaction_type': 'cash'
+                })
+            except Exception as e:
+                print(f"[SKIP ROW] Error parsing row: {e}", flush=True)
+                continue
+
+        if not transactions:
+            raise ValueError("No valid transactions could be parsed")
+
+        result_df = pd.DataFrame(transactions)
+        print(f"[CASH TRANSACTIONS] Parsed {len(result_df)} transactions", flush=True)
+        
+        return result_df
+
+    except Exception as e:
+        raise ValueError(f"Error parsing cash transaction file: {str(e)}")
+
+def parse_transaction_file(file_path, transaction_type='credit'):
     """Parse CSV or Excel file and return cleaned dataframe"""
     try:
+        # If it's marked as cash transaction, use special parser
+        if transaction_type == 'cash':
+            return parse_cash_transaction_file(file_path)
+
+        # Otherwise use standard credit card transaction parser
         # Determine file type and read accordingly
         if file_path.endswith('.csv'):
             # Use chardet to detect encoding
@@ -937,6 +1039,9 @@ def parse_transaction_file(file_path):
 
         # Add month_year column
         df['month_year'] = df['transaction_date'].dt.strftime('%Y-%m')
+        
+        # Add transaction_type column
+        df['transaction_type'] = transaction_type
 
         return df
 
@@ -951,6 +1056,7 @@ def upload_transactions():
             return jsonify({'error': 'No file provided'}), 400
 
         file = request.files['file']
+        transaction_type = request.form.get('transaction_type', 'credit')  # Get transaction type from form
 
         if file.filename == '':
             return jsonify({'error': 'No file selected'}), 400
@@ -964,8 +1070,8 @@ def upload_transactions():
         file.save(file_path)
 
         try:
-            # Parse the file
-            df = parse_transaction_file(file_path)
+            # Parse the file with transaction type
+            df = parse_transaction_file(file_path, transaction_type)
 
             # Calculate total amount
             total_amount = float(df['amount'].sum())
@@ -988,7 +1094,8 @@ def upload_transactions():
                     'transaction_date': row['transaction_date'].strftime('%Y-%m-%d'),
                     'description': desc_value,
                     'amount': float(row['amount']),
-                    'month_year': row['month_year']
+                    'month_year': row['month_year'],
+                    'transaction_type': row.get('transaction_type', transaction_type)
                 })
 
             response_data = {
@@ -997,7 +1104,8 @@ def upload_transactions():
                 'transaction_count': len(transactions),
                 'transactions': transactions,
                 'month_year': transactions[0]['month_year'] if transactions else None,
-                'temp_filename': filename  # Return filename for re-encoding attempts
+                'temp_filename': filename,  # Return filename for re-encoding attempts
+                'transaction_type': transaction_type
             }
 
             # Debug the JSON response
@@ -1166,8 +1274,8 @@ def save_transactions():
             # Insert transactions
             query = """
                 INSERT INTO bank_transactions
-                (account_number, transaction_date, description, amount, month_year)
-                VALUES (%s, %s, %s, %s, %s)
+                (account_number, transaction_date, description, amount, month_year, transaction_type)
+                VALUES (%s, %s, %s, %s, %s, %s)
             """
 
             for trans in transactions:
@@ -1176,7 +1284,8 @@ def save_transactions():
                     trans['transaction_date'],
                     trans['description'],
                     trans['amount'],
-                    trans['month_year']
+                    trans['month_year'],
+                    trans.get('transaction_type', 'credit')
                 )
                 cursor.execute(query, values)
 
@@ -1243,6 +1352,7 @@ def get_all_transactions():
                     description,
                     amount,
                     month_year,
+                    transaction_type,
                     upload_date
                 FROM bank_transactions
                 ORDER BY transaction_date DESC, id DESC
@@ -1258,6 +1368,8 @@ def get_all_transactions():
                     trans['amount'] = float(trans['amount'])
                 if trans['upload_date']:
                     trans['upload_date'] = trans['upload_date'].isoformat()
+                if not trans.get('transaction_type'):
+                    trans['transaction_type'] = 'credit'
 
             return jsonify(transactions)
 
@@ -1279,6 +1391,7 @@ def get_transactions_by_month(month_year):
                     description,
                     amount,
                     month_year,
+                    transaction_type,
                     upload_date
                 FROM bank_transactions
                 WHERE month_year = %s
@@ -1295,6 +1408,8 @@ def get_transactions_by_month(month_year):
                     trans['amount'] = float(trans['amount'])
                 if trans['upload_date']:
                     trans['upload_date'] = trans['upload_date'].isoformat()
+                if not trans.get('transaction_type'):
+                    trans['transaction_type'] = 'credit'
 
             return jsonify(transactions)
 
@@ -1348,7 +1463,7 @@ def update_transaction(transaction_id):
             query = """
                 UPDATE bank_transactions
                 SET transaction_date = %s, description = %s, amount = %s,
-                    month_year = %s, account_number = %s
+                    month_year = %s, account_number = %s, transaction_type = %s
                 WHERE id = %s
             """
 
@@ -1358,6 +1473,7 @@ def update_transaction(transaction_id):
                 data['amount'],
                 data['month_year'],
                 data.get('account_number', ''),
+                data.get('transaction_type', 'credit'),
                 transaction_id
             ))
             connection.commit()
@@ -1378,8 +1494,8 @@ def add_manual_transaction():
 
             query = """
                 INSERT INTO bank_transactions
-                (account_number, transaction_date, description, amount, month_year)
-                VALUES (%s, %s, %s, %s, %s)
+                (account_number, transaction_date, description, amount, month_year, transaction_type)
+                VALUES (%s, %s, %s, %s, %s, %s)
             """
 
             cursor.execute(query, (
@@ -1387,7 +1503,8 @@ def add_manual_transaction():
                 data['transaction_date'],
                 data['description'],
                 data['amount'],
-                data['month_year']
+                data['month_year'],
+                data.get('transaction_type', 'credit')
             ))
             connection.commit()
 
@@ -1415,6 +1532,82 @@ def get_all_descriptions():
 
             descriptions = [row[0] for row in cursor.fetchall()]
             return jsonify(descriptions)
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/transactions/stats', methods=['GET'])
+def get_transaction_stats():
+    """Get transaction statistics including cash vs credit breakdown"""
+    try:
+        # Get optional date filters
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            
+            # Base query with optional date filtering
+            date_filter = ""
+            params = []
+            if start_date:
+                date_filter += " AND transaction_date >= %s"
+                params.append(start_date)
+            if end_date:
+                date_filter += " AND transaction_date <= %s"
+                params.append(end_date)
+
+            # Overall stats by type
+            cursor.execute(f"""
+                SELECT 
+                    transaction_type,
+                    COUNT(*) as transaction_count,
+                    SUM(amount) as total_amount,
+                    AVG(amount) as avg_amount,
+                    MIN(transaction_date) as first_date,
+                    MAX(transaction_date) as last_date
+                FROM bank_transactions
+                WHERE 1=1 {date_filter}
+                GROUP BY transaction_type
+            """, params)
+            
+            by_type = cursor.fetchall()
+            
+            # Convert Decimal to float
+            for item in by_type:
+                if item['total_amount']:
+                    item['total_amount'] = float(item['total_amount'])
+                if item['avg_amount']:
+                    item['avg_amount'] = float(item['avg_amount'])
+                if item['first_date']:
+                    item['first_date'] = item['first_date'].isoformat()
+                if item['last_date']:
+                    item['last_date'] = item['last_date'].isoformat()
+
+            # Monthly breakdown by type
+            cursor.execute(f"""
+                SELECT 
+                    month_year,
+                    transaction_type,
+                    COUNT(*) as transaction_count,
+                    SUM(amount) as total_amount
+                FROM bank_transactions
+                WHERE 1=1 {date_filter}
+                GROUP BY month_year, transaction_type
+                ORDER BY month_year DESC, transaction_type
+            """, params)
+            
+            monthly_by_type = cursor.fetchall()
+            
+            # Convert Decimal to float
+            for item in monthly_by_type:
+                if item['total_amount']:
+                    item['total_amount'] = float(item['total_amount'])
+
+            return jsonify({
+                'by_type': by_type,
+                'monthly_by_type': monthly_by_type
+            })
 
     except Error as e:
         return jsonify({'error': str(e)}), 500
