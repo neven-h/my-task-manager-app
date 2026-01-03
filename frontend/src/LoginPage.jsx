@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, User, Eye, EyeOff, ArrowLeft, AlertCircle, Loader } from 'lucide-react';
+import { Lock, User, Eye, EyeOff, ArrowLeft, AlertCircle, Loader, Mail, CheckCircle, X } from 'lucide-react';
 
 const LoginPage = ({ onLogin, onBack }) => {
   const [username, setUsername] = useState('');
@@ -7,6 +7,9 @@ const LoginPage = ({ onLogin, onBack }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetSuccess, setResetSuccess] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -283,6 +286,26 @@ const LoginPage = ({ onLogin, onBack }) => {
             </div>
           </div>
 
+          {/* Forgot Password Link */}
+          <div style={{ textAlign: 'right', marginBottom: '20px' }}>
+            <button
+              type="button"
+              onClick={() => setShowForgotPassword(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#0d6efd',
+                fontSize: '0.9rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                padding: 0
+              }}
+            >
+              Forgot Password?
+            </button>
+          </div>
+
           {/* Submit button */}
           <button
             type="submit"
@@ -369,6 +392,217 @@ const LoginPage = ({ onLogin, onBack }) => {
       }}>
         drpitz.club
       </div>
+
+      {/* Forgot Password Modal */}
+      {showForgotPassword && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.95)',
+            borderRadius: '20px',
+            padding: '40px',
+            width: '100%',
+            maxWidth: '450px',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+            position: 'relative'
+          }}>
+            {/* Close button */}
+            <button
+              onClick={() => {
+                setShowForgotPassword(false);
+                setResetEmail('');
+                setResetSuccess('');
+              }}
+              style={{
+                position: 'absolute',
+                top: '20px',
+                right: '20px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#666',
+                padding: '5px'
+              }}
+            >
+              <X size={24} />
+            </button>
+
+            <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '70px',
+                height: '70px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%)',
+                marginBottom: '20px',
+                boxShadow: '0 10px 30px rgba(13, 110, 253, 0.3)'
+              }}>
+                <Lock size={32} color="white" />
+              </div>
+              <h2 style={{
+                color: '#1a1a1a',
+                fontSize: '1.6rem',
+                fontWeight: '900',
+                margin: '0 0 10px 0',
+                textTransform: 'uppercase',
+                letterSpacing: '-1px'
+              }}>
+                Reset Password
+              </h2>
+              <p style={{
+                color: '#666',
+                fontSize: '0.9rem',
+                margin: 0,
+                lineHeight: '1.5'
+              }}>
+                Enter your email address and we'll send you a link to reset your password.
+              </p>
+            </div>
+
+            {resetSuccess ? (
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '15px',
+                padding: '20px 0'
+              }}>
+                <CheckCircle size={48} color="#059669" />
+                <p style={{
+                  color: '#059669',
+                  fontSize: '1rem',
+                  fontWeight: '600',
+                  textAlign: 'center',
+                  margin: 0
+                }}>
+                  {resetSuccess}
+                </p>
+                <button
+                  onClick={() => {
+                    setShowForgotPassword(false);
+                    setResetEmail('');
+                    setResetSuccess('');
+                  }}
+                  style={{
+                    padding: '12px 30px',
+                    background: 'linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: 'white',
+                    fontSize: '1rem',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    marginTop: '10px'
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                // Simulate sending reset email
+                setResetSuccess(`Password reset link sent to ${resetEmail}!`);
+              }}>
+                <div style={{ marginBottom: '25px' }}>
+                  <label style={{
+                    display: 'block',
+                    color: '#333',
+                    fontSize: '0.9rem',
+                    fontWeight: '600',
+                    marginBottom: '8px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Email Address
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <Mail
+                      size={20}
+                      style={{
+                        position: 'absolute',
+                        left: '16px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        color: '#999'
+                      }}
+                    />
+                    <input
+                      type="email"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '14px 16px 14px 48px',
+                        background: '#f5f5f5',
+                        border: '2px solid #e0e0e0',
+                        borderRadius: '12px',
+                        color: '#1a1a1a',
+                        fontSize: '1rem',
+                        outline: 'none',
+                        transition: 'all 0.3s ease',
+                        boxSizing: 'border-box'
+                      }}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = '#0d6efd';
+                        e.target.style.boxShadow = '0 0 0 3px rgba(13, 110, 253, 0.2)';
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = '#e0e0e0';
+                        e.target.style.boxShadow = 'none';
+                      }}
+                      placeholder="your@email.com"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    background: 'linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%)',
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: 'white',
+                    fontSize: '1rem',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                    boxShadow: '0 10px 30px rgba(13, 110, 253, 0.3)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.transform = 'translateY(-2px)';
+                    e.target.style.boxShadow = '0 15px 40px rgba(13, 110, 253, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.transform = 'translateY(0)';
+                    e.target.style.boxShadow = '0 10px 30px rgba(13, 110, 253, 0.3)';
+                  }}
+                >
+                  Send Reset Link
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* CSS for spinner */}
       <style>{`
