@@ -99,56 +99,61 @@ const ClientsManagement = ({ onBackToTasks }) => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#fff' }}>
+    <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
       <style>{`
         .btn {
-          transition: all 0.15s ease;
+          transition: all 0.3s ease;
           cursor: pointer;
-          border: 3px solid #000;
-          font-family: 'Inter', sans-serif;
+          border: 2px solid;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.5px;
-          font-size: 0.85rem;
-          padding: 14px 28px;
-          background: #fff;
-          color: #000;
+          font-size: 0.9rem;
+          padding: 12px 24px;
+          border-radius: 8px;
         }
 
         .btn:hover:not(:disabled) {
-          box-shadow: 4px 4px 0px #000;
-          transform: translate(-2px, -2px);
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
         .btn:disabled {
-          opacity: 0.4;
+          opacity: 0.5;
           cursor: not-allowed;
         }
 
-        .btn-white {
-          background: #fff;
-          color: #000;
-          border-color: #000;
+        .btn-primary {
+          background: #dc3545;
+          color: #fff;
+          border-color: #dc3545;
         }
 
-        .btn-yellow {
-          background: #FFD500;
-          color: #000;
-          border-color: #000;
+        .btn-secondary {
+          background: #ffc107;
+          color: #1a1a1a;
+          border-color: #ffc107;
+        }
+
+        .btn-outline {
+          background: transparent;
+          color: #fff;
+          border-color: #fff;
         }
       `}</style>
       {/* Header */}
       <header style={{
-        background: '#000',
+        background: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
         color: '#fff',
-        padding: '24px 48px',
-        borderBottom: '4px solid #000'
+        padding: '2rem 3rem',
+        borderBottom: '4px solid #ffc107',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h1 style={{
-              fontFamily: '"Inter", sans-serif',
-              fontSize: '3rem',
+              fontSize: '2.5rem',
               fontWeight: 900,
               margin: '0 0 8px 0',
               letterSpacing: '-1px',
@@ -157,16 +162,16 @@ const ClientsManagement = ({ onBackToTasks }) => {
               Clients Management
             </h1>
             <p style={{
-              fontSize: '1rem',
+              fontSize: '1.1rem',
               margin: 0,
               fontWeight: 400,
-              color: '#ccc'
+              color: 'rgba(255, 255, 255, 0.9)'
             }}>
               Manage clients and track billable hours
             </p>
           </div>
           {onBackToTasks && (
-            <button className="btn btn-white" onClick={onBackToTasks}>
+            <button className="btn btn-outline" onClick={onBackToTasks}>
               <ArrowLeft size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />
               Back to Tasks
             </button>
@@ -176,47 +181,54 @@ const ClientsManagement = ({ onBackToTasks }) => {
 
       {error && (
         <div style={{
-          background: '#FF0000',
-          color: '#fff',
-          padding: '16px 48px',
-          fontWeight: 600
+          background: '#fef2f2',
+          color: '#dc3545',
+          padding: '1rem 3rem',
+          fontWeight: 600,
+          borderBottom: '2px solid #dc3545'
         }}>
           {error}
         </div>
       )}
 
-      <div style={{ padding: '48px', maxWidth: '1600px', margin: '0 auto' }}>
+      <div style={{ padding: '3rem', maxWidth: '1600px', margin: '0 auto' }}>
         {/* Clients List */}
-        <div style={{ marginBottom: '48px' }}>
+        <div style={{ marginBottom: '3rem' }}>
           <h2 style={{
-            fontSize: '1.8rem',
-            fontWeight: 900,
-            marginBottom: '24px',
-            textTransform: 'UPPERCASE'
+            fontSize: '2rem',
+            fontWeight: 800,
+            marginBottom: '1.5rem',
+            textTransform: 'UPPERCASE',
+            color: '#1a1a1a',
+            letterSpacing: '-0.5px'
           }}>
             All Clients
           </h2>
 
           {loading ? (
             <div style={{
-              border: '3px solid #000',
-              padding: '48px',
+              border: '3px solid #dc3545',
+              padding: '3rem',
               textAlign: 'center',
-              background: '#f8f8f8'
+              background: '#fff',
+              borderRadius: '12px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
             }}>
-              <p style={{ fontSize: '1.2rem', fontWeight: 600, color: '#666' }}>
+              <p style={{ fontSize: '1.2rem', fontWeight: 600, color: '#64748b' }}>
                 Loading clients...
               </p>
             </div>
           ) : clients.length === 0 ? (
             <div style={{
-              border: '3px solid #000',
-              padding: '48px',
+              border: '3px solid #dc3545',
+              padding: '3rem',
               textAlign: 'center',
-              background: '#f8f8f8'
+              background: '#fff',
+              borderRadius: '12px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
             }}>
-              <Users size={48} style={{ marginBottom: '16px', opacity: 0.3 }} />
-              <p style={{ fontSize: '1.2rem', fontWeight: 600, color: '#666' }}>
+              <Users size={48} style={{ marginBottom: '16px', opacity: 0.3, color: '#dc3545' }} />
+              <p style={{ fontSize: '1.2rem', fontWeight: 600, color: '#64748b' }}>
                 No clients yet
               </p>
             </div>
@@ -224,25 +236,42 @@ const ClientsManagement = ({ onBackToTasks }) => {
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-              gap: '20px'
+              gap: '1.5rem'
             }}>
               {clients.map(client => (
                 <div
                   key={client.client}
                   style={{
-                    border: '3px solid #000',
-                    background: selectedClient === client.client ? '#FFD500' : '#fff',
-                    cursor: 'pointer'
+                    border: selectedClient === client.client ? '3px solid #ffc107' : '3px solid #e2e8f0',
+                    background: selectedClient === client.client ? '#fffbeb' : '#fff',
+                    cursor: 'pointer',
+                    borderRadius: '12px',
+                    overflow: 'hidden',
+                    boxShadow: selectedClient === client.client ? '0 8px 16px rgba(255, 193, 7, 0.2)' : '0 4px 12px rgba(0,0,0,0.08)',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (selectedClient !== client.client) {
+                      e.currentTarget.style.transform = 'translateY(-4px)';
+                      e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.12)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (selectedClient !== client.client) {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                    }
                   }}
                 >
                   <div
                     onClick={() => fetchClientTasks(client.client)}
-                    style={{ padding: '24px' }}
+                    style={{ padding: '1.5rem' }}
                   >
                     <div style={{
-                      fontSize: '1.5rem',
-                      fontWeight: 900,
-                      marginBottom: '12px'
+                      fontSize: '1.4rem',
+                      fontWeight: 800,
+                      marginBottom: '1rem',
+                      color: '#1a1a1a'
                     }}>
                       {client.client}
                     </div>
@@ -250,38 +279,38 @@ const ClientsManagement = ({ onBackToTasks }) => {
                     <div style={{
                       display: 'grid',
                       gridTemplateColumns: '1fr 1fr',
-                      gap: '12px',
-                      marginBottom: '12px'
+                      gap: '1rem',
+                      marginBottom: '1rem'
                     }}>
                       <div>
-                        <div style={{ fontSize: '0.75rem', color: '#666', fontWeight: 700 }}>
-                          TOTAL HOURS
+                        <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                          Total Hours
                         </div>
-                        <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#FF0000' }}>
+                        <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#dc3545' }}>
                           {(client.total_hours || 0).toFixed(1)}h
                         </div>
                       </div>
                       <div>
-                        <div style={{ fontSize: '0.75rem', color: '#666', fontWeight: 700 }}>
-                          TASKS
+                        <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                          Tasks
                         </div>
-                        <div style={{ fontSize: '1.8rem', fontWeight: 900 }}>
+                        <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#0d6efd' }}>
                           {client.task_count}
                         </div>
                       </div>
                     </div>
 
-                    <div style={{ fontSize: '0.9rem', color: '#666' }}>
-                      {client.completed_tasks} completed
+                    <div style={{ fontSize: '0.9rem', color: '#059669', fontWeight: 600 }}>
+                      ✓ {client.completed_tasks} completed
                     </div>
                   </div>
 
                   <div style={{
-                    padding: '16px 24px',
-                    background: '#f8f8f8',
-                    borderTop: '3px solid #000',
+                    padding: '1rem 1.5rem',
+                    background: '#f8fafc',
+                    borderTop: '2px solid #e2e8f0',
                     display: 'flex',
-                    gap: '8px'
+                    gap: '0.5rem'
                   }}>
                     {editingClient === client.client ? (
                       <>
@@ -292,25 +321,27 @@ const ClientsManagement = ({ onBackToTasks }) => {
                           placeholder="New name"
                           style={{
                             flex: 1,
-                            padding: '8px',
-                            border: '2px solid #000',
-                            fontWeight: 600
+                            padding: '0.5rem',
+                            border: '2px solid #e2e8f0',
+                            borderRadius: '6px',
+                            fontWeight: 600,
+                            fontSize: '1rem'
                           }}
                         />
                         <button
-                          className="btn btn-yellow"
+                          className="btn btn-secondary"
                           onClick={() => handleRenameClient(client.client)}
-                          style={{ padding: '8px 16px' }}
+                          style={{ padding: '0.5rem 1rem' }}
                         >
                           Save
                         </button>
                         <button
-                          className="btn btn-white"
+                          className="btn"
                           onClick={() => {
                             setEditingClient(null);
                             setNewClientName('');
                           }}
-                          style={{ padding: '8px 16px' }}
+                          style={{ padding: '0.5rem 1rem', background: '#fff', color: '#64748b', borderColor: '#e2e8f0' }}
                         >
                           Cancel
                         </button>
@@ -318,15 +349,15 @@ const ClientsManagement = ({ onBackToTasks }) => {
                     ) : (
                       <>
                         <button
-                          className="btn btn-white"
+                          className="btn"
                           onClick={(e) => {
                             e.stopPropagation();
                             setEditingClient(client.client);
                             setNewClientName(client.client);
                           }}
-                          style={{ flex: 1 }}
+                          style={{ flex: 1, background: '#fff', color: '#0d6efd', borderColor: '#0d6efd' }}
                         >
-                          <Edit2 size={14} style={{ marginRight: '6px' }} />
+                          <Edit2 size={14} style={{ marginRight: '6px', display: 'inline', verticalAlign: 'middle' }} />
                           Rename
                         </button>
                         <button
@@ -335,7 +366,7 @@ const ClientsManagement = ({ onBackToTasks }) => {
                             e.stopPropagation();
                             handleDeleteClient(client.client);
                           }}
-                          style={{ padding: '8px' }}
+                          style={{ padding: '0.5rem 0.75rem', background: '#fef2f2', color: '#dc3545', borderColor: '#dc3545' }}
                         >
                           <Trash2 size={14} />
                         </button>
@@ -351,15 +382,19 @@ const ClientsManagement = ({ onBackToTasks }) => {
         {/* Selected Client Tasks */}
         {selectedClient && clientTasks.length > 0 && (
           <div style={{
-            border: '4px solid #000',
+            border: '3px solid #dc3545',
             background: '#fff',
-            padding: '32px'
+            padding: '2rem',
+            borderRadius: '12px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
           }}>
             <h3 style={{
-              fontSize: '1.5rem',
-              fontWeight: 900,
-              marginBottom: '24px',
-              textTransform: 'uppercase'
+              fontSize: '1.8rem',
+              fontWeight: 800,
+              marginBottom: '1.5rem',
+              textTransform: 'uppercase',
+              color: '#1a1a1a',
+              letterSpacing: '-0.5px'
             }}>
               Tasks for {selectedClient}
             </h3>
@@ -372,38 +407,42 @@ const ClientsManagement = ({ onBackToTasks }) => {
                 <div
                   key={task.id}
                   style={{
-                    padding: '20px',
-                    marginBottom: '12px',
-                    border: '3px solid #000',
-                    background: task.status === 'completed' ? '#f8f8f8' : '#fff'
+                    padding: '1.25rem',
+                    marginBottom: '1rem',
+                    border: '2px solid #e2e8f0',
+                    background: task.status === 'completed' ? '#f0fdf4' : '#fff',
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
+                    borderLeft: task.status === 'completed' ? '4px solid #059669' : '4px solid #0d6efd'
                   }}
                 >
                   <div style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'start',
-                    marginBottom: '8px'
+                    marginBottom: '0.5rem'
                   }}>
                     <div style={{ flex: 1 }}>
                       <div style={{
-                        fontSize: '1.2rem',
-                        fontWeight: 900,
-                        marginBottom: '4px'
+                        fontSize: '1.15rem',
+                        fontWeight: 800,
+                        marginBottom: '0.5rem',
+                        color: '#1a1a1a'
                       }}>
                         {task.title}
                       </div>
-                      <div style={{ fontSize: '0.9rem', color: '#666' }}>
-                        {new Date(task.task_date).toLocaleDateString('en-GB')}
+                      <div style={{ fontSize: '0.9rem', color: '#64748b', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <span>{new Date(task.task_date).toLocaleDateString('en-GB')}</span>
                         {task.duration && (
-                          <span style={{ marginLeft: '12px' }}>
-                            <Clock size={14} style={{ display: 'inline', verticalAlign: 'middle' }} />
-                            {' '}{task.duration}h
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            <Clock size={14} />
+                            {task.duration}h
                           </span>
                         )}
                         {task.status === 'completed' && (
-                          <span style={{ marginLeft: '12px', color: '#00AA00' }}>
-                            <CheckCircle size={14} style={{ display: 'inline', verticalAlign: 'middle' }} />
-                            {' '}Completed
+                          <span style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600 }}>
+                            <CheckCircle size={14} />
+                            Completed
                           </span>
                         )}
                       </div>
@@ -412,8 +451,9 @@ const ClientsManagement = ({ onBackToTasks }) => {
                   {task.description && (
                     <div style={{
                       fontSize: '0.9rem',
-                      color: '#666',
-                      marginTop: '8px'
+                      color: '#64748b',
+                      marginTop: '0.5rem',
+                      lineHeight: '1.5'
                     }}>
                       {task.description}
                     </div>
