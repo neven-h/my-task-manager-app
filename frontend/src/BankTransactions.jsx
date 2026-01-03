@@ -31,13 +31,13 @@ const BankTransactions = ({ onBackToTasks }) => {
 
   // Color scheme
   const colors = {
-    primary: '#2563eb',      // Blue
-    secondary: '#FFD700',    // Yellow/Gold
-    accent: '#dc2626',       // Red
+    primary: '#dc3545',      // Red
+    secondary: '#ffc107',    // Yellow/Gold
+    accent: '#0d6efd',       // Blue
     success: '#059669',      // Green
     background: '#f8fafc',
     card: '#ffffff',
-    text: '#1e3a5f',         // Dark blue instead of black
+    text: '#1a1a1a',         // Dark text
     textLight: '#64748b',
     border: '#e2e8f0'
   };
@@ -351,18 +351,18 @@ const BankTransactions = ({ onBackToTasks }) => {
       <head>
         <title>Bank Transactions Report - ${selectedMonth === 'all' ? 'All' : formatMonthYear(selectedMonth)}</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; color: #1e3a5f; }
-          h1 { color: #2563eb; border-bottom: 3px solid #FFD700; padding-bottom: 10px; }
-          h2 { color: #2563eb; }
+          body { font-family: Arial, sans-serif; padding: 20px; color: #1a1a1a; }
+          h1 { color: #dc3545; border-bottom: 3px solid #ffc107; padding-bottom: 10px; }
+          h2 { color: #dc3545; }
           .summary { display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap; }
           .summary-box { background: #f8fafc; padding: 15px 25px; border-radius: 8px; border: 2px solid #e2e8f0; }
           .summary-box h3 { margin: 0 0 5px 0; font-size: 14px; color: #64748b; }
           .summary-box p { margin: 0; font-size: 24px; font-weight: bold; }
-          .credit { color: #2563eb; }
+          .credit { color: #0d6efd; }
           .cash { color: #059669; }
           table { width: 100%; border-collapse: collapse; margin-top: 20px; }
           th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: left; }
-          th { background: #2563eb; color: white; }
+          th { background: #dc3545; color: white; }
           tr:nth-child(even) { background: #f8fafc; }
           .amount { text-align: right; font-family: monospace; font-size: 14px; }
           @media print { body { padding: 0; } }
@@ -460,7 +460,7 @@ const BankTransactions = ({ onBackToTasks }) => {
     <div style={{
       minHeight: '100vh',
       background: colors.background,
-      fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
       fontSize: '16px'
     }}>
       {/* Mobile Responsive Styles */}
@@ -561,7 +561,7 @@ const BankTransactions = ({ onBackToTasks }) => {
       `}</style>
       {/* Header */}
       <header className="bank-header" style={{
-        background: `linear-gradient(135deg, ${colors.primary} 0%, #1e40af 100%)`,
+        background: `linear-gradient(135deg, ${colors.primary} 0%, #c82333 100%)`,
         color: '#fff',
         padding: '1.5rem 2rem',
         borderBottom: `4px solid ${colors.secondary}`,
