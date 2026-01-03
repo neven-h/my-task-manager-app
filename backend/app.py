@@ -1760,7 +1760,9 @@ def get_all_clients_with_stats():
                 WHERE client IS NOT NULL AND client != ''
                 GROUP BY client
                 ORDER BY client
-            """)
+       
+       
+             """)
 
             clients = cursor.fetchall()
             

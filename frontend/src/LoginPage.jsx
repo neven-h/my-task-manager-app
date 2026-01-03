@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Lock, User, Eye, EyeOff, ArrowLeft, AlertCircle, Loader } from 'lucide-react';
+import API_BASE from './config';
 
 const LoginPage = ({ onLogin, onBack }) => {
   const [username, setUsername] = useState('');
@@ -13,26 +14,34 @@ const LoginPage = ({ onLogin, onBack }) => {
     setError('');
     setLoading(true);
 
-    // Simulate a brief loading delay
-    setTimeout(() => {
-      // Hardcoded credentials check
-      if (username === 'pitz' && password === 'worldwidepitz2025') {
-        const token = 'auth-token-' + Date.now();
-        localStorage.setItem('authToken', token);
-        localStorage.setItem('authUser', username);
-        localStorage.setItem('authRole', 'admin');
-        onLogin(token, username, 'admin');
-      } else if (username === 'benny' && password === 'Galia123') {
-        const token = 'auth-token-' + Date.now();
-        localStorage.setItem('authToken', token);
-        localStorage.setItem('authUser', username);
-        localStorage.setItem('authRole', 'limited');
-        onLogin(token, username, 'limited');
+    try {
+      const response = await fetch(`${API_BASE}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username: username.trim(),
+          password: password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        localStorage.setItem('authToken', data.token);
+        localStorage.setItem('authUser', data.username);
+        localStorage.setItem('authRole', data.role);
+        onLogin(data.token, data.username, data.role);
       } else {
-        setError('Invalid username or password');
+        setError(data.error || 'Invalid username or password');
         setLoading(false);
       }
-    }, 500);
+    } catch (err) {
+      console.error('Login error:', err);
+      setError('Unable to connect to server. Please try again.');
+      setLoading(false);
+    }
   };
 
   return (
