@@ -1754,7 +1754,7 @@ def get_all_clients_with_stats():
                 SELECT
                     client,
                     COUNT(*) as task_count,
-                    SUM(CASE WHEN duration IS NOT NULL THEN TO_NUMBER(duration) ELSE 0 END) as total_hours,
+                    SUM(CASE WHEN duration IS NOT NULL THEN duration ELSE 0 END) as total_hours,
                     SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks
                 FROM tasks
                 WHERE client IS NOT NULL AND client != ''
@@ -1763,6 +1763,14 @@ def get_all_clients_with_stats():
             """)
 
             clients = cursor.fetchall()
+            
+            # Convert Decimal to float for JSON serialization
+            for client in clients:
+                if client.get('total_hours') is not None:
+                    client['total_hours'] = float(client['total_hours'])
+                else:
+                    client['total_hours'] = 0.0
+            
             return jsonify(clients)
 
     except Error as e:
