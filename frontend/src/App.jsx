@@ -8,15 +8,18 @@ const App = () => {
   const [currentView, setCurrentView] = useState('landing'); // 'landing', 'login', 'signup', 'app'
   const [authToken, setAuthToken] = useState(null);
   const [authUser, setAuthUser] = useState(null);
+  const [authRole, setAuthRole] = useState(null); // 'admin' or 'limited'
 
   // Check if user is already logged in on mount
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     const user = localStorage.getItem('authUser');
+    const role = localStorage.getItem('authRole');
 
     if (token && user) {
       setAuthToken(token);
       setAuthUser(user);
+      setAuthRole(role || 'admin');
       setCurrentView('app');
     }
   }, []);
@@ -31,17 +34,20 @@ const App = () => {
     setCurrentView('signup');
   };
 
-  const handleLogin = (token, username) => {
+  const handleLogin = (token, username, role) => {
     setAuthToken(token);
     setAuthUser(username);
+    setAuthRole(role || 'admin');
     setCurrentView('app');
   };
 
   const handleLogout = () => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('authUser');
+    localStorage.removeItem('authRole');
     setAuthToken(null);
     setAuthUser(null);
+    setAuthRole(null);
     setCurrentView('landing');
   };
 
@@ -62,7 +68,7 @@ const App = () => {
   }
 
   if (currentView === 'app') {
-    return <TaskTracker authToken={authToken} authUser={authUser} onLogout={handleLogout} />;
+    return <TaskTracker authToken={authToken} authUser={authUser} authRole={authRole} onLogout={handleLogout} />;
   }
 
   return null;

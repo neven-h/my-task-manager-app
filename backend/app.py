@@ -44,6 +44,12 @@ DB_CONFIG = {
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# User credentials (hardcoded for simplicity)
+USERS = {
+    'pitz': {'password': 'REDACTED_PASSWORD', 'role': 'admin'},
+    'benny': {'password': 'Galia123', 'role': 'shared'}
+}
+
 @contextmanager
 def get_db_connection():
     """Context manager for database connections"""
@@ -87,15 +93,40 @@ def init_db():
                 categories TEXT,
                 tags TEXT,
                 notes TEXT,
+                shared BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 INDEX idx_date (task_date),
                 INDEX idx_category (category),
                 INDEX idx_status (status),
                 INDEX idx_client (client),
+                INDEX idx_shared (shared),
                 FULLTEXT idx_search (title, description, notes)
             )
         """)
+        
+        # Add shared column if it doesn't exist (for existing databases)
+        try:
+            cursor.execute("""
+                ALTER TABLE tasks 
+                ADD COLUMN shared BOOLEAN DEFAULT FALSE
+            """)
+            print("Added shared column to tasks")
+        except Error as e:
+            if 'Duplicate column' in str(e):
+                pass  # Column already exists
+            else:
+                print(f"Note: {e}")
+        
+        # Add index for shared column if it doesn't exist
+        try:
+            cursor.execute("CREATE INDEX idx_shared ON tasks(shared)")
+            print("Added index for shared column")
+        except Error as e:
+            if 'Duplicate' in str(e):
+                pass  # Index already exists
+            else:
+                print(f"Note: {e}")
 
         # Create bank_transactions table
         cursor.execute("""
@@ -138,6 +169,29 @@ def init_db():
             cursor.close()
             connection.close()
 
+@app.route('/api/login', methods=['POST'])
+def login():
+    """Authenticate user and return role"""
+    try:
+        data = request.json
+        username = data.get('username', '').strip()
+        password = data.get('password', '')
+        
+        if username in USERS and USERS[username]['password'] == password:
+            return jsonify({
+                'success': True,
+                'username': username,
+                'role': USERS[username]['role'],
+                'token': f'auth-token-{username}-{datetime.now().timestamp()}'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid username or password'
+            }), 401
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/tasks', methods=['GET'])
 def get_tasks():
     """Get all tasks with optional filtering"""
@@ -149,6 +203,7 @@ def get_tasks():
         search = request.args.get('search')
         date_start = request.args.get('date_start')
         date_end = request.args.get('date_end')
+        shared_only = request.args.get('shared')  # For limited users (benny)
         
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -156,6 +211,10 @@ def get_tasks():
             # Build query
             query = "SELECT * FROM tasks WHERE 1=1"
             params = []
+            
+            # If shared_only is true, only return shared tasks
+            if shared_only == 'true':
+                query += " AND shared = TRUE"
             
             if category and category != 'all':
                 query += " AND category = %s"
@@ -232,8 +291,8 @@ def create_task():
             query = """
                 INSERT INTO tasks 
                 (title, description, category, categories, client, task_date, task_time, 
-                 duration, status, tags, notes)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                 duration, status, tags, notes, shared)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             
             # Handle categories - convert list to comma-separated string
@@ -265,7 +324,8 @@ def create_task():
                 duration,
                 data.get('status', 'uncompleted'),
                 tags_str,
-                data.get('notes', '')
+                data.get('notes', ''),
+                bool(data.get('shared', False))
             )
             
             cursor.execute(query, values)
@@ -294,7 +354,7 @@ def update_task(task_id):
                 UPDATE tasks 
                 SET title = %s, description = %s, category = %s, categories = %s, client = %s,
                     task_date = %s, task_time = %s, duration = %s, 
-                    status = %s, tags = %s, notes = %s
+                    status = %s, tags = %s, notes = %s, shared = %s
                 WHERE id = %s
             """
             
@@ -328,6 +388,7 @@ def update_task(task_id):
                 data.get('status', 'uncompleted'),
                 tags_str,
                 data.get('notes', ''),
+                bool(data.get('shared', False)),
                 task_id
             )
             

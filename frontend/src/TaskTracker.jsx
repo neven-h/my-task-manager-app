@@ -9,7 +9,8 @@ import API_BASE from './config';
 const DRAFT_STORAGE_KEY = 'taskTracker_draft';
 const BULK_DRAFT_STORAGE_KEY = 'taskTracker_bulkDraft';
 
-const TaskTracker = ({ onLogout }) => {
+const TaskTracker = ({ onLogout, authRole, authUser }) => {
+  const isSharedUser = authRole === 'shared' || authRole === 'limited';
   const [appView, setAppView] = useState('tasks'); // 'tasks', 'transactions', or 'clients'
   const [tasks, setTasks] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
@@ -47,7 +48,8 @@ const TaskTracker = ({ onLogout }) => {
     duration: '',
     status: 'uncompleted',
     tags: [],
-    notes: ''
+    notes: '',
+    shared: false
   });
 
   const [tagInput, setTagInput] = useState('');
@@ -121,6 +123,11 @@ const TaskTracker = ({ onLogout }) => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
+      
+      // For shared users, only fetch shared tasks
+      if (isSharedUser) {
+        params.append('shared', 'true');
+      }
       
       if (filters.category !== 'all') params.append('category', filters.category);
       if (filters.status !== 'all') params.append('status', filters.status);
@@ -270,7 +277,8 @@ const TaskTracker = ({ onLogout }) => {
       duration: task.duration || '',
       status: task.status,
       tags: task.tags || [],
-      notes: task.notes || ''
+      notes: task.notes || '',
+      shared: task.shared || false
     });
     setShowForm(true);
   };
@@ -300,7 +308,8 @@ const TaskTracker = ({ onLogout }) => {
       duration: '',
       status: 'uncompleted',
       tags: [],
-      notes: ''
+      notes: '',
+      shared: false
     });
     setTagInput('');
   };
@@ -582,6 +591,20 @@ const TaskTracker = ({ onLogout }) => {
             }}>
               {getStatusLabel(task.status)}
             </span>
+            {/* Shared indicator */}
+            {task.shared && (
+              <span style={{
+                background: '#e3f2fd',
+                color: '#1565c0',
+                padding: '4px 10px',
+                borderRadius: '4px',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                border: '2px solid #1565c0'
+              }}>
+                🔗 Shared
+              </span>
+            )}
           </div>
           {task.description && (
             <p style={{ margin: '0 0 12px 0', color: '#666', fontSize: '1rem', lineHeight: '1.6' }}>
@@ -608,32 +631,35 @@ const TaskTracker = ({ onLogout }) => {
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', marginLeft: '24px' }}>
-          <button
-            onClick={() => toggleTaskStatus(task.id)}
-            className="btn"
-            style={{ padding: '10px', minWidth: 'auto' }}
-            title="Toggle status"
-          >
-            <Check size={18} />
-          </button>
-          <button
-            onClick={() => startEdit(task)}
-            className="btn"
-            style={{ padding: '10px', minWidth: 'auto' }}
-            title="Edit"
-          >
-            <Edit2 size={18} />
-          </button>
-          <button
-            onClick={() => deleteTask(task.id)}
-            className="btn"
-            style={{ padding: '10px', minWidth: 'auto' }}
-            title="Delete"
-          >
-            <Trash2 size={18} />
-          </button>
-        </div>
+        {/* Action buttons - hide for shared users */}
+        {!isSharedUser && (
+          <div style={{ display: 'flex', gap: '8px', marginLeft: '24px' }}>
+            <button
+              onClick={() => toggleTaskStatus(task.id)}
+              className="btn"
+              style={{ padding: '10px', minWidth: 'auto' }}
+              title="Toggle status"
+            >
+              <Check size={18} />
+            </button>
+            <button
+              onClick={() => startEdit(task)}
+              className="btn"
+              style={{ padding: '10px', minWidth: 'auto' }}
+              title="Edit"
+            >
+              <Edit2 size={18} />
+            </button>
+            <button
+              onClick={() => deleteTask(task.id)}
+              className="btn"
+              style={{ padding: '10px', minWidth: 'auto' }}
+              title="Delete"
+            >
+              <Trash2 size={18} />
+            </button>
+          </div>
+        )}
       </div>
 
       <div style={{
@@ -925,11 +951,12 @@ const TaskTracker = ({ onLogout }) => {
           }
           
           .main-area {
-            padding: 16px !important;
+            padding: 12px !important;
           }
           
           .task-card {
-            padding: 16px !important;
+            padding: 14px !important;
+            margin-bottom: 12px;
           }
           
           .task-card:hover {
@@ -937,18 +964,29 @@ const TaskTracker = ({ onLogout }) => {
             transform: none;
           }
           
+          .task-card h3 {
+            font-size: 1.1rem !important;
+          }
+          
+          .task-card p {
+            font-size: 0.9rem !important;
+          }
+          
           .btn {
-            padding: 10px 16px;
-            font-size: 0.75rem;
+            padding: 10px 14px;
+            font-size: 0.8rem;
           }
           
           .modal-overlay {
-            padding: 0.5rem;
+            padding: 0;
+            align-items: flex-end;
           }
           
           .modal-content {
-            max-height: 100vh;
+            max-height: 95vh;
             border-width: 2px;
+            border-radius: 16px 16px 0 0;
+            border-bottom: none;
           }
           
           .modal-header {
@@ -961,29 +999,37 @@ const TaskTracker = ({ onLogout }) => {
           
           .task-view-toggle {
             flex-wrap: wrap;
+            gap: 8px !important;
           }
           
           .task-view-toggle .btn {
             flex: 1;
-            min-width: 80px;
-            padding: 8px 12px;
+            min-width: 90px;
+            padding: 10px 8px;
+            font-size: 0.7rem;
           }
           
           .stats-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 10px !important;
           }
           
           .stats-card {
-            padding: 16px !important;
+            padding: 14px !important;
           }
           
           .stats-number {
-            font-size: 2rem !important;
+            font-size: 1.8rem !important;
+          }
+          
+          .stats-label {
+            font-size: 0.7rem !important;
           }
           
           .task-actions {
             margin-left: 8px !important;
             gap: 4px !important;
+            flex-direction: column;
           }
           
           .task-actions .btn {
@@ -991,11 +1037,92 @@ const TaskTracker = ({ onLogout }) => {
           }
           
           .task-meta-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
+            grid-template-columns: 1fr 1fr !important;
+            padding: 10px !important;
+            gap: 8px !important;
+            font-size: 0.8rem !important;
+          }
+          
+          /* Filter section mobile */
+          .filter-section {
+            flex-direction: column !important;
+            gap: 8px !important;
+          }
+          
+          .filter-section input,
+          .filter-section select {
+            width: 100% !important;
+            font-size: 16px !important; /* Prevents zoom on iOS */
+          }
+          
+          /* Form inputs mobile */
+          input, select, textarea {
+            font-size: 16px !important; /* Prevents zoom on iOS */
             padding: 12px !important;
+          }
+          
+          /* Header mobile */
+          header h1 {
+            font-size: 1.3rem !important;
+          }
+          
+          /* Category pills mobile */
+          .category-pill {
+            padding: 6px 10px;
+            font-size: 0.75rem;
+          }
+          
+          /* Tags mobile */
+          .tag {
+            padding: 3px 8px;
+            font-size: 0.7rem;
+          }
+          
+          /* Status badge mobile */
+          .status-badge {
+            padding: 4px 10px;
+            font-size: 0.65rem;
+          }
+          
+          /* Table responsiveness */
+          table {
+            display: block;
+            overflow-x: auto;
+            white-space: nowrap;
+            -webkit-overflow-scrolling: touch;
+          }
+          
+          th, td {
+            padding: 8px 10px !important;
+            font-size: 0.8rem !important;
           }
         }
         
+        /* Extra small screens */
+        @media (max-width: 400px) {
+          .task-card {
+            padding: 12px !important;
+          }
+          
+          .task-card h3 {
+            font-size: 1rem !important;
+          }
+          
+          .stats-grid {
+            grid-template-columns: 1fr !important;
+          }
+          
+          .task-view-toggle .btn {
+            min-width: 70px;
+            padding: 8px 6px;
+            font-size: 0.65rem;
+          }
+          
+          .btn {
+            padding: 8px 10px;
+            font-size: 0.75rem;
+          }
+        }
         @media (min-width: 769px) {
           .mobile-menu-btn {
             display: none !important;
@@ -1056,23 +1183,34 @@ const TaskTracker = ({ onLogout }) => {
           </button>
           
           {/* Desktop Header Buttons */}
-          <div className="desktop-header-buttons" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <div className="desktop-header-buttons" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* Show user info */}
+            <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#666', marginRight: '8px' }}>
+              👤 {authUser} {isSharedUser ? '(shared)' : '(admin)'}
+            </span>
             <button className="btn btn-blue" onClick={() => setAppView('transactions')}>
               <DollarSign size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />
               Bank Transactions
             </button>
-            <button className="btn btn-green" onClick={() => setAppView('clients')}>
-              <Tag size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />
-              Clients
-            </button>
-            <button className="btn btn-white" onClick={() => setShowBulkInput(true)} disabled={loading}>
-              <Plus size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />
-              Bulk Add
-            </button>
-            <button className="btn btn-red" onClick={openNewTaskForm} disabled={loading}>
-              <Plus size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />
-              New Task
-            </button>
+            {/* Hide Clients for shared users */}
+            {!isSharedUser && (
+              <button className="btn btn-green" onClick={() => setAppView('clients')}>
+                <Tag size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />
+                Clients
+              </button>
+            )}
+            {!isSharedUser && (
+              <button className="btn btn-white" onClick={() => setShowBulkInput(true)} disabled={loading}>
+                <Plus size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />
+                Bulk Add
+              </button>
+            )}
+            {!isSharedUser && (
+              <button className="btn btn-red" onClick={openNewTaskForm} disabled={loading}>
+                <Plus size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />
+                New Task
+              </button>
+            )}
             <button className="btn btn-yellow" onClick={() => setView(view === 'list' ? 'stats' : 'list')}>
               {view === 'list' ? (
                 <><BarChart3 size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />Stats</>
@@ -1123,22 +1261,32 @@ const TaskTracker = ({ onLogout }) => {
           </button>
           
           <div style={{ marginTop: '60px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <button className="btn btn-red" onClick={() => { openNewTaskForm(); setShowMobileMenu(false); }} style={{ width: '100%' }}>
-              <Plus size={18} style={{ marginRight: '8px' }} />
-              New Task
-            </button>
-            <button className="btn btn-white" onClick={() => { setShowBulkInput(true); setShowMobileMenu(false); }} style={{ width: '100%' }}>
-              <Plus size={18} style={{ marginRight: '8px' }} />
-              Bulk Add
-            </button>
+            {/* Show user info */}
+            <div style={{ color: '#fff', fontSize: '1rem', fontWeight: '600', marginBottom: '12px', textAlign: 'center' }}>
+              👤 {authUser} {isSharedUser ? '(shared view)' : '(admin)'}
+            </div>
+            {!isSharedUser && (
+              <button className="btn btn-red" onClick={() => { openNewTaskForm(); setShowMobileMenu(false); }} style={{ width: '100%' }}>
+                <Plus size={18} style={{ marginRight: '8px' }} />
+                New Task
+              </button>
+            )}
+            {!isSharedUser && (
+              <button className="btn btn-white" onClick={() => { setShowBulkInput(true); setShowMobileMenu(false); }} style={{ width: '100%' }}>
+                <Plus size={18} style={{ marginRight: '8px' }} />
+                Bulk Add
+              </button>
+            )}
             <button className="btn btn-blue" onClick={() => { setAppView('transactions'); setShowMobileMenu(false); }} style={{ width: '100%' }}>
               <DollarSign size={18} style={{ marginRight: '8px' }} />
               Bank Transactions
             </button>
-            <button className="btn btn-green" onClick={() => { setAppView('clients'); setShowMobileMenu(false); }} style={{ width: '100%' }}>
-              <Tag size={18} style={{ marginRight: '8px' }} />
-              Clients
-            </button>
+            {!isSharedUser && (
+              <button className="btn btn-green" onClick={() => { setAppView('clients'); setShowMobileMenu(false); }} style={{ width: '100%' }}>
+                <Tag size={18} style={{ marginRight: '8px' }} />
+                Clients
+              </button>
+            )}
             <button className="btn btn-yellow" onClick={() => { setView(view === 'list' ? 'stats' : 'list'); setShowMobileMenu(false); }} style={{ width: '100%' }}>
               {view === 'list' ? (
                 <><BarChart3 size={18} style={{ marginRight: '8px' }} />Stats</>
@@ -1743,6 +1891,31 @@ const TaskTracker = ({ onLogout }) => {
                     onChange={(e) => setFormData({...formData, notes: e.target.value})}
                   />
                 </div>
+
+                {/* Shared checkbox - only visible for admin */}
+                {!isSharedUser && (
+                  <div style={{ marginTop: '16px' }}>
+                    <label style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '12px',
+                      cursor: 'pointer',
+                      padding: '12px',
+                      border: formData.shared ? '3px solid #0000FF' : '3px solid #ccc',
+                      background: formData.shared ? '#e3f2fd' : '#fff'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={formData.shared}
+                        onChange={(e) => setFormData({...formData, shared: e.target.checked})}
+                        style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                      />
+                      <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>
+                        🔗 Share this task (visible to shared users like Benny)
+                      </span>
+                    </label>
+                  </div>
+                )}
               </div>
 
               <div style={{

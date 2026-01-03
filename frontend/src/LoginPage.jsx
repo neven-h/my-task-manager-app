@@ -20,7 +20,14 @@ const LoginPage = ({ onLogin, onBack }) => {
         const token = 'auth-token-' + Date.now();
         localStorage.setItem('authToken', token);
         localStorage.setItem('authUser', username);
-        onLogin(token, username);
+        localStorage.setItem('authRole', 'admin');
+        onLogin(token, username, 'admin');
+      } else if (username === 'benny' && password === 'Galia123') {
+        const token = 'auth-token-' + Date.now();
+        localStorage.setItem('authToken', token);
+        localStorage.setItem('authUser', username);
+        localStorage.setItem('authRole', 'limited');
+        onLogin(token, username, 'limited');
       } else {
         setError('Invalid username or password');
         setLoading(false);

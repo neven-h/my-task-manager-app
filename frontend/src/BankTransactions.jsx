@@ -463,8 +463,104 @@ const BankTransactions = ({ onBackToTasks }) => {
       fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       fontSize: '16px'
     }}>
+      {/* Mobile Responsive Styles */}
+      <style>{`
+        @media (max-width: 768px) {
+          .bank-header {
+            flex-direction: column !important;
+            padding: 1rem !important;
+            text-align: center;
+          }
+          .bank-header h1 {
+            font-size: 1.3rem !important;
+          }
+          .bank-header-buttons {
+            width: 100%;
+            justify-content: center !important;
+          }
+          .bank-header-buttons button {
+            flex: 1;
+            padding: 0.6rem 0.8rem !important;
+            font-size: 0.85rem !important;
+          }
+          .bank-main {
+            padding: 1rem !important;
+          }
+          .stats-grid {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 0.75rem !important;
+          }
+          .stats-card {
+            padding: 1rem !important;
+          }
+          .stats-card .stat-icon {
+            width: 30px !important;
+            height: 30px !important;
+          }
+          .stats-card .stat-value {
+            font-size: 1.3rem !important;
+          }
+          .stats-card .stat-label {
+            font-size: 0.7rem !important;
+          }
+          .upload-section {
+            padding: 1rem !important;
+          }
+          .type-selector {
+            flex-direction: column !important;
+          }
+          .type-selector button {
+            width: 100% !important;
+          }
+          .filter-section {
+            flex-direction: column !important;
+            gap: 0.75rem !important;
+          }
+          .filter-section input,
+          .filter-section select {
+            width: 100% !important;
+            font-size: 16px !important;
+          }
+          .transactions-table {
+            display: block;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+          }
+          .transactions-table th,
+          .transactions-table td {
+            padding: 8px !important;
+            font-size: 0.8rem !important;
+            white-space: nowrap;
+          }
+          .modal-content {
+            width: 95% !important;
+            max-height: 90vh !important;
+            margin: auto;
+          }
+          .modal-body {
+            padding: 1rem !important;
+          }
+          .modal-body input,
+          .modal-body select {
+            font-size: 16px !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .stats-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .bank-header h1 {
+            font-size: 1.1rem !important;
+          }
+          .transactions-table th,
+          .transactions-table td {
+            padding: 6px !important;
+            font-size: 0.75rem !important;
+          }
+        }
+      `}</style>
       {/* Header */}
-      <header style={{
+      <header className="bank-header" style={{
         background: `linear-gradient(135deg, ${colors.primary} 0%, #1e40af 100%)`,
         color: '#fff',
         padding: '1.5rem 2rem',
@@ -498,7 +594,7 @@ const BankTransactions = ({ onBackToTasks }) => {
             💰 BANK TRANSACTIONS
           </h1>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+        <div className="bank-header-buttons" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
           <button
             onClick={() => setShowAddForm(true)}
             style={{
@@ -579,10 +675,10 @@ const BankTransactions = ({ onBackToTasks }) => {
         </div>
       )}
 
-      <div style={{ maxWidth: '1500px', margin: '0 auto', padding: '2rem' }}>
+      <div className="bank-main" style={{ maxWidth: '1500px', margin: '0 auto', padding: '2rem' }}>
         {/* Stats Cards */}
         {transactionStats && transactionStats.by_type && (
-          <div style={{
+          <div className="stats-grid" style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
             gap: '1.25rem',
