@@ -258,7 +258,7 @@ const ClientsManagement = ({ onBackToTasks }) => {
                           TOTAL HOURS
                         </div>
                         <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#FF0000' }}>
-                          {client.total_hours.toFixed(1)}h
+                          {(client.total_hours || 0).toFixed(1)}h
                         </div>
                       </div>
                       <div>
