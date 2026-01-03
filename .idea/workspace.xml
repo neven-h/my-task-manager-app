@@ -5,10 +5,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="e1b3cef8-89ee-479c-bb86-3f137da34457" name="Changes" comment="Initial commit: My Task Manager App - Complete rewrite">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backend/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/LoginPage.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/LoginPage.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/TaskTracker.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/TaskTracker.jsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -24,12 +22,12 @@
     &quot;assignee&quot;: &quot;neven-h&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "git@github.com:neven-h/my-task-manager-app.git",
-    "accountId": "658f46ec-ae7b-41ab-a6f6-684fe6055bdd"
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;git@github.com:neven-h/my-task-manager-app.git&quot;,
+    &quot;accountId&quot;: &quot;658f46ec-ae7b-41ab-a6f6-684fe6055bdd&quot;
   }
-}]]></component>
+}</component>
   <component name="ProblemsViewState">
     <option name="selectedTabId" value="CurrentFile" />
   </component>
@@ -138,6 +136,7 @@
       <workItem from="1767192470759" duration="74000" />
       <workItem from="1767193163096" duration="4916000" />
       <workItem from="1767363896741" duration="4332000" />
+      <workItem from="1767460861998" duration="364000" />
     </task>
     <task id="LOCAL-00001" summary="Initial commit: My Task Manager App - Complete rewrite">
       <option name="closed" value="true" />

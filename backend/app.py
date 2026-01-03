@@ -1754,7 +1754,7 @@ def get_all_clients_with_stats():
                 SELECT
                     client,
                     COUNT(*) as task_count,
-                    SUM(CASE WHEN duration IS NOT NULL THEN duration ELSE 0 END) as total_hours,
+                    SUM(CASE WHEN duration IS NOT NULL THEN TO_NUMBER(duration) ELSE 0 END) as total_hours,
                     SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks
                 FROM tasks
                 WHERE client IS NOT NULL AND client != ''
