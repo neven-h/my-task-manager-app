@@ -29,11 +29,11 @@ const BankTransactions = ({ onBackToTasks }) => {
   });
   const [dateRangeFilter, setDateRangeFilter] = useState('all');
 
-  // Color scheme
+  // Color scheme - calming blue theme
   const colors = {
-    primary: '#dc3545',      // Red
+    primary: '#0d6efd',      // Blue (calming, professional)
     secondary: '#ffc107',    // Yellow/Gold
-    accent: '#0d6efd',       // Blue
+    accent: '#6610f2',       // Purple accent
     success: '#059669',      // Green
     background: '#f8fafc',
     card: '#ffffff',
@@ -352,8 +352,8 @@ const BankTransactions = ({ onBackToTasks }) => {
         <title>Bank Transactions Report - ${selectedMonth === 'all' ? 'All' : formatMonthYear(selectedMonth)}</title>
         <style>
           body { font-family: Arial, sans-serif; padding: 20px; color: #1a1a1a; }
-          h1 { color: #dc3545; border-bottom: 3px solid #ffc107; padding-bottom: 10px; }
-          h2 { color: #dc3545; }
+          h1 { color: #0d6efd; border-bottom: 3px solid #ffc107; padding-bottom: 10px; }
+          h2 { color: #0d6efd; }
           .summary { display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap; }
           .summary-box { background: #f8fafc; padding: 15px 25px; border-radius: 8px; border: 2px solid #e2e8f0; }
           .summary-box h3 { margin: 0 0 5px 0; font-size: 14px; color: #64748b; }
@@ -362,9 +362,9 @@ const BankTransactions = ({ onBackToTasks }) => {
           .cash { color: #059669; }
           table { width: 100%; border-collapse: collapse; margin-top: 20px; }
           th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: left; }
-          th { background: #dc3545; color: white; }
+          th { background: #0d6efd; color: white; }
           tr:nth-child(even) { background: #f8fafc; }
-          .amount { text-align: right; font-family: monospace; font-size: 14px; }
+          .amount { text-align: right; font-family: Arial, sans-serif; font-size: 15px; font-weight: 600; }
           @media print { body { padding: 0; } }
         </style>
       </head>
@@ -561,7 +561,7 @@ const BankTransactions = ({ onBackToTasks }) => {
       `}</style>
       {/* Header */}
       <header className="bank-header" style={{
-        background: `linear-gradient(135deg, ${colors.primary} 0%, #c82333 100%)`,
+        background: `linear-gradient(135deg, ${colors.primary} 0%, #0a58ca 100%)`,
         color: '#fff',
         padding: '1.5rem 2rem',
         borderBottom: `4px solid ${colors.secondary}`,
@@ -590,8 +590,8 @@ const BankTransactions = ({ onBackToTasks }) => {
           >
             <ArrowLeft size={20} /> Back
           </button>
-          <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: '800', letterSpacing: '-0.5px' }}>
-            💰 BANK TRANSACTIONS
+          <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: '900', letterSpacing: '-1px', textTransform: 'uppercase' }}>
+            💰 Bank Transactions
           </h1>
         </div>
         <div className="bank-header-buttons" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -617,7 +617,7 @@ const BankTransactions = ({ onBackToTasks }) => {
             onClick={exportToPDF}
             disabled={filteredTransactions.length === 0}
             style={{
-              background: colors.accent,
+              background: colors.success,
               border: 'none',
               color: '#fff',
               padding: '0.75rem 1.5rem',
@@ -901,7 +901,7 @@ const BankTransactions = ({ onBackToTasks }) => {
                     <tr key={idx} style={{ borderBottom: `1px solid ${colors.border}` }}>
                       <td style={{ padding: '0.75rem 1rem', fontSize: '1rem' }}>{t.transaction_date}</td>
                       <td style={{ padding: '0.75rem 1rem', fontSize: '1rem' }}>{t.description}</td>
-                      <td style={{ padding: '0.75rem 1rem', textAlign: 'right', color: t.amount < 0 ? colors.accent : colors.success, fontWeight: '700', fontSize: '1.05rem' }}>
+                      <td style={{ padding: '0.75rem 1rem', textAlign: 'right', color: '#1a1a1a', fontWeight: '600', fontSize: '1.1rem', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
                         {formatCurrency(t.amount)}
                       </td>
                     </tr>
@@ -1213,9 +1213,9 @@ const BankTransactions = ({ onBackToTasks }) => {
                                 padding: '1rem',
                                 textAlign: 'right',
                                 fontWeight: '700',
-                                fontFamily: 'monospace',
-                                fontSize: '1.1rem',
-                                color: t.amount < 0 ? colors.accent : colors.success
+                                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                                fontSize: '1.15rem',
+                                color: '#1a1a1a'
                               }}>
                                 {formatCurrency(t.amount)}
                               </td>
