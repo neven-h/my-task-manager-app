@@ -2,6 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { Users, Edit2, Trash2, Plus, ArrowLeft, Clock, CheckCircle } from 'lucide-react';
 import API_BASE from './config';
 
+// Centralized theme + fonts (edit these to change UI colors / typography)
+const THEME = {
+  bg: '#f8fafc',
+  surface: '#ffffff',
+  primary: '#dc3545',
+  primaryDark: '#c82333',
+  secondary: '#ffc107',
+  text: '#1a1a1a',
+  muted: '#64748b',
+  info: '#0d6efd',
+  success: '#059669',
+  border: '#e2e8f0',
+  dangerBg: '#fef2f2',
+  successBg: '#f0fdf4',
+  highlightBg: '#fffbeb'
+};
+
+// Hebrew-friendly font stack (Heebo is great for Hebrew; falls back to system fonts)
+const FONT_STACK = '"Heebo", "Assistant", "Rubik", "Noto Sans Hebrew", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif';
+
 const ClientsManagement = ({ onBackToTasks }) => {
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
@@ -99,13 +119,14 @@ const ClientsManagement = ({ onBackToTasks }) => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: THEME.bg, fontFamily: FONT_STACK }}>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700;800;900&display=swap');
         .btn {
           transition: all 0.3s ease;
           cursor: pointer;
           border: 2px solid;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+          font-family: ${FONT_STACK};
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.5px;
@@ -125,15 +146,15 @@ const ClientsManagement = ({ onBackToTasks }) => {
         }
 
         .btn-primary {
-          background: #dc3545;
+          background: ${THEME.primary};
           color: #fff;
-          border-color: #dc3545;
+          border-color: ${THEME.primary};
         }
 
         .btn-secondary {
-          background: #ffc107;
-          color: #1a1a1a;
-          border-color: #ffc107;
+          background: ${THEME.secondary};
+          color: ${THEME.text};
+          border-color: ${THEME.secondary};
         }
 
         .btn-outline {
@@ -144,10 +165,10 @@ const ClientsManagement = ({ onBackToTasks }) => {
       `}</style>
       {/* Header */}
       <header style={{
-        background: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
+        background: `linear-gradient(135deg, ${THEME.primary} 0%, ${THEME.primaryDark} 100%)`,
         color: '#fff',
         padding: '2rem 3rem',
-        borderBottom: '4px solid #ffc107',
+        borderBottom: `4px solid ${THEME.secondary}`,
         boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -181,11 +202,11 @@ const ClientsManagement = ({ onBackToTasks }) => {
 
       {error && (
         <div style={{
-          background: '#fef2f2',
-          color: '#dc3545',
+          background: THEME.dangerBg,
+          color: THEME.primary,
           padding: '1rem 3rem',
           fontWeight: 600,
-          borderBottom: '2px solid #dc3545'
+          borderBottom: `2px solid ${THEME.primary}`
         }}>
           {error}
         </div>
@@ -199,7 +220,7 @@ const ClientsManagement = ({ onBackToTasks }) => {
             fontWeight: 800,
             marginBottom: '1.5rem',
             textTransform: 'UPPERCASE',
-            color: '#1a1a1a',
+            color: THEME.text,
             letterSpacing: '-0.5px'
           }}>
             All Clients
@@ -207,28 +228,28 @@ const ClientsManagement = ({ onBackToTasks }) => {
 
           {loading ? (
             <div style={{
-              border: '3px solid #dc3545',
+              border: `3px solid ${THEME.primary}`,
               padding: '3rem',
               textAlign: 'center',
-              background: '#fff',
+              background: THEME.surface,
               borderRadius: '12px',
               boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
             }}>
-              <p style={{ fontSize: '1.2rem', fontWeight: 600, color: '#64748b' }}>
+              <p style={{ fontSize: '1.2rem', fontWeight: 600, color: THEME.muted }}>
                 Loading clients...
               </p>
             </div>
           ) : clients.length === 0 ? (
             <div style={{
-              border: '3px solid #dc3545',
+              border: `3px solid ${THEME.primary}`,
               padding: '3rem',
               textAlign: 'center',
-              background: '#fff',
+              background: THEME.surface,
               borderRadius: '12px',
               boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
             }}>
-              <Users size={48} style={{ marginBottom: '16px', opacity: 0.3, color: '#dc3545' }} />
-              <p style={{ fontSize: '1.2rem', fontWeight: 600, color: '#64748b' }}>
+              <Users size={48} style={{ marginBottom: '16px', opacity: 0.3, color: THEME.primary }} />
+              <p style={{ fontSize: '1.2rem', fontWeight: 600, color: THEME.muted }}>
                 No clients yet
               </p>
             </div>
@@ -242,8 +263,8 @@ const ClientsManagement = ({ onBackToTasks }) => {
                 <div
                   key={client.client}
                   style={{
-                    border: selectedClient === client.client ? '3px solid #ffc107' : '3px solid #e2e8f0',
-                    background: selectedClient === client.client ? '#fffbeb' : '#fff',
+                    border: selectedClient === client.client ? `3px solid ${THEME.secondary}` : `3px solid ${THEME.border}`,
+                    background: selectedClient === client.client ? THEME.highlightBg : THEME.surface,
                     cursor: 'pointer',
                     borderRadius: '12px',
                     overflow: 'hidden',
@@ -271,7 +292,7 @@ const ClientsManagement = ({ onBackToTasks }) => {
                       fontSize: '1.4rem',
                       fontWeight: 800,
                       marginBottom: '1rem',
-                      color: '#1a1a1a'
+                      color: THEME.text
                     }}>
                       {client.client}
                     </div>
@@ -283,32 +304,32 @@ const ClientsManagement = ({ onBackToTasks }) => {
                       marginBottom: '1rem'
                     }}>
                       <div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                        <div style={{ fontSize: '0.75rem', color: THEME.muted, fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.25rem' }}>
                           Total Hours
                         </div>
-                        <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#dc3545' }}>
+                        <div style={{ fontSize: '1.8rem', fontWeight: 900, color: THEME.primary }}>
                           {(client.total_hours || 0).toFixed(1)}h
                         </div>
                       </div>
                       <div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                        <div style={{ fontSize: '0.75rem', color: THEME.muted, fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.25rem' }}>
                           Tasks
                         </div>
-                        <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#0d6efd' }}>
+                        <div style={{ fontSize: '1.8rem', fontWeight: 900, color: THEME.info }}>
                           {client.task_count}
                         </div>
                       </div>
                     </div>
 
-                    <div style={{ fontSize: '0.9rem', color: '#059669', fontWeight: 600 }}>
+                    <div style={{ fontSize: '0.9rem', color: THEME.success, fontWeight: 600 }}>
                       ✓ {client.completed_tasks} completed
                     </div>
                   </div>
 
                   <div style={{
                     padding: '1rem 1.5rem',
-                    background: '#f8fafc',
-                    borderTop: '2px solid #e2e8f0',
+                    background: THEME.bg,
+                    borderTop: `2px solid ${THEME.border}`,
                     display: 'flex',
                     gap: '0.5rem'
                   }}>
@@ -322,7 +343,7 @@ const ClientsManagement = ({ onBackToTasks }) => {
                           style={{
                             flex: 1,
                             padding: '0.5rem',
-                            border: '2px solid #e2e8f0',
+                            border: `2px solid ${THEME.border}`,
                             borderRadius: '6px',
                             fontWeight: 600,
                             fontSize: '1rem'
@@ -341,7 +362,7 @@ const ClientsManagement = ({ onBackToTasks }) => {
                             setEditingClient(null);
                             setNewClientName('');
                           }}
-                          style={{ padding: '0.5rem 1rem', background: '#fff', color: '#64748b', borderColor: '#e2e8f0' }}
+                          style={{ padding: '0.5rem 1rem', background: THEME.surface, color: THEME.muted, borderColor: THEME.border }}
                         >
                           Cancel
                         </button>
@@ -355,7 +376,7 @@ const ClientsManagement = ({ onBackToTasks }) => {
                             setEditingClient(client.client);
                             setNewClientName(client.client);
                           }}
-                          style={{ flex: 1, background: '#fff', color: '#0d6efd', borderColor: '#0d6efd' }}
+                          style={{ flex: 1, background: THEME.surface, color: THEME.info, borderColor: THEME.info }}
                         >
                           <Edit2 size={14} style={{ marginRight: '6px', display: 'inline', verticalAlign: 'middle' }} />
                           Rename
@@ -366,7 +387,7 @@ const ClientsManagement = ({ onBackToTasks }) => {
                             e.stopPropagation();
                             handleDeleteClient(client.client);
                           }}
-                          style={{ padding: '0.5rem 0.75rem', background: '#fef2f2', color: '#dc3545', borderColor: '#dc3545' }}
+                          style={{ padding: '0.5rem 0.75rem', background: THEME.dangerBg, color: THEME.primary, borderColor: THEME.primary }}
                         >
                           <Trash2 size={14} />
                         </button>
@@ -382,8 +403,8 @@ const ClientsManagement = ({ onBackToTasks }) => {
         {/* Selected Client Tasks */}
         {selectedClient && clientTasks.length > 0 && (
           <div style={{
-            border: '3px solid #dc3545',
-            background: '#fff',
+            border: `3px solid ${THEME.primary}`,
+            background: THEME.surface,
             padding: '2rem',
             borderRadius: '12px',
             boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
@@ -393,7 +414,7 @@ const ClientsManagement = ({ onBackToTasks }) => {
               fontWeight: 800,
               marginBottom: '1.5rem',
               textTransform: 'uppercase',
-              color: '#1a1a1a',
+              color: THEME.text,
               letterSpacing: '-0.5px'
             }}>
               Tasks for {selectedClient}
@@ -409,11 +430,11 @@ const ClientsManagement = ({ onBackToTasks }) => {
                   style={{
                     padding: '1.25rem',
                     marginBottom: '1rem',
-                    border: '2px solid #e2e8f0',
-                    background: task.status === 'completed' ? '#f0fdf4' : '#fff',
+                    border: `2px solid ${THEME.border}`,
+                    background: task.status === 'completed' ? THEME.successBg : THEME.surface,
                     borderRadius: '8px',
                     boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
-                    borderLeft: task.status === 'completed' ? '4px solid #059669' : '4px solid #0d6efd'
+                    borderLeft: task.status === 'completed' ? `4px solid ${THEME.success}` : `4px solid ${THEME.info}`
                   }}
                 >
                   <div style={{
@@ -427,11 +448,11 @@ const ClientsManagement = ({ onBackToTasks }) => {
                         fontSize: '1.15rem',
                         fontWeight: 800,
                         marginBottom: '0.5rem',
-                        color: '#1a1a1a'
+                        color: THEME.text
                       }}>
                         {task.title}
                       </div>
-                      <div style={{ fontSize: '0.9rem', color: '#64748b', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                      <div style={{ fontSize: '0.9rem', color: THEME.muted, display: 'flex', gap: '1rem', alignItems: 'center' }}>
                         <span>{new Date(task.task_date).toLocaleDateString('en-GB')}</span>
                         {task.duration && (
                           <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -440,7 +461,7 @@ const ClientsManagement = ({ onBackToTasks }) => {
                           </span>
                         )}
                         {task.status === 'completed' && (
-                          <span style={{ color: '#059669', display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600 }}>
+                          <span style={{ color: THEME.success, display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600 }}>
                             <CheckCircle size={14} />
                             Completed
                           </span>
@@ -451,7 +472,7 @@ const ClientsManagement = ({ onBackToTasks }) => {
                   {task.description && (
                     <div style={{
                       fontSize: '0.9rem',
-                      color: '#64748b',
+                      color: THEME.muted,
                       marginTop: '0.5rem',
                       lineHeight: '1.5'
                     }}>

@@ -146,8 +146,8 @@ const BankTransactions = ({ onBackToTasks }) => {
 
       const response = await fetch(`${API_BASE}/transactions/save`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactions: uploadedData.transactions })
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({transactions: uploadedData.transactions})
       });
 
       const data = await response.json();
@@ -173,7 +173,7 @@ const BankTransactions = ({ onBackToTasks }) => {
 
       const response = await fetch(`${API_BASE}/transactions/manual`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(newTransaction)
       });
 
@@ -190,7 +190,7 @@ const BankTransactions = ({ onBackToTasks }) => {
         month_year: new Date().toISOString().slice(0, 7),
         transaction_type: 'credit'
       });
-      
+
       await fetchSavedMonths();
       await fetchAllDescriptions();
       await fetchTransactionStats();
@@ -213,7 +213,7 @@ const BankTransactions = ({ onBackToTasks }) => {
 
       const response = await fetch(`${API_BASE}/transactions/${transactionId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(editingTransaction)
       });
 
@@ -222,7 +222,7 @@ const BankTransactions = ({ onBackToTasks }) => {
 
       setSuccess('Transaction updated successfully');
       setEditingTransaction(null);
-      
+
       if (selectedMonth === 'all') {
         await fetchAllTransactions();
       } else {
@@ -251,7 +251,7 @@ const BankTransactions = ({ onBackToTasks }) => {
       if (!response.ok) throw new Error('Failed to delete transaction');
 
       setSuccess('Transaction deleted successfully');
-      
+
       if (selectedMonth === 'all') {
         await fetchAllTransactions();
       } else {
@@ -302,5 +302,6 @@ const BankTransactions = ({ onBackToTasks }) => {
   const formatMonthYear = (monthYear) => {
     const [year, month] = monthYear.split('-');
     const date = new Date(year, month - 1);
-    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  };
+    return date.toLocaleDateString('en-US', {month: 'long', year: 'numeric'});
+  }
+}
