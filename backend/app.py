@@ -128,6 +128,29 @@ def init_db():
             else:
                 print(f"Note: {e}")
 
+        # Add is_draft column for draft/auto-save functionality
+        try:
+            cursor.execute("""
+                ALTER TABLE tasks
+                ADD COLUMN is_draft BOOLEAN DEFAULT FALSE
+            """)
+            print("Added is_draft column to tasks")
+        except Error as e:
+            if 'Duplicate column' in str(e):
+                pass  # Column already exists
+            else:
+                print(f"Note: {e}")
+
+        # Add index for draft column
+        try:
+            cursor.execute("CREATE INDEX idx_draft ON tasks(is_draft)")
+            print("Added index for is_draft column")
+        except Error as e:
+            if 'Duplicate' in str(e):
+                pass  # Index already exists
+            else:
+                print(f"Note: {e}")
+
         # Create bank_transactions table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS bank_transactions (
@@ -149,7 +172,7 @@ def init_db():
         # Add transaction_type column if it doesn't exist (for existing databases)
         try:
             cursor.execute("""
-                ALTER TABLE bank_transactions 
+                ALTER TABLE bank_transactions
                 ADD COLUMN transaction_type ENUM('credit', 'cash') DEFAULT 'credit'
             """)
             print("Added transaction_type column to bank_transactions")
@@ -158,7 +181,67 @@ def init_db():
                 pass  # Column already exists
             else:
                 print(f"Note: {e}")
-        
+
+        # Create tags table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS tags (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(100) NOT NULL UNIQUE,
+                color VARCHAR(7) DEFAULT '#0d6efd',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_name (name)
+            )
+        """)
+
+        # Create categories_master table for user-defined categories
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS categories_master (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                category_id VARCHAR(50) NOT NULL UNIQUE,
+                label VARCHAR(100) NOT NULL,
+                color VARCHAR(7) DEFAULT '#0d6efd',
+                icon VARCHAR(50),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_category_id (category_id)
+            )
+        """)
+
+        # Insert default categories if table is empty
+        cursor.execute("SELECT COUNT(*) FROM categories_master")
+        if cursor.fetchone()[0] == 0:
+            default_categories = [
+                ('insurance', 'Insurance Lawsuits', '#0d6efd', '⚖️'),
+                ('emails', 'Email Management', '#6610f2', '📧'),
+                ('customer-support', 'Customer Support', '#0dcaf0', '🎧'),
+                ('banking', 'Bank Accounts', '#198754', '🏦'),
+                ('scheduling', 'Scheduling', '#ffc107', '📅'),
+                ('documentation', 'Documentation', '#fd7e14', '📄'),
+                ('phone-calls', 'Phone Calls', '#20c997', '📞'),
+                ('research', 'Research', '#6f42c1', '🔍'),
+                ('nursing', 'Nursing', '#d63384', '⚕️'),
+                ('moshe', 'Moshe', '#dc3545', '👤'),
+                ('other', 'Other Tasks', '#6c757d', '📝')
+            ]
+            cursor.executemany("""
+                INSERT INTO categories_master (category_id, label, color, icon)
+                VALUES (%s, %s, %s, %s)
+            """, default_categories)
+            print("Inserted default categories")
+
+        # Create clients table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS clients (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL UNIQUE,
+                email VARCHAR(255),
+                phone VARCHAR(50),
+                notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_name (name)
+            )
+        """)
+
         connection.commit()
         print("Database initialized successfully")
         
@@ -204,14 +287,19 @@ def get_tasks():
         date_start = request.args.get('date_start')
         date_end = request.args.get('date_end')
         shared_only = request.args.get('shared')  # For limited users (benny)
-        
+        include_drafts = request.args.get('include_drafts', 'false')  # Include drafts
+
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
-            
+
             # Build query
             query = "SELECT * FROM tasks WHERE 1=1"
             params = []
-            
+
+            # Exclude drafts by default unless explicitly requested
+            if include_drafts != 'true':
+                query += " AND (is_draft = FALSE OR is_draft IS NULL)"
+
             # If shared_only is true, only return shared tasks
             if shared_only == 'true':
                 query += " AND shared = TRUE"
@@ -289,12 +377,12 @@ def create_task():
             cursor = connection.cursor()
             
             query = """
-                INSERT INTO tasks 
-                (title, description, category, categories, client, task_date, task_time, 
-                 duration, status, tags, notes, shared)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO tasks
+                (title, description, category, categories, client, task_date, task_time,
+                 duration, status, tags, notes, shared, is_draft)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
-            
+
             # Handle categories - convert list to comma-separated string
             categories_list = data.get('categories', [])
             if isinstance(categories_list, list) and len(categories_list) > 0:
@@ -303,7 +391,7 @@ def create_task():
             else:
                 categories_str = data.get('category', 'other')
                 primary_category = data.get('category', 'other')
-            
+
             # Handle tags - convert list to comma-separated string
             tags = data.get('tags', [])
             tags_str = ','.join(tags) if isinstance(tags, list) else tags
@@ -314,18 +402,19 @@ def create_task():
                 duration = None
 
             values = (
-                data['title'],
+                data.get('title', 'Untitled'),
                 data.get('description', ''),
                 primary_category,
                 categories_str,
                 data.get('client', ''),
-                data['task_date'],
+                data.get('task_date', datetime.now().date()),
                 task_time,
                 duration,
                 data.get('status', 'uncompleted'),
                 tags_str,
                 data.get('notes', ''),
-                bool(data.get('shared', False))
+                bool(data.get('shared', False)),
+                bool(data.get('is_draft', False))
             )
             
             cursor.execute(query, values)
@@ -351,13 +440,13 @@ def update_task(task_id):
             cursor = connection.cursor()
             
             query = """
-                UPDATE tasks 
+                UPDATE tasks
                 SET title = %s, description = %s, category = %s, categories = %s, client = %s,
-                    task_date = %s, task_time = %s, duration = %s, 
-                    status = %s, tags = %s, notes = %s, shared = %s
+                    task_date = %s, task_time = %s, duration = %s,
+                    status = %s, tags = %s, notes = %s, shared = %s, is_draft = %s
                 WHERE id = %s
             """
-            
+
             # Handle categories - convert list to comma-separated string
             categories_list = data.get('categories', [])
             if isinstance(categories_list, list) and len(categories_list) > 0:
@@ -366,7 +455,7 @@ def update_task(task_id):
             else:
                 categories_str = data.get('category', 'other')
                 primary_category = data.get('category', 'other')
-            
+
             # Handle tags - convert list to comma-separated string
             tags = data.get('tags', [])
             tags_str = ','.join(tags) if isinstance(tags, list) else tags
@@ -377,18 +466,19 @@ def update_task(task_id):
                 duration = None
 
             values = (
-                data['title'],
+                data.get('title', 'Untitled'),
                 data.get('description', ''),
                 primary_category,
                 categories_str,
                 data.get('client', ''),
-                data['task_date'],
+                data.get('task_date', datetime.now().date()),
                 data.get('task_time'),
                 duration,
                 data.get('status', 'uncompleted'),
                 tags_str,
                 data.get('notes', ''),
                 bool(data.get('shared', False)),
+                bool(data.get('is_draft', False)),
                 task_id
             )
             
@@ -450,6 +540,108 @@ def toggle_task_status(task_id):
                 'status': new_status
             })
     
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/tasks/<int:task_id>/duplicate', methods=['POST'])
+def duplicate_task(task_id):
+    """Duplicate an existing task"""
+    try:
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # Get the original task
+            cursor.execute("SELECT * FROM tasks WHERE id = %s", (task_id,))
+            original_task = cursor.fetchone()
+
+            if not original_task:
+                return jsonify({'error': 'Task not found'}), 404
+
+            # Create a duplicate with modified title and today's date
+            cursor = connection.cursor()
+            query = """
+                INSERT INTO tasks
+                (title, description, category, categories, client, task_date, task_time,
+                 duration, status, tags, notes, shared)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """
+
+            # Add "Copy of" prefix to title
+            new_title = f"Copy of {original_task['title']}"
+
+            # Use today's date and current time
+            today = datetime.now().date()
+            current_time = datetime.now().time()
+
+            values = (
+                new_title,
+                original_task['description'],
+                original_task['category'],
+                original_task['categories'],
+                original_task['client'],
+                today,
+                current_time,
+                original_task['duration'],
+                'uncompleted',  # New tasks start as uncompleted
+                original_task['tags'],
+                original_task['notes'],
+                original_task['shared']
+            )
+
+            cursor.execute(query, values)
+            connection.commit()
+
+            new_task_id = cursor.lastrowid
+
+            return jsonify({
+                'message': 'Task duplicated successfully',
+                'id': new_task_id
+            }), 201
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/drafts', methods=['GET'])
+def get_drafts():
+    """Get all draft tasks"""
+    try:
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            query = """
+                SELECT * FROM tasks
+                WHERE is_draft = TRUE
+                ORDER BY updated_at DESC
+            """
+
+            cursor.execute(query)
+            drafts = cursor.fetchall()
+
+            # Convert datetime objects to strings and tags to array
+            for draft in drafts:
+                if draft['task_date']:
+                    draft['task_date'] = draft['task_date'].isoformat()
+                if draft['task_time']:
+                    draft['task_time'] = str(draft['task_time'])
+                if draft['created_at']:
+                    draft['created_at'] = draft['created_at'].isoformat()
+                if draft['updated_at']:
+                    draft['updated_at'] = draft['updated_at'].isoformat()
+                if draft['duration']:
+                    draft['duration'] = float(draft['duration'])
+                # Convert tags from comma-separated string to array
+                if draft.get('tags'):
+                    draft['tags'] = [t.strip() for t in draft['tags'].split(',') if t.strip()]
+                else:
+                    draft['tags'] = []
+                # Convert categories from comma-separated string to array
+                if draft.get('categories'):
+                    draft['categories'] = [c.strip() for c in draft['categories'].split(',') if c.strip()]
+                else:
+                    draft['categories'] = [draft.get('category', 'other')]
+
+            return jsonify(drafts)
+
     except Error as e:
         return jsonify({'error': str(e)}), 500
 
@@ -835,43 +1027,256 @@ def get_stats():
     except Error as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/categories', methods=['GET'])
-def get_categories():
-    """Get list of predefined categories"""
-    categories = [
-        {'id': 'insurance', 'label': 'Insurance Lawsuits'},
-        {'id': 'emails', 'label': 'Email Management'},
-        {'id': 'customer-support', 'label': 'Customer Support'},
-        {'id': 'banking', 'label': 'Bank Accounts'},
-        {'id': 'scheduling', 'label': 'Scheduling'},
-        {'id': 'documentation', 'label': 'Documentation'},
-        {'id': 'phone-calls', 'label': 'Phone Calls'},
-        {'id': 'research', 'label': 'Research'},
-        {'id': 'nursing', 'label': 'Nursing'},
-        {'id': 'moshe', 'label': 'Moshe'},
-        {'id': 'other', 'label': 'Other Tasks'}
-    ]
-    return jsonify(categories)
+@app.route('/api/categories', methods=['GET', 'POST'])
+def manage_categories():
+    """Get list of categories or create a new one"""
+    if request.method == 'GET':
+        try:
+            with get_db_connection() as connection:
+                cursor = connection.cursor(dictionary=True)
+                cursor.execute("""
+                    SELECT category_id as id, label, color, icon
+                    FROM categories_master
+                    ORDER BY label
+                """)
+                categories = cursor.fetchall()
+                return jsonify(categories)
+        except Error as e:
+            return jsonify({'error': str(e)}), 500
 
-@app.route('/api/clients', methods=['GET'])
-def get_clients():
-    """Get list of unique clients"""
-    try:
-        with get_db_connection() as connection:
-            cursor = connection.cursor()
+    elif request.method == 'POST':
+        try:
+            data = request.json
+            category_id = data.get('id', '').strip().lower().replace(' ', '-')
+            label = data.get('label', '').strip()
+            color = data.get('color', '#0d6efd')
+            icon = data.get('icon', '📝')
 
-            cursor.execute("""
-                SELECT DISTINCT client
-                FROM tasks
-                WHERE client IS NOT NULL AND client != ''
-                ORDER BY client
-            """)
+            if not category_id or not label:
+                return jsonify({'error': 'Category ID and label are required'}), 400
 
-            clients = [row[0] for row in cursor.fetchall()]
-            return jsonify(clients)
+            with get_db_connection() as connection:
+                cursor = connection.cursor()
+                cursor.execute("""
+                    INSERT INTO categories_master (category_id, label, color, icon)
+                    VALUES (%s, %s, %s, %s)
+                """, (category_id, label, color, icon))
+                connection.commit()
 
-    except Error as e:
-        return jsonify({'error': str(e)}), 500
+                return jsonify({
+                    'id': category_id,
+                    'label': label,
+                    'color': color,
+                    'icon': icon
+                }), 201
+        except Error as e:
+            if 'Duplicate entry' in str(e):
+                return jsonify({'error': 'Category already exists'}), 409
+            return jsonify({'error': str(e)}), 500
+
+@app.route('/api/categories/<category_id>', methods=['PUT', 'DELETE'])
+def update_delete_category(category_id):
+    """Update or delete a category"""
+    if request.method == 'PUT':
+        try:
+            data = request.json
+            label = data.get('label', '').strip()
+            color = data.get('color')
+            icon = data.get('icon')
+
+            if not label:
+                return jsonify({'error': 'Label is required'}), 400
+
+            with get_db_connection() as connection:
+                cursor = connection.cursor()
+                cursor.execute("""
+                    UPDATE categories_master
+                    SET label = %s, color = %s, icon = %s
+                    WHERE category_id = %s
+                """, (label, color, icon, category_id))
+                connection.commit()
+
+                if cursor.rowcount == 0:
+                    return jsonify({'error': 'Category not found'}), 404
+
+                return jsonify({'success': True})
+        except Error as e:
+            return jsonify({'error': str(e)}), 500
+
+    elif request.method == 'DELETE':
+        try:
+            with get_db_connection() as connection:
+                cursor = connection.cursor()
+                cursor.execute("""
+                    DELETE FROM categories_master
+                    WHERE category_id = %s
+                """, (category_id,))
+                connection.commit()
+
+                if cursor.rowcount == 0:
+                    return jsonify({'error': 'Category not found'}), 404
+
+                return jsonify({'success': True})
+        except Error as e:
+            return jsonify({'error': str(e)}), 500
+
+@app.route('/api/tags', methods=['GET', 'POST'])
+def manage_tags():
+    """Get list of tags or create a new one"""
+    if request.method == 'GET':
+        try:
+            with get_db_connection() as connection:
+                cursor = connection.cursor(dictionary=True)
+                cursor.execute("""
+                    SELECT id, name, color
+                    FROM tags
+                    ORDER BY name
+                """)
+                tags = cursor.fetchall()
+                return jsonify(tags)
+        except Error as e:
+            return jsonify({'error': str(e)}), 500
+
+    elif request.method == 'POST':
+        try:
+            data = request.json
+            name = data.get('name', '').strip()
+            color = data.get('color', '#0d6efd')
+
+            if not name:
+                return jsonify({'error': 'Tag name is required'}), 400
+
+            with get_db_connection() as connection:
+                cursor = connection.cursor()
+                cursor.execute("""
+                    INSERT INTO tags (name, color)
+                    VALUES (%s, %s)
+                """, (name, color))
+                connection.commit()
+
+                return jsonify({
+                    'id': cursor.lastrowid,
+                    'name': name,
+                    'color': color
+                }), 201
+        except Error as e:
+            if 'Duplicate entry' in str(e):
+                return jsonify({'error': 'Tag already exists'}), 409
+            return jsonify({'error': str(e)}), 500
+
+@app.route('/api/tags/<int:tag_id>', methods=['PUT', 'DELETE'])
+def update_delete_tag(tag_id):
+    """Update or delete a tag"""
+    if request.method == 'PUT':
+        try:
+            data = request.json
+            name = data.get('name', '').strip()
+            color = data.get('color')
+
+            if not name:
+                return jsonify({'error': 'Tag name is required'}), 400
+
+            with get_db_connection() as connection:
+                cursor = connection.cursor()
+                cursor.execute("""
+                    UPDATE tags
+                    SET name = %s, color = %s
+                    WHERE id = %s
+                """, (name, color, tag_id))
+                connection.commit()
+
+                if cursor.rowcount == 0:
+                    return jsonify({'error': 'Tag not found'}), 404
+
+                return jsonify({'success': True})
+        except Error as e:
+            return jsonify({'error': str(e)}), 500
+
+    elif request.method == 'DELETE':
+        try:
+            with get_db_connection() as connection:
+                cursor = connection.cursor()
+                cursor.execute("""
+                    DELETE FROM tags
+                    WHERE id = %s
+                """, (tag_id,))
+                connection.commit()
+
+                if cursor.rowcount == 0:
+                    return jsonify({'error': 'Tag not found'}), 404
+
+                return jsonify({'success': True})
+        except Error as e:
+            return jsonify({'error': str(e)}), 500
+
+@app.route('/api/clients', methods=['GET', 'POST'])
+def manage_clients_list():
+    """Get list of clients or create a new one"""
+    if request.method == 'GET':
+        try:
+            with get_db_connection() as connection:
+                cursor = connection.cursor(dictionary=True)
+
+                # Get all clients from clients table and tasks table (combined)
+                cursor.execute("""
+                    SELECT name, email, phone, notes, created_at, updated_at
+                    FROM clients
+                    ORDER BY name
+                """)
+                clients_from_table = cursor.fetchall()
+
+                # Also get clients that only exist in tasks table
+                cursor.execute("""
+                    SELECT DISTINCT client
+                    FROM tasks
+                    WHERE client IS NOT NULL
+                      AND client != ''
+                      AND client NOT IN (SELECT name FROM clients)
+                    ORDER BY client
+                """)
+                clients_from_tasks = [row['client'] for row in cursor.fetchall()]
+
+                # Combine both lists
+                all_clients = clients_from_table + [{'name': c} for c in clients_from_tasks]
+
+                return jsonify(all_clients)
+
+        except Error as e:
+            return jsonify({'error': str(e)}), 500
+
+    elif request.method == 'POST':
+        try:
+            data = request.json
+            name = data.get('name', '').strip()
+
+            if not name:
+                return jsonify({'error': 'Client name is required'}), 400
+
+            with get_db_connection() as connection:
+                cursor = connection.cursor()
+                cursor.execute("""
+                    INSERT INTO clients (name, email, phone, notes)
+                    VALUES (%s, %s, %s, %s)
+                """, (
+                    name,
+                    data.get('email', ''),
+                    data.get('phone', ''),
+                    data.get('notes', '')
+                ))
+                connection.commit()
+
+                return jsonify({
+                    'id': cursor.lastrowid,
+                    'name': name,
+                    'email': data.get('email', ''),
+                    'phone': data.get('phone', ''),
+                    'notes': data.get('notes', '')
+                }), 201
+
+        except Error as e:
+            if 'Duplicate entry' in str(e):
+                return jsonify({'error': 'Client already exists'}), 409
+            return jsonify({'error': str(e)}), 500
 
 # ============ BANK TRANSACTIONS ENDPOINTS ============
 
