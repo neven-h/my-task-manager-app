@@ -29,17 +29,17 @@ const BankTransactions = ({ onBackToTasks }) => {
   });
   const [dateRangeFilter, setDateRangeFilter] = useState('all');
 
-  // Color scheme
+  // Color scheme - matching TaskTracker theme
   const colors = {
-    primary: '#dc3545',      // Red
-    secondary: '#ffc107',    // Yellow/Gold
-    accent: '#0d6efd',       // Blue
-    success: '#059669',      // Green
-    background: '#f8fafc',
+    primary: '#0000FF',      // Blue (primary actions)
+    secondary: '#FFD500',    // Yellow
+    accent: '#FF0000',       // Red (for errors/warnings only)
+    success: '#00AA00',      // Green
+    background: '#fff',      // White
     card: '#ffffff',
-    text: '#1a1a1a',         // Dark text
-    textLight: '#64748b',
-    border: '#e2e8f0'
+    text: '#000',            // Black
+    textLight: '#666',
+    border: '#000'           // Black
   };
 
   useEffect(() => {
@@ -351,19 +351,19 @@ const BankTransactions = ({ onBackToTasks }) => {
       <head>
         <title>Bank Transactions Report - ${selectedMonth === 'all' ? 'All' : formatMonthYear(selectedMonth)}</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; color: #1a1a1a; }
-          h1 { color: #dc3545; border-bottom: 3px solid #ffc107; padding-bottom: 10px; }
-          h2 { color: #dc3545; }
+          body { font-family: 'Inter', 'Helvetica Neue', Calibri, sans-serif; padding: 20px; color: #000; }
+          h1 { color: #000; border-bottom: 4px solid #000; padding-bottom: 10px; }
+          h2 { color: #000; }
           .summary { display: flex; gap: 20px; margin-bottom: 30px; flex-wrap: wrap; }
-          .summary-box { background: #f8fafc; padding: 15px 25px; border-radius: 8px; border: 2px solid #e2e8f0; }
-          .summary-box h3 { margin: 0 0 5px 0; font-size: 14px; color: #64748b; }
+          .summary-box { background: #fff; padding: 15px 25px; border: 3px solid #000; }
+          .summary-box h3 { margin: 0 0 5px 0; font-size: 14px; color: #666; }
           .summary-box p { margin: 0; font-size: 24px; font-weight: bold; }
-          .credit { color: #0d6efd; }
-          .cash { color: #059669; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: left; }
-          th { background: #dc3545; color: white; }
-          tr:nth-child(even) { background: #f8fafc; }
+          .credit { color: #0000FF; }
+          .cash { color: #00AA00; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; border: 3px solid #000; }
+          th, td { border: 1px solid #000; padding: 12px; text-align: left; }
+          th { background: #0000FF; color: white; }
+          tr:nth-child(even) { background: #f8f8f8; }
           .amount { text-align: right; font-family: monospace; font-size: 14px; }
           @media print { body { padding: 0; } }
         </style>
@@ -460,8 +460,9 @@ const BankTransactions = ({ onBackToTasks }) => {
     <div style={{
       minHeight: '100vh',
       background: colors.background,
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-      fontSize: '16px'
+      fontFamily: '"Inter", "Helvetica Neue", Calibri, sans-serif',
+      fontSize: '16px',
+      color: colors.text
     }}>
       {/* Mobile Responsive Styles */}
       <style>{`
@@ -561,10 +562,10 @@ const BankTransactions = ({ onBackToTasks }) => {
       `}</style>
       {/* Header */}
       <header className="bank-header" style={{
-        background: `linear-gradient(135deg, ${colors.primary} 0%, #c82333 100%)`,
-        color: '#fff',
+        background: '#fff',
+        color: '#000',
         padding: '1.5rem 2rem',
-        borderBottom: `4px solid ${colors.secondary}`,
+        borderBottom: `4px solid ${colors.border}`,
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -575,9 +576,9 @@ const BankTransactions = ({ onBackToTasks }) => {
           <button
             onClick={onBackToTasks}
             style={{
-              background: 'rgba(255,255,255,0.2)',
-              border: `2px solid ${colors.secondary}`,
-              color: colors.secondary,
+              background: '#fff',
+              border: `3px solid ${colors.border}`,
+              color: colors.text,
               padding: '0.6rem 1.2rem',
               cursor: 'pointer',
               display: 'flex',
@@ -585,7 +586,9 @@ const BankTransactions = ({ onBackToTasks }) => {
               gap: '0.5rem',
               fontWeight: 'bold',
               fontSize: '1rem',
-              borderRadius: '6px'
+              fontFamily: '"Inter", sans-serif',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
             }}
           >
             <ArrowLeft size={20} /> Back
@@ -599,7 +602,7 @@ const BankTransactions = ({ onBackToTasks }) => {
             onClick={() => setShowAddForm(true)}
             style={{
               background: colors.secondary,
-              border: 'none',
+              border: `3px solid ${colors.border}`,
               color: colors.text,
               padding: '0.75rem 1.5rem',
               cursor: 'pointer',
@@ -608,7 +611,9 @@ const BankTransactions = ({ onBackToTasks }) => {
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
-              borderRadius: '6px'
+              fontFamily: '"Inter", sans-serif',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
             }}
           >
             <Plus size={20} /> Add Transaction
@@ -618,7 +623,7 @@ const BankTransactions = ({ onBackToTasks }) => {
             disabled={filteredTransactions.length === 0}
             style={{
               background: colors.accent,
-              border: 'none',
+              border: `3px solid ${colors.border}`,
               color: '#fff',
               padding: '0.75rem 1.5rem',
               cursor: filteredTransactions.length === 0 ? 'not-allowed' : 'pointer',
@@ -628,7 +633,9 @@ const BankTransactions = ({ onBackToTasks }) => {
               alignItems: 'center',
               gap: '0.5rem',
               opacity: filteredTransactions.length === 0 ? 0.5 : 1,
-              borderRadius: '6px'
+              fontFamily: '"Inter", sans-serif',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
             }}
           >
             <FileDown size={20} /> Export PDF
@@ -639,18 +646,18 @@ const BankTransactions = ({ onBackToTasks }) => {
       {/* Messages */}
       {error && (
         <div style={{
-          background: '#fef2f2',
-          color: colors.accent,
+          background: colors.accent,
+          color: '#fff',
           padding: '1rem 2rem',
           display: 'flex',
           alignItems: 'center',
           gap: '0.75rem',
           fontSize: '1.05rem',
-          borderBottom: `2px solid ${colors.accent}`
+          borderBottom: `3px solid ${colors.border}`
         }}>
           <AlertCircle size={22} />
           {error}
-          <button onClick={() => setError(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: colors.accent }}>
+          <button onClick={() => setError(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#fff' }}>
             <X size={20} />
           </button>
         </div>
@@ -658,18 +665,18 @@ const BankTransactions = ({ onBackToTasks }) => {
 
       {success && (
         <div style={{
-          background: '#ecfdf5',
-          color: colors.success,
+          background: colors.secondary,
+          color: colors.text,
           padding: '1rem 2rem',
           display: 'flex',
           alignItems: 'center',
           gap: '0.75rem',
           fontSize: '1.05rem',
-          borderBottom: `2px solid ${colors.success}`
+          borderBottom: `3px solid ${colors.border}`
         }}>
           <CheckCircle size={22} />
           {success}
-          <button onClick={() => setSuccess(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: colors.success }}>
+          <button onClick={() => setSuccess(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: colors.text }}>
             <X size={20} />
           </button>
         </div>
@@ -687,11 +694,10 @@ const BankTransactions = ({ onBackToTasks }) => {
             {transactionStats.by_type.map(stat => (
               <div key={stat.transaction_type} style={{
                 background: colors.card,
-                border: `3px solid ${stat.transaction_type === 'cash' ? colors.success : colors.primary}`,
+                border: `3px solid ${colors.border}`,
                 padding: '1.75rem',
                 textAlign: 'center',
-                borderRadius: '12px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                boxShadow: '4px 4px 0px #000'
               }}>
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
                   {stat.transaction_type === 'cash' ? 
@@ -716,11 +722,10 @@ const BankTransactions = ({ onBackToTasks }) => {
             ))}
             <div style={{
               background: colors.card,
-              border: `3px solid ${colors.secondary}`,
+              border: `3px solid ${colors.border}`,
               padding: '1.75rem',
               textAlign: 'center',
-              borderRadius: '12px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+              boxShadow: '4px 4px 0px #000'
             }}>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
                 <PieChart size={40} color={colors.text} />
@@ -741,11 +746,10 @@ const BankTransactions = ({ onBackToTasks }) => {
         {/* Upload Section */}
         <div style={{
           background: colors.card,
-          border: `3px solid ${colors.primary}`,
+          border: `3px solid ${colors.border}`,
           padding: '2rem',
           marginBottom: '2rem',
-          borderRadius: '12px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+          boxShadow: '4px 4px 0px #000'
         }}>
           <h2 style={{ margin: '0 0 1.5rem 0', fontSize: '1.5rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.75rem', color: colors.text }}>
             <Upload size={28} color={colors.primary} /> Upload Transactions
@@ -762,8 +766,8 @@ const BankTransactions = ({ onBackToTasks }) => {
                 style={{
                   flex: 1,
                   padding: '1.25rem',
-                  border: `3px solid ${transactionType === 'credit' ? colors.primary : colors.border}`,
-                  background: transactionType === 'credit' ? '#eff6ff' : colors.card,
+                  border: `3px solid ${colors.border}`,
+                  background: transactionType === 'credit' ? colors.primary : colors.card,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -771,11 +775,13 @@ const BankTransactions = ({ onBackToTasks }) => {
                   gap: '0.75rem',
                   fontWeight: transactionType === 'credit' ? '700' : '500',
                   fontSize: '1.1rem',
-                  borderRadius: '8px',
-                  color: transactionType === 'credit' ? colors.primary : colors.text
+                  color: transactionType === 'credit' ? '#fff' : colors.text,
+                  fontFamily: '"Inter", sans-serif',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
                 }}
               >
-                <CreditCard size={24} color={transactionType === 'credit' ? colors.primary : colors.textLight} />
+                <CreditCard size={24} color={transactionType === 'credit' ? '#fff' : colors.textLight} />
                 💳 Credit Card
               </button>
               <button
@@ -803,11 +809,11 @@ const BankTransactions = ({ onBackToTasks }) => {
           </div>
 
           <div style={{
-            border: `3px dashed ${colors.primary}`,
+            border: `3px dashed ${colors.border}`,
             padding: '2.5rem',
             textAlign: 'center',
-            background: '#f8fafc',
-            borderRadius: '8px'
+            background: '#f8f8f8',
+            boxShadow: '4px 4px 0px #000'
           }}>
             <input
               type="file"
@@ -823,7 +829,7 @@ const BankTransactions = ({ onBackToTasks }) => {
               alignItems: 'center',
               gap: '0.75rem'
             }}>
-              <FileText size={56} color={colors.primary} />
+              <FileText size={56} color={colors.text} />
               <span style={{ fontWeight: '700', fontSize: '1.2rem', color: colors.text }}>
                 Click to upload {transactionType === 'cash' ? '💵 cash' : '💳 credit card'} transactions
               </span>
@@ -834,7 +840,7 @@ const BankTransactions = ({ onBackToTasks }) => {
           </div>
 
           {loading && (
-            <div style={{ textAlign: 'center', padding: '2rem', color: colors.primary, fontSize: '1.1rem', fontWeight: '600' }}>
+            <div style={{ textAlign: 'center', padding: '2rem', color: colors.text, fontSize: '1.1rem', fontWeight: '600' }}>
               ⏳ Processing...
             </div>
           )}
@@ -844,21 +850,21 @@ const BankTransactions = ({ onBackToTasks }) => {
         {uploadedData && (
           <div style={{
             background: colors.card,
-            border: `3px solid ${colors.success}`,
+            border: `3px solid ${colors.border}`,
             padding: '2rem',
             marginBottom: '2rem',
-            borderRadius: '12px'
+            boxShadow: '4px 4px 0px #000'
           }}>
-            <h2 style={{ margin: '0 0 1rem 0', color: colors.success, display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.4rem' }}>
+            <h2 style={{ margin: '0 0 1rem 0', color: colors.text, display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.4rem' }}>
               <CheckCircle size={28} /> Preview: {uploadedData.transaction_count} transactions ready
               <span style={{
                 marginLeft: 'auto',
                 padding: '0.5rem 1rem',
                 background: uploadedData.transaction_type === 'cash' ? colors.success : colors.primary,
-                color: '#fff',
+                color: uploadedData.transaction_type === 'cash' ? '#fff' : '#fff',
                 fontSize: '0.9rem',
                 fontWeight: '700',
-                borderRadius: '6px'
+                border: `2px solid ${colors.border}`
               }}>
                 {uploadedData.transaction_type === 'cash' ? '💵 CASH' : '💳 CREDIT'}
               </span>
@@ -872,14 +878,15 @@ const BankTransactions = ({ onBackToTasks }) => {
                   onClick={() => setPreviewFilter(filter)}
                   style={{
                     padding: '0.6rem 1.2rem',
-                    border: '2px solid',
-                    borderColor: previewFilter === filter ? colors.primary : colors.border,
+                    border: `3px solid ${colors.border}`,
                     background: previewFilter === filter ? colors.primary : colors.card,
                     color: previewFilter === filter ? '#fff' : colors.text,
                     cursor: 'pointer',
                     fontWeight: previewFilter === filter ? '700' : '500',
                     fontSize: '1rem',
-                    borderRadius: '6px'
+                    fontFamily: '"Inter", sans-serif',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
                   }}
                 >
                   {filter.charAt(0).toUpperCase() + filter.slice(1)}
@@ -887,7 +894,7 @@ const BankTransactions = ({ onBackToTasks }) => {
               ))}
             </div>
 
-            <div style={{ maxHeight: '350px', overflow: 'auto', border: `2px solid ${colors.border}`, borderRadius: '8px' }}>
+            <div style={{ maxHeight: '350px', overflow: 'auto', border: `3px solid ${colors.border}` }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: colors.primary }}>
@@ -919,11 +926,13 @@ const BankTransactions = ({ onBackToTasks }) => {
                   padding: '1.25rem',
                   background: colors.success,
                   color: '#fff',
-                  border: 'none',
+                  border: `3px solid ${colors.border}`,
                   cursor: loading ? 'not-allowed' : 'pointer',
                   fontWeight: '700',
                   fontSize: '1.2rem',
-                  borderRadius: '8px'
+                  fontFamily: '"Inter", sans-serif',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
                 }}
               >
                 {loading ? '⏳ Saving...' : `✅ Save ${uploadedData.transaction_count} Transactions`}
@@ -933,12 +942,14 @@ const BankTransactions = ({ onBackToTasks }) => {
                 style={{
                   padding: '1.25rem 2rem',
                   background: colors.card,
-                  border: `2px solid ${colors.text}`,
+                  border: `3px solid ${colors.border}`,
                   cursor: 'pointer',
                   fontWeight: '600',
                   fontSize: '1.1rem',
-                  borderRadius: '8px',
-                  color: colors.text
+                  color: colors.text,
+                  fontFamily: '"Inter", sans-serif',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
                 }}
               >
                 Cancel
@@ -953,10 +964,9 @@ const BankTransactions = ({ onBackToTasks }) => {
           <div>
             <div style={{
               background: colors.card,
-              border: `3px solid ${colors.primary}`,
+              border: `3px solid ${colors.border}`,
               padding: '1.75rem',
-              borderRadius: '12px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+              boxShadow: '4px 4px 0px #000'
             }}>
               <h3 style={{ margin: '0 0 1.25rem 0', fontWeight: '800', fontSize: '1.3rem', color: colors.text }}>
                 <Calendar size={22} style={{ verticalAlign: 'middle', marginRight: '0.5rem' }} />
@@ -969,13 +979,15 @@ const BankTransactions = ({ onBackToTasks }) => {
                   width: '100%',
                   padding: '1rem',
                   marginBottom: '0.75rem',
-                  border: `2px solid ${selectedMonth === 'all' ? colors.primary : colors.border}`,
-                  background: selectedMonth === 'all' ? colors.primary : colors.card,
+                  border: `3px solid ${colors.border}`,
+                  background: selectedMonth === 'all' ? colors.accent : colors.card,
                   color: selectedMonth === 'all' ? '#fff' : colors.text,
                   cursor: 'pointer',
                   fontWeight: selectedMonth === 'all' ? '700' : '500',
                   fontSize: '1.05rem',
-                  borderRadius: '8px'
+                  fontFamily: '"Inter", sans-serif',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
                 }}
               >
                 📊 All Transactions
@@ -993,13 +1005,13 @@ const BankTransactions = ({ onBackToTasks }) => {
                     style={{
                       flex: 1,
                       padding: '1rem',
-                      border: `2px solid ${selectedMonth === month.month_year ? colors.primary : colors.border}`,
-                      background: selectedMonth === month.month_year ? colors.primary : colors.card,
+                      border: `3px solid ${colors.border}`,
+                      background: selectedMonth === month.month_year ? colors.accent : colors.card,
                       color: selectedMonth === month.month_year ? '#fff' : colors.text,
                       cursor: 'pointer',
                       textAlign: 'left',
                       fontWeight: selectedMonth === month.month_year ? '700' : '500',
-                      borderRadius: '8px'
+                      fontFamily: '"Inter", sans-serif'
                     }}
                   >
                     <div style={{ fontSize: '1.05rem' }}>{formatMonthYear(month.month_year)}</div>
@@ -1011,11 +1023,11 @@ const BankTransactions = ({ onBackToTasks }) => {
                     onClick={() => handleDeleteMonth(month.month_year)}
                     style={{
                       padding: '0.75rem',
-                      background: '#fef2f2',
-                      border: `2px solid ${colors.accent}`,
+                      background: colors.card,
+                      border: `3px solid ${colors.border}`,
                       cursor: 'pointer',
-                      color: colors.accent,
-                      borderRadius: '8px'
+                      color: colors.text,
+                      fontFamily: '"Inter", sans-serif'
                     }}
                   >
                     <Trash2 size={18} />
@@ -1036,10 +1048,9 @@ const BankTransactions = ({ onBackToTasks }) => {
             {selectedMonth && (
               <div style={{
                 background: colors.card,
-                border: `3px solid ${colors.primary}`,
+                border: `3px solid ${colors.border}`,
                 padding: '1.75rem',
-                borderRadius: '12px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                boxShadow: '4px 4px 0px #000'
               }}>
                 <div style={{
                   display: 'flex',
@@ -1053,13 +1064,13 @@ const BankTransactions = ({ onBackToTasks }) => {
                     {selectedMonth === 'all' ? '📊 ALL TRANSACTIONS' : `📅 ${formatMonthYear(selectedMonth)}`}
                   </h3>
                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span style={{ background: '#eff6ff', padding: '0.6rem 1.2rem', color: colors.primary, fontWeight: '700', fontSize: '1.05rem', borderRadius: '8px', border: `2px solid ${colors.primary}` }}>
+                    <span style={{ background: colors.accent, padding: '0.6rem 1.2rem', color: '#fff', fontWeight: '700', fontSize: '1.05rem', border: `3px solid ${colors.border}`, fontFamily: '"Inter", sans-serif' }}>
                       💳 {formatCurrency(creditTotal)}
                     </span>
-                    <span style={{ background: '#ecfdf5', padding: '0.6rem 1.2rem', color: colors.success, fontWeight: '700', fontSize: '1.05rem', borderRadius: '8px', border: `2px solid ${colors.success}` }}>
+                    <span style={{ background: colors.success, padding: '0.6rem 1.2rem', color: '#fff', fontWeight: '700', fontSize: '1.05rem', border: `3px solid ${colors.border}`, fontFamily: '"Inter", sans-serif' }}>
                       💵 {formatCurrency(cashTotal)}
                     </span>
-                    <span style={{ background: colors.secondary, padding: '0.6rem 1.2rem', color: colors.text, fontWeight: '800', fontSize: '1.1rem', borderRadius: '8px' }}>
+                    <span style={{ background: colors.secondary, padding: '0.6rem 1.2rem', color: colors.text, fontWeight: '800', fontSize: '1.1rem', border: `3px solid ${colors.border}`, fontFamily: '"Inter", sans-serif' }}>
                       Total: {formatCurrency(totalFiltered)}
                     </span>
                   </div>
@@ -1072,9 +1083,8 @@ const BankTransactions = ({ onBackToTasks }) => {
                   marginBottom: '1.5rem',
                   flexWrap: 'wrap',
                   padding: '1.25rem',
-                  background: '#f8fafc',
-                  border: `2px solid ${colors.border}`,
-                  borderRadius: '8px'
+                  background: '#f8f8f8',
+                  border: `3px solid ${colors.border}`
                 }}>
                   <div style={{ flex: 1, minWidth: '160px' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.95rem', fontWeight: '700', color: colors.text }}>
@@ -1083,7 +1093,7 @@ const BankTransactions = ({ onBackToTasks }) => {
                     <select
                       value={typeFilter}
                       onChange={(e) => setTypeFilter(e.target.value)}
-                      style={{ width: '100%', padding: '0.75rem', border: `2px solid ${colors.border}`, fontSize: '1rem', borderRadius: '6px' }}
+                      style={{ width: '100%', padding: '0.75rem', border: `3px solid ${colors.border}`, fontSize: '1rem', fontFamily: '"Inter", sans-serif' }}
                     >
                       <option value="all">All Types</option>
                       <option value="credit">💳 Credit Only</option>
@@ -1099,7 +1109,7 @@ const BankTransactions = ({ onBackToTasks }) => {
                       placeholder="Search descriptions..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      style={{ width: '100%', padding: '0.75rem', border: `2px solid ${colors.border}`, fontSize: '1rem', borderRadius: '6px' }}
+                      style={{ width: '100%', padding: '0.75rem', border: `3px solid ${colors.border}`, fontSize: '1rem', fontFamily: '"Inter", sans-serif' }}
                     />
                   </div>
                   <div style={{ flex: 2, minWidth: '220px' }}>
@@ -1109,7 +1119,7 @@ const BankTransactions = ({ onBackToTasks }) => {
                     <select
                       value={descriptionFilter}
                       onChange={(e) => setDescriptionFilter(e.target.value)}
-                      style={{ width: '100%', padding: '0.75rem', border: `2px solid ${colors.border}`, fontSize: '1rem', borderRadius: '6px' }}
+                      style={{ width: '100%', padding: '0.75rem', border: `3px solid ${colors.border}`, fontSize: '1rem', fontFamily: '"Inter", sans-serif' }}
                     >
                       <option value="">All Categories</option>
                       {allDescriptions.map(desc => (
@@ -1121,7 +1131,7 @@ const BankTransactions = ({ onBackToTasks }) => {
 
                 {/* Transactions Table */}
                 <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', border: `3px solid ${colors.border}` }}>
                     <thead>
                       <tr style={{ background: colors.primary }}>
                         <th style={{ padding: '1rem', textAlign: 'left', color: '#fff', fontSize: '1.05rem' }}>Date</th>
@@ -1145,7 +1155,7 @@ const BankTransactions = ({ onBackToTasks }) => {
                                     transaction_date: e.target.value,
                                     month_year: e.target.value.slice(0, 7)
                                   })}
-                                  style={{ padding: '0.5rem', border: `2px solid ${colors.border}`, width: '100%', fontSize: '1rem', borderRadius: '4px' }}
+                                  style={{ padding: '0.5rem', border: `3px solid ${colors.border}`, width: '100%', fontSize: '1rem', fontFamily: '"Inter", sans-serif' }}
                                 />
                               </td>
                               <td style={{ padding: '0.75rem' }}>
@@ -1153,14 +1163,14 @@ const BankTransactions = ({ onBackToTasks }) => {
                                   type="text"
                                   value={editingTransaction.description}
                                   onChange={(e) => setEditingTransaction({...editingTransaction, description: e.target.value})}
-                                  style={{ padding: '0.5rem', border: `2px solid ${colors.border}`, width: '100%', fontSize: '1rem', borderRadius: '4px' }}
+                                  style={{ padding: '0.5rem', border: `3px solid ${colors.border}`, width: '100%', fontSize: '1rem', fontFamily: '"Inter", sans-serif' }}
                                 />
                               </td>
                               <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                                 <select
                                   value={editingTransaction.transaction_type}
                                   onChange={(e) => setEditingTransaction({...editingTransaction, transaction_type: e.target.value})}
-                                  style={{ padding: '0.5rem', border: `2px solid ${colors.border}`, fontSize: '1rem', borderRadius: '4px' }}
+                                  style={{ padding: '0.5rem', border: `3px solid ${colors.border}`, fontSize: '1rem', fontFamily: '"Inter", sans-serif' }}
                                 >
                                   <option value="credit">Credit</option>
                                   <option value="cash">Cash</option>
@@ -1172,19 +1182,19 @@ const BankTransactions = ({ onBackToTasks }) => {
                                   step="0.01"
                                   value={editingTransaction.amount}
                                   onChange={(e) => setEditingTransaction({...editingTransaction, amount: parseFloat(e.target.value)})}
-                                  style={{ padding: '0.5rem', border: `2px solid ${colors.border}`, width: '100%', textAlign: 'right', fontSize: '1rem', borderRadius: '4px' }}
+                                  style={{ padding: '0.5rem', border: `3px solid ${colors.border}`, width: '100%', textAlign: 'right', fontSize: '1rem', fontFamily: '"Inter", sans-serif' }}
                                 />
                               </td>
                               <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                                 <button
                                   onClick={() => handleUpdateTransaction(t.id)}
-                                  style={{ padding: '0.5rem 0.75rem', background: colors.success, color: '#fff', border: 'none', cursor: 'pointer', marginRight: '0.5rem', borderRadius: '4px' }}
+                                  style={{ padding: '0.5rem 0.75rem', background: colors.success, color: '#fff', border: `3px solid ${colors.border}`, cursor: 'pointer', marginRight: '0.5rem', fontFamily: '"Inter", sans-serif' }}
                                 >
                                   <Save size={16} />
                                 </button>
                                 <button
                                   onClick={() => setEditingTransaction(null)}
-                                  style={{ padding: '0.5rem 0.75rem', background: colors.textLight, color: '#fff', border: 'none', cursor: 'pointer', borderRadius: '4px' }}
+                                  style={{ padding: '0.5rem 0.75rem', background: colors.card, color: colors.text, border: `3px solid ${colors.border}`, cursor: 'pointer', fontFamily: '"Inter", sans-serif' }}
                                 >
                                   <X size={16} />
                                 </button>
@@ -1199,12 +1209,14 @@ const BankTransactions = ({ onBackToTasks }) => {
                               <td style={{ padding: '1rem', textAlign: 'center' }}>
                                 <span style={{
                                   padding: '0.4rem 0.75rem',
-                                  background: t.transaction_type === 'cash' ? '#ecfdf5' : '#eff6ff',
-                                  color: t.transaction_type === 'cash' ? colors.success : colors.primary,
+                                  background: t.transaction_type === 'cash' ? colors.success : colors.accent,
+                                  color: '#fff',
                                   fontSize: '0.9rem',
                                   fontWeight: '700',
-                                  borderRadius: '6px',
-                                  border: `2px solid ${t.transaction_type === 'cash' ? colors.success : colors.primary}`
+                                  border: `3px solid ${colors.border}`,
+                                  fontFamily: '"Inter", sans-serif',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.5px'
                                 }}>
                                   {t.transaction_type === 'cash' ? '💵 Cash' : '💳 Credit'}
                                 </span>
@@ -1224,12 +1236,12 @@ const BankTransactions = ({ onBackToTasks }) => {
                                   onClick={() => setEditingTransaction({...t})}
                                   style={{
                                     padding: '0.5rem 0.75rem',
-                                    background: '#eff6ff',
-                                    color: colors.primary,
-                                    border: `2px solid ${colors.primary}`,
+                                    background: colors.accent,
+                                    color: '#fff',
+                                    border: `3px solid ${colors.border}`,
                                     cursor: 'pointer',
                                     marginRight: '0.5rem',
-                                    borderRadius: '6px'
+                                    fontFamily: '"Inter", sans-serif'
                                   }}
                                 >
                                   <Edit2 size={16} />
@@ -1238,11 +1250,11 @@ const BankTransactions = ({ onBackToTasks }) => {
                                   onClick={() => handleDeleteTransaction(t.id)}
                                   style={{
                                     padding: '0.5rem 0.75rem',
-                                    background: '#fef2f2',
-                                    color: colors.accent,
-                                    border: `2px solid ${colors.accent}`,
+                                    background: colors.accent,
+                                    color: '#fff',
+                                    border: `3px solid ${colors.border}`,
                                     cursor: 'pointer',
-                                    borderRadius: '6px'
+                                    fontFamily: '"Inter", sans-serif'
                                   }}
                                 >
                                   <Trash2 size={16} />
@@ -1269,27 +1281,27 @@ const BankTransactions = ({ onBackToTasks }) => {
 
       {/* Add Transaction Modal */}
       {showAddForm && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.6)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}>
           <div style={{
             background: colors.card,
             padding: '2.5rem',
             width: '100%',
             maxWidth: '550px',
-            border: `3px solid ${colors.primary}`,
-            borderRadius: '16px',
+            border: `4px solid ${colors.border}`,
             maxHeight: '90vh',
-            overflow: 'auto'
+            overflow: 'auto',
+            boxShadow: '8px 8px 0px #000'
           }}>
             <h2 style={{ margin: '0 0 2rem 0', fontWeight: '800', fontSize: '1.6rem', color: colors.text }}>
               ➕ Add Transaction
@@ -1304,8 +1316,8 @@ const BankTransactions = ({ onBackToTasks }) => {
                   style={{
                     flex: 1,
                     padding: '1rem',
-                    border: `3px solid ${newTransaction.transaction_type === 'credit' ? colors.primary : colors.border}`,
-                    background: newTransaction.transaction_type === 'credit' ? '#eff6ff' : colors.card,
+                    border: `3px solid ${colors.border}`,
+                    background: newTransaction.transaction_type === 'credit' ? colors.accent : colors.card,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -1313,8 +1325,10 @@ const BankTransactions = ({ onBackToTasks }) => {
                     gap: '0.5rem',
                     fontSize: '1.05rem',
                     fontWeight: newTransaction.transaction_type === 'credit' ? '700' : '500',
-                    borderRadius: '8px',
-                    color: newTransaction.transaction_type === 'credit' ? colors.primary : colors.text
+                    color: newTransaction.transaction_type === 'credit' ? '#fff' : colors.text,
+                    fontFamily: '"Inter", sans-serif',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
                   }}
                 >
                   <CreditCard size={20} /> 💳 Credit
@@ -1325,8 +1339,8 @@ const BankTransactions = ({ onBackToTasks }) => {
                   style={{
                     flex: 1,
                     padding: '1rem',
-                    border: `3px solid ${newTransaction.transaction_type === 'cash' ? colors.success : colors.border}`,
-                    background: newTransaction.transaction_type === 'cash' ? '#ecfdf5' : colors.card,
+                    border: `3px solid ${colors.border}`,
+                    background: newTransaction.transaction_type === 'cash' ? colors.success : colors.card,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -1334,8 +1348,10 @@ const BankTransactions = ({ onBackToTasks }) => {
                     gap: '0.5rem',
                     fontSize: '1.05rem',
                     fontWeight: newTransaction.transaction_type === 'cash' ? '700' : '500',
-                    borderRadius: '8px',
-                    color: newTransaction.transaction_type === 'cash' ? colors.success : colors.text
+                    color: newTransaction.transaction_type === 'cash' ? '#fff' : colors.text,
+                    fontFamily: '"Inter", sans-serif',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
                   }}
                 >
                   <Banknote size={20} /> 💵 Cash
@@ -1353,7 +1369,7 @@ const BankTransactions = ({ onBackToTasks }) => {
                   transaction_date: e.target.value,
                   month_year: e.target.value.slice(0, 7)
                 })}
-                style={{ width: '100%', padding: '1rem', border: `2px solid ${colors.border}`, fontSize: '1.05rem', borderRadius: '8px' }}
+                style={{ width: '100%', padding: '1rem', border: `3px solid ${colors.border}`, fontSize: '1.05rem', fontFamily: '"Inter", sans-serif' }}
               />
             </div>
 
@@ -1365,7 +1381,7 @@ const BankTransactions = ({ onBackToTasks }) => {
                 onChange={(e) => setNewTransaction({...newTransaction, description: e.target.value})}
                 placeholder="Transaction description"
                 list="descriptions-list"
-                style={{ width: '100%', padding: '1rem', border: `2px solid ${colors.border}`, fontSize: '1.05rem', borderRadius: '8px' }}
+                style={{ width: '100%', padding: '1rem', border: `3px solid ${colors.border}`, fontSize: '1.05rem', fontFamily: '"Inter", sans-serif' }}
               />
               <datalist id="descriptions-list">
                 {allDescriptions.map(desc => (
@@ -1382,7 +1398,7 @@ const BankTransactions = ({ onBackToTasks }) => {
                 value={newTransaction.amount}
                 onChange={(e) => setNewTransaction({...newTransaction, amount: e.target.value})}
                 placeholder="0.00"
-                style={{ width: '100%', padding: '1rem', border: `2px solid ${colors.border}`, fontSize: '1.05rem', borderRadius: '8px' }}
+                style={{ width: '100%', padding: '1rem', border: `3px solid ${colors.border}`, fontSize: '1.05rem', fontFamily: '"Inter", sans-serif' }}
               />
             </div>
 
@@ -1393,7 +1409,7 @@ const BankTransactions = ({ onBackToTasks }) => {
                 value={newTransaction.account_number}
                 onChange={(e) => setNewTransaction({...newTransaction, account_number: e.target.value})}
                 placeholder="Account number"
-                style={{ width: '100%', padding: '1rem', border: `2px solid ${colors.border}`, fontSize: '1.05rem', borderRadius: '8px' }}
+                style={{ width: '100%', padding: '1rem', border: `3px solid ${colors.border}`, fontSize: '1.05rem', fontFamily: '"Inter", sans-serif' }}
               />
             </div>
 
@@ -1406,12 +1422,14 @@ const BankTransactions = ({ onBackToTasks }) => {
                   padding: '1.25rem',
                   background: newTransaction.transaction_type === 'cash' ? colors.success : colors.primary,
                   color: '#fff',
-                  border: 'none',
+                  border: `3px solid ${colors.border}`,
                   cursor: (!newTransaction.description || !newTransaction.amount || loading) ? 'not-allowed' : 'pointer',
                   fontWeight: '700',
                   fontSize: '1.15rem',
                   opacity: (!newTransaction.description || !newTransaction.amount || loading) ? 0.5 : 1,
-                  borderRadius: '8px'
+                  fontFamily: '"Inter", sans-serif',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
                 }}
               >
                 {loading ? '⏳ Adding...' : '✅ Add Transaction'}
@@ -1421,12 +1439,14 @@ const BankTransactions = ({ onBackToTasks }) => {
                 style={{
                   padding: '1.25rem 2rem',
                   background: colors.card,
-                  border: `2px solid ${colors.text}`,
+                  border: `3px solid ${colors.border}`,
                   cursor: 'pointer',
                   fontWeight: '600',
                   fontSize: '1.1rem',
-                  borderRadius: '8px',
-                  color: colors.text
+                  color: colors.text,
+                  fontFamily: '"Inter", sans-serif',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
                 }}
               >
                 Cancel
