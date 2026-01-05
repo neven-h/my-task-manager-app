@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Search, Plus, Calendar, Clock, X, BarChart3,
-  Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut, Menu, Filter
+  Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut, Menu, Filter, Copy
 } from 'lucide-react';
 import BankTransactions from './BankTransactions';
 import ClientsManagement from './ClientsManagement';
@@ -304,15 +304,34 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
 
   const deleteTask = async (id) => {
     if (!window.confirm('Are you sure you want to delete this task?')) return;
-    
+
     try {
       setLoading(true);
       const response = await fetch(`${API_BASE}/tasks/${id}`, {
         method: 'DELETE'
       });
-      
+
       if (!response.ok) throw new Error('Failed to delete task');
-      
+
+      await fetchTasks();
+      await fetchStats();
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const duplicateTask = async (id) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE}/tasks/${id}/duplicate`, {
+        method: 'POST'
+      });
+
+      if (!response.ok) throw new Error('Failed to duplicate task');
+
       await fetchTasks();
       await fetchStats();
       setError(null);
@@ -729,6 +748,14 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
               title="Edit"
             >
               <Edit2 size={18} />
+            </button>
+            <button
+              onClick={() => duplicateTask(task.id)}
+              className="btn"
+              style={{ padding: '10px', minWidth: 'auto' }}
+              title="Duplicate"
+            >
+              <Copy size={18} />
             </button>
             <button
               onClick={() => deleteTask(task.id)}
