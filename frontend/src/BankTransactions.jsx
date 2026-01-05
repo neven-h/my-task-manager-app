@@ -590,8 +590,8 @@ const BankTransactions = ({ onBackToTasks }) => {
           >
             <ArrowLeft size={20} /> Back
           </button>
-          <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: '900', letterSpacing: '-1px', textTransform: 'uppercase' }}>
-            💰 Bank Transactions
+          <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: '900', letterSpacing: '-1px', textTransform: 'uppercase', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+            💰 BANK TRANSACTIONS
           </h1>
         </div>
         <div className="bank-header-buttons" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -901,7 +901,7 @@ const BankTransactions = ({ onBackToTasks }) => {
                     <tr key={idx} style={{ borderBottom: `1px solid ${colors.border}` }}>
                       <td style={{ padding: '0.75rem 1rem', fontSize: '1rem' }}>{t.transaction_date}</td>
                       <td style={{ padding: '0.75rem 1rem', fontSize: '1rem' }}>{t.description}</td>
-                      <td style={{ padding: '0.75rem 1rem', textAlign: 'right', color: '#1a1a1a', fontWeight: '600', fontSize: '1.1rem', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+                      <td style={{ padding: '0.75rem 1rem', textAlign: 'right', color: '#000000', fontWeight: '800', fontSize: '1.3rem', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
                         {formatCurrency(t.amount)}
                       </td>
                     </tr>
@@ -1212,10 +1212,10 @@ const BankTransactions = ({ onBackToTasks }) => {
                               <td style={{
                                 padding: '1rem',
                                 textAlign: 'right',
-                                fontWeight: '700',
-                                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                                fontSize: '1.15rem',
-                                color: '#1a1a1a'
+                                fontWeight: '800',
+                                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                                fontSize: '1.3rem',
+                                color: '#000000'
                               }}>
                                 {formatCurrency(t.amount)}
                               </td>
