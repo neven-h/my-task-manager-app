@@ -731,7 +731,7 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
     <div style={{
       minHeight: '100vh',
       background: '#fff',
-      fontFamily: '"Helvetica Neue", Arial, sans-serif',
+      fontFamily: '"Helvetica Neue", Calibri, sans-serif',
       color: '#000'
     }}>
       <style>{`
@@ -744,7 +744,7 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
         }
         
         body {
-          font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+          font-family: 'Inter', 'Helvetica Neue', Calibri, sans-serif;
         }
         
         .task-card {
