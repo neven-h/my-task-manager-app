@@ -908,7 +908,7 @@ const BankTransactions = ({ onBackToTasks }) => {
                     <tr key={idx} style={{ borderBottom: `1px solid ${colors.border}` }}>
                       <td style={{ padding: '0.75rem 1rem', fontSize: '1rem' }}>{t.transaction_date}</td>
                       <td style={{ padding: '0.75rem 1rem', fontSize: '1rem' }}>{t.description}</td>
-                      <td style={{ padding: '0.75rem 1rem', textAlign: 'right', color: t.amount < 0 ? colors.accent : colors.success, fontWeight: '700', fontSize: '1.05rem' }}>
+                      <td style={{ padding: '0.75rem 1rem', textAlign: 'right', color: t.amount < 0 ? colors.accent : colors.text, fontWeight: '700', fontSize: '1.05rem' }}>
                         {formatCurrency(t.amount)}
                       </td>
                     </tr>
@@ -1227,7 +1227,7 @@ const BankTransactions = ({ onBackToTasks }) => {
                                 fontWeight: '700',
                                 fontFamily: 'monospace',
                                 fontSize: '1.1rem',
-                                color: t.amount < 0 ? colors.accent : colors.success
+                                color: t.amount < 0 ? colors.accent : colors.text
                               }}>
                                 {formatCurrency(t.amount)}
                               </td>
