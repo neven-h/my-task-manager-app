@@ -2,25 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { Users, Edit2, Trash2, Plus, ArrowLeft, Clock, CheckCircle } from 'lucide-react';
 import API_BASE from './config';
 
-// Centralized theme + fonts (edit these to change UI colors / typography)
+// Centralized theme + fonts - matching TaskTracker theme
 const THEME = {
-  bg: '#f8fafc',
+  bg: '#fff',
   surface: '#ffffff',
-  primary: '#dc3545',
-  primaryDark: '#c82333',
-  secondary: '#ffc107',
-  text: '#1a1a1a',
-  muted: '#64748b',
-  info: '#0d6efd',
-  success: '#059669',
-  border: '#e2e8f0',
-  dangerBg: '#fef2f2',
-  successBg: '#f0fdf4',
-  highlightBg: '#fffbeb'
+  primary: '#0000FF',      // Blue (primary actions)
+  primaryDark: '#0000FF',
+  secondary: '#FFD500',    // Yellow
+  text: '#000',            // Black
+  muted: '#666',
+  info: '#0000FF',         // Blue
+  success: '#00AA00',      // Green
+  border: '#000',          // Black
+  dangerBg: '#fff',
+  successBg: '#f8f8f8',
+  highlightBg: '#f8f8f8',
+  accent: '#FF0000'        // Red (for errors only)
 };
 
-// Hebrew-friendly font stack (Heebo is great for Hebrew; falls back to system fonts)
-const FONT_STACK = '"Heebo", "Assistant", "Rubik", "Noto Sans Hebrew", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif';
+// Font stack matching TaskTracker
+const FONT_STACK = '"Inter", "Helvetica Neue", Calibri, sans-serif';
 
 const ClientsManagement = ({ onBackToTasks }) => {
   const [clients, setClients] = useState([]);
@@ -121,54 +122,60 @@ const ClientsManagement = ({ onBackToTasks }) => {
   return (
     <div style={{ minHeight: '100vh', background: THEME.bg, fontFamily: FONT_STACK }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
         .btn {
-          transition: all 0.3s ease;
+          transition: all 0.15s ease;
           cursor: pointer;
-          border: 2px solid;
+          border: 3px solid #000;
           font-family: ${FONT_STACK};
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.5px;
-          font-size: 0.9rem;
-          padding: 12px 24px;
-          border-radius: 8px;
+          font-size: 0.85rem;
+          padding: 14px 28px;
+          background: #fff;
+          color: #000;
         }
 
         .btn:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          box-shadow: 4px 4px 0px #000;
+          transform: translate(-2px, -2px);
+        }
+
+        .btn:active {
+          box-shadow: none;
+          transform: translate(0, 0);
         }
 
         .btn:disabled {
-          opacity: 0.5;
+          opacity: 0.4;
           cursor: not-allowed;
         }
 
         .btn-primary {
           background: ${THEME.primary};
           color: #fff;
-          border-color: ${THEME.primary};
+          border-color: #000;
         }
 
         .btn-secondary {
           background: ${THEME.secondary};
           color: ${THEME.text};
-          border-color: ${THEME.secondary};
+          border-color: #000;
         }
 
         .btn-outline {
-          background: transparent;
-          color: #fff;
-          border-color: #fff;
+          background: #fff;
+          color: #000;
+          border-color: #000;
         }
       `}</style>
       {/* Header */}
       <header style={{
-        background: `linear-gradient(135deg, ${THEME.primary} 0%, ${THEME.primaryDark} 100%)`,
-        color: '#fff',
+        background: '#fff',
+        color: '#000',
         padding: '2rem 3rem',
-        borderBottom: `4px solid ${THEME.secondary}`,
+        borderBottom: `4px solid ${THEME.border}`,
         boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -186,7 +193,7 @@ const ClientsManagement = ({ onBackToTasks }) => {
               fontSize: '1.1rem',
               margin: 0,
               fontWeight: 400,
-              color: 'rgba(255, 255, 255, 0.9)'
+              color: THEME.muted
             }}>
               Manage clients and track billable hours
             </p>
@@ -202,11 +209,11 @@ const ClientsManagement = ({ onBackToTasks }) => {
 
       {error && (
         <div style={{
-          background: THEME.dangerBg,
-          color: THEME.primary,
+          background: THEME.accent,
+          color: '#fff',
           padding: '1rem 3rem',
           fontWeight: 600,
-          borderBottom: `2px solid ${THEME.primary}`
+          borderBottom: `3px solid ${THEME.border}`
         }}>
           {error}
         </div>
@@ -228,12 +235,11 @@ const ClientsManagement = ({ onBackToTasks }) => {
 
           {loading ? (
             <div style={{
-              border: `3px solid ${THEME.primary}`,
+              border: `3px solid ${THEME.border}`,
               padding: '3rem',
               textAlign: 'center',
               background: THEME.surface,
-              borderRadius: '12px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+              boxShadow: '4px 4px 0px #000'
             }}>
               <p style={{ fontSize: '1.2rem', fontWeight: 600, color: THEME.muted }}>
                 Loading clients...
@@ -241,14 +247,13 @@ const ClientsManagement = ({ onBackToTasks }) => {
             </div>
           ) : clients.length === 0 ? (
             <div style={{
-              border: `3px solid ${THEME.primary}`,
+              border: `3px solid ${THEME.border}`,
               padding: '3rem',
               textAlign: 'center',
               background: THEME.surface,
-              borderRadius: '12px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+              boxShadow: '4px 4px 0px #000'
             }}>
-              <Users size={48} style={{ marginBottom: '16px', opacity: 0.3, color: THEME.primary }} />
+              <Users size={48} style={{ marginBottom: '16px', opacity: 0.3, color: THEME.text }} />
               <p style={{ fontSize: '1.2rem', fontWeight: 600, color: THEME.muted }}>
                 No clients yet
               </p>
@@ -263,24 +268,23 @@ const ClientsManagement = ({ onBackToTasks }) => {
                 <div
                   key={client.client}
                   style={{
-                    border: selectedClient === client.client ? `3px solid ${THEME.secondary}` : `3px solid ${THEME.border}`,
+                    border: `3px solid ${THEME.border}`,
                     background: selectedClient === client.client ? THEME.highlightBg : THEME.surface,
                     cursor: 'pointer',
-                    borderRadius: '12px',
                     overflow: 'hidden',
-                    boxShadow: selectedClient === client.client ? '0 8px 16px rgba(255, 193, 7, 0.2)' : '0 4px 12px rgba(0,0,0,0.08)',
-                    transition: 'all 0.3s ease'
+                    boxShadow: '4px 4px 0px #000',
+                    transition: 'all 0.15s ease'
                   }}
                   onMouseEnter={(e) => {
                     if (selectedClient !== client.client) {
-                      e.currentTarget.style.transform = 'translateY(-4px)';
-                      e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.12)';
+                      e.currentTarget.style.transform = 'translate(-2px, -2px)';
+                      e.currentTarget.style.boxShadow = '6px 6px 0px #000';
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (selectedClient !== client.client) {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)';
+                      e.currentTarget.style.transform = 'translate(0, 0)';
+                      e.currentTarget.style.boxShadow = '4px 4px 0px #000';
                     }
                   }}
                 >
@@ -307,7 +311,7 @@ const ClientsManagement = ({ onBackToTasks }) => {
                         <div style={{ fontSize: '0.75rem', color: THEME.muted, fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.25rem' }}>
                           Total Hours
                         </div>
-                        <div style={{ fontSize: '1.8rem', fontWeight: 900, color: THEME.primary }}>
+                        <div style={{ fontSize: '1.8rem', fontWeight: 900, color: THEME.info }}>
                           {(client.total_hours || 0).toFixed(1)}h
                         </div>
                       </div>
@@ -328,8 +332,8 @@ const ClientsManagement = ({ onBackToTasks }) => {
 
                   <div style={{
                     padding: '1rem 1.5rem',
-                    background: THEME.bg,
-                    borderTop: `2px solid ${THEME.border}`,
+                    background: '#f8f8f8',
+                    borderTop: `3px solid ${THEME.border}`,
                     display: 'flex',
                     gap: '0.5rem'
                   }}>
@@ -343,10 +347,10 @@ const ClientsManagement = ({ onBackToTasks }) => {
                           style={{
                             flex: 1,
                             padding: '0.5rem',
-                            border: `2px solid ${THEME.border}`,
-                            borderRadius: '6px',
+                            border: `3px solid ${THEME.border}`,
                             fontWeight: 600,
-                            fontSize: '1rem'
+                            fontSize: '1rem',
+                            fontFamily: FONT_STACK
                           }}
                         />
                         <button
@@ -362,7 +366,7 @@ const ClientsManagement = ({ onBackToTasks }) => {
                             setEditingClient(null);
                             setNewClientName('');
                           }}
-                          style={{ padding: '0.5rem 1rem', background: THEME.surface, color: THEME.muted, borderColor: THEME.border }}
+                          style={{ padding: '0.5rem 1rem', background: THEME.surface, color: THEME.text, borderColor: THEME.border }}
                         >
                           Cancel
                         </button>
@@ -387,7 +391,7 @@ const ClientsManagement = ({ onBackToTasks }) => {
                             e.stopPropagation();
                             handleDeleteClient(client.client);
                           }}
-                          style={{ padding: '0.5rem 0.75rem', background: THEME.dangerBg, color: THEME.primary, borderColor: THEME.primary }}
+                          style={{ padding: '0.5rem 0.75rem', background: THEME.accent, color: '#fff', borderColor: THEME.border }}
                         >
                           <Trash2 size={14} />
                         </button>
@@ -403,11 +407,10 @@ const ClientsManagement = ({ onBackToTasks }) => {
         {/* Selected Client Tasks */}
         {selectedClient && clientTasks.length > 0 && (
           <div style={{
-            border: `3px solid ${THEME.primary}`,
+            border: `3px solid ${THEME.border}`,
             background: THEME.surface,
             padding: '2rem',
-            borderRadius: '12px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+            boxShadow: '4px 4px 0px #000'
           }}>
             <h3 style={{
               fontSize: '1.8rem',
@@ -430,10 +433,9 @@ const ClientsManagement = ({ onBackToTasks }) => {
                   style={{
                     padding: '1.25rem',
                     marginBottom: '1rem',
-                    border: `2px solid ${THEME.border}`,
+                    border: `3px solid ${THEME.border}`,
                     background: task.status === 'completed' ? THEME.successBg : THEME.surface,
-                    borderRadius: '8px',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
+                    boxShadow: '4px 4px 0px #000',
                     borderLeft: task.status === 'completed' ? `4px solid ${THEME.success}` : `4px solid ${THEME.info}`
                   }}
                 >
