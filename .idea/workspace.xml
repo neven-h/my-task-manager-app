@@ -4,10 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e1b3cef8-89ee-479c-bb86-3f137da34457" name="Changes" comment="Initial commit: My Task Manager App - Complete rewrite">
-      <change beforePath="$PROJECT_DIR$/frontend/src/BankTransactions.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/BankTransactions.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/ClientsManagement.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/ClientsManagement.jsx" afterDir="false" />
-    </list>
+    <list default="true" id="e1b3cef8-89ee-479c-bb86-3f137da34457" name="Changes" comment="Initial commit: My Task Manager App - Complete rewrite" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -136,7 +133,7 @@
       <workItem from="1767192470759" duration="74000" />
       <workItem from="1767193163096" duration="4916000" />
       <workItem from="1767363896741" duration="4332000" />
-      <workItem from="1767460861998" duration="11253000" />
+      <workItem from="1767460861998" duration="11588000" />
     </task>
     <task id="LOCAL-00001" summary="Initial commit: My Task Manager App - Complete rewrite">
       <option name="closed" value="true" />
@@ -218,7 +215,23 @@
       <option name="project" value="LOCAL" />
       <updated>1767627322153</updated>
     </task>
-    <option name="localTasksCounter" value="11" />
+    <task id="LOCAL-00011" summary="Initial commit: My Task Manager App - Complete rewrite">
+      <option name="closed" value="true" />
+      <created>1767627829398</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1767627829398</updated>
+    </task>
+    <task id="LOCAL-00012" summary="Initial commit: My Task Manager App - Complete rewrite">
+      <option name="closed" value="true" />
+      <created>1767627838659</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1767627838659</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
