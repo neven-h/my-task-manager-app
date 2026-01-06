@@ -994,18 +994,21 @@ const BankTransactions = ({ onBackToTasks }) => {
 
               {savedMonths.map(month => (
                 <div key={month.month_year} style={{
+                  border: `2px solid ${colors.border}`,
+                  background: selectedMonth === month.month_year ? colors.accent : colors.card,
+                  marginBottom: '0.5rem',
                   display: 'flex',
-                  alignItems: 'stretch',
-                  gap: '0.4rem',
-                  marginBottom: '0.5rem'
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  overflow: 'hidden'
                 }}>
                   <button
                     onClick={() => fetchMonthTransactions(month.month_year)}
                     style={{
                       flex: 1,
                       padding: '0.65rem 0.85rem',
-                      border: `2px solid ${colors.border}`,
-                      background: selectedMonth === month.month_year ? colors.accent : colors.card,
+                      border: 'none',
+                      background: 'transparent',
                       color: selectedMonth === month.month_year ? '#fff' : colors.text,
                       cursor: 'pointer',
                       textAlign: 'left',
@@ -1019,15 +1022,20 @@ const BankTransactions = ({ onBackToTasks }) => {
                     </div>
                   </button>
                   <button
-                    onClick={() => handleDeleteMonth(month.month_year)}
+                    onClick={(e) => { e.stopPropagation(); handleDeleteMonth(month.month_year); }}
                     style={{
-                      padding: '0.5rem 0.65rem',
-                      background: colors.card,
-                      border: `2px solid ${colors.border}`,
+                      padding: '0.65rem 0.75rem',
+                      background: 'transparent',
+                      border: 'none',
+                      borderLeft: `1px solid ${selectedMonth === month.month_year ? 'rgba(255,255,255,0.2)' : colors.border}`,
                       cursor: 'pointer',
-                      color: colors.text,
-                      fontFamily: '"Inter", sans-serif'
+                      color: selectedMonth === month.month_year ? '#fff' : colors.textLight,
+                      fontFamily: '"Inter", sans-serif',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}
+                    title="Delete month"
                   >
                     <Trash2 size={16} />
                   </button>
