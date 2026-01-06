@@ -3,12 +3,23 @@ import LandingPage from './LandingPage';
 import LoginPage from './LoginPage';
 import SignUpPage from './SignUpPage';
 import TaskTracker from './TaskTracker';
+import MobileTaskTracker from './mobile-prototype/MobileTaskTracker';
 
 const App = () => {
   const [currentView, setCurrentView] = useState('landing'); // 'landing', 'login', 'signup', 'app'
   const [authToken, setAuthToken] = useState(null);
   const [authUser, setAuthUser] = useState(null);
   const [authRole, setAuthRole] = useState(null); // 'admin' or 'limited'
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+
+  // Detect mobile/desktop on resize
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Check if user is already logged in on mount
   useEffect(() => {
@@ -68,6 +79,10 @@ const App = () => {
   }
 
   if (currentView === 'app') {
+    // Use mobile version on small screens, desktop version on large screens
+    if (isMobile) {
+      return <MobileTaskTracker authToken={authToken} authUser={authUser} authRole={authRole} onLogout={handleLogout} />;
+    }
     return <TaskTracker authToken={authToken} authUser={authUser} authRole={authRole} onLogout={handleLogout} />;
   }
 
