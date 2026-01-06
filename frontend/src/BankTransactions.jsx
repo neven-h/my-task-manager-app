@@ -28,6 +28,7 @@ const BankTransactions = ({ onBackToTasks }) => {
     transaction_type: 'credit'
   });
   const [dateRangeFilter, setDateRangeFilter] = useState('all');
+  const [visibleTransactions, setVisibleTransactions] = useState(50);
 
   // Color scheme - matching TaskTracker theme
   const colors = {
@@ -43,10 +44,21 @@ const BankTransactions = ({ onBackToTasks }) => {
   };
 
   useEffect(() => {
-    fetchSavedMonths();
-    fetchAllDescriptions();
-    fetchAllTransactions();
-    fetchTransactionStats();
+    const initializeData = async () => {
+      await fetchSavedMonths();
+      await fetchAllDescriptions();
+      await fetchTransactionStats();
+
+      // Restore last selected month from localStorage
+      const savedMonth = localStorage.getItem('selectedMonth');
+      if (savedMonth && savedMonth !== 'all') {
+        await fetchMonthTransactions(savedMonth);
+      } else {
+        await fetchAllTransactions();
+      }
+    };
+
+    initializeData();
   }, []);
 
   const fetchAllDescriptions = async () => {
@@ -86,6 +98,8 @@ const BankTransactions = ({ onBackToTasks }) => {
       const data = await response.json();
       setMonthTransactions(data);
       setSelectedMonth('all');
+      setVisibleTransactions(50);
+      localStorage.setItem('selectedMonth', 'all');
     } catch (err) {
       setError('Failed to fetch transactions');
     } finally {
@@ -100,6 +114,8 @@ const BankTransactions = ({ onBackToTasks }) => {
       const data = await response.json();
       setMonthTransactions(data);
       setSelectedMonth(monthYear);
+      setVisibleTransactions(50);
+      localStorage.setItem('selectedMonth', monthYear);
     } catch (err) {
       setError('Failed to fetch transactions');
     } finally {
@@ -741,121 +757,6 @@ const BankTransactions = ({ onBackToTasks }) => {
           </div>
         )}
 
-        {/* Expense Distribution Chart */}
-        {selectedMonth && monthTransactions.length > 0 && (() => {
-          const categoryData = {};
-          monthTransactions.forEach(t => {
-            const category = t.description || 'Other';
-            if (!categoryData[category]) {
-              categoryData[category] = { total: 0, count: 0 };
-            }
-            categoryData[category].total += t.amount;
-            categoryData[category].count += 1;
-          });
-
-          const sortedCategories = Object.entries(categoryData)
-            .sort((a, b) => b[1].total - a[1].total)
-            .slice(0, 10);
-
-          const maxAmount = sortedCategories[0]?.[1].total || 1;
-
-          return (
-            <div style={{
-              background: colors.card,
-              border: `2px solid ${colors.border}`,
-              padding: '1.25rem',
-              marginBottom: '2rem'
-            }}>
-              <h2 style={{
-                margin: '0 0 1.25rem 0',
-                fontSize: '1.3rem',
-                fontWeight: '700',
-                color: colors.text,
-                textTransform: 'uppercase',
-                letterSpacing: '0.3px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                <PieChart size={24} color={colors.primary} />
-                Expense Distribution
-                <span style={{
-                  fontSize: '0.85rem',
-                  fontWeight: '600',
-                  color: colors.textLight,
-                  textTransform: 'none',
-                  marginLeft: '0.5rem'
-                }}>
-                  (Top 10 Categories)
-                </span>
-              </h2>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {sortedCategories.map(([category, data], idx) => {
-                  const percentage = (data.total / maxAmount) * 100;
-                  return (
-                    <div key={category} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                        <span style={{
-                          fontSize: '0.9rem',
-                          fontWeight: '600',
-                          color: colors.text
-                        }}>
-                          {idx + 1}. {category}
-                        </span>
-                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'baseline' }}>
-                          <span style={{
-                            fontSize: '0.8rem',
-                            color: colors.textLight
-                          }}>
-                            {data.count} txn{data.count > 1 ? 's' : ''}
-                          </span>
-                          <span style={{
-                            fontSize: '1rem',
-                            fontWeight: '700',
-                            fontFamily: 'monospace',
-                            color: colors.text
-                          }}>
-                            {formatCurrency(data.total)}
-                          </span>
-                        </div>
-                      </div>
-                      <div style={{
-                        width: '100%',
-                        height: '1.5rem',
-                        background: '#f0f0f0',
-                        border: `1px solid ${colors.border}`,
-                        position: 'relative',
-                        overflow: 'hidden'
-                      }}>
-                        <div style={{
-                          width: `${percentage}%`,
-                          height: '100%',
-                          background: `linear-gradient(90deg, ${colors.primary} 0%, ${colors.accent} 100%)`,
-                          transition: 'width 0.3s ease',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'flex-end',
-                          paddingRight: '0.5rem'
-                        }}>
-                          <span style={{
-                            fontSize: '0.75rem',
-                            fontWeight: '700',
-                            color: '#fff',
-                            textShadow: '0 1px 2px rgba(0,0,0,0.3)'
-                          }}>
-                            {((data.total / monthTransactions.reduce((sum, t) => sum + t.amount, 0)) * 100).toFixed(1)}%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()}
-
         {/* Upload Section */}
         <div style={{
           background: colors.card,
@@ -1247,6 +1148,122 @@ const BankTransactions = ({ onBackToTasks }) => {
                   </div>
                 </div>
 
+                {/* Expense Distribution Chart */}
+                {(() => {
+                  const categoryData = {};
+                  filteredTransactions.forEach(t => {
+                    const category = t.description || 'Other';
+                    if (!categoryData[category]) {
+                      categoryData[category] = { total: 0, count: 0 };
+                    }
+                    categoryData[category].total += t.amount;
+                    categoryData[category].count += 1;
+                  });
+
+                  const sortedCategories = Object.entries(categoryData)
+                    .sort((a, b) => b[1].total - a[1].total)
+                    .slice(0, 10);
+
+                  const maxAmount = sortedCategories[0]?.[1].total || 1;
+                  const totalAmount = filteredTransactions.reduce((sum, t) => sum + t.amount, 0);
+
+                  return sortedCategories.length > 0 ? (
+                    <div style={{
+                      background: '#f9f9f9',
+                      border: `2px solid ${colors.border}`,
+                      padding: '1rem',
+                      marginBottom: '1rem'
+                    }}>
+                      <h3 style={{
+                        margin: '0 0 1rem 0',
+                        fontSize: '1.1rem',
+                        fontWeight: '700',
+                        color: colors.text,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.3px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem'
+                      }}>
+                        <PieChart size={20} color={colors.primary} />
+                        Expense Distribution
+                        <span style={{
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          color: colors.textLight,
+                          textTransform: 'none',
+                          marginLeft: '0.25rem'
+                        }}>
+                          (Top 10)
+                        </span>
+                      </h3>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                        {sortedCategories.map(([category, data], idx) => {
+                          const percentage = (data.total / maxAmount) * 100;
+                          return (
+                            <div key={category} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                <span style={{
+                                  fontSize: '0.85rem',
+                                  fontWeight: '600',
+                                  color: colors.text
+                                }}>
+                                  {idx + 1}. {category}
+                                </span>
+                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline' }}>
+                                  <span style={{
+                                    fontSize: '0.75rem',
+                                    color: colors.textLight
+                                  }}>
+                                    {data.count} txn{data.count > 1 ? 's' : ''}
+                                  </span>
+                                  <span style={{
+                                    fontSize: '0.9rem',
+                                    fontWeight: '700',
+                                    fontFamily: 'monospace',
+                                    color: colors.text
+                                  }}>
+                                    {formatCurrency(data.total)}
+                                  </span>
+                                </div>
+                              </div>
+                              <div style={{
+                                width: '100%',
+                                height: '1.25rem',
+                                background: '#f0f0f0',
+                                border: `1px solid ${colors.border}`,
+                                position: 'relative',
+                                overflow: 'hidden'
+                              }}>
+                                <div style={{
+                                  width: `${percentage}%`,
+                                  height: '100%',
+                                  background: `linear-gradient(90deg, ${colors.primary} 0%, ${colors.accent} 100%)`,
+                                  transition: 'width 0.3s ease',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'flex-end',
+                                  paddingRight: '0.4rem'
+                                }}>
+                                  <span style={{
+                                    fontSize: '0.7rem',
+                                    fontWeight: '700',
+                                    color: '#fff',
+                                    textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                                  }}>
+                                    {((data.total / totalAmount) * 100).toFixed(1)}%
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+
                 {/* Transactions Table */}
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', border: `2px solid ${colors.border}` }}>
@@ -1260,7 +1277,7 @@ const BankTransactions = ({ onBackToTasks }) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredTransactions.map(t => (
+                      {filteredTransactions.slice(0, visibleTransactions).map(t => (
                         <tr key={t.id} style={{ borderBottom: `1px solid ${colors.border}` }}>
                           {editingTransaction?.id === t.id ? (
                             <>
@@ -1385,6 +1402,29 @@ const BankTransactions = ({ onBackToTasks }) => {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Show More Button */}
+                {filteredTransactions.length > visibleTransactions && (
+                  <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                    <button
+                      onClick={() => setVisibleTransactions(prev => prev + 50)}
+                      style={{
+                        padding: '0.75rem 2rem',
+                        background: colors.primary,
+                        color: '#fff',
+                        border: `2px solid ${colors.border}`,
+                        cursor: 'pointer',
+                        fontWeight: '700',
+                        fontSize: '0.95rem',
+                        fontFamily: '"Inter", sans-serif',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.3px'
+                      }}
+                    >
+                      Show More ({filteredTransactions.length - visibleTransactions} remaining)
+                    </button>
+                  </div>
+                )}
 
                 {filteredTransactions.length === 0 && (
                   <p style={{ textAlign: 'center', color: colors.textLight, padding: '3rem', fontSize: '1.1rem' }}>
