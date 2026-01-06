@@ -593,7 +593,7 @@ const BankTransactions = ({ onBackToTasks }) => {
           >
             <ArrowLeft size={20} /> Back
           </button>
-          <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: '800', letterSpacing: '-0.5px' }}>
+          <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: '900', letterSpacing: '-1px', textTransform: 'uppercase', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
             💰 BANK TRANSACTIONS
           </h1>
         </div>
