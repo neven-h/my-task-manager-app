@@ -694,10 +694,9 @@ const BankTransactions = ({ onBackToTasks }) => {
             {transactionStats.by_type.map(stat => (
               <div key={stat.transaction_type} style={{
                 background: colors.card,
-                border: `3px solid ${colors.border}`,
-                padding: '1.75rem',
-                textAlign: 'center',
-                boxShadow: '4px 4px 0px #000'
+                border: `2px solid ${colors.border}`,
+                padding: '1.25rem',
+                textAlign: 'center'
               }}>
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
                   {stat.transaction_type === 'cash' ? 
@@ -722,10 +721,9 @@ const BankTransactions = ({ onBackToTasks }) => {
             ))}
             <div style={{
               background: colors.card,
-              border: `3px solid ${colors.border}`,
-              padding: '1.75rem',
-              textAlign: 'center',
-              boxShadow: '4px 4px 0px #000'
+              border: `2px solid ${colors.border}`,
+              padding: '1.25rem',
+              textAlign: 'center'
             }}>
               <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
                 <PieChart size={40} color={colors.text} />
@@ -743,13 +741,127 @@ const BankTransactions = ({ onBackToTasks }) => {
           </div>
         )}
 
+        {/* Expense Distribution Chart */}
+        {selectedMonth && monthTransactions.length > 0 && (() => {
+          const categoryData = {};
+          monthTransactions.forEach(t => {
+            const category = t.description || 'Other';
+            if (!categoryData[category]) {
+              categoryData[category] = { total: 0, count: 0 };
+            }
+            categoryData[category].total += t.amount;
+            categoryData[category].count += 1;
+          });
+
+          const sortedCategories = Object.entries(categoryData)
+            .sort((a, b) => b[1].total - a[1].total)
+            .slice(0, 10);
+
+          const maxAmount = sortedCategories[0]?.[1].total || 1;
+
+          return (
+            <div style={{
+              background: colors.card,
+              border: `2px solid ${colors.border}`,
+              padding: '1.25rem',
+              marginBottom: '2rem'
+            }}>
+              <h2 style={{
+                margin: '0 0 1.25rem 0',
+                fontSize: '1.3rem',
+                fontWeight: '700',
+                color: colors.text,
+                textTransform: 'uppercase',
+                letterSpacing: '0.3px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <PieChart size={24} color={colors.primary} />
+                Expense Distribution
+                <span style={{
+                  fontSize: '0.85rem',
+                  fontWeight: '600',
+                  color: colors.textLight,
+                  textTransform: 'none',
+                  marginLeft: '0.5rem'
+                }}>
+                  (Top 10 Categories)
+                </span>
+              </h2>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {sortedCategories.map(([category, data], idx) => {
+                  const percentage = (data.total / maxAmount) * 100;
+                  return (
+                    <div key={category} style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                        <span style={{
+                          fontSize: '0.9rem',
+                          fontWeight: '600',
+                          color: colors.text
+                        }}>
+                          {idx + 1}. {category}
+                        </span>
+                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'baseline' }}>
+                          <span style={{
+                            fontSize: '0.8rem',
+                            color: colors.textLight
+                          }}>
+                            {data.count} txn{data.count > 1 ? 's' : ''}
+                          </span>
+                          <span style={{
+                            fontSize: '1rem',
+                            fontWeight: '700',
+                            fontFamily: 'monospace',
+                            color: colors.text
+                          }}>
+                            {formatCurrency(data.total)}
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{
+                        width: '100%',
+                        height: '1.5rem',
+                        background: '#f0f0f0',
+                        border: `1px solid ${colors.border}`,
+                        position: 'relative',
+                        overflow: 'hidden'
+                      }}>
+                        <div style={{
+                          width: `${percentage}%`,
+                          height: '100%',
+                          background: `linear-gradient(90deg, ${colors.primary} 0%, ${colors.accent} 100%)`,
+                          transition: 'width 0.3s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'flex-end',
+                          paddingRight: '0.5rem'
+                        }}>
+                          <span style={{
+                            fontSize: '0.75rem',
+                            fontWeight: '700',
+                            color: '#fff',
+                            textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+                          }}>
+                            {((data.total / monthTransactions.reduce((sum, t) => sum + t.amount, 0)) * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Upload Section */}
         <div style={{
           background: colors.card,
-          border: `3px solid ${colors.border}`,
-          padding: '2rem',
-          marginBottom: '2rem',
-          boxShadow: '4px 4px 0px #000'
+          border: `2px solid ${colors.border}`,
+          padding: '1.5rem',
+          marginBottom: '2rem'
         }}>
           <h2 style={{ margin: '0 0 1.5rem 0', fontSize: '1.5rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.75rem', color: colors.text }}>
             <Upload size={28} color={colors.primary} /> Upload Transactions
@@ -765,55 +877,56 @@ const BankTransactions = ({ onBackToTasks }) => {
                 onClick={() => setTransactionType('credit')}
                 style={{
                   flex: 1,
-                  padding: '1.25rem',
-                  border: `3px solid ${colors.border}`,
+                  padding: '1rem',
+                  border: `2px solid ${colors.border}`,
                   background: transactionType === 'credit' ? colors.primary : colors.card,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '0.75rem',
-                  fontWeight: transactionType === 'credit' ? '700' : '500',
-                  fontSize: '1.1rem',
+                  gap: '0.5rem',
+                  fontWeight: transactionType === 'credit' ? '700' : '600',
+                  fontSize: '1rem',
                   color: transactionType === 'credit' ? '#fff' : colors.text,
                   fontFamily: '"Inter", sans-serif',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
+                  letterSpacing: '0.3px'
                 }}
               >
-                <CreditCard size={24} color={transactionType === 'credit' ? '#fff' : colors.textLight} />
-                💳 Credit Card
+                <CreditCard size={20} color={transactionType === 'credit' ? '#fff' : colors.textLight} />
+                Credit Card
               </button>
               <button
                 onClick={() => setTransactionType('cash')}
                 style={{
                   flex: 1,
-                  padding: '1.25rem',
-                  border: `3px solid ${transactionType === 'cash' ? colors.success : colors.border}`,
+                  padding: '1rem',
+                  border: `2px solid ${transactionType === 'cash' ? colors.success : colors.border}`,
                   background: transactionType === 'cash' ? '#ecfdf5' : colors.card,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '0.75rem',
-                  fontWeight: transactionType === 'cash' ? '700' : '500',
-                  fontSize: '1.1rem',
-                  borderRadius: '8px',
-                  color: transactionType === 'cash' ? colors.success : colors.text
+                  gap: '0.5rem',
+                  fontWeight: transactionType === 'cash' ? '700' : '600',
+                  fontSize: '1rem',
+                  color: transactionType === 'cash' ? colors.success : colors.text,
+                  fontFamily: '"Inter", sans-serif',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.3px'
                 }}
               >
-                <Banknote size={24} color={transactionType === 'cash' ? colors.success : colors.textLight} />
-                💵 Cash
+                <Banknote size={20} color={transactionType === 'cash' ? colors.success : colors.textLight} />
+                Cash
               </button>
             </div>
           </div>
 
           <div style={{
-            border: `3px dashed ${colors.border}`,
-            padding: '2.5rem',
+            border: `2px dashed ${colors.border}`,
+            padding: '2rem',
             textAlign: 'center',
-            background: '#f8f8f8',
-            boxShadow: '4px 4px 0px #000'
+            background: '#f8f8f8'
           }}>
             <input
               type="file"
@@ -850,10 +963,9 @@ const BankTransactions = ({ onBackToTasks }) => {
         {uploadedData && (
           <div style={{
             background: colors.card,
-            border: `3px solid ${colors.border}`,
-            padding: '2rem',
-            marginBottom: '2rem',
-            boxShadow: '4px 4px 0px #000'
+            border: `2px solid ${colors.border}`,
+            padding: '1.5rem',
+            marginBottom: '2rem'
           }}>
             <h2 style={{ margin: '0 0 1rem 0', color: colors.text, display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.4rem' }}>
               <CheckCircle size={28} /> Preview: {uploadedData.transaction_count} transactions ready
@@ -870,23 +982,23 @@ const BankTransactions = ({ onBackToTasks }) => {
               </span>
             </h2>
             
-            <div style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontWeight: '600', fontSize: '1.05rem' }}>Filter:</span>
+            <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: '600', fontSize: '0.95rem' }}>Filter:</span>
               {['all', 'positive', 'negative'].map(filter => (
                 <button
                   key={filter}
                   onClick={() => setPreviewFilter(filter)}
                   style={{
-                    padding: '0.6rem 1.2rem',
-                    border: `3px solid ${colors.border}`,
+                    padding: '0.5rem 1rem',
+                    border: `2px solid ${colors.border}`,
                     background: previewFilter === filter ? colors.primary : colors.card,
                     color: previewFilter === filter ? '#fff' : colors.text,
                     cursor: 'pointer',
-                    fontWeight: previewFilter === filter ? '700' : '500',
-                    fontSize: '1rem',
+                    fontWeight: previewFilter === filter ? '700' : '600',
+                    fontSize: '0.9rem',
                     fontFamily: '"Inter", sans-serif',
                     textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
+                    letterSpacing: '0.3px'
                   }}
                 >
                   {filter.charAt(0).toUpperCase() + filter.slice(1)}
@@ -894,7 +1006,7 @@ const BankTransactions = ({ onBackToTasks }) => {
               ))}
             </div>
 
-            <div style={{ maxHeight: '350px', overflow: 'auto', border: `3px solid ${colors.border}` }}>
+            <div style={{ maxHeight: '350px', overflow: 'auto', border: `2px solid ${colors.border}` }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: colors.primary }}>
@@ -917,39 +1029,39 @@ const BankTransactions = ({ onBackToTasks }) => {
               </table>
             </div>
 
-            <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
+            <div style={{ marginTop: '1.25rem', display: 'flex', gap: '0.75rem' }}>
               <button
                 onClick={handleSaveTransactions}
                 disabled={loading}
                 style={{
                   flex: 1,
-                  padding: '1.25rem',
+                  padding: '1rem',
                   background: colors.success,
                   color: '#fff',
-                  border: `3px solid ${colors.border}`,
+                  border: `2px solid ${colors.border}`,
                   cursor: loading ? 'not-allowed' : 'pointer',
                   fontWeight: '700',
-                  fontSize: '1.2rem',
+                  fontSize: '1rem',
                   fontFamily: '"Inter", sans-serif',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
+                  letterSpacing: '0.3px'
                 }}
               >
-                {loading ? '⏳ Saving...' : `✅ Save ${uploadedData.transaction_count} Transactions`}
+                {loading ? 'Saving...' : `Save ${uploadedData.transaction_count} Transactions`}
               </button>
               <button
                 onClick={() => setUploadedData(null)}
                 style={{
-                  padding: '1.25rem 2rem',
+                  padding: '1rem 1.5rem',
                   background: colors.card,
-                  border: `3px solid ${colors.border}`,
+                  border: `2px solid ${colors.border}`,
                   cursor: 'pointer',
                   fontWeight: '600',
-                  fontSize: '1.1rem',
+                  fontSize: '1rem',
                   color: colors.text,
                   fontFamily: '"Inter", sans-serif',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
+                  letterSpacing: '0.3px'
                 }}
               >
                 Cancel
