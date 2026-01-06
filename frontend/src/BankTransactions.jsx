@@ -757,108 +757,126 @@ const BankTransactions = ({ onBackToTasks }) => {
           </div>
         )}
 
-        {/* Upload Section */}
-        <div style={{
-          background: colors.card,
-          border: `2px solid ${colors.border}`,
-          padding: '1.5rem',
-          marginBottom: '2rem'
-        }}>
-          <h2 style={{ margin: '0 0 1.5rem 0', fontSize: '1.5rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.75rem', color: colors.text }}>
-            <Upload size={28} color={colors.primary} /> Upload Transactions
-          </h2>
-          
-          {/* Transaction Type Selector */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '700', fontSize: '1.1rem', color: colors.text }}>
-              Transaction Type:
-            </label>
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <button
-                onClick={() => setTransactionType('credit')}
-                style={{
-                  flex: 1,
-                  padding: '1rem',
-                  border: `2px solid ${colors.border}`,
-                  background: transactionType === 'credit' ? colors.primary : colors.card,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  fontWeight: transactionType === 'credit' ? '700' : '600',
-                  fontSize: '1rem',
-                  color: transactionType === 'credit' ? '#fff' : colors.text,
-                  fontFamily: '"Inter", sans-serif',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.3px'
-                }}
-              >
-                <CreditCard size={20} color={transactionType === 'credit' ? '#fff' : colors.textLight} />
-                Credit Card
-              </button>
-              <button
-                onClick={() => setTransactionType('cash')}
-                style={{
-                  flex: 1,
-                  padding: '1rem',
-                  border: `2px solid ${transactionType === 'cash' ? colors.success : colors.border}`,
-                  background: transactionType === 'cash' ? '#ecfdf5' : colors.card,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  fontWeight: transactionType === 'cash' ? '700' : '600',
-                  fontSize: '1rem',
-                  color: transactionType === 'cash' ? colors.success : colors.text,
-                  fontFamily: '"Inter", sans-serif',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.3px'
-                }}
-              >
-                <Banknote size={20} color={transactionType === 'cash' ? colors.success : colors.textLight} />
-                Cash
-              </button>
-            </div>
-          </div>
+        {/* Expense Distribution Chart */}
+        {selectedMonth && (() => {
+          const categoryData = {};
+          filteredTransactions.forEach(t => {
+            const category = t.description || 'Other';
+            if (!categoryData[category]) {
+              categoryData[category] = { total: 0, count: 0 };
+            }
+            categoryData[category].total += t.amount;
+            categoryData[category].count += 1;
+          });
 
-          <div style={{
-            border: `2px dashed ${colors.border}`,
-            padding: '2rem',
-            textAlign: 'center',
-            background: '#f8f8f8'
-          }}>
-            <input
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              onChange={handleFileUpload}
-              style={{ display: 'none' }}
-              id="file-upload"
-            />
-            <label htmlFor="file-upload" style={{
-              cursor: 'pointer',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '0.75rem'
+          const sortedCategories = Object.entries(categoryData)
+            .sort((a, b) => b[1].total - a[1].total)
+            .slice(0, 10);
+
+          const maxAmount = sortedCategories[0]?.[1].total || 1;
+          const totalAmount = filteredTransactions.reduce((sum, t) => sum + t.amount, 0);
+
+          return sortedCategories.length > 0 ? (
+            <div style={{
+              background: colors.card,
+              border: `2px solid ${colors.border}`,
+              padding: '1.5rem',
+              marginBottom: '2rem'
             }}>
-              <FileText size={56} color={colors.text} />
-              <span style={{ fontWeight: '700', fontSize: '1.2rem', color: colors.text }}>
-                Click to upload {transactionType === 'cash' ? '💵 cash' : '💳 credit card'} transactions
-              </span>
-              <span style={{ color: colors.textLight, fontSize: '1rem' }}>
-                CSV or Excel files supported
-              </span>
-            </label>
-          </div>
+              <h2 style={{
+                margin: '0 0 1.25rem 0',
+                fontSize: '1.5rem',
+                fontWeight: '800',
+                color: colors.text,
+                textTransform: 'uppercase',
+                letterSpacing: '0.3px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem'
+              }}>
+                <PieChart size={28} color={colors.primary} />
+                Expense Distribution
+                <span style={{
+                  fontSize: '0.9rem',
+                  fontWeight: '600',
+                  color: colors.textLight,
+                  textTransform: 'none',
+                  marginLeft: '0.25rem'
+                }}>
+                  (Top 10 Categories)
+                </span>
+              </h2>
 
-          {loading && (
-            <div style={{ textAlign: 'center', padding: '2rem', color: colors.text, fontSize: '1.1rem', fontWeight: '600' }}>
-              ⏳ Processing...
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+                gap: '1rem'
+              }}>
+                {sortedCategories.map(([category, data], idx) => {
+                  const percentage = (data.total / maxAmount) * 100;
+                  return (
+                    <div key={category} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                        <span style={{
+                          fontSize: '0.95rem',
+                          fontWeight: '700',
+                          color: colors.text
+                        }}>
+                          {idx + 1}. {category}
+                        </span>
+                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'baseline' }}>
+                          <span style={{
+                            fontSize: '0.8rem',
+                            color: colors.textLight,
+                            fontWeight: '600'
+                          }}>
+                            {data.count} txn{data.count > 1 ? 's' : ''}
+                          </span>
+                          <span style={{
+                            fontSize: '1rem',
+                            fontWeight: '800',
+                            fontFamily: 'monospace',
+                            color: colors.text
+                          }}>
+                            {formatCurrency(data.total)}
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{
+                        width: '100%',
+                        height: '1.5rem',
+                        background: '#f0f0f0',
+                        border: `2px solid ${colors.border}`,
+                        position: 'relative',
+                        overflow: 'hidden'
+                      }}>
+                        <div style={{
+                          width: `${percentage}%`,
+                          height: '100%',
+                          background: `linear-gradient(90deg, ${colors.primary} 0%, ${colors.accent} 100%)`,
+                          transition: 'width 0.3s ease',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'flex-end',
+                          paddingRight: '0.5rem'
+                        }}>
+                          <span style={{
+                            fontSize: '0.75rem',
+                            fontWeight: '800',
+                            color: '#fff',
+                            textShadow: '0 1px 2px rgba(0,0,0,0.4)'
+                          }}>
+                            {((data.total / totalAmount) * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          )}
-        </div>
+          ) : null;
+        })()}
 
         {/* Upload Preview */}
         {uploadedData && (
@@ -973,8 +991,119 @@ const BankTransactions = ({ onBackToTasks }) => {
 
         {/* Main Content Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(250px, 18rem) 1fr', gap: '1.5rem' }}>
-          {/* Sidebar - Months */}
+          {/* Sidebar - Upload & Months */}
           <div>
+            {/* Upload Section - Compact */}
+            <div style={{
+              background: colors.card,
+              border: `2px solid ${colors.border}`,
+              padding: '1rem',
+              marginBottom: '1.5rem'
+            }}>
+              <h3 style={{
+                margin: '0 0 0.75rem 0',
+                fontSize: '1rem',
+                fontWeight: '700',
+                color: colors.text,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                textTransform: 'uppercase',
+                letterSpacing: '0.3px'
+              }}>
+                <Upload size={18} color={colors.primary} />
+                Upload
+              </h3>
+
+              {/* Transaction Type Selector - Compact */}
+              <div style={{ marginBottom: '0.75rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button
+                    onClick={() => setTransactionType('credit')}
+                    style={{
+                      flex: 1,
+                      padding: '0.5rem 0.25rem',
+                      border: `2px solid ${colors.border}`,
+                      background: transactionType === 'credit' ? colors.primary : colors.card,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.25rem',
+                      fontWeight: transactionType === 'credit' ? '700' : '600',
+                      fontSize: '0.75rem',
+                      color: transactionType === 'credit' ? '#fff' : colors.text,
+                      fontFamily: '"Inter", sans-serif',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.3px'
+                    }}
+                  >
+                    <CreditCard size={14} color={transactionType === 'credit' ? '#fff' : colors.textLight} />
+                    Card
+                  </button>
+                  <button
+                    onClick={() => setTransactionType('cash')}
+                    style={{
+                      flex: 1,
+                      padding: '0.5rem 0.25rem',
+                      border: `2px solid ${transactionType === 'cash' ? colors.success : colors.border}`,
+                      background: transactionType === 'cash' ? '#ecfdf5' : colors.card,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.25rem',
+                      fontWeight: transactionType === 'cash' ? '700' : '600',
+                      fontSize: '0.75rem',
+                      color: transactionType === 'cash' ? colors.success : colors.text,
+                      fontFamily: '"Inter", sans-serif',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.3px'
+                    }}
+                  >
+                    <Banknote size={14} color={transactionType === 'cash' ? colors.success : colors.textLight} />
+                    Cash
+                  </button>
+                </div>
+              </div>
+
+              <div style={{
+                border: `2px dashed ${colors.border}`,
+                padding: '1rem',
+                textAlign: 'center',
+                background: '#f8f8f8'
+              }}>
+                <input
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  onChange={handleFileUpload}
+                  style={{ display: 'none' }}
+                  id="file-upload"
+                />
+                <label htmlFor="file-upload" style={{
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}>
+                  <FileText size={32} color={colors.text} />
+                  <span style={{ fontWeight: '700', fontSize: '0.8rem', color: colors.text, textAlign: 'center', lineHeight: '1.3' }}>
+                    Click to upload
+                  </span>
+                  <span style={{ color: colors.textLight, fontSize: '0.7rem' }}>
+                    CSV or Excel
+                  </span>
+                </label>
+              </div>
+
+              {loading && (
+                <div style={{ textAlign: 'center', padding: '0.75rem', color: colors.text, fontSize: '0.85rem', fontWeight: '600' }}>
+                  ⏳ Processing...
+                </div>
+              )}
+            </div>
+
             <div style={{
               background: colors.card,
               border: `2px solid ${colors.border}`,
@@ -1147,122 +1276,6 @@ const BankTransactions = ({ onBackToTasks }) => {
                     </select>
                   </div>
                 </div>
-
-                {/* Expense Distribution Chart */}
-                {(() => {
-                  const categoryData = {};
-                  filteredTransactions.forEach(t => {
-                    const category = t.description || 'Other';
-                    if (!categoryData[category]) {
-                      categoryData[category] = { total: 0, count: 0 };
-                    }
-                    categoryData[category].total += t.amount;
-                    categoryData[category].count += 1;
-                  });
-
-                  const sortedCategories = Object.entries(categoryData)
-                    .sort((a, b) => b[1].total - a[1].total)
-                    .slice(0, 10);
-
-                  const maxAmount = sortedCategories[0]?.[1].total || 1;
-                  const totalAmount = filteredTransactions.reduce((sum, t) => sum + t.amount, 0);
-
-                  return sortedCategories.length > 0 ? (
-                    <div style={{
-                      background: '#f9f9f9',
-                      border: `2px solid ${colors.border}`,
-                      padding: '1rem',
-                      marginBottom: '1rem'
-                    }}>
-                      <h3 style={{
-                        margin: '0 0 1rem 0',
-                        fontSize: '1.1rem',
-                        fontWeight: '700',
-                        color: colors.text,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.3px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem'
-                      }}>
-                        <PieChart size={20} color={colors.primary} />
-                        Expense Distribution
-                        <span style={{
-                          fontSize: '0.75rem',
-                          fontWeight: '600',
-                          color: colors.textLight,
-                          textTransform: 'none',
-                          marginLeft: '0.25rem'
-                        }}>
-                          (Top 10)
-                        </span>
-                      </h3>
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                        {sortedCategories.map(([category, data], idx) => {
-                          const percentage = (data.total / maxAmount) * 100;
-                          return (
-                            <div key={category} style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                <span style={{
-                                  fontSize: '0.85rem',
-                                  fontWeight: '600',
-                                  color: colors.text
-                                }}>
-                                  {idx + 1}. {category}
-                                </span>
-                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline' }}>
-                                  <span style={{
-                                    fontSize: '0.75rem',
-                                    color: colors.textLight
-                                  }}>
-                                    {data.count} txn{data.count > 1 ? 's' : ''}
-                                  </span>
-                                  <span style={{
-                                    fontSize: '0.9rem',
-                                    fontWeight: '700',
-                                    fontFamily: 'monospace',
-                                    color: colors.text
-                                  }}>
-                                    {formatCurrency(data.total)}
-                                  </span>
-                                </div>
-                              </div>
-                              <div style={{
-                                width: '100%',
-                                height: '1.25rem',
-                                background: '#f0f0f0',
-                                border: `1px solid ${colors.border}`,
-                                position: 'relative',
-                                overflow: 'hidden'
-                              }}>
-                                <div style={{
-                                  width: `${percentage}%`,
-                                  height: '100%',
-                                  background: `linear-gradient(90deg, ${colors.primary} 0%, ${colors.accent} 100%)`,
-                                  transition: 'width 0.3s ease',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'flex-end',
-                                  paddingRight: '0.4rem'
-                                }}>
-                                  <span style={{
-                                    fontSize: '0.7rem',
-                                    fontWeight: '700',
-                                    color: '#fff',
-                                    textShadow: '0 1px 2px rgba(0,0,0,0.3)'
-                                  }}>
-                                    {((data.total / totalAmount) * 100).toFixed(1)}%
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : null;
-                })()}
 
                 {/* Transactions Table */}
                 <div style={{ overflowX: 'auto' }}>
