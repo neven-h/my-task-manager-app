@@ -758,7 +758,7 @@ const BankTransactions = ({ onBackToTasks }) => {
         )}
 
         {/* Expense Distribution Chart */}
-        {selectedMonth && (() => {
+        {monthTransactions.length > 0 && (() => {
           const categoryData = {};
           filteredTransactions.forEach(t => {
             const category = t.description || 'Other';
