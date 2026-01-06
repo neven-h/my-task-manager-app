@@ -593,7 +593,7 @@ const BankTransactions = ({ onBackToTasks }) => {
           >
             <ArrowLeft size={20} /> Back
           </button>
-          <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: '900', letterSpacing: '-1px', textTransform: 'uppercase', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
+          <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: '800', letterSpacing: '-0.5px' }}>
             💰 BANK TRANSACTIONS
           </h1>
         </div>
@@ -622,7 +622,7 @@ const BankTransactions = ({ onBackToTasks }) => {
             onClick={exportToPDF}
             disabled={filteredTransactions.length === 0}
             style={{
-              background: colors.accent,
+              background: colors.primary,
               border: `3px solid ${colors.border}`,
               color: '#fff',
               padding: '0.75rem 1.5rem',
@@ -700,8 +700,8 @@ const BankTransactions = ({ onBackToTasks }) => {
                 boxShadow: '4px 4px 0px #000'
               }}>
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
-                  {stat.transaction_type === 'cash' ? 
-                    <Banknote size={40} color={colors.success} /> : 
+                  {stat.transaction_type === 'cash' ?
+                    <Banknote size={40} color={colors.success} /> :
                     <CreditCard size={40} color={colors.primary} />
                   }
                 </div>
@@ -754,7 +754,7 @@ const BankTransactions = ({ onBackToTasks }) => {
           <h2 style={{ margin: '0 0 1.5rem 0', fontSize: '1.5rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.75rem', color: colors.text }}>
             <Upload size={28} color={colors.primary} /> Upload Transactions
           </h2>
-          
+
           {/* Transaction Type Selector */}
           <div style={{ marginBottom: '1.5rem' }}>
             <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '700', fontSize: '1.1rem', color: colors.text }}>
@@ -869,7 +869,7 @@ const BankTransactions = ({ onBackToTasks }) => {
                 {uploadedData.transaction_type === 'cash' ? '💵 CASH' : '💳 CREDIT'}
               </span>
             </h2>
-            
+
             <div style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontWeight: '600', fontSize: '1.05rem' }}>Filter:</span>
               {['all', 'positive', 'negative'].map(filter => (
@@ -972,7 +972,7 @@ const BankTransactions = ({ onBackToTasks }) => {
                 <Calendar size={22} style={{ verticalAlign: 'middle', marginRight: '0.5rem' }} />
                 📅 Saved Months
               </h3>
-              
+
               <button
                 onClick={fetchAllTransactions}
                 style={{
@@ -980,7 +980,7 @@ const BankTransactions = ({ onBackToTasks }) => {
                   padding: '1rem',
                   marginBottom: '0.75rem',
                   border: `3px solid ${colors.border}`,
-                  background: selectedMonth === 'all' ? colors.accent : colors.card,
+                  background: selectedMonth === 'all' ? colors.primary : colors.card,
                   color: selectedMonth === 'all' ? '#fff' : colors.text,
                   cursor: 'pointer',
                   fontWeight: selectedMonth === 'all' ? '700' : '500',
@@ -1006,7 +1006,7 @@ const BankTransactions = ({ onBackToTasks }) => {
                       flex: 1,
                       padding: '1rem',
                       border: `3px solid ${colors.border}`,
-                      background: selectedMonth === month.month_year ? colors.accent : colors.card,
+                      background: selectedMonth === month.month_year ? colors.primary : colors.card,
                       color: selectedMonth === month.month_year ? '#fff' : colors.text,
                       cursor: 'pointer',
                       textAlign: 'left',
@@ -1064,7 +1064,7 @@ const BankTransactions = ({ onBackToTasks }) => {
                     {selectedMonth === 'all' ? '📊 ALL TRANSACTIONS' : `📅 ${formatMonthYear(selectedMonth)}`}
                   </h3>
                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span style={{ background: colors.accent, padding: '0.6rem 1.2rem', color: '#fff', fontWeight: '700', fontSize: '1.05rem', border: `3px solid ${colors.border}`, fontFamily: '"Inter", sans-serif' }}>
+                    <span style={{ background: colors.primary, padding: '0.6rem 1.2rem', color: '#fff', fontWeight: '700', fontSize: '1.05rem', border: `3px solid ${colors.border}`, fontFamily: '"Inter", sans-serif' }}>
                       💳 {formatCurrency(creditTotal)}
                     </span>
                     <span style={{ background: colors.success, padding: '0.6rem 1.2rem', color: '#fff', fontWeight: '700', fontSize: '1.05rem', border: `3px solid ${colors.border}`, fontFamily: '"Inter", sans-serif' }}>
@@ -1209,7 +1209,7 @@ const BankTransactions = ({ onBackToTasks }) => {
                               <td style={{ padding: '1rem', textAlign: 'center' }}>
                                 <span style={{
                                   padding: '0.4rem 0.75rem',
-                                  background: t.transaction_type === 'cash' ? colors.success : colors.accent,
+                                  background: t.transaction_type === 'cash' ? colors.success : colors.primary,
                                   color: '#fff',
                                   fontSize: '0.9rem',
                                   fontWeight: '700',
@@ -1236,7 +1236,7 @@ const BankTransactions = ({ onBackToTasks }) => {
                                   onClick={() => setEditingTransaction({...t})}
                                   style={{
                                     padding: '0.5rem 0.75rem',
-                                    background: colors.accent,
+                                    background: colors.primary,
                                     color: '#fff',
                                     border: `3px solid ${colors.border}`,
                                     cursor: 'pointer',
@@ -1306,7 +1306,7 @@ const BankTransactions = ({ onBackToTasks }) => {
             <h2 style={{ margin: '0 0 2rem 0', fontWeight: '800', fontSize: '1.6rem', color: colors.text }}>
               ➕ Add Transaction
             </h2>
-            
+
             <div style={{ marginBottom: '1.5rem' }}>
               <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '700', fontSize: '1.1rem', color: colors.text }}>Type</label>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -1317,7 +1317,7 @@ const BankTransactions = ({ onBackToTasks }) => {
                     flex: 1,
                     padding: '1rem',
                     border: `3px solid ${colors.border}`,
-                    background: newTransaction.transaction_type === 'credit' ? colors.accent : colors.card,
+                    background: newTransaction.transaction_type === 'credit' ? colors.primary : colors.card,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',

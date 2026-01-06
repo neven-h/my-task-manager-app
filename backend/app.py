@@ -562,8 +562,8 @@ def duplicate_task(task_id):
             query = """
                 INSERT INTO tasks
                 (title, description, category, categories, client, task_date, task_time,
-                 duration, status, tags, notes, shared)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                 duration, status, tags, notes, shared, is_draft)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
 
             # Add "Copy of" prefix to title
@@ -585,7 +585,8 @@ def duplicate_task(task_id):
                 'uncompleted',  # New tasks start as uncompleted
                 original_task['tags'],
                 original_task['notes'],
-                original_task['shared']
+                original_task['shared'],
+                False  # Duplicates should not be created as drafts
             )
 
             cursor.execute(query, values)
