@@ -185,19 +185,12 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
+      const params = buildFilterParams();
 
       // For shared users, only fetch shared tasks
       if (isSharedUser) {
         params.append('shared', 'true');
       }
-
-      if (filters.category !== 'all') params.append('category', filters.category);
-      if (filters.status !== 'all') params.append('status', filters.status);
-      if (filters.client) params.append('client', filters.client);
-      if (filters.search) params.append('search', filters.search);
-      if (filters.dateStart) params.append('date_start', filters.dateStart);
-      if (filters.dateEnd) params.append('date_end', filters.dateEnd);
 
       const response = await fetch(`${API_BASE}/tasks?${params}`);
       let data = await response.json();
@@ -546,14 +539,7 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
 
   const exportToCSV = async () => {
     try {
-      const params = new URLSearchParams();
-
-      if (filters.category !== 'all') params.append('category', filters.category);
-      if (filters.status !== 'all') params.append('status', filters.status);
-      if (filters.client) params.append('client', filters.client);
-      if (filters.search) params.append('search', filters.search);
-      if (filters.dateStart) params.append('date_start', filters.dateStart);
-      if (filters.dateEnd) params.append('date_end', filters.dateEnd);
+      const params = buildFilterParams();
 
       const response = await fetch(`${API_BASE}/export/csv?${params}`);
       const blob = await response.blob();
@@ -572,14 +558,7 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
 
   const exportHoursReport = async () => {
     try {
-      const params = new URLSearchParams();
-
-      if (filters.category !== 'all') params.append('category', filters.category);
-      if (filters.status !== 'all') params.append('status', filters.status);
-      if (filters.client) params.append('client', filters.client);
-      if (filters.search) params.append('search', filters.search);
-      if (filters.dateStart) params.append('date_start', filters.dateStart);
-      if (filters.dateEnd) params.append('date_end', filters.dateEnd);
+      const params = buildFilterParams();
 
       const response = await fetch(`${API_BASE}/export/hours-report?${params}`);
       const blob = await response.blob();
@@ -652,6 +631,20 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
   const getCategoryLabel = (categoryId) => {
     const category = allCategories.find(c => c.id === categoryId);
     return category ? category.label : categoryId;
+  };
+
+  // Helper function to build URL parameters from filters
+  const buildFilterParams = () => {
+    const params = new URLSearchParams();
+    
+    if (filters.category !== 'all') params.append('category', filters.category);
+    if (filters.status !== 'all') params.append('status', filters.status);
+    if (filters.client) params.append('client', filters.client);
+    if (filters.search) params.append('search', filters.search);
+    if (filters.dateStart) params.append('date_start', filters.dateStart);
+    if (filters.dateEnd) params.append('date_end', filters.dateEnd);
+    
+    return params;
   };
 
   const getStatusColor = (status) => {
