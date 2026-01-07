@@ -1,0 +1,25 @@
+/* FIX 3: Custom Autocomplete/Datalist Styling */
+/* Add this CSS to the <style> block in BOTH files:
+   - TaskTracker.jsx
+   - BankTransactions.jsx
+   
+   ADD IT RIGHT BEFORE THE CLOSING `</style>` tag
+*/
+
+/* Custom autocomplete/datalist styling */
+input[list] {
+  background-image: url('data:image/svg+xml;utf8,<svg fill="%23000" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  padding-right: 2.5rem !important;
+}
+
+input[list]::-webkit-calendar-picker-indicator {
+  display: none !important;
+}
+
+input[list]:focus {
+  box-shadow: 4px 4px 0px #000, 0 0 0 3px #FFD500 inset !important;
+  background-color: #fffef0;
+}

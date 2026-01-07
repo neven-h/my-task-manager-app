@@ -763,18 +763,36 @@ const BankTransactions = ({ onBackToTasks }) => {
           filteredTransactions.forEach(t => {
             const category = t.description || 'Other';
             if (!categoryData[category]) {
-              categoryData[category] = { total: 0, count: 0 };
+              categoryData[category] = { total: 0, count: 0, credit: 0, cash: 0 };
             }
             categoryData[category].total += t.amount;
             categoryData[category].count += 1;
+            if (t.transaction_type === 'cash') {
+              categoryData[category].cash += t.amount;
+            } else {
+              categoryData[category].credit += t.amount;
+            }
           });
 
           const sortedCategories = Object.entries(categoryData)
             .sort((a, b) => b[1].total - a[1].total)
             .slice(0, 10);
 
-          const maxAmount = sortedCategories[0]?.[1].total || 1;
           const totalAmount = filteredTransactions.reduce((sum, t) => sum + t.amount, 0);
+          
+          // Generate distinct colors for pie chart segments
+          const pieColors = [
+            '#0000FF', // Blue
+            '#FF0000', // Red
+            '#FFD500', // Yellow
+            '#00AA00', // Green
+            '#FF6B35', // Orange
+            '#7B2CBF', // Purple
+            '#06D6A0', // Teal
+            '#F72585', // Pink
+            '#4361EE', // Royal Blue
+            '#F77F00'  // Dark Orange
+          ];
 
           return sortedCategories.length > 0 ? (
             <div style={{
@@ -809,70 +827,141 @@ const BankTransactions = ({ onBackToTasks }) => {
 
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-                gap: '1rem'
+                gridTemplateColumns: '1fr 2fr',
+                gap: '2rem',
+                alignItems: 'start'
               }}>
-                {sortedCategories.map(([category, data], idx) => {
-                  const percentage = (data.total / maxAmount) * 100;
-                  return (
-                    <div key={category} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                        <span style={{
-                          fontSize: '0.95rem',
-                          fontWeight: '700',
-                          color: colors.text
-                        }}>
-                          {idx + 1}. {category}
-                        </span>
-                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'baseline' }}>
-                          <span style={{
-                            fontSize: '0.8rem',
-                            color: colors.textLight,
-                            fontWeight: '600'
+                {/* Pie Chart */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <svg viewBox="0 0 200 200" style={{ width: '100%', maxWidth: '300px', height: 'auto' }}>
+                    {(() => {
+                      let currentAngle = 0;
+                      return sortedCategories.map(([category, data], idx) => {
+                        const percentage = (data.total / totalAmount) * 100;
+                        const angle = (percentage / 100) * 360;
+                        const startAngle = currentAngle;
+                        const endAngle = currentAngle + angle;
+                        currentAngle = endAngle;
+
+                        // Convert angles to radians
+                        const startRad = (startAngle - 90) * (Math.PI / 180);
+                        const endRad = (endAngle - 90) * (Math.PI / 180);
+
+                        // Calculate arc path
+                        const x1 = 100 + 90 * Math.cos(startRad);
+                        const y1 = 100 + 90 * Math.sin(startRad);
+                        const x2 = 100 + 90 * Math.cos(endRad);
+                        const y2 = 100 + 90 * Math.sin(endRad);
+                        const largeArc = angle > 180 ? 1 : 0;
+
+                        const pathData = [
+                          `M 100 100`,
+                          `L ${x1} ${y1}`,
+                          `A 90 90 0 ${largeArc} 1 ${x2} ${y2}`,
+                          `Z`
+                        ].join(' ');
+
+                        return (
+                          <g key={category}>
+                            <path
+                              d={pathData}
+                              fill={pieColors[idx % pieColors.length]}
+                              stroke="#000"
+                              strokeWidth="2"
+                            />
+                            {/* Percentage label inside slice if space allows */}
+                            {percentage > 5 && (() => {
+                              const midAngle = (startAngle + endAngle) / 2;
+                              const midRad = (midAngle - 90) * (Math.PI / 180);
+                              const labelX = 100 + 60 * Math.cos(midRad);
+                              const labelY = 100 + 60 * Math.sin(midRad);
+                              return (
+                                <text
+                                  x={labelX}
+                                  y={labelY}
+                                  textAnchor="middle"
+                                  dominantBaseline="middle"
+                                  fill="#fff"
+                                  fontSize="12"
+                                  fontWeight="800"
+                                  style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}
+                                >
+                                  {percentage.toFixed(1)}%
+                                </text>
+                              );
+                            })()}
+                          </g>
+                        );
+                      });
+                    })()}
+                  </svg>
+                </div>
+
+                {/* Legend with breakdown */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {sortedCategories.map(([category, data], idx) => {
+                    const percentage = (data.total / totalAmount) * 100;
+                    return (
+                      <div key={category} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        padding: '0.75rem',
+                        border: `2px solid ${colors.border}`,
+                        background: '#f8f8f8'
+                      }}>
+                        <div style={{
+                          width: '1.5rem',
+                          height: '1.5rem',
+                          background: pieColors[idx % pieColors.length],
+                          border: `2px solid ${colors.border}`,
+                          flexShrink: 0
+                        }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontSize: '0.95rem',
+                            fontWeight: '700',
+                            color: colors.text,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
                           }}>
-                            {data.count} txn{data.count > 1 ? 's' : ''}
-                          </span>
-                          <span style={{
+                            {category}
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem', marginTop: '0.25rem' }}>
+                            {data.credit > 0 && (
+                              <span style={{ color: colors.accent, fontWeight: '600' }}>
+                                💳 {formatCurrency(data.credit)}
+                              </span>
+                            )}
+                            {data.cash > 0 && (
+                              <span style={{ color: colors.success, fontWeight: '600' }}>
+                                💵 {formatCurrency(data.cash)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{
                             fontSize: '1rem',
                             fontWeight: '800',
                             fontFamily: 'monospace',
                             color: colors.text
                           }}>
                             {formatCurrency(data.total)}
-                          </span>
-                        </div>
-                      </div>
-                      <div style={{
-                        width: '100%',
-                        height: '1.5rem',
-                        background: '#f0f0f0',
-                        border: `2px solid ${colors.border}`,
-                        position: 'relative',
-                        overflow: 'hidden'
-                      }}>
-                        <div style={{
-                          width: `${percentage}%`,
-                          height: '100%',
-                          background: `linear-gradient(90deg, ${colors.primary} 0%, ${colors.accent} 100%)`,
-                          transition: 'width 0.3s ease',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'flex-end',
-                          paddingRight: '0.5rem'
-                        }}>
-                          <span style={{
-                            fontSize: '0.75rem',
-                            fontWeight: '800',
-                            color: '#fff',
-                            textShadow: '0 1px 2px rgba(0,0,0,0.4)'
+                          </div>
+                          <div style={{
+                            fontSize: '0.8rem',
+                            color: colors.textLight,
+                            fontWeight: '600'
                           }}>
-                            {((data.total / totalAmount) * 100).toFixed(1)}%
-                          </span>
+                            {percentage.toFixed(1)}% • {data.count} txn{data.count > 1 ? 's' : ''}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             </div>
           ) : null;
