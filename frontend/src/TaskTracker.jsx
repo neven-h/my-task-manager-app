@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Search, Plus, Calendar, Clock, X, BarChart3,
-  Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut, Menu, Filter
+  Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut, Menu, Filter, Copy
 } from 'lucide-react';
 import BankTransactions from './BankTransactions';
 import ClientsManagement from './ClientsManagement';
@@ -14,12 +14,17 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
   const [appView, setAppView] = useState('tasks'); // 'tasks', 'transactions', or 'clients'
   const [tasks, setTasks] = useState([]);
   const [allCategories, setAllCategories] = useState([]);
+  const [allTags, setAllTags] = useState([]);
   const [clients, setClients] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryColor, setNewCategoryColor] = useState('#0d6efd');
+  const [newCategoryIcon, setNewCategoryIcon] = useState('📁');
   
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
@@ -35,7 +40,8 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
     status: 'all',
     client: '',
     dateStart: '',
-    dateEnd: ''
+    dateEnd: '',
+    tags: []
   });
   
   const [formData, setFormData] = useState({
@@ -70,6 +76,7 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
   // Load data on mount
   useEffect(() => {
     fetchCategories();
+    fetchTags();
     fetchClients();
     fetchTasks();
     fetchStats();
@@ -109,6 +116,62 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
     }
   };
 
+  const fetchTags = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/tags`);
+      const data = await response.json();
+      setAllTags(data);
+    } catch (err) {
+      console.error('Error fetching tags:', err);
+    }
+  };
+
+  const createCategory = async () => {
+    if (!newCategoryName.trim()) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/categories`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: newCategoryName.toLowerCase().replace(/\s+/g, '-'),
+          label: newCategoryName,
+          color: newCategoryColor,
+          icon: newCategoryIcon
+        })
+      });
+
+      if (response.ok) {
+        await fetchCategories();
+        setNewCategoryName('');
+        setNewCategoryColor('#0d6efd');
+        setNewCategoryIcon('📁');
+        setShowAddCategory(false);
+      }
+    } catch (err) {
+      console.error('Error creating category:', err);
+    }
+  };
+
+  const createTag = async (tagName) => {
+    try {
+      const response = await fetch(`${API_BASE}/tags`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: tagName,
+          color: '#0d6efd'
+        })
+      });
+
+      if (response.ok) {
+        await fetchTags();
+      }
+    } catch (err) {
+      console.error('Error creating tag:', err);
+    }
+  };
+
   const fetchClients = async () => {
     try {
       const response = await fetch(`${API_BASE}/clients`);
@@ -123,21 +186,31 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      
+
       // For shared users, only fetch shared tasks
       if (isSharedUser) {
         params.append('shared', 'true');
       }
-      
+
       if (filters.category !== 'all') params.append('category', filters.category);
       if (filters.status !== 'all') params.append('status', filters.status);
       if (filters.client) params.append('client', filters.client);
       if (filters.search) params.append('search', filters.search);
       if (filters.dateStart) params.append('date_start', filters.dateStart);
       if (filters.dateEnd) params.append('date_end', filters.dateEnd);
-      
+
       const response = await fetch(`${API_BASE}/tasks?${params}`);
-      const data = await response.json();
+      let data = await response.json();
+
+      // Client-side filtering by tags
+      if (filters.tags.length > 0) {
+        data = data.filter(task =>
+          task.tags && filters.tags.some(filterTag =>
+            task.tags.includes(filterTag)
+          )
+        );
+      }
+
       setTasks(data);
       setError(null);
     } catch (err) {
@@ -231,15 +304,34 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
 
   const deleteTask = async (id) => {
     if (!window.confirm('Are you sure you want to delete this task?')) return;
-    
+
     try {
       setLoading(true);
       const response = await fetch(`${API_BASE}/tasks/${id}`, {
         method: 'DELETE'
       });
-      
+
       if (!response.ok) throw new Error('Failed to delete task');
-      
+
+      await fetchTasks();
+      await fetchStats();
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const duplicateTask = async (id) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE}/tasks/${id}/duplicate`, {
+        method: 'POST'
+      });
+
+      if (!response.ok) throw new Error('Failed to duplicate task');
+
       await fetchTasks();
       await fetchStats();
       setError(null);
@@ -334,11 +426,18 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
     resetForm();
   };
 
-  const addTag = () => {
-    if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
-      setFormData({...formData, tags: [...formData.tags, tagInput.trim()]});
-      setTagInput('');
+  const addTag = async () => {
+    const trimmedTag = tagInput.trim();
+    if (!trimmedTag || formData.tags.includes(trimmedTag)) return;
+
+    // Check if tag exists in database, if not create it
+    const tagExists = allTags.some(t => t.name.toLowerCase() === trimmedTag.toLowerCase());
+    if (!tagExists) {
+      await createTag(trimmedTag);
     }
+
+    setFormData({...formData, tags: [...formData.tags, trimmedTag]});
+    setTagInput('');
   };
 
   const removeTag = (tagToRemove) => {
@@ -649,6 +748,14 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
               title="Edit"
             >
               <Edit2 size={18} />
+            </button>
+            <button
+              onClick={() => duplicateTask(task.id)}
+              className="btn"
+              style={{ padding: '10px', minWidth: 'auto' }}
+              title="Duplicate"
+            >
+              <Copy size={18} />
             </button>
             <button
               onClick={() => deleteTask(task.id)}
@@ -1396,8 +1503,24 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
                 <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem' }}>Date To</label>
                 <input type="date" value={filters.dateEnd} onChange={(e) => setFilters({...filters, dateEnd: e.target.value})} />
               </div>
-              {(filters.search || filters.category !== 'all' || filters.status !== 'all' || filters.client || filters.dateStart || filters.dateEnd) && (
-                <button className="btn btn-white" onClick={() => setFilters({ search: '', category: 'all', status: 'all', client: '', dateStart: '', dateEnd: '' })} style={{ width: '100%' }}>Clear Filters</button>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem' }}>Tags</label>
+                <select
+                  multiple
+                  value={filters.tags}
+                  onChange={(e) => setFilters({...filters, tags: Array.from(e.target.selectedOptions, option => option.value)})}
+                  style={{ minHeight: '80px' }}
+                >
+                  {allTags.map(tag => (
+                    <option key={tag.id} value={tag.name}>{tag.name}</option>
+                  ))}
+                </select>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '4px' }}>
+                  Hold Ctrl/Cmd to select multiple
+                </div>
+              </div>
+              {(filters.search || filters.category !== 'all' || filters.status !== 'all' || filters.client || filters.dateStart || filters.dateEnd || filters.tags.length > 0) && (
+                <button className="btn btn-white" onClick={() => setFilters({ search: '', category: 'all', status: 'all', client: '', dateStart: '', dateEnd: '', tags: [] })} style={{ width: '100%' }}>Clear Filters</button>
               )}
             </div>
           </div>
@@ -1760,17 +1883,74 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '12px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Categories <span style={{ color: '#FF0000' }}>*</span> (Select one or more)
-                  </label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <label style={{ fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px', margin: 0 }}>
+                      Categories <span style={{ color: '#FF0000' }}>*</span> (Select one or more)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCategory(!showAddCategory)}
+                      className="btn btn-white"
+                      style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                    >
+                      <Plus size={14} /> New Category
+                    </button>
+                  </div>
+
+                  {showAddCategory && (
+                    <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '8px', marginBottom: '12px' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '8px', marginBottom: '8px' }}>
+                        <input
+                          type="text"
+                          placeholder="Category name..."
+                          value={newCategoryName}
+                          onChange={(e) => setNewCategoryName(e.target.value)}
+                          style={{ fontSize: '0.9rem' }}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Icon"
+                          value={newCategoryIcon}
+                          onChange={(e) => setNewCategoryIcon(e.target.value)}
+                          style={{ width: '60px', fontSize: '0.9rem', textAlign: 'center' }}
+                        />
+                        <input
+                          type="color"
+                          value={newCategoryColor}
+                          onChange={(e) => setNewCategoryColor(e.target.value)}
+                          style={{ width: '50px' }}
+                        />
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={createCategory}
+                          className="btn btn-primary"
+                          style={{ padding: '6px 16px', fontSize: '0.85rem', flex: 1 }}
+                        >
+                          Create
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowAddCategory(false)}
+                          className="btn btn-white"
+                          style={{ padding: '6px 16px', fontSize: '0.85rem' }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                     {allCategories.map(cat => (
                       <div
                         key={cat.id}
                         className={`category-pill ${formData.categories.includes(cat.id) ? 'selected' : ''}`}
                         onClick={() => toggleCategory(cat.id)}
+                        style={{ backgroundColor: formData.categories.includes(cat.id) ? (cat.color || '#0d6efd') : undefined }}
                       >
-                        {cat.label}
+                        {cat.icon} {cat.label}
                       </div>
                     ))}
                   </div>
@@ -1848,7 +2028,8 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
                   <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                     <input
                       type="text"
-                      placeholder="Add tag..."
+                      list="tag-suggestions"
+                      placeholder="Add tag... (autocomplete)"
                       value={tagInput}
                       onChange={(e) => setTagInput(e.target.value)}
                       onKeyPress={(e) => {
@@ -1859,13 +2040,18 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
                       }}
                       style={{ flex: 1 }}
                     />
+                    <datalist id="tag-suggestions">
+                      {allTags.map((tag) => (
+                        <option key={tag.id} value={tag.name} />
+                      ))}
+                    </datalist>
                     <button
                       type="button"
                       onClick={addTag}
                       className="btn btn-white"
                       style={{ padding: '12px 20px' }}
                     >
-                      Add
+                      <Tag size={16} style={{ marginRight: '4px' }} /> Add
                     </button>
                   </div>
                   {formData.tags.length > 0 && (
