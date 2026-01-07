@@ -345,21 +345,7 @@ const BankTransactions = ({ onBackToTasks }) => {
     const totalCash = filtered.filter(t => t.transaction_type === 'cash').reduce((sum, t) => sum + t.amount, 0);
     const total = filtered.reduce((sum, t) => sum + t.amount, 0);
 
-    const categories = {};
-    filtered.forEach(t => {
-      const desc = t.description || 'Other';
-      if (!categories[desc]) {
-        categories[desc] = { count: 0, total: 0, credit: 0, cash: 0 };
-      }
-      categories[desc].count++;
-      categories[desc].total += t.amount;
-      if (t.transaction_type === 'cash') {
-        categories[desc].cash += t.amount;
-      } else {
-        categories[desc].credit += t.amount;
-      }
-    });
-
+    const categories = aggregateByCategory(filtered);
     const sortedCategories = Object.entries(categories).sort((a, b) => b[1].total - a[1].total);
 
     printWindow.document.write(`
@@ -453,17 +439,35 @@ const BankTransactions = ({ onBackToTasks }) => {
     return monthTransactions.filter(t => {
       if (typeFilter !== 'all' && t.transaction_type !== typeFilter) return false;
       if (searchTerm && !t.description?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-      if (descriptionFilter && t.description !== descriptionFilter) return false;
-      return true;
+      return !(descriptionFilter && t.description !== descriptionFilter);
     });
+  };
+
+  // Helper function to aggregate transactions by category with credit/cash breakdown
+  const aggregateByCategory = (transactions) => {
+    const categoryData = {};
+    transactions.forEach(t => {
+      const desc = t.description || 'Other';
+      if (!categoryData[desc]) {
+        categoryData[desc] = { count: 0, total: 0, credit: 0, cash: 0 };
+      }
+      categoryData[desc].count++;
+      categoryData[desc].total += t.amount;
+      if (t.transaction_type === 'cash') {
+        categoryData[desc].cash += t.amount;
+      } else {
+        categoryData[desc].credit += t.amount;
+      }
+    });
+    return categoryData;
   };
 
   const getFilteredPreview = () => {
     if (!uploadedData?.transactions) return [];
     return uploadedData.transactions.filter(t => {
       if (previewFilter === 'positive' && t.amount < 0) return false;
-      if (previewFilter === 'negative' && t.amount >= 0) return false;
-      return true;
+      return !(previewFilter === 'negative' && t.amount >= 0);
+
     });
   };
 
@@ -759,24 +763,10 @@ const BankTransactions = ({ onBackToTasks }) => {
 
         {/* Expense Distribution Chart */}
         {monthTransactions.length > 0 && (() => {
-          const categoryData = {};
-          filteredTransactions.forEach(t => {
-            const category = t.description || 'Other';
-            if (!categoryData[category]) {
-              categoryData[category] = { total: 0, count: 0, credit: 0, cash: 0 };
-            }
-            categoryData[category].total += t.amount;
-            categoryData[category].count += 1;
-            if (t.transaction_type === 'cash') {
-              categoryData[category].cash += t.amount;
-            } else {
-              categoryData[category].credit += t.amount;
-            }
-          });
-
+          const categoryData = aggregateByCategory(filteredTransactions);
           const sortedCategories = Object.entries(categoryData)
             .sort((a, b) => b[1].total - a[1].total)
-            .slice(0, 10);
+            .slice(0, 5);
 
           const totalAmount = filteredTransactions.reduce((sum, t) => sum + t.amount, 0);
           
@@ -821,7 +811,7 @@ const BankTransactions = ({ onBackToTasks }) => {
                   textTransform: 'none',
                   marginLeft: '0.25rem'
                 }}>
-                  (Top 10 Categories)
+                  (Top 5 Categories)
                 </span>
               </h2>
 
