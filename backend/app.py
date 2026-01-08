@@ -44,10 +44,10 @@ DB_CONFIG = {
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# User credentials (hardcoded for simplicity)
+# User credentials loaded from environment variables
 USERS = {
-    'pitz': {'password': 'REDACTED_PASSWORD', 'role': 'admin'},
-    'benny': {'password': 'Galia123', 'role': 'shared'}
+    'pitz': {'password': os.getenv('USER_PITZ_PASSWORD', 'default_password'), 'role': 'admin'},
+    'benny': {'password': os.getenv('USER_BENNY_PASSWORD', 'default_password'), 'role': 'shared'}
 }
 
 @contextmanager
@@ -2257,3 +2257,4 @@ init_db()
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)
+

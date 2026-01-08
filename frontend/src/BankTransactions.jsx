@@ -210,7 +210,9 @@ const BankTransactions = ({ onBackToTasks }) => {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to add transaction');
+      if (!response.ok) {
+        console.error(data.error || 'Failed to add transaction');
+      }
 
       setSuccess('Transaction added successfully');
       setShowAddForm(false);
@@ -250,7 +252,9 @@ const BankTransactions = ({ onBackToTasks }) => {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to update transaction');
+      if (!response.ok) {
+        console.error(data.error || 'Failed to update transaction');
+      }
 
       setSuccess('Transaction updated successfully');
       setEditingTransaction(null);
@@ -280,7 +284,9 @@ const BankTransactions = ({ onBackToTasks }) => {
         method: 'DELETE'
       });
 
-      if (!response.ok) throw new Error('Failed to delete transaction');
+      if (!response.ok) {
+        console.error('Failed to delete transaction');
+      }
 
       setSuccess('Transaction deleted successfully');
       
@@ -307,7 +313,9 @@ const BankTransactions = ({ onBackToTasks }) => {
         method: 'DELETE'
       });
 
-      if (!response.ok) throw new Error('Delete failed');
+      if (!response.ok) {
+        console.error('Delete failed');
+      }
 
       setSuccess('Transactions deleted successfully');
       if (selectedMonth === monthYear) {
