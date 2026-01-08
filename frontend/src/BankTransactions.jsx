@@ -1455,7 +1455,9 @@ const BankTransactions = ({ onBackToTasks }) => {
                                 padding: '0.65rem 0.75rem',
                                 textAlign: 'right',
                                 fontWeight: '700',
-                                fontFamily: 'monospace',
+                                fontFamily: 'Consolas, "Courier New", monospace',
+                                fontVariantNumeric: 'tabular-nums',
+                                letterSpacing: '0.05em',
                                 fontSize: '0.95rem',
                                 color: t.amount < 0 ? colors.accent : colors.text
                               }}>
