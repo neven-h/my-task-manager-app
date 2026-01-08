@@ -347,13 +347,15 @@ def get_tasks():
                 if task['duration']:
                     task['duration'] = float(task['duration'])
                 # Convert tags from comma-separated string to array
-                if task.get('tags'):
-                    task['tags'] = [t.strip() for t in task['tags'].split(',') if t.strip()]
+                tags_value = task.get('tags')
+                if tags_value:
+                    task['tags'] = [t.strip() for t in tags_value.split(',') if t.strip()]
                 else:
                     task['tags'] = []
                 # Convert categories from comma-separated string to array
-                if task.get('categories'):
-                    task['categories'] = [c.strip() for c in task['categories'].split(',') if c.strip()]
+                categories_value = task.get('categories')
+                if categories_value:
+                    task['categories'] = [c.strip() for c in categories_value.split(',') if c.strip()]
                 else:
                     task['categories'] = [task.get('category', 'other')]
             
@@ -631,13 +633,15 @@ def get_drafts():
                 if draft['duration']:
                     draft['duration'] = float(draft['duration'])
                 # Convert tags from comma-separated string to array
-                if draft.get('tags'):
-                    draft['tags'] = [t.strip() for t in draft['tags'].split(',') if t.strip()]
+                tags_value = draft.get('tags')
+                if tags_value:
+                    draft['tags'] = [t.strip() for t in tags_value.split(',') if t.strip()]
                 else:
                     draft['tags'] = []
                 # Convert categories from comma-separated string to array
-                if draft.get('categories'):
-                    draft['categories'] = [c.strip() for c in draft['categories'].split(',') if c.strip()]
+                categories_value = draft.get('categories')
+                if categories_value:
+                    draft['categories'] = [c.strip() for c in categories_value.split(',') if c.strip()]
                 else:
                     draft['categories'] = [draft.get('category', 'other')]
 
