@@ -150,7 +150,7 @@
       <workItem from="1767193163096" duration="4916000" />
       <workItem from="1767363896741" duration="4332000" />
       <workItem from="1767460861998" duration="20823000" />
-      <workItem from="1767886082218" duration="3702000" />
+      <workItem from="1767886082218" duration="6713000" />
     </task>
     <task id="LOCAL-00001" summary="Initial commit: My Task Manager App - Complete rewrite">
       <option name="closed" value="true" />
@@ -384,7 +384,15 @@
       <option name="project" value="LOCAL" />
       <updated>1767888974773</updated>
     </task>
-    <option name="localTasksCounter" value="30" />
+    <task id="LOCAL-00030" summary="Initial commit: My Task Manager App - Complete rewrite">
+      <option name="closed" value="true" />
+      <created>1767889874222</created>
+      <option name="number" value="00030" />
+      <option name="presentableId" value="LOCAL-00030" />
+      <option name="project" value="LOCAL" />
+      <updated>1767889874222</updated>
+    </task>
+    <option name="localTasksCounter" value="31" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">

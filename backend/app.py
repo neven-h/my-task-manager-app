@@ -113,7 +113,7 @@ def init_db():
         temp_config = DB_CONFIG.copy()
         db_name = sanitize_db_name(temp_config.pop('database'))
 
-        connection: Union[PooledMySQLConnection, MySQLConnection, None] = mysql.connector.connect(**temp_config)
+        connection = mysql.connector.connect(**temp_config)
         cursor = connection.cursor()
 
         # Create database if not exists
