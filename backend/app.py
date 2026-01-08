@@ -1,16 +1,21 @@
+from decimal import Decimal
+from typing import Union
+
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import mysql.connector
-from mysql.connector import Error
-from datetime import datetime
+from mysql.connector import Error, MySQLConnection
+from datetime import datetime, date, timedelta
 import csv
 import io
 from contextlib import contextmanager
 import pandas as pd
+from mysql.connector.pooling import PooledMySQLConnection
 from werkzeug.utils import secure_filename
 import os
 import chardet
 from dotenv import load_dotenv
+import re
 
 # Load environment variables
 load_dotenv()
@@ -59,6 +64,14 @@ DB_CONFIG = {
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+DB_NAME_PATTERN = re.compile(r'^[A-Za-z0-9_]+$')
+
+def sanitize_db_name(name: str) -> str:
+    """Ensure database name only contains safe characters."""
+    if not name or not DB_NAME_PATTERN.fullmatch(name):
+        raise ValueError('Invalid database name; use letters, numbers, and underscores only')
+    return name
+
 USERS = {
     'pitz': {'password': os.getenv('USER_PITZ_PASSWORD', 'default_password'), 'role': 'admin'},
     'benny': {'password': os.getenv('USER_BENNY_PASSWORD', 'default_password'), 'role': 'shared'},
@@ -66,8 +79,10 @@ USERS = {
     'Olivia': {'password': os.getenv('USER_OLIVIA_PASSWORD', 'default_password'), 'role': 'shared'}
 }
 
-if not os.getenv('USER_PITZ_PASSWORD') or not os.getenv('USER_BENNY_PASSWORD') or not os.getenv('USER_HILLEL_PASSWORD') or not os.getenv('USER_OLIVIA_PASSWORD'):
-    raise ValueError("USER_PITZ_PASSWORD and USER_BENNY_PASSWORD and USER_HILLEL_PASSWORD and USER_OLIVIA_PASSWORD must be set")
+required_passwords = ['USER_PITZ_PASSWORD', 'USER_BENNY_PASSWORD', 'USER_HILLEL_PASSWORD', 'USER_OLIVIA_PASSWORD']
+if not all(os.getenv(var) for var in required_passwords):
+    raise ValueError(f"{' and '.join(required_passwords)} must be set")
+
 
 @contextmanager
 def get_db_connection():
@@ -85,18 +100,19 @@ def get_db_connection():
 
 def init_db():
     """Initialize database and create tables"""
+    global connection, cursor
     try:
         # Connect without database to create it
         temp_config = DB_CONFIG.copy()
-        db_name = temp_config.pop('database')
-        
-        connection = mysql.connector.connect(**temp_config)
+        db_name = sanitize_db_name(temp_config.pop('database'))
+
+        connection: Union[PooledMySQLConnection, MySQLConnection, None] = mysql.connector.connect(**temp_config)
         cursor = connection.cursor()
         
         # Create database if not exists
-        cursor.execute(f"CREATE DATABASE IF NOT EXISTS {db_name}")
-        cursor.execute(f"USE {db_name}")
-        
+        cursor.execute(f"CREATE DATABASE IF NOT EXISTS `{db_name}`")
+        cursor.execute(f"USE `{db_name}`")
+
         # Create tasks table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS tasks (
@@ -447,7 +463,7 @@ def create_task():
                 'id': task_id,
                 'message': 'Task created successfully'
             }), 201
-    
+
     except Error as e:
         return jsonify({'error': str(e)}), 500
 
