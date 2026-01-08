@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Filter, CheckCircle, Circle, Edit2, Trash2, X, Calendar, Clock, Tag, DollarSign, Users } from 'lucide-react';
+import { Plus, Filter, CheckCircle, Circle, Edit2, Trash2, X, Calendar, Clock, Tag, DollarSign, Users, Menu, LogOut, Download, Upload, RefreshCw } from 'lucide-react';
 import API_BASE from '../config';
 
 // Brutalist theme - EXACTLY matching desktop TaskTracker
@@ -17,7 +17,7 @@ const THEME = {
 // Font stack - EXACTLY matching desktop
 const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 
-const MobileTaskTracker = ({ authRole, authUser }) => {
+const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
   const isSharedUser = authRole === 'shared' || authRole === 'limited';
   
   // State
@@ -29,6 +29,7 @@ const MobileTaskTracker = ({ authRole, authUser }) => {
   const [filterMode, setFilterMode] = useState('all'); // all, active, done
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [loading, setLoading] = useState(false);
   
@@ -254,7 +255,7 @@ const MobileTaskTracker = ({ authRole, authUser }) => {
     <div style={{ 
       minHeight: '100vh', 
       background: THEME.bg,
-      paddingBottom: '80px',
+      paddingBottom: '20px',
       fontFamily: FONT_STACK
     }}>
       <style>{`
@@ -368,28 +369,48 @@ const MobileTaskTracker = ({ authRole, authUser }) => {
         {/* Tri-color bar - 12px like desktop */}
         <div className="color-bar" />
         
-        <div style={{ padding: '16px' }}>
-          <h1 style={{
-            fontSize: '1.75rem',
-            fontWeight: 900,
-            margin: '0 0 8px 0',
-            textTransform: 'uppercase',
-            letterSpacing: '-0.5px',
-            fontFamily: FONT_STACK
-          }}>
-            TASKS
-          </h1>
+        <div style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h1 style={{
+              fontSize: '1.75rem',
+              fontWeight: 900,
+              margin: '0 0 4px 0',
+              textTransform: 'uppercase',
+              letterSpacing: '-0.5px',
+              fontFamily: FONT_STACK
+            }}>
+              TASKS
+            </h1>
+            
+            <p style={{
+              fontSize: '0.9rem',
+              color: THEME.muted,
+              margin: 0,
+              fontFamily: FONT_STACK
+            }}>
+              {counts.active} active • {counts.done} done
+            </p>
+          </div>
           
-          <p style={{
-            fontSize: '0.9rem',
-            color: THEME.muted,
-            margin: '0 0 16px 0',
-            fontFamily: FONT_STACK
-          }}>
-            {counts.active} active • {counts.done} done
-          </p>
-          
-          {/* Quick filters */}
+          {/* Hamburger Menu Button */}
+          <button
+            onClick={() => setShowMobileSidebar(true)}
+            style={{
+              background: '#fff',
+              border: '3px solid #000',
+              padding: '10px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <Menu size={24} color={THEME.text} />
+          </button>
+        </div>
+        
+        {/* Quick filters - below header */}
+        <div style={{ padding: '0 16px 16px 16px' }}>
           <div style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
             <div 
               className={`filter-pill ${filterMode === 'all' ? 'active' : ''}`}
@@ -586,7 +607,7 @@ const MobileTaskTracker = ({ authRole, authUser }) => {
         onClick={openCreateModal}
         style={{
           position: 'fixed',
-          bottom: '96px',
+          bottom: '20px',
           right: '20px',
           width: '64px',
           height: '64px',
@@ -604,76 +625,180 @@ const MobileTaskTracker = ({ authRole, authUser }) => {
         <Plus size={32} color="#fff" strokeWidth={3} />
       </button>
 
-      {/* Bottom Navigation */}
-      <div style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: '72px',
-        background: '#fff',
-        borderTop: '3px solid #000',
-        display: 'flex',
-        justifyContent: 'space-around',
-        alignItems: 'center',
-        zIndex: 100,
-        fontFamily: FONT_STACK
-      }}>
-        <button
-          onClick={() => setActiveView('tasks')}
-          style={{
-            flex: 1,
-            height: '100%',
-            background: activeView === 'tasks' ? THEME.primary : 'transparent',
-            color: activeView === 'tasks' ? '#fff' : THEME.text,
-            border: 'none',
-            fontWeight: 700,
-            fontSize: '0.85rem',
-            textTransform: 'uppercase',
-            cursor: 'pointer',
-            fontFamily: FONT_STACK,
-            letterSpacing: '0.5px'
-          }}
-        >
-          TASKS
-        </button>
-        <button
-          onClick={() => setActiveView('stats')}
-          style={{
-            flex: 1,
-            height: '100%',
-            background: activeView === 'stats' ? THEME.primary : 'transparent',
-            color: activeView === 'stats' ? '#fff' : THEME.text,
-            border: 'none',
-            fontWeight: 700,
-            fontSize: '0.85rem',
-            textTransform: 'uppercase',
-            cursor: 'pointer',
-            fontFamily: FONT_STACK,
-            letterSpacing: '0.5px'
-          }}
-        >
-          STATS
-        </button>
-        <button
-          onClick={() => setActiveView('more')}
-          style={{
-            flex: 1,
-            height: '100%',
-            background: activeView === 'more' ? THEME.primary : 'transparent',
-            color: activeView === 'more' ? '#fff' : THEME.text,
-            border: 'none',
-            fontWeight: 700,
-            fontSize: '0.85rem',
-            textTransform: 'uppercase',
-            cursor: 'pointer',
-            fontFamily: FONT_STACK,
-            letterSpacing: '0.5px'
-          }}
-        >
-          MORE
-        </button>
-      </div>
+      {/* Mobile Sidebar Menu */}
+      {showMobileSidebar && (
+        <>
+          {/* Overlay */}
+          <div
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.5)',
+              zIndex: 300
+            }}
+            onClick={() => setShowMobileSidebar(false)}
+          />
+          
+          {/* Sidebar */}
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: '85%',
+            maxWidth: '350px',
+            background: '#fff',
+            borderLeft: '3px solid #000',
+            zIndex: 301,
+            overflowY: 'auto',
+            padding: '24px',
+            fontFamily: FONT_STACK
+          }}>
+            {/* Close button */}
+            <button
+              onClick={() => setShowMobileSidebar(false)}
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'none',
+                border: 'none',
+                padding: '8px',
+                cursor: 'pointer'
+              }}
+            >
+              <X size={24} color={THEME.text} />
+            </button>
+
+            {/* User info */}
+            <div style={{ marginBottom: '32px', paddingTop: '8px' }}>
+              <h2 style={{
+                fontSize: '1.25rem',
+                fontWeight: 900,
+                margin: '0 0 8px 0',
+                textTransform: 'uppercase',
+                fontFamily: FONT_STACK
+              }}>
+                Menu
+              </h2>
+              <p style={{
+                fontSize: '0.85rem',
+                color: THEME.muted,
+                margin: 0,
+                fontFamily: FONT_STACK
+              }}>
+                👤 {authUser} {isSharedUser ? '(shared)' : '(admin)'}
+              </p>
+            </div>
+
+            {/* Menu sections */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              {/* Quick Actions */}
+              <div>
+                <h3 style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 900,
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                  marginBottom: '12px',
+                  fontFamily: FONT_STACK
+                }}>
+                  Quick Actions
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <button
+                    className="mobile-btn mobile-btn-primary"
+                    onClick={() => {
+                      openCreateModal();
+                      setShowMobileSidebar(false);
+                    }}
+                    style={{ width: '100%', justifyContent: 'flex-start' }}
+                  >
+                    <Plus size={16} style={{ marginRight: '8px' }} />
+                    New Task
+                  </button>
+                  <button
+                    className="mobile-btn"
+                    onClick={async () => {
+                      await fetchTasks();
+                      setShowMobileSidebar(false);
+                    }}
+                    style={{ width: '100%', justifyContent: 'flex-start' }}
+                  >
+                    <RefreshCw size={16} style={{ marginRight: '8px' }} />
+                    Refresh
+                  </button>
+                </div>
+              </div>
+
+              {/* Export / Import */}
+              <div>
+                <h3 style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 900,
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                  marginBottom: '12px',
+                  fontFamily: FONT_STACK
+                }}>
+                  Export / Import
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <button
+                    className="mobile-btn"
+                    onClick={() => {
+                      // Export CSV logic here
+                      setShowMobileSidebar(false);
+                    }}
+                    disabled={tasks.length === 0}
+                    style={{ width: '100%', justifyContent: 'flex-start' }}
+                  >
+                    <Download size={16} style={{ marginRight: '8px' }} />
+                    Export CSV
+                  </button>
+                </div>
+              </div>
+
+              {/* Account */}
+              <div>
+                <h3 style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 900,
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                  marginBottom: '12px',
+                  fontFamily: FONT_STACK
+                }}>
+                  Account
+                </h3>
+                <button
+                  className="mobile-btn mobile-btn-accent"
+                  onClick={() => {
+                    setShowMobileSidebar(false);
+                    if (onLogout) onLogout();
+                  }}
+                  style={{ width: '100%', justifyContent: 'flex-start' }}
+                >
+                  <LogOut size={16} style={{ marginRight: '8px' }} />
+                  Logout
+                </button>
+              </div>
+            </div>
+
+            {/* Close button at bottom */}
+            <button
+              className="mobile-btn"
+              onClick={() => setShowMobileSidebar(false)}
+              style={{ width: '100%', marginTop: '32px' }}
+            >
+              Close Menu
+            </button>
+          </div>
+        </>
+      )}
 
       {/* Task Modal */}
       {showTaskModal && (
