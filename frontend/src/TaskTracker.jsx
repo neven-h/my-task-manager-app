@@ -279,7 +279,6 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
         body: JSON.stringify(formData)
       });
       
-      // Updated error handling
       if (!response.ok) {
         console.error('Failed to save task');
       }
