@@ -30,7 +30,7 @@ const App = () => {
     if (token && user) {
       setAuthToken(token);
       setAuthUser(user);
-      setAuthRole(role || 'admin');
+      setAuthRole(role || 'limited');
       setCurrentView('app');
     }
   }, []);
@@ -49,11 +49,11 @@ const App = () => {
     // Persist authentication data to localStorage
     localStorage.setItem('authToken', token);
     localStorage.setItem('authUser', username);
-    localStorage.setItem('authRole', role || 'admin');
-    
+    localStorage.setItem('authRole', role || 'limited');
+
     setAuthToken(token);
     setAuthUser(username);
-    setAuthRole(role || 'admin');
+    setAuthRole(role || 'limited');
     setCurrentView('app');
   };
 
