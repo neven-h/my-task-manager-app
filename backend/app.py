@@ -604,6 +604,8 @@ def duplicate_task(task_id):
     except Error as e:
         return jsonify({'error': str(e)}), 500
 
+
+# noinspection DuplicatedCode
 @app.route('/api/drafts', methods=['GET'])
 def get_drafts():
     """Get all draft tasks"""
