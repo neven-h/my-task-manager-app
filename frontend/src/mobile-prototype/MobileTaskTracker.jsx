@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Filter, CheckCircle, Circle, Edit2, Trash2, X, Calendar, Clock, Tag, DollarSign, Users } from 'lucide-react';
 import API_BASE from '../config';
 
-// Brutalist theme matching design system
+// Brutalist theme - EXACTLY matching desktop TaskTracker
 const THEME = {
   bg: '#fff',
   primary: '#0000FF',
@@ -13,6 +13,9 @@ const THEME = {
   success: '#00AA00',
   border: '#000'
 };
+
+// Font stack - EXACTLY matching desktop
+const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 
 const MobileTaskTracker = ({ authRole, authUser }) => {
   const isSharedUser = authRole === 'shared' || authRole === 'limited';
@@ -251,28 +254,37 @@ const MobileTaskTracker = ({ authRole, authUser }) => {
     <div style={{ 
       minHeight: '100vh', 
       background: THEME.bg,
-      paddingBottom: '80px', // Space for bottom nav
-      WebkitOverflowScrolling: 'touch'
+      paddingBottom: '80px',
+      fontFamily: FONT_STACK
     }}>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+        
         * {
           -webkit-tap-highlight-color: transparent;
           overscroll-behavior: none;
         }
         
+        body {
+          font-family: ${FONT_STACK};
+        }
+        
         .mobile-btn {
           border: 3px solid #000;
           background: #fff;
+          font-family: ${FONT_STACK};
           font-weight: 700;
           text-transform: uppercase;
           font-size: 0.85rem;
-          padding: 14px 24px;
+          letter-spacing: 0.5px;
+          padding: 14px 28px;
           cursor: pointer;
-          transition: transform 0.15s ease;
+          transition: all 0.15s ease;
         }
         
         .mobile-btn:active {
-          transform: scale(0.95);
+          box-shadow: none;
+          transform: translate(0, 0);
         }
         
         .mobile-btn-primary {
@@ -292,6 +304,8 @@ const MobileTaskTracker = ({ authRole, authUser }) => {
           font-size: 0.9rem;
           background: #fff;
           cursor: pointer;
+          font-family: ${FONT_STACK};
+          text-transform: none;
         }
         
         .filter-pill.active {
@@ -314,6 +328,7 @@ const MobileTaskTracker = ({ authRole, authUser }) => {
           font-weight: 600;
           cursor: pointer;
           background: #fff;
+          font-family: ${FONT_STACK};
         }
         
         .category-pill.selected {
@@ -326,13 +341,19 @@ const MobileTaskTracker = ({ authRole, authUser }) => {
           border: 3px solid #000;
           padding: 14px;
           font-size: 1rem;
-          font-family: inherit;
+          font-family: ${FONT_STACK};
           background: #fff;
         }
         
         input:focus, textarea:focus, select:focus {
           outline: none;
           box-shadow: 4px 4px 0px #000;
+        }
+        
+        .color-bar {
+          height: 12px;
+          width: 100%;
+          background: linear-gradient(90deg, #FF0000 0%, #FF0000 33.33%, #FFD500 33.33%, #FFD500 66.66%, #0000FF 66.66%, #0000FF 100%);
         }
       `}</style>
 
@@ -344,21 +365,29 @@ const MobileTaskTracker = ({ authRole, authUser }) => {
         background: '#fff',
         borderBottom: '3px solid #000'
       }}>
-        <div style={{
-          height: '8px',
-          background: `linear-gradient(90deg, ${THEME.accent} 0%, ${THEME.accent} 33.33%, ${THEME.secondary} 33.33%, ${THEME.secondary} 66.66%, ${THEME.primary} 66.66%, ${THEME.primary} 100%)`
-        }} />
+        {/* Tri-color bar - 12px like desktop */}
+        <div className="color-bar" />
         
         <div style={{ padding: '16px' }}>
           <h1 style={{
             fontSize: '1.75rem',
             fontWeight: 900,
-            margin: '0 0 12px 0',
+            margin: '0 0 8px 0',
             textTransform: 'uppercase',
-            letterSpacing: '-0.5px'
+            letterSpacing: '-0.5px',
+            fontFamily: FONT_STACK
           }}>
-            My Tasks
+            TASKS
           </h1>
+          
+          <p style={{
+            fontSize: '0.9rem',
+            color: THEME.muted,
+            margin: '0 0 16px 0',
+            fontFamily: FONT_STACK
+          }}>
+            {counts.active} active • {counts.done} done
+          </p>
           
           {/* Quick filters */}
           <div style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
@@ -443,7 +472,8 @@ const MobileTaskTracker = ({ authRole, authUser }) => {
                         fontWeight: 800,
                         margin: 0,
                         textDecoration: isCompleted ? 'line-through' : 'none',
-                        color: isCompleted ? THEME.muted : THEME.text
+                        color: isCompleted ? THEME.muted : THEME.text,
+                        fontFamily: FONT_STACK
                       }}>
                         {task.title}
                       </h3>
@@ -586,7 +616,8 @@ const MobileTaskTracker = ({ authRole, authUser }) => {
         display: 'flex',
         justifyContent: 'space-around',
         alignItems: 'center',
-        zIndex: 100
+        zIndex: 100,
+        fontFamily: FONT_STACK
       }}>
         <button
           onClick={() => setActiveView('tasks')}
@@ -599,10 +630,12 @@ const MobileTaskTracker = ({ authRole, authUser }) => {
             fontWeight: 700,
             fontSize: '0.85rem',
             textTransform: 'uppercase',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            fontFamily: FONT_STACK,
+            letterSpacing: '0.5px'
           }}
         >
-          Tasks
+          TASKS
         </button>
         <button
           onClick={() => setActiveView('stats')}
@@ -615,10 +648,12 @@ const MobileTaskTracker = ({ authRole, authUser }) => {
             fontWeight: 700,
             fontSize: '0.85rem',
             textTransform: 'uppercase',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            fontFamily: FONT_STACK,
+            letterSpacing: '0.5px'
           }}
         >
-          Stats
+          STATS
         </button>
         <button
           onClick={() => setActiveView('more')}
@@ -631,10 +666,12 @@ const MobileTaskTracker = ({ authRole, authUser }) => {
             fontWeight: 700,
             fontSize: '0.85rem',
             textTransform: 'uppercase',
-            cursor: 'pointer'
+            cursor: 'pointer',
+            fontFamily: FONT_STACK,
+            letterSpacing: '0.5px'
           }}
         >
-          More
+          MORE
         </button>
       </div>
 
@@ -677,7 +714,8 @@ const MobileTaskTracker = ({ authRole, authUser }) => {
                 fontSize: '1.5rem',
                 fontWeight: 900,
                 margin: 0,
-                textTransform: 'uppercase'
+                textTransform: 'uppercase',
+                fontFamily: FONT_STACK
               }}>
                 {editingTask ? 'Edit Task' : 'New Task'}
               </h2>
