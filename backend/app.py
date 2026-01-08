@@ -29,6 +29,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # Create uploads folder if it doesn't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+DEBUG = os.getenv('DEBUG', 'false').lower() == 'true'
 
 # Database configuration - uses environment variables in production, defaults for local dev
 DB_CONFIG = {
@@ -2257,6 +2258,19 @@ def get_client_tasks(client_name):
 
     except Error as e:
         return jsonify({'error': str(e)}), 500
+
+def sanitize_csv_field(value):
+    """
+    Sanitize a field for CSV export to prevent CSV/Formula injection.
+    If the value is a string and begins with one of the dangerous characters
+    (=, +, -, @, tab, carriage return, line feed), a single quote is prepended.
+    Double quotes within the value are escaped by doubling them.
+    """
+    if isinstance(value, str):
+        if value and value[0] in ('=', '+', '-', '@', '\t', '\r', '\n'):
+            value = "'" + value
+        return value.replace('"', '""')
+    return value
 
 # Initialize database on import (works with gunicorn)
 init_db()
