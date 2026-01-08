@@ -64,6 +64,11 @@ def allowed_file(filename):
 #     'pitz': {'password': os.getenv('USER_PITZ_PASSWORD', 'default_password'), 'role': 'admin'},
 #     'benny': {'password': os.getenv('USER_BENNY_PASSWORD', 'default_password'), 'role': 'shared'}
 # }
+# User credentials loaded from environment variables
+USERS = {
+    'pitz': {'password': os.getenv('USER_PITZ_PASSWORD', 'default_password'), 'role': 'admin'},
+    'benny': {'password': os.getenv('USER_BENNY_PASSWORD', 'default_password'), 'role': 'shared'}
+}
 
 if not os.getenv('USER_PITZ_PASSWORD') or not os.getenv('USER_BENNY_PASSWORD'):
     raise ValueError("USER_PITZ_PASSWORD and USER_BENNY_PASSWORD must be set")
