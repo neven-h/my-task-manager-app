@@ -46,6 +46,11 @@ const App = () => {
   };
 
   const handleLogin = (token, username, role) => {
+    // Persist authentication data to localStorage
+    localStorage.setItem('authToken', token);
+    localStorage.setItem('authUser', username);
+    localStorage.setItem('authRole', role || 'admin');
+    
     setAuthToken(token);
     setAuthUser(username);
     setAuthRole(role || 'admin');
