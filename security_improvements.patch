@@ -1,0 +1,27 @@
+*** Begin Patch
+*** Update File: app.py
+@@
+ # Create uploads folder if it doesn't exist
+ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+ # Debug flag for controlling verbose logging
+ # Set the DEBUG environment variable to "true" to enable debug logging
+ DEBUG = os.getenv('DEBUG', 'false').lower() == 'true'
+
+ # Utility to sanitize CSV fields to mitigate CSV injection attacks.
+ # According to OWASP, spreadsheet applications treat cells beginning with
+ # certain characters as formulas. Prefixing a single quote forces the cell
+ # to be interpreted as a string and escaping quotes prevents breaking cells.
+ def sanitize_csv_field(value):
+     """
+     Sanitize a field for CSV export to prevent CSV/Formula injection.
+     If the value is a string and begins with one of the dangerous characters
+     (=, +, -, @, tab, carriage return, line feed), a single quote is prepended.
+     Double quotes within the value are escaped by doubling them.
+     """
+     if isinstance(value, str):
+         if value and value[0] in ('=', '+', '-', '@', '\t', '\r', '\n'):
+             value = "'" + value
+         # Escape double quotes
+         return value.replace('"', '""')
+     return value
