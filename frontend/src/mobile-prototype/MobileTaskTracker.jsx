@@ -1,410 +1,478 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, BarChart3, Filter, Settings, Home, CheckCircle, Circle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Filter, CheckCircle, Circle, Edit2, Trash2, X, Calendar, Clock, Tag, DollarSign, Users } from 'lucide-react';
 import API_BASE from '../config';
 
-/**
- * MOBILE-FIRST REDESIGN
- * 
- * Key Improvements:
- * 1. Bottom Navigation Bar - Main actions always accessible
- * 2. Larger Cards - Better tap targets, maintains brutalist impact
- * 3. Simplified Filter Drawer - Clean slide-in, not overlay
- * 4. Single Menu System - No overlapping navigation
- * 5. Swipe Actions - Native mobile gestures
- */
+// Brutalist theme matching design system
+const THEME = {
+  bg: '#fff',
+  primary: '#0000FF',
+  secondary: '#FFD500',
+  accent: '#FF0000',
+  text: '#000',
+  muted: '#666',
+  success: '#00AA00',
+  border: '#000'
+};
 
-const MobileTaskTracker = ({ onLogout, authRole, authUser }) => {
+const MobileTaskTracker = ({ authRole, authUser }) => {
   const isSharedUser = authRole === 'shared' || authRole === 'limited';
+  
+  // State
   const [tasks, setTasks] = useState([]);
-  const [activeView, setActiveView] = useState('tasks'); // 'tasks', 'stats', 'settings'
-  const [showFilters, setShowFilters] = useState(false);
-  const [showNewTask, setShowNewTask] = useState(false);
-  const [taskFilter, setTaskFilter] = useState('all'); // 'all', 'completed', 'uncompleted'
+  const [categories, setCategories] = useState([]);
+  const [clients, setClients] = useState([]);
+  const [allTags, setAllTags] = useState([]);
+  const [activeView, setActiveView] = useState('tasks');
+  const [filterMode, setFilterMode] = useState('all'); // all, active, done
+  const [showFilterDrawer, setShowFilterDrawer] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+  const [loading, setLoading] = useState(false);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    categories: [],
+    client: '',
+    task_date: new Date().toISOString().split('T')[0],
+    task_time: new Date().toTimeString().slice(0, 5),
+    duration: '',
+    status: 'uncompleted',
+    tags: [],
+    notes: '',
+    shared: false
+  });
 
+  // Swipe state
+  const [swipeStates, setSwipeStates] = useState({}); // { taskId: offsetX }
+  const touchStartX = useRef(0);
+  const touchCurrentX = useRef(0);
+  const swipeThreshold = 100; // px to trigger delete
+
+  // Load data
   useEffect(() => {
     fetchTasks();
+    fetchCategories();
+    fetchClients();
+    fetchTags();
   }, []);
 
   const fetchTasks = async () => {
     try {
-      const params = new URLSearchParams();
-      if (isSharedUser) params.append('shared', 'true');
-      
-      const response = await fetch(`${API_BASE}/tasks?${params}`);
+      setLoading(true);
+      const response = await fetch(`${API_BASE}/tasks`);
       const data = await response.json();
-      setTasks(data);
+      setTasks(data || []);
     } catch (err) {
-      console.error('Error fetching tasks:', err);
+      console.error('Failed to fetch tasks:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const toggleTaskStatus = async (id) => {
+  const fetchCategories = async () => {
     try {
-      await fetch(`${API_BASE}/tasks/${id}/toggle-status`, { method: 'PATCH' });
-      fetchTasks();
+      const response = await fetch(`${API_BASE}/categories`);
+      const data = await response.json();
+      setCategories(data || []);
     } catch (err) {
-      console.error('Error toggling status:', err);
+      console.error('Failed to fetch categories:', err);
     }
   };
 
+  const fetchClients = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/clients`);
+      const data = await response.json();
+      setClients(data || []);
+    } catch (err) {
+      console.error('Failed to fetch clients:', err);
+    }
+  };
+
+  const fetchTags = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/tags`);
+      const data = await response.json();
+      setAllTags(data || []);
+    } catch (err) {
+      console.error('Failed to fetch tags:', err);
+    }
+  };
+
+  // Task actions
+  const toggleTaskStatus = async (taskId, currentStatus) => {
+    try {
+      const newStatus = currentStatus === 'completed' ? 'uncompleted' : 'completed';
+      await fetch(`${API_BASE}/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      await fetchTasks();
+    } catch (err) {
+      console.error('Failed to toggle status:', err);
+    }
+  };
+
+  const deleteTask = async (taskId) => {
+    if (!window.confirm('Delete this task?')) return;
+    
+    try {
+      await fetch(`${API_BASE}/tasks/${taskId}`, { method: 'DELETE' });
+      await fetchTasks();
+      setSwipeStates(prev => {
+        const updated = { ...prev };
+        delete updated[taskId];
+        return updated;
+      });
+    } catch (err) {
+      console.error('Failed to delete task:', err);
+    }
+  };
+
+  const saveTask = async () => {
+    try {
+      setLoading(true);
+      const method = editingTask ? 'PUT' : 'POST';
+      const url = editingTask 
+        ? `${API_BASE}/tasks/${editingTask.id}`
+        : `${API_BASE}/tasks`;
+
+      await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+
+      await fetchTasks();
+      closeModal();
+    } catch (err) {
+      console.error('Failed to save task:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openCreateModal = () => {
+    setEditingTask(null);
+    setFormData({
+      title: '',
+      description: '',
+      categories: [],
+      client: '',
+      task_date: new Date().toISOString().split('T')[0],
+      task_time: new Date().toTimeString().slice(0, 5),
+      duration: '',
+      status: 'uncompleted',
+      tags: [],
+      notes: '',
+      shared: false
+    });
+    setShowTaskModal(true);
+  };
+
+  const openEditModal = (task) => {
+    setEditingTask(task);
+    setFormData({
+      title: task.title || '',
+      description: task.description || '',
+      categories: task.categories || [],
+      client: task.client || '',
+      task_date: task.task_date || new Date().toISOString().split('T')[0],
+      task_time: task.task_time || '',
+      duration: task.duration || '',
+      status: task.status || 'uncompleted',
+      tags: task.tags || [],
+      notes: task.notes || '',
+      shared: task.shared || false
+    });
+    setShowTaskModal(true);
+  };
+
+  const closeModal = () => {
+    setShowTaskModal(false);
+    setEditingTask(null);
+  };
+
+  // Swipe handlers
+  const handleTouchStart = (e, taskId) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchCurrentX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e, taskId) => {
+    touchCurrentX.current = e.touches[0].clientX;
+    const diff = touchCurrentX.current - touchStartX.current;
+    
+    // Only allow left swipe (negative diff)
+    if (diff < 0) {
+      setSwipeStates(prev => ({ ...prev, [taskId]: diff }));
+    }
+  };
+
+  const handleTouchEnd = (taskId) => {
+    const diff = touchCurrentX.current - touchStartX.current;
+    
+    if (Math.abs(diff) > swipeThreshold) {
+      // Swiped far enough - show delete confirmation
+      deleteTask(taskId);
+    }
+    
+    // Reset swipe
+    setSwipeStates(prev => ({ ...prev, [taskId]: 0 }));
+  };
+
+  // Filter tasks
   const filteredTasks = tasks.filter(task => {
-    if (taskFilter === 'all') return true;
-    return task.status === taskFilter;
+    if (filterMode === 'active') return task.status !== 'completed';
+    if (filterMode === 'done') return task.status === 'completed';
+    return true;
   });
 
-  const uncompletedCount = tasks.filter(t => t.status === 'uncompleted').length;
-  const completedCount = tasks.filter(t => t.status === 'completed').length;
+  const counts = {
+    all: tasks.length,
+    active: tasks.filter(t => t.status !== 'completed').length,
+    done: tasks.filter(t => t.status === 'completed').length
+  };
+
+  // Toggle category in form
+  const toggleCategory = (catId) => {
+    setFormData(prev => ({
+      ...prev,
+      categories: prev.categories.includes(catId)
+        ? prev.categories.filter(id => id !== catId)
+        : [...prev.categories, catId]
+    }));
+  };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#fff',
-      fontFamily: '"Inter", "Helvetica Neue", Calibri, sans-serif',
-      paddingBottom: '80px' // Space for bottom nav
+    <div style={{ 
+      minHeight: '100vh', 
+      background: THEME.bg,
+      paddingBottom: '80px', // Space for bottom nav
+      WebkitOverflowScrolling: 'touch'
     }}>
       <style>{`
         * {
-          box-sizing: border-box;
-          margin: 0;
-          padding: 0;
           -webkit-tap-highlight-color: transparent;
-        }
-
-        body {
-          font-family: 'Inter', 'Helvetica Neue', Calibri, sans-serif;
           overscroll-behavior: none;
         }
-
-        /* Disable pull-to-refresh */
-        body {
-          overscroll-behavior-y: contain;
-        }
-
-        /* Better touch scrolling */
-        .scroll-container {
-          -webkit-overflow-scrolling: touch;
-          overflow-y: auto;
-        }
-
-        /* Brutalist mobile card */
-        .mobile-task-card {
+        
+        .mobile-btn {
           border: 3px solid #000;
           background: #fff;
-          margin: 12px 16px;
-          padding: 20px;
-          position: relative;
-        }
-
-        /* Simple tap effect - no transform, just visual feedback */
-        .mobile-task-card:active {
-          background: #f8f8f8;
-        }
-
-        /* Bottom nav button */
-        .bottom-nav-btn {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 4px;
-          border: none;
-          background: transparent;
-          cursor: pointer;
-          padding: 8px 12px;
-          font-family: 'Inter', sans-serif;
-          font-size: 0.65rem;
           font-weight: 700;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
-          color: #000;
-          min-width: 70px;
-        }
-
-        .bottom-nav-btn.active {
-          color: #0000FF;
-        }
-
-        .bottom-nav-btn:active {
-          opacity: 0.6;
-        }
-
-        /* Filter drawer */
-        .filter-drawer {
-          position: fixed;
-          top: 0;
-          right: -100%;
-          width: 85%;
-          max-width: 400px;
-          height: 100vh;
-          background: #fff;
-          border-left: 4px solid #000;
-          z-index: 1000;
-          transition: right 0.3s ease;
-          overflow-y: auto;
-        }
-
-        .filter-drawer.open {
-          right: 0;
-        }
-
-        .filter-backdrop {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.6);
-          z-index: 999;
-          opacity: 0;
-          pointer-events: none;
-          transition: opacity 0.3s ease;
-        }
-
-        .filter-backdrop.visible {
-          opacity: 1;
-          pointer-events: all;
-        }
-
-        /* Large action button */
-        .mobile-action-btn {
-          border: 3px solid #000;
-          background: #FF0000;
-          color: #fff;
-          padding: 16px 24px;
-          font-family: 'Inter', sans-serif;
-          font-size: 0.9rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          width: 100%;
-          cursor: pointer;
-        }
-
-        .mobile-action-btn:active {
-          background: #CC0000;
-        }
-
-        /* Status toggle button */
-        .status-toggle {
-          border: 3px solid #000;
-          background: #fff;
-          padding: 12px;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .status-toggle:active {
-          background: #f0f0f0;
-        }
-
-        /* Filter pills */
-        .filter-pill {
-          display: inline-flex;
-          align-items: center;
-          padding: 12px 20px;
-          border: 3px solid #000;
-          background: #fff;
           font-size: 0.85rem;
-          font-weight: 700;
+          padding: 14px 24px;
           cursor: pointer;
-          margin-right: 8px;
-          margin-bottom: 8px;
+          transition: transform 0.15s ease;
         }
-
-        .filter-pill.active {
-          background: #0000FF;
+        
+        .mobile-btn:active {
+          transform: scale(0.95);
+        }
+        
+        .mobile-btn-primary {
+          background: ${THEME.primary};
           color: #fff;
         }
-
-        .filter-pill:active {
-          opacity: 0.8;
+        
+        .mobile-btn-accent {
+          background: ${THEME.accent};
+          color: #fff;
+        }
+        
+        .filter-pill {
+          border: 3px solid #000;
+          padding: 10px 20px;
+          font-weight: 700;
+          font-size: 0.9rem;
+          background: #fff;
+          cursor: pointer;
+        }
+        
+        .filter-pill.active {
+          background: ${THEME.primary};
+          color: #fff;
+        }
+        
+        .task-card {
+          border: 3px solid #000;
+          background: #fff;
+          margin-bottom: 12px;
+          position: relative;
+          transition: transform 0.2s ease;
+        }
+        
+        .category-pill {
+          border: 2px solid #000;
+          padding: 6px 14px;
+          font-size: 0.85rem;
+          font-weight: 600;
+          cursor: pointer;
+          background: #fff;
+        }
+        
+        .category-pill.selected {
+          background: ${THEME.primary};
+          color: #fff;
+        }
+        
+        input, textarea, select {
+          width: 100%;
+          border: 3px solid #000;
+          padding: 14px;
+          font-size: 1rem;
+          font-family: inherit;
+          background: #fff;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+          outline: none;
+          box-shadow: 4px 4px 0px #000;
         }
       `}</style>
 
-      {/* Color Bar */}
+      {/* Header with tri-color bar */}
       <div style={{
-        height: '12px',
-        width: '100%',
-        background: 'linear-gradient(90deg, #FF0000 0%, #FF0000 33.33%, #FFD500 33.33%, #FFD500 66.66%, #0000FF 66.66%, #0000FF 100%)'
-      }} />
-
-      {/* Header */}
-      <header style={{
-        background: '#fff',
-        borderBottom: '4px solid #000',
-        padding: '16px',
         position: 'sticky',
         top: 0,
-        zIndex: 100
+        zIndex: 100,
+        background: '#fff',
+        borderBottom: '3px solid #000'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h1 style={{
-              fontSize: '1.5rem',
-              fontWeight: 900,
-              margin: 0,
-              letterSpacing: '-0.5px',
-              textTransform: 'uppercase'
-            }}>
-              Tasks
-            </h1>
-            <p style={{
-              fontSize: '0.75rem',
-              color: '#666',
-              margin: '4px 0 0 0',
-              fontWeight: 600
-            }}>
-              {uncompletedCount} active • {completedCount} done
-            </p>
-          </div>
-
-          {/* Filter toggle button */}
-          <button
-            onClick={() => setShowFilters(true)}
-            style={{
-              border: '3px solid #000',
-              background: '#fff',
-              padding: '10px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <Filter size={20} />
-          </button>
-        </div>
-
-        {/* Quick filter pills */}
-        <div style={{ marginTop: '16px', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-          <button
-            className={`filter-pill ${taskFilter === 'all' ? 'active' : ''}`}
-            onClick={() => setTaskFilter('all')}
-          >
-            All ({tasks.length})
-          </button>
-          <button
-            className={`filter-pill ${taskFilter === 'uncompleted' ? 'active' : ''}`}
-            onClick={() => setTaskFilter('uncompleted')}
-          >
-            Active ({uncompletedCount})
-          </button>
-          <button
-            className={`filter-pill ${taskFilter === 'completed' ? 'active' : ''}`}
-            onClick={() => setTaskFilter('completed')}
-          >
-            Done ({completedCount})
-          </button>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="scroll-container" style={{
-        minHeight: 'calc(100vh - 200px)',
-        paddingTop: '8px',
-        paddingBottom: '20px'
-      }}>
-        {filteredTasks.length === 0 ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '48px 24px',
-            margin: '24px 16px',
-            border: '3px solid #000',
-            background: '#f8f8f8'
+        <div style={{
+          height: '8px',
+          background: `linear-gradient(90deg, ${THEME.accent} 0%, ${THEME.accent} 33.33%, ${THEME.secondary} 33.33%, ${THEME.secondary} 66.66%, ${THEME.primary} 66.66%, ${THEME.primary} 100%)`
+        }} />
+        
+        <div style={{ padding: '16px' }}>
+          <h1 style={{
+            fontSize: '1.75rem',
+            fontWeight: 900,
+            margin: '0 0 12px 0',
+            textTransform: 'uppercase',
+            letterSpacing: '-0.5px'
           }}>
-            <p style={{
-              fontSize: '1.1rem',
-              fontWeight: 700,
-              marginBottom: '8px'
-            }}>
-              No tasks here
-            </p>
-            <p style={{ color: '#666', fontSize: '0.9rem' }}>
-              {taskFilter === 'all' ? 'Add your first task' : `No ${taskFilter} tasks`}
-            </p>
+            My Tasks
+          </h1>
+          
+          {/* Quick filters */}
+          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
+            <div 
+              className={`filter-pill ${filterMode === 'all' ? 'active' : ''}`}
+              onClick={() => setFilterMode('all')}
+            >
+              All ({counts.all})
+            </div>
+            <div 
+              className={`filter-pill ${filterMode === 'active' ? 'active' : ''}`}
+              onClick={() => setFilterMode('active')}
+            >
+              Active ({counts.active})
+            </div>
+            <div 
+              className={`filter-pill ${filterMode === 'done' ? 'active' : ''}`}
+              onClick={() => setFilterMode('done')}
+            >
+              Done ({counts.done})
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Task List */}
+      <div style={{ padding: '16px' }}>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '40px', color: THEME.muted }}>
+            Loading...
+          </div>
+        ) : filteredTasks.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px', color: THEME.muted }}>
+            No tasks found
           </div>
         ) : (
           filteredTasks.map(task => {
-            const statusColor = task.status === 'completed' ? '#FFD500' : '#FF0000';
-            const statusText = task.status === 'completed' ? 'Done' : 'Active';
-
+            const swipeOffset = swipeStates[task.id] || 0;
+            const isCompleted = task.status === 'completed';
+            
             return (
-              <div key={task.id} className="mobile-task-card">
-                {/* Status indicator bar on left */}
-                <div style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: '8px',
-                  background: statusColor
-                }} />
-
-                <div style={{ paddingLeft: '8px' }}>
-                  {/* Task header */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                    <h3 style={{
-                      fontSize: '1.1rem',
-                      fontWeight: 700,
-                      margin: 0,
-                      flex: 1,
-                      lineHeight: 1.3
-                    }}>
-                      {task.title}
-                    </h3>
-
-                    {/* Status toggle button */}
-                    {!isSharedUser && (
-                      <button
-                        className="status-toggle"
-                        onClick={() => toggleTaskStatus(task.id)}
-                        style={{
-                          marginLeft: '12px',
-                          minWidth: '44px',
-                          minHeight: '44px'
-                        }}
-                      >
-                        {task.status === 'completed' ? (
-                          <CheckCircle size={24} color="#000" />
-                        ) : (
-                          <Circle size={24} color="#000" />
-                        )}
-                      </button>
-                    )}
+              <div 
+                key={task.id}
+                className="task-card"
+                style={{
+                  transform: `translateX(${swipeOffset}px)`,
+                  borderLeft: `8px solid ${isCompleted ? THEME.secondary : THEME.accent}`
+                }}
+                onTouchStart={(e) => handleTouchStart(e, task.id)}
+                onTouchMove={(e) => handleTouchMove(e, task.id)}
+                onTouchEnd={() => handleTouchEnd(task.id)}
+              >
+                <div style={{ padding: '20px' }}>
+                  {/* Header row */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
+                    {/* Status toggle */}
+                    <button
+                      onClick={() => toggleTaskStatus(task.id, task.status)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        cursor: 'pointer',
+                        minWidth: '32px',
+                        minHeight: '32px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      {isCompleted ? (
+                        <CheckCircle size={32} color={THEME.secondary} fill={THEME.secondary} />
+                      ) : (
+                        <Circle size={32} color={THEME.accent} strokeWidth={3} />
+                      )}
+                    </button>
+                    
+                    {/* Title */}
+                    <div style={{ flex: 1 }}>
+                      <h3 style={{
+                        fontSize: '1.15rem',
+                        fontWeight: 800,
+                        margin: 0,
+                        textDecoration: isCompleted ? 'line-through' : 'none',
+                        color: isCompleted ? THEME.muted : THEME.text
+                      }}>
+                        {task.title}
+                      </h3>
+                    </div>
+                    
+                    {/* Edit button */}
+                    <button
+                      onClick={() => openEditModal(task)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: '8px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Edit2 size={20} color={THEME.primary} />
+                    </button>
                   </div>
 
                   {/* Description */}
                   {task.description && (
                     <p style={{
-                      fontSize: '0.9rem',
-                      color: '#666',
-                      marginBottom: '12px',
-                      lineHeight: 1.5
+                      fontSize: '0.95rem',
+                      color: THEME.muted,
+                      margin: '0 0 12px 44px',
+                      lineHeight: '1.5'
                     }}>
                       {task.description}
                     </p>
-                  )}
-
-                  {/* Categories */}
-                  {task.categories && task.categories.length > 0 && (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
-                      {task.categories.map((cat, idx) => (
-                        <span key={idx} style={{
-                          display: 'inline-flex',
-                          padding: '4px 10px',
-                          background: '#e3f2fd',
-                          color: '#1565c0',
-                          border: '2px solid #1565c0',
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.3px'
-                        }}>
-                          {cat}
-                        </span>
-                      ))}
-                    </div>
                   )}
 
                   {/* Meta info */}
@@ -412,208 +480,470 @@ const MobileTaskTracker = ({ onLogout, authRole, authUser }) => {
                     display: 'flex',
                     flexWrap: 'wrap',
                     gap: '12px',
-                    fontSize: '0.75rem',
-                    color: '#666',
-                    fontWeight: 600
+                    marginLeft: '44px',
+                    fontSize: '0.85rem',
+                    color: THEME.muted
                   }}>
                     {task.task_date && (
-                      <span>📅 {new Date(task.task_date).toLocaleDateString()}</span>
-                    )}
-                    {task.task_time && (
-                      <span>🕐 {task.task_time}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Calendar size={14} />
+                        {new Date(task.task_date).toLocaleDateString('en-GB')}
+                      </span>
                     )}
                     {task.duration && (
-                      <span>⏱️ {task.duration}h</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Clock size={14} />
+                        {task.duration}h
+                      </span>
                     )}
                     {task.client && (
-                      <span>👤 {task.client}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Users size={14} />
+                        {task.client}
+                      </span>
                     )}
                   </div>
 
-                  {/* Notes */}
-                  {task.notes && (
+                  {/* Categories */}
+                  {task.categories && task.categories.length > 0 && (
                     <div style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '6px',
                       marginTop: '12px',
-                      padding: '12px',
-                      background: '#FFD500',
-                      border: '2px solid #000',
-                      fontSize: '0.85rem',
-                      lineHeight: 1.4
+                      marginLeft: '44px'
                     }}>
-                      <strong>Notes:</strong> {task.notes}
+                      {task.categories.map(cat => (
+                        <span
+                          key={cat.id}
+                          style={{
+                            border: '2px solid #000',
+                            padding: '4px 10px',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            background: cat.color || '#f0f0f0'
+                          }}
+                        >
+                          {cat.label}
+                        </span>
+                      ))}
                     </div>
                   )}
                 </div>
+
+                {/* Swipe indicator */}
+                {swipeOffset < -20 && (
+                  <div style={{
+                    position: 'absolute',
+                    right: '20px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: THEME.accent,
+                    fontWeight: 700,
+                    fontSize: '0.9rem'
+                  }}>
+                    <Trash2 size={24} />
+                  </div>
+                )}
               </div>
             );
           })
         )}
-      </main>
-
-      {/* Filter Drawer */}
-      <div
-        className={`filter-backdrop ${showFilters ? 'visible' : ''}`}
-        onClick={() => setShowFilters(false)}
-      />
-      <div className={`filter-drawer ${showFilters ? 'open' : ''}`}>
-        <div style={{
-          padding: '20px',
-          borderBottom: '3px solid #000',
-          background: '#FFD500',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <h2 style={{
-            fontSize: '1.3rem',
-            fontWeight: 900,
-            margin: 0,
-            textTransform: 'uppercase'
-          }}>
-            Filters
-          </h2>
-          <button
-            onClick={() => setShowFilters(false)}
-            style={{
-              border: '3px solid #000',
-              background: '#fff',
-              padding: '8px',
-              cursor: 'pointer',
-              fontSize: '1.2rem',
-              fontWeight: 700
-            }}
-          >
-            ✕
-          </button>
-        </div>
-
-        <div style={{ padding: '20px' }}>
-          <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '20px' }}>
-            Advanced filters coming soon...
-          </p>
-
-          <button
-            className="mobile-action-btn"
-            onClick={() => setShowFilters(false)}
-            style={{ background: '#0000FF' }}
-          >
-            Apply Filters
-          </button>
-        </div>
       </div>
 
-      {/* Bottom Navigation Bar */}
-      <nav style={{
+      {/* Floating Action Button */}
+      <button
+        onClick={openCreateModal}
+        style={{
+          position: 'fixed',
+          bottom: '96px',
+          right: '20px',
+          width: '64px',
+          height: '64px',
+          borderRadius: '50%',
+          background: THEME.primary,
+          border: '3px solid #000',
+          boxShadow: '4px 4px 0px #000',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          zIndex: 90
+        }}
+      >
+        <Plus size={32} color="#fff" strokeWidth={3} />
+      </button>
+
+      {/* Bottom Navigation */}
+      <div style={{
         position: 'fixed',
         bottom: 0,
         left: 0,
         right: 0,
+        height: '72px',
         background: '#fff',
-        borderTop: '4px solid #000',
+        borderTop: '3px solid #000',
         display: 'flex',
         justifyContent: 'space-around',
         alignItems: 'center',
-        padding: '8px 0',
         zIndex: 100
       }}>
         <button
-          className={`bottom-nav-btn ${activeView === 'tasks' ? 'active' : ''}`}
           onClick={() => setActiveView('tasks')}
+          style={{
+            flex: 1,
+            height: '100%',
+            background: activeView === 'tasks' ? THEME.primary : 'transparent',
+            color: activeView === 'tasks' ? '#fff' : THEME.text,
+            border: 'none',
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            textTransform: 'uppercase',
+            cursor: 'pointer'
+          }}
         >
-          <Home size={24} />
-          <span>Tasks</span>
+          Tasks
         </button>
-
         <button
-          className={`bottom-nav-btn ${activeView === 'stats' ? 'active' : ''}`}
           onClick={() => setActiveView('stats')}
+          style={{
+            flex: 1,
+            height: '100%',
+            background: activeView === 'stats' ? THEME.primary : 'transparent',
+            color: activeView === 'stats' ? '#fff' : THEME.text,
+            border: 'none',
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            textTransform: 'uppercase',
+            cursor: 'pointer'
+          }}
         >
-          <BarChart3 size={24} />
-          <span>Stats</span>
+          Stats
         </button>
-
-        {/* Large center action button */}
-        {!isSharedUser && (
-          <button
-            onClick={() => setShowNewTask(true)}
-            style={{
-              width: '56px',
-              height: '56px',
-              border: '4px solid #000',
-              background: '#FF0000',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transform: 'translateY(-8px)',
-              boxShadow: '0 4px 8px rgba(0,0,0,0.2)'
-            }}
-          >
-            <Plus size={32} color="#fff" strokeWidth={3} />
-          </button>
-        )}
-
         <button
-          className={`bottom-nav-btn ${activeView === 'settings' ? 'active' : ''}`}
-          onClick={() => setActiveView('settings')}
+          onClick={() => setActiveView('more')}
+          style={{
+            flex: 1,
+            height: '100%',
+            background: activeView === 'more' ? THEME.primary : 'transparent',
+            color: activeView === 'more' ? '#fff' : THEME.text,
+            border: 'none',
+            fontWeight: 700,
+            fontSize: '0.85rem',
+            textTransform: 'uppercase',
+            cursor: 'pointer'
+          }}
         >
-          <Settings size={24} />
-          <span>More</span>
+          More
         </button>
-      </nav>
+      </div>
 
-      {/* New Task Modal Placeholder */}
-      {showNewTask && (
+      {/* Task Modal */}
+      {showTaskModal && (
         <div style={{
           position: 'fixed',
           top: 0,
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(0,0,0,0.85)',
-          zIndex: 2000,
+          background: 'rgba(0,0,0,0.5)',
+          zIndex: 200,
           display: 'flex',
           alignItems: 'flex-end'
         }}>
           <div style={{
-            background: '#fff',
             width: '100%',
-            borderTopLeftRadius: '20px',
-            borderTopRightRadius: '20px',
-            border: '4px solid #000',
-            borderBottom: 'none',
-            padding: '24px',
             maxHeight: '90vh',
-            overflowY: 'auto'
+            background: '#fff',
+            borderRadius: '16px 16px 0 0',
+            border: '3px solid #000',
+            borderBottom: 'none',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 900, margin: 0, textTransform: 'uppercase' }}>
-                New Task
+            {/* Modal Header */}
+            <div style={{
+              padding: '20px',
+              borderBottom: '3px solid #000',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              position: 'sticky',
+              top: 0,
+              background: '#fff',
+              zIndex: 1
+            }}>
+              <h2 style={{
+                fontSize: '1.5rem',
+                fontWeight: 900,
+                margin: 0,
+                textTransform: 'uppercase'
+              }}>
+                {editingTask ? 'Edit Task' : 'New Task'}
               </h2>
               <button
-                onClick={() => setShowNewTask(false)}
+                onClick={closeModal}
                 style={{
-                  border: '3px solid #000',
-                  background: '#fff',
-                  padding: '8px 12px',
-                  cursor: 'pointer',
-                  fontSize: '1.2rem',
-                  fontWeight: 700
+                  background: 'none',
+                  border: 'none',
+                  padding: '8px',
+                  cursor: 'pointer'
                 }}
               >
-                ✕
+                <X size={28} color={THEME.text} />
               </button>
             </div>
-            <p style={{ color: '#666', marginBottom: '20px' }}>
-              Task creation form coming soon...
-            </p>
-            <button
-              className="mobile-action-btn"
-              onClick={() => setShowNewTask(false)}
-            >
-              Close
-            </button>
+
+            {/* Modal Body */}
+            <div style={{ padding: '20px' }}>
+              {/* Title */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  Title *
+                </label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  placeholder="Task title..."
+                />
+              </div>
+
+              {/* Description */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  Description
+                </label>
+                <textarea
+                  rows={4}
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Task description..."
+                />
+              </div>
+
+              {/* Date & Time */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+                <div>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.task_date}
+                    onChange={(e) => setFormData({ ...formData, task_date: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Time
+                  </label>
+                  <input
+                    type="time"
+                    value={formData.task_time}
+                    onChange={(e) => setFormData({ ...formData, task_time: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Duration & Client */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '12px', marginBottom: '20px' }}>
+                <div>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Hours
+                  </label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={formData.duration}
+                    onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Client
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.client}
+                    onChange={(e) => setFormData({ ...formData, client: e.target.value })}
+                    placeholder="Client name..."
+                    list="clients-list"
+                  />
+                  <datalist id="clients-list">
+                    {clients.map(client => (
+                      <option key={client} value={client} />
+                    ))}
+                  </datalist>
+                </div>
+              </div>
+
+              {/* Categories */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '12px',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  Categories
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {categories.map(cat => (
+                    <div
+                      key={cat.id}
+                      className={`category-pill ${formData.categories.includes(cat.id) ? 'selected' : ''}`}
+                      onClick={() => toggleCategory(cat.id)}
+                    >
+                      {cat.label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Status */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  Status
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                >
+                  <option value="uncompleted">Uncompleted</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+
+              {/* Notes */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  Notes
+                </label>
+                <textarea
+                  rows={3}
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Additional notes..."
+                />
+              </div>
+
+              {/* Shared checkbox (only for pitz user) */}
+              {!isSharedUser && (
+                <div style={{ marginBottom: '24px' }}>
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    cursor: 'pointer',
+                    fontWeight: 600
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={formData.shared}
+                      onChange={(e) => setFormData({ ...formData, shared: e.target.checked })}
+                      style={{ width: 'auto', margin: 0 }}
+                    />
+                    Share with Benny
+                  </label>
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={closeModal}
+                  className="mobile-btn"
+                  style={{ flex: 1 }}
+                  disabled={loading}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveTask}
+                  className="mobile-btn mobile-btn-primary"
+                  style={{ flex: 1 }}
+                  disabled={loading || !formData.title.trim()}
+                >
+                  {loading ? 'Saving...' : (editingTask ? 'Update' : 'Create')}
+                </button>
+              </div>
+
+              {/* Delete button (only when editing) */}
+              {editingTask && (
+                <button
+                  onClick={() => {
+                    deleteTask(editingTask.id);
+                    closeModal();
+                  }}
+                  className="mobile-btn mobile-btn-accent"
+                  style={{ width: '100%', marginTop: '12px' }}
+                  disabled={loading}
+                >
+                  <Trash2 size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />
+                  Delete Task
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
