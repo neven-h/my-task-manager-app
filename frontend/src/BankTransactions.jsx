@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Upload, DollarSign, Calendar, TrendingUp, Trash2, Download, FileText, AlertCircle, CheckCircle, ArrowLeft, Plus, Edit2, Save, X, FileDown, Banknote, CreditCard, PieChart, Filter } from 'lucide-react';
+import { Upload, Calendar, Trash2, FileText, AlertCircle, CheckCircle, ArrowLeft, Plus, Edit2, Save, X, FileDown, Banknote, CreditCard, PieChart } from 'lucide-react';
 import API_BASE from './config';
 
 const BankTransactions = ({ onBackToTasks }) => {
@@ -145,13 +145,14 @@ const BankTransactions = ({ onBackToTasks }) => {
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text();
         console.error('Non-JSON response:', text);
+        console.error(`Server error: Expected JSON but got ${contentType}`);
         throw new Error(`Server error: Expected JSON but got ${contentType}`);
       }
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Upload failed');
+        console.error('Failed to save task');
       }
 
       setUploadedData(data);
@@ -182,7 +183,7 @@ const BankTransactions = ({ onBackToTasks }) => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Save failed');
+        console.error('Failed to save task');
       }
 
       setSuccess(data.message);
@@ -349,7 +350,7 @@ const BankTransactions = ({ onBackToTasks }) => {
     const sortedCategories = Object.entries(categories).sort((a, b) => b[1].total - a[1].total);
 
     printWindow.document.write(`
-      <html>
+      <html lang="en">
       <head>
         <title>Bank Transactions Report - ${selectedMonth === 'all' ? 'All' : formatMonthYear(selectedMonth)}</title>
         <style>
