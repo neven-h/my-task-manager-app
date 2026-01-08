@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Search, Plus, Calendar, Clock, X, BarChart3,
+  Plus, X, BarChart3,
   Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut, Menu, Filter, Copy
 } from 'lucide-react';
 import BankTransactions from './BankTransactions';
@@ -279,8 +279,10 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
         body: JSON.stringify(formData)
       });
       
-      if (!response.ok) throw new Error('Failed to save task');
-      
+      if (!response.ok) {
+        console.error('Failed to save task');
+      }
+
       await fetchTasks();
       await fetchStats();
       await fetchClients();

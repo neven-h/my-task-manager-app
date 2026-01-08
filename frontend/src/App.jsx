@@ -4,6 +4,7 @@ import LoginPage from './LoginPage';
 import SignUpPage from './SignUpPage';
 import TaskTracker from './TaskTracker';
 import MobileTaskTracker from './mobile-prototype/MobileTaskTracker';
+import API_BASE from './config';
 
 const App = () => {
   const [currentView, setCurrentView] = useState('landing'); // 'landing', 'login', 'signup', 'app'
@@ -21,18 +22,47 @@ const App = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Check if user is already logged in on mount
+  // Check if user is already logged in on mount and validate token
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    const user = localStorage.getItem('authUser');
-    const role = localStorage.getItem('authRole');
+    const validateAndRestoreSession = async () => {
+      const token = localStorage.getItem('authToken');
+      const user = localStorage.getItem('authUser');
+      const role = localStorage.getItem('authRole');
 
-    if (token && user) {
-      setAuthToken(token);
-      setAuthUser(user);
-      setAuthRole(role || 'limited');
-      setCurrentView('app');
-    }
+      if (token && user) {
+        try {
+          // Validate token by making a test request to the API
+          const response = await fetch(`${API_BASE}/tasks?limit=1`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+
+          if (response.ok) {
+            // Token is valid, restore session
+            setAuthToken(token);
+            setAuthUser(user);
+            setAuthRole(role || 'limited');
+            setCurrentView('app');
+          } else {
+            // Token is invalid or expired, clear storage
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('authUser');
+            localStorage.removeItem('authRole');
+            setCurrentView('landing');
+          }
+        } catch (error) {
+          // Network error or API unavailable, clear storage
+          console.error('Token validation failed:', error);
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('authUser');
+          localStorage.removeItem('authRole');
+          setCurrentView('landing');
+        }
+      }
+    };
+
+    validateAndRestoreSession();
   }, []);
 
   const handleEnter = () => {
