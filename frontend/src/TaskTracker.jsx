@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import BankTransactions from './BankTransactions';
 import ClientsManagement from './ClientsManagement';
+import CustomAutocomplete from './components/CustomAutocomplete';
 import API_BASE from './config';
 
 const DRAFT_STORAGE_KEY = 'taskTracker_draft';
@@ -1642,16 +1643,13 @@ useEffect(() => {
                                         <option key={cat.id} value={cat.id}>{cat.label}</option>))}
                                 </select>
                             </div>
-                            <div>
-                                <label style={{
-                                    display: 'block',
-                                    marginBottom: '8px',
-                                    fontWeight: 700,
-                                    fontSize: '0.85rem'
-                                }}>Client</label>
-                                <input type="text" placeholder="Client name..." value={filters.client}
-                                       onChange={(e) => setFilters({...filters, client: e.target.value})}/>
-                            </div>
+                            <CustomAutocomplete
+                                label="Client"
+                                placeholder="Client name..."
+                                value={filters.client}
+                                onChange={(value) => setFilters({...filters, client: value})}
+                                options={clients.map(client => typeof client === 'string' ? client : client.name)}
+                            />
                             <div>
                                 <label style={{
                                     display: 'block',
@@ -1819,26 +1817,13 @@ useEffect(() => {
                                 </select>
                             </div>
 
-                            <div>
-                                <label style={{
-                                    display: 'block',
-                                    marginBottom: '8px',
-                                    fontWeight: 700,
-                                    fontSize: '0.85rem'
-                                }}>Client</label>
-                                <input
-                                    type="text"
-                                    placeholder="Client name..."
-                                    value={filters.client}
-                                    onChange={(e) => setFilters({...filters, client: e.target.value})}
-                                    list="clients-list"
-                                />
-                                <datalist id="clients-list">
-                                    {clients.map(client => (
-                                        <option key={client} value={client}/>
-                                    ))}
-                                </datalist>
-                            </div>
+                            <CustomAutocomplete
+                                label="Client"
+                                placeholder="Client name..."
+                                value={filters.client}
+                                onChange={(value) => setFilters({...filters, client: value})}
+                                options={clients.map(client => typeof client === 'string' ? client : client.name)}
+                            />
 
                             <div>
                                 <label style={{
@@ -2295,29 +2280,13 @@ useEffect(() => {
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label style={{
-                                        display: 'block',
-                                        marginBottom: '8px',
-                                        fontWeight: 700,
-                                        fontSize: '0.85rem',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.5px'
-                                    }}>Client</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Client..."
-                                        value={formData.client}
-                                        onChange={(e) => setFormData({...formData, client: e.target.value})}
-                                        list="clients-list-form"
-                                    />
-                                    <datalist id="clients-list-form">
-                                        {clients.map(client => {
-                                            const clientName = typeof client === 'string' ? client : client.name;
-                                            return <option key={clientName} value={clientName}/>;
-                                        })}
-                                    </datalist>
-                                </div>
+                                <CustomAutocomplete
+                                    label="Client"
+                                    placeholder="Client..."
+                                    value={formData.client}
+                                    onChange={(value) => setFormData({...formData, client: value})}
+                                    options={clients.map(client => typeof client === 'string' ? client : client.name)}
+                                />
 
                                 <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
                                     <div>
