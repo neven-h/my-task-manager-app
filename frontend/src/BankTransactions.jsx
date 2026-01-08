@@ -936,7 +936,9 @@ const BankTransactions = ({ onBackToTasks }) => {
                           <div style={{
                             fontSize: '1rem',
                             fontWeight: '800',
-                            fontFamily: 'monospace',
+                            fontFamily: 'Consolas, "Courier New", monospace',
+                            fontVariantNumeric: 'tabular-nums',
+                            letterSpacing: '0.05em',
                             color: colors.text
                           }}>
                             {formatCurrency(data.total)}

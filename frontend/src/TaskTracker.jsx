@@ -279,6 +279,7 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
         body: JSON.stringify(formData)
       });
       
+      // Updated error handling
       if (!response.ok) {
         console.error('Failed to save task');
       }
@@ -1237,6 +1238,24 @@ const TaskTracker = ({ onLogout, authRole, authUser }) => {
           .mobile-sidebar-close {
             display: none !important;
           }
+        }
+        
+        /* Custom autocomplete styling */
+        input[list] {
+          background-image: url('data:image/svg+xml;utf8,<svg fill="%23000" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>');
+          background-repeat: no-repeat;
+          background-position: right 0.75rem center;
+          background-size: 1rem;
+          padding-right: 2.5rem !important;
+        }
+
+        input[list]::-webkit-calendar-picker-indicator {
+          display: none !important;
+        }
+
+        input[list]:focus {
+          box-shadow: 4px 4px 0px #000, 0 0 0 3px #FFD500 inset !important;
+          background-color: #fffef0;
         }
       `}</style>
 
