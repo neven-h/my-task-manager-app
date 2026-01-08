@@ -59,19 +59,15 @@ DB_CONFIG = {
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# User credentials loaded from environment variables
-# USERS = {
-#     'pitz': {'password': os.getenv('USER_PITZ_PASSWORD', 'default_password'), 'role': 'admin'},
-#     'benny': {'password': os.getenv('USER_BENNY_PASSWORD', 'default_password'), 'role': 'shared'}
-# }
-# User credentials loaded from environment variables
 USERS = {
     'pitz': {'password': os.getenv('USER_PITZ_PASSWORD', 'default_password'), 'role': 'admin'},
     'benny': {'password': os.getenv('USER_BENNY_PASSWORD', 'default_password'), 'role': 'shared'}
+    'Hillel': {'password': os.getenv('USER_MOSHE_PASSWORD', 'default_password'), 'role': 'shared'},
+    'Olivia': {'password': os.getenv('USER_SARAH_PASSWORD', 'default_password'), 'role': 'shared'}
 }
 
-if not os.getenv('USER_PITZ_PASSWORD') or not os.getenv('USER_BENNY_PASSWORD'):
-    raise ValueError("USER_PITZ_PASSWORD and USER_BENNY_PASSWORD must be set")
+if not os.getenv('USER_PITZ_PASSWORD') or not os.getenv('USER_BENNY_PASSWORD') or not os.getenv('USER_HILLEL_PASSWORD') or not os.getenv('USER_OLIVIA_PASSWORD'):
+    raise ValueError("USER_PITZ_PASSWORD and USER_BENNY_PASSWORD and USER_HILLEL_PASSWORD and USER_OLIVIA_PASSWORD must be set")
 
 @contextmanager
 def get_db_connection():
