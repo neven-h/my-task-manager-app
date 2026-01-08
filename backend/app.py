@@ -61,9 +61,9 @@ def allowed_file(filename):
 
 USERS = {
     'pitz': {'password': os.getenv('USER_PITZ_PASSWORD', 'default_password'), 'role': 'admin'},
-    'benny': {'password': os.getenv('USER_BENNY_PASSWORD', 'default_password'), 'role': 'shared'}
-    'Hillel': {'password': os.getenv('USER_MOSHE_PASSWORD', 'default_password'), 'role': 'shared'},
-    'Olivia': {'password': os.getenv('USER_SARAH_PASSWORD', 'default_password'), 'role': 'shared'}
+    'benny': {'password': os.getenv('USER_BENNY_PASSWORD', 'default_password'), 'role': 'shared'},
+    'Hillel': {'password': os.getenv('USER_HILLEL_PASSWORD', 'default_password'), 'role': 'shared'},
+    'Olivia': {'password': os.getenv('USER_OLIVIA_PASSWORD', 'default_password'), 'role': 'shared'}
 }
 
 if not os.getenv('USER_PITZ_PASSWORD') or not os.getenv('USER_BENNY_PASSWORD') or not os.getenv('USER_HILLEL_PASSWORD') or not os.getenv('USER_OLIVIA_PASSWORD'):
