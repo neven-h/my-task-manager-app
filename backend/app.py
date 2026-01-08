@@ -31,6 +31,20 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 DEBUG = os.getenv('DEBUG', 'false').lower() == 'true'
 
+def sanitize_csv_field(value):
+    """
+    Sanitize a field for CSV export to prevent CSV/Formula injection.
+    If the value is a string and begins with one of the dangerous characters
+    (=, +, -, @, tab, carriage return, line feed), a single quote is prepended.
+    Double quotes within the value are escaped by doubling them.
+    """
+    if isinstance(value, str):
+        if value and value[0] in ('=', '+', '-', '@', '\t', '\r', '\n'):
+            value = "'" + value
+        return value.replace('"', '""')
+    return value
+
+
 # Database configuration - uses environment variables in production, defaults for local dev
 DB_CONFIG = {
     'host': os.getenv('DB_HOST', 'localhost'),
@@ -46,10 +60,13 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # User credentials loaded from environment variables
-USERS = {
-    'pitz': {'password': os.getenv('USER_PITZ_PASSWORD', 'default_password'), 'role': 'admin'},
-    'benny': {'password': os.getenv('USER_BENNY_PASSWORD', 'default_password'), 'role': 'shared'}
-}
+# USERS = {
+#     'pitz': {'password': os.getenv('USER_PITZ_PASSWORD', 'default_password'), 'role': 'admin'},
+#     'benny': {'password': os.getenv('USER_BENNY_PASSWORD', 'default_password'), 'role': 'shared'}
+# }
+
+if not os.getenv('USER_PITZ_PASSWORD') or not os.getenv('USER_BENNY_PASSWORD'):
+    raise ValueError("USER_PITZ_PASSWORD and USER_BENNY_PASSWORD must be set")
 
 @contextmanager
 def get_db_connection():
@@ -705,10 +722,13 @@ def export_csv():
             # Create CSV
             output = io.StringIO()
             if tasks:
-                fieldnames = tasks[0].keys()
+                fieldnames = list(tasks[0].keys())
                 writer = csv.DictWriter(output, fieldnames=fieldnames)
                 writer.writeheader()
-                writer.writerows(tasks)
+                for task in tasks:
+                    # sanitize each value to prevent formula injection
+                    safe_row = {k: sanitize_csv_field(task.get(k)) for k in fieldnames}
+                    writer.writerow(safe_row)
             
             # Convert to bytes for sending
             output.seek(0)
@@ -2259,18 +2279,6 @@ def get_client_tasks(client_name):
     except Error as e:
         return jsonify({'error': str(e)}), 500
 
-def sanitize_csv_field(value):
-    """
-    Sanitize a field for CSV export to prevent CSV/Formula injection.
-    If the value is a string and begins with one of the dangerous characters
-    (=, +, -, @, tab, carriage return, line feed), a single quote is prepended.
-    Double quotes within the value are escaped by doubling them.
-    """
-    if isinstance(value, str):
-        if value and value[0] in ('=', '+', '-', '@', '\t', '\r', '\n'):
-            value = "'" + value
-        return value.replace('"', '""')
-    return value
 
 # Initialize database on import (works with gunicorn)
 init_db()
