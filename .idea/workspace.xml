@@ -4,14 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="e1b3cef8-89ee-479c-bb86-3f137da34457" name="Changes" comment="Initial commit: My Task Manager App - Complete rewrite">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/BankTransactions.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/BankTransactions.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/TaskTracker.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/TaskTracker.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/my-task-manager-app/frontend/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/my-task-manager-app/frontend/src/App.jsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/my-task-manager-app/frontend/src/BankTransactions.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/my-task-manager-app/frontend/src/BankTransactions.jsx" afterDir="false" />
-    </list>
+    <list default="true" id="e1b3cef8-89ee-479c-bb86-3f137da34457" name="Changes" comment="Initial commit: My Task Manager App - Complete rewrite" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -273,7 +266,15 @@
       <option name="project" value="LOCAL" />
       <updated>1767799404392</updated>
     </task>
-    <option name="localTasksCounter" value="16" />
+    <task id="LOCAL-00016" summary="Initial commit: My Task Manager App - Complete rewrite">
+      <option name="closed" value="true" />
+      <created>1767870587727</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1767870587727</updated>
+    </task>
+    <option name="localTasksCounter" value="17" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
