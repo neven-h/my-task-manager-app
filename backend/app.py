@@ -24,7 +24,8 @@ app = Flask(__name__)
 
 # Configure CORS - allow frontend origins
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3004')
-CORS(app, origins=[FRONTEND_URL, 'http://localhost:3004', 'http://localhost:3005', 'https://drpitz.club', 'https://www.drpitz.club'])
+CORS(app, origins=[FRONTEND_URL, 'http://localhost:3004', 'http://localhost:3005', 'https://drpitz.club',
+                   'https://www.drpitz.club'])
 
 # File upload configuration
 UPLOAD_FOLDER = 'uploads'
@@ -35,6 +36,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 # Create uploads folder if it doesn't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 DEBUG = os.getenv('DEBUG', 'false').lower() == 'true'
+
 
 def sanitize_csv_field(value):
     """
@@ -61,10 +63,13 @@ DB_CONFIG = {
     'collation': 'utf8mb4_unicode_ci'
 }
 
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
 DB_NAME_PATTERN = re.compile(r'^[A-Za-z0-9_]+$')
+
 
 def sanitize_db_name(name: str) -> str:
     """Ensure database name only contains safe characters."""
@@ -72,11 +77,12 @@ def sanitize_db_name(name: str) -> str:
         raise ValueError('Invalid database name; use letters, numbers, and underscores only')
     return name
 
+
 USERS = {
     'pitz': {'password': os.getenv('USER_PITZ_PASSWORD', 'default_password'), 'role': 'admin'},
     'benny': {'password': os.getenv('USER_BENNY_PASSWORD', 'default_password'), 'role': 'shared'},
-    'Hillel': {'password': os.getenv('USER_HILLEL_PASSWORD', 'default_password'), 'role': 'shared'},
-    'Olivia': {'password': os.getenv('USER_OLIVIA_PASSWORD', 'default_password'), 'role': 'shared'}
+    'Hillel': {'password': os.getenv('USER_HILLEL_PASSWORD', 'default_password'), 'role': 'limited'},
+    'Olivia': {'password': os.getenv('USER_OLIVIA_PASSWORD', 'default_password'), 'role': 'limited'}
 }
 
 required_passwords = ['USER_PITZ_PASSWORD', 'USER_BENNY_PASSWORD', 'USER_HILLEL_PASSWORD', 'USER_OLIVIA_PASSWORD']
@@ -98,6 +104,7 @@ def get_db_connection():
         if connection and connection.is_connected():
             connection.close()
 
+
 def init_db():
     """Initialize database and create tables"""
     global connection, cursor
@@ -108,51 +115,94 @@ def init_db():
 
         connection: Union[PooledMySQLConnection, MySQLConnection, None] = mysql.connector.connect(**temp_config)
         cursor = connection.cursor()
-        
+
         # Create database if not exists
         cursor.execute(f"CREATE DATABASE IF NOT EXISTS `{db_name}`")
         cursor.execute(f"USE `{db_name}`")
 
         # Create tasks table
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS tasks (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                title VARCHAR(255) NOT NULL,
-                description TEXT,
-                category VARCHAR(50) NOT NULL,
-                client VARCHAR(255),
-                task_date DATE NOT NULL,
-                task_time TIME,
-                duration DECIMAL(5,2),
-                status ENUM('completed', 'uncompleted') DEFAULT 'uncompleted',
-                categories TEXT,
-                tags TEXT,
-                notes TEXT,
-                shared BOOLEAN DEFAULT FALSE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                INDEX idx_date (task_date),
-                INDEX idx_category (category),
-                INDEX idx_status (status),
-                INDEX idx_client (client),
-                INDEX idx_shared (shared),
-                FULLTEXT idx_search (title, description, notes)
-            )
-        """)
-        
+                       CREATE TABLE IF NOT EXISTS tasks
+                       (
+                           id
+                           INT
+                           AUTO_INCREMENT
+                           PRIMARY
+                           KEY,
+                           title
+                           VARCHAR
+                       (
+                           255
+                       ) NOT NULL,
+                           description TEXT,
+                           category VARCHAR
+                       (
+                           50
+                       ) NOT NULL,
+                           client VARCHAR
+                       (
+                           255
+                       ),
+                           task_date DATE NOT NULL,
+                           task_time TIME,
+                           duration DECIMAL
+                       (
+                           5,
+                           2
+                       ),
+                           status ENUM
+                       (
+                           'completed',
+                           'uncompleted'
+                       ) DEFAULT 'uncompleted',
+                           categories TEXT,
+                           tags TEXT,
+                           notes TEXT,
+                           shared BOOLEAN DEFAULT FALSE,
+                           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                           INDEX idx_date
+                       (
+                           task_date
+                       ),
+                           INDEX idx_category
+                       (
+                           category
+                       ),
+                           INDEX idx_status
+                       (
+                           status
+                       ),
+                           INDEX idx_client
+                       (
+                           client
+                       ),
+                           INDEX idx_shared
+                       (
+                           shared
+                       ),
+                           FULLTEXT idx_search
+                       (
+                           title,
+                           description,
+                           notes
+                       )
+                           )
+                       """)
+
         # Add shared column if it doesn't exist (for existing databases)
         try:
             cursor.execute("""
-                ALTER TABLE tasks 
-                ADD COLUMN shared BOOLEAN DEFAULT FALSE
-            """)
+                           ALTER TABLE tasks
+                               ADD COLUMN shared BOOLEAN DEFAULT FALSE
+                           """)
             print("Added shared column to tasks")
         except Error as e:
             if 'Duplicate column' in str(e):
                 pass  # Column already exists
             else:
                 print(f"Note: {e}")
-        
+
         # Add index for shared column if it doesn't exist
         try:
             cursor.execute("CREATE INDEX idx_shared ON tasks(shared)")
@@ -163,12 +213,37 @@ def init_db():
             else:
                 print(f"Note: {e}")
 
+        # In the init_db() function, add this after the shared column is added (around line 130):
+
+        # Add created_by column if it doesn't exist
+        try:
+            cursor.execute("""
+                           ALTER TABLE tasks
+                               ADD COLUMN created_by VARCHAR(50) DEFAULT NULL
+                           """)
+            print("Added created_by column to tasks")
+        except Error as e:
+            if 'Duplicate column' in str(e):
+                pass  # Column already exists
+            else:
+                print(f"Note: {e}")
+
+        # Add index for created_by column if it doesn't exist
+        try:
+            cursor.execute("CREATE INDEX idx_created_by ON tasks(created_by)")
+            print("Added index for created_by column")
+        except Error as e:
+            if 'Duplicate' in str(e):
+                pass  # Index already exists
+            else:
+                print(f"Note: {e}")
+
         # Add is_draft column for draft/auto-save functionality
         try:
             cursor.execute("""
-                ALTER TABLE tasks
-                ADD COLUMN is_draft BOOLEAN DEFAULT FALSE
-            """)
+                           ALTER TABLE tasks
+                               ADD COLUMN is_draft BOOLEAN DEFAULT FALSE
+                           """)
             print("Added is_draft column to tasks")
         except Error as e:
             if 'Duplicate column' in str(e):
@@ -188,28 +263,63 @@ def init_db():
 
         # Create bank_transactions table
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS bank_transactions (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                account_number VARCHAR(50),
-                transaction_date DATE NOT NULL,
-                description VARCHAR(500) NOT NULL,
-                amount DECIMAL(10,2) NOT NULL,
-                month_year VARCHAR(7) NOT NULL,
-                transaction_type ENUM('credit', 'cash') DEFAULT 'credit',
-                upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                INDEX idx_transaction_date (transaction_date),
-                INDEX idx_month_year (month_year),
-                INDEX idx_account (account_number),
-                INDEX idx_transaction_type (transaction_type)
-            )
-        """)
-        
+                       CREATE TABLE IF NOT EXISTS bank_transactions
+                       (
+                           id
+                           INT
+                           AUTO_INCREMENT
+                           PRIMARY
+                           KEY,
+                           account_number
+                           VARCHAR
+                       (
+                           50
+                       ),
+                           transaction_date DATE NOT NULL,
+                           description VARCHAR
+                       (
+                           500
+                       ) NOT NULL,
+                           amount DECIMAL
+                       (
+                           10,
+                           2
+                       ) NOT NULL,
+                           month_year VARCHAR
+                       (
+                           7
+                       ) NOT NULL,
+                           transaction_type ENUM
+                       (
+                           'credit',
+                           'cash'
+                       ) DEFAULT 'credit',
+                           upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                           INDEX idx_transaction_date
+                       (
+                           transaction_date
+                       ),
+                           INDEX idx_month_year
+                       (
+                           month_year
+                       ),
+                           INDEX idx_account
+                       (
+                           account_number
+                       ),
+                           INDEX idx_transaction_type
+                       (
+                           transaction_type
+                       )
+                           )
+                       """)
+
         # Add transaction_type column if it doesn't exist (for existing databases)
         try:
             cursor.execute("""
-                ALTER TABLE bank_transactions
-                ADD COLUMN transaction_type ENUM('credit', 'cash') DEFAULT 'credit'
-            """)
+                           ALTER TABLE bank_transactions
+                               ADD COLUMN transaction_type ENUM('credit', 'cash') DEFAULT 'credit'
+                           """)
             print("Added transaction_type column to bank_transactions")
         except Error as e:
             if 'Duplicate column' in str(e):
@@ -219,27 +329,63 @@ def init_db():
 
         # Create tags table
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS tags (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(100) NOT NULL UNIQUE,
-                color VARCHAR(7) DEFAULT '#0d6efd',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                INDEX idx_name (name)
-            )
-        """)
+                       CREATE TABLE IF NOT EXISTS tags
+                       (
+                           id
+                           INT
+                           AUTO_INCREMENT
+                           PRIMARY
+                           KEY,
+                           name
+                           VARCHAR
+                       (
+                           100
+                       ) NOT NULL UNIQUE,
+                           color VARCHAR
+                       (
+                           7
+                       ) DEFAULT '#0d6efd',
+                           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                           INDEX idx_name
+                       (
+                           name
+                       )
+                           )
+                       """)
 
         # Create categories_master table for user-defined categories
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS categories_master (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                category_id VARCHAR(50) NOT NULL UNIQUE,
-                label VARCHAR(100) NOT NULL,
-                color VARCHAR(7) DEFAULT '#0d6efd',
-                icon VARCHAR(50),
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                INDEX idx_category_id (category_id)
-            )
-        """)
+                       CREATE TABLE IF NOT EXISTS categories_master
+                       (
+                           id
+                           INT
+                           AUTO_INCREMENT
+                           PRIMARY
+                           KEY,
+                           category_id
+                           VARCHAR
+                       (
+                           50
+                       ) NOT NULL UNIQUE,
+                           label VARCHAR
+                       (
+                           100
+                       ) NOT NULL,
+                           color VARCHAR
+                       (
+                           7
+                       ) DEFAULT '#0d6efd',
+                           icon VARCHAR
+                       (
+                           50
+                       ),
+                           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                           INDEX idx_category_id
+                       (
+                           category_id
+                       )
+                           )
+                       """)
 
         # Insert default categories if table is empty
         cursor.execute("SELECT COUNT(*) FROM categories_master")
@@ -258,34 +404,53 @@ def init_db():
                 ('other', 'Other Tasks', '#6c757d', '📝')
             ]
             cursor.executemany("""
-                INSERT INTO categories_master (category_id, label, color, icon)
-                VALUES (%s, %s, %s, %s)
-            """, default_categories)
+                               INSERT INTO categories_master (category_id, label, color, icon)
+                               VALUES (%s, %s, %s, %s)
+                               """, default_categories)
             print("Inserted default categories")
 
         # Create clients table
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS clients (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(255) NOT NULL UNIQUE,
-                email VARCHAR(255),
-                phone VARCHAR(50),
-                notes TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                INDEX idx_name (name)
-            )
-        """)
+                       CREATE TABLE IF NOT EXISTS clients
+                       (
+                           id
+                           INT
+                           AUTO_INCREMENT
+                           PRIMARY
+                           KEY,
+                           name
+                           VARCHAR
+                       (
+                           255
+                       ) NOT NULL UNIQUE,
+                           email VARCHAR
+                       (
+                           255
+                       ),
+                           phone VARCHAR
+                       (
+                           50
+                       ),
+                           notes TEXT,
+                           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                           INDEX idx_name
+                       (
+                           name
+                       )
+                           )
+                       """)
 
         connection.commit()
         print("Database initialized successfully")
-        
+
     except Error as e:
         print(f"Error initializing database: {e}")
     finally:
         if connection.is_connected():
             cursor.close()
             connection.close()
+
 
 @app.route('/api/login', methods=['POST'])
 def login():
@@ -294,7 +459,7 @@ def login():
         data = request.json
         username = data.get('username', '').strip()
         password = data.get('password', '')
-        
+
         if username in USERS and USERS[username]['password'] == password:
             return jsonify({
                 'success': True,
@@ -310,6 +475,7 @@ def login():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/tasks', methods=['GET'])
 def get_tasks():
     """Get all tasks with optional filtering"""
@@ -322,7 +488,9 @@ def get_tasks():
         date_start = request.args.get('date_start')
         date_end = request.args.get('date_end')
         shared_only = request.args.get('shared')  # For limited users (benny)
-        include_drafts = request.args.get('include_drafts', 'false')  # Include drafts
+        username = request.args.get('username')  # NEW: Get username from query
+        user_role = request.args.get('role')  # NEW: Get role from query
+        include_drafts = request.args.get('include_drafts', 'false')
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -335,40 +503,50 @@ def get_tasks():
             if include_drafts != 'true':
                 query += " AND (is_draft = FALSE OR is_draft IS NULL)"
 
-            # If shared_only is true, only return shared tasks
+            # NEW: Filter based on user role
+            if user_role == 'shared':
+                # 'shared' role: only see tasks marked as shared
+                query += " AND shared = TRUE"
+            elif user_role == 'limited':
+                # 'limited' role: only see their own tasks
+                query += " AND created_by = %s"
+                params.append(username)
+            # 'admin' role: see everything (no additional filter)
+
+            # If shared_only is explicitly requested (backward compatibility)
             if shared_only == 'true':
                 query += " AND shared = TRUE"
-            
+
             if category and category != 'all':
                 query += " AND category = %s"
                 params.append(category)
-            
+
             if status and status != 'all':
                 query += " AND status = %s"
                 params.append(status)
-            
+
             if client:
                 query += " AND client LIKE %s"
                 params.append(f"%{client}%")
-            
+
             if search:
                 query += " AND (title LIKE %s OR description LIKE %s OR notes LIKE %s)"
                 search_term = f"%{search}%"
                 params.extend([search_term, search_term, search_term])
-            
+
             if date_start:
                 query += " AND task_date >= %s"
                 params.append(date_start)
-            
+
             if date_end:
                 query += " AND task_date <= %s"
                 params.append(date_end)
-            
+
             query += " ORDER BY task_date DESC, task_time DESC, created_at DESC"
-            
+
             cursor.execute(query, params)
             tasks = cursor.fetchall()
-            
+
             # Convert datetime objects to strings and tags to array
             for task in tasks:
                 if task['task_date']:
@@ -393,32 +571,36 @@ def get_tasks():
                     task['categories'] = [c.strip() for c in categories_value.split(',') if c.strip()]
                 else:
                     task['categories'] = [task.get('category', 'other')]
-            
+
             return jsonify(tasks)
-    
+
     except Error as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/tasks', methods=['POST'])
 def create_task():
     """Create a new task"""
     try:
         data = request.json
-        
+
+        # NEW: Get username from request
+        username = data.get('username')
+
         # Set default time to current time if not provided
         task_time = data.get('task_time')
         if not task_time:
             task_time = datetime.now().strftime('%H:%M:%S')
-        
+
         with get_db_connection() as connection:
             cursor = connection.cursor()
-            
+
             query = """
-                INSERT INTO tasks
-                (title, description, category, categories, client, task_date, task_time,
-                 duration, status, tags, notes, shared, is_draft)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """
+                    INSERT INTO tasks
+                    (title, description, category, categories, client, task_date, task_time,
+                     duration, status, tags, notes, shared, is_draft, created_by)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) \
+                    """
 
             # Handle categories - convert list to comma-separated string
             categories_list = data.get('categories', [])
@@ -451,38 +633,51 @@ def create_task():
                 tags_str,
                 data.get('notes', ''),
                 bool(data.get('shared', False)),
-                bool(data.get('is_draft', False))
+                bool(data.get('is_draft', False)),
+                username  # NEW: Store creator
             )
-            
+
             cursor.execute(query, values)
             connection.commit()
-            
+
             task_id = cursor.lastrowid
-            
+
             return jsonify({
                 'id': task_id,
                 'message': 'Task created successfully'
-            }), 201
+            })
 
     except Error as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/tasks/<int:task_id>', methods=['PUT'])
 def update_task(task_id):
     """Update an existing task"""
     try:
         data = request.json
-        
+
         with get_db_connection() as connection:
             cursor = connection.cursor()
-            
+
             query = """
-                UPDATE tasks
-                SET title = %s, description = %s, category = %s, categories = %s, client = %s,
-                    task_date = %s, task_time = %s, duration = %s,
-                    status = %s, tags = %s, notes = %s, shared = %s, is_draft = %s
-                WHERE id = %s
-            """
+                    UPDATE tasks
+                    SET title       = %s, \
+                        description = %s, \
+                        category    = %s, \
+                        categories  = %s, \
+                        client      = %s,
+                        task_date   = %s, \
+                        task_time   = %s, \
+                        duration    = %s,
+                        status      = %s, \
+                        tags        = %s, \
+                        notes       = %s, \
+                        shared      = %s, \
+                        is_draft    = %s
+                    WHERE id = %s \
+                    """
+            # Note: We're NOT updating created_by - it stays with original creator
 
             # Handle categories - convert list to comma-separated string
             categories_list = data.get('categories', [])
@@ -518,17 +713,18 @@ def update_task(task_id):
                 bool(data.get('is_draft', False)),
                 task_id
             )
-            
+
             cursor.execute(query, values)
             connection.commit()
-            
+
             if cursor.rowcount == 0:
                 return jsonify({'error': 'Task not found'}), 404
-            
+
             return jsonify({'message': 'Task updated successfully'})
-    
+
     except Error as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/tasks/<int:task_id>', methods=['DELETE'])
 def delete_task(task_id):
@@ -536,17 +732,18 @@ def delete_task(task_id):
     try:
         with get_db_connection() as connection:
             cursor = connection.cursor()
-            
+
             cursor.execute("DELETE FROM tasks WHERE id = %s", (task_id,))
             connection.commit()
-            
+
             if cursor.rowcount == 0:
                 return jsonify({'error': 'Task not found'}), 404
-            
+
             return jsonify({'message': 'Task deleted successfully'})
-    
+
     except Error as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/tasks/<int:task_id>/toggle-status', methods=['PATCH'])
 def toggle_task_status(task_id):
@@ -554,31 +751,32 @@ def toggle_task_status(task_id):
     try:
         with get_db_connection() as connection:
             cursor = connection.cursor()
-            
+
             # Get current status
             cursor.execute("SELECT status FROM tasks WHERE id = %s", (task_id,))
             result = cursor.fetchone()
-            
+
             if not result:
                 return jsonify({'error': 'Task not found'}), 404
-            
+
             # Toggle between completed and uncompleted
             current_status = result[0]
             new_status = 'completed' if current_status == 'uncompleted' else 'uncompleted'
-            
+
             cursor.execute(
                 "UPDATE tasks SET status = %s WHERE id = %s",
                 (new_status, task_id)
             )
             connection.commit()
-            
+
             return jsonify({
                 'message': 'Status updated successfully',
                 'status': new_status
             })
-    
+
     except Error as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/tasks/<int:task_id>/duplicate', methods=['POST'])
 def duplicate_task(task_id):
@@ -597,11 +795,11 @@ def duplicate_task(task_id):
             # Create a duplicate with modified title and today's date
             cursor = connection.cursor()
             query = """
-                INSERT INTO tasks
-                (title, description, category, categories, client, task_date, task_time,
-                 duration, status, tags, notes, shared, is_draft)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """
+                    INSERT INTO tasks
+                    (title, description, category, categories, client, task_date, task_time,
+                     duration, status, tags, notes, shared, is_draft)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) \
+                    """
 
             # Add "Copy of" prefix to title
             new_title = f"Copy of {original_task['title']}"
@@ -649,10 +847,11 @@ def get_drafts():
             cursor = connection.cursor(dictionary=True)
 
             query = """
-                SELECT * FROM tasks
-                WHERE is_draft = TRUE
-                ORDER BY updated_at DESC
-            """
+                    SELECT *
+                    FROM tasks
+                    WHERE is_draft = TRUE
+                    ORDER BY updated_at DESC \
+                    """
 
             cursor.execute(query)
             drafts = cursor.fetchall()
@@ -687,6 +886,7 @@ def get_drafts():
     except Error as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/export/csv', methods=['GET'])
 def export_csv():
     """Export tasks to CSV"""
@@ -698,44 +898,44 @@ def export_csv():
         search = request.args.get('search')
         date_start = request.args.get('date_start')
         date_end = request.args.get('date_end')
-        
+
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
-            
+
             # Build query (same logic as get_tasks)
             query = "SELECT * FROM tasks WHERE 1=1"
             params = []
-            
+
             if category and category != 'all':
                 query += " AND category = %s"
                 params.append(category)
-            
+
             if status and status != 'all':
                 query += " AND status = %s"
                 params.append(status)
-            
+
             if client:
                 query += " AND client LIKE %s"
                 params.append(f"%{client}%")
-            
+
             if search:
                 query += " AND (title LIKE %s OR description LIKE %s OR notes LIKE %s)"
                 search_term = f"%{search}%"
                 params.extend([search_term, search_term, search_term])
-            
+
             if date_start:
                 query += " AND task_date >= %s"
                 params.append(date_start)
-            
+
             if date_end:
                 query += " AND task_date <= %s"
                 params.append(date_end)
-            
+
             query += " ORDER BY task_date DESC, task_time DESC"
-            
+
             cursor.execute(query, params)
             tasks = cursor.fetchall()
-            
+
             # Create CSV
             output = io.StringIO()
             if tasks:
@@ -746,7 +946,7 @@ def export_csv():
                     # sanitize each value to prevent formula injection
                     safe_row = {k: sanitize_csv_field(task.get(k)) for k in fieldnames}
                     writer.writerow(safe_row)
-            
+
             # Convert to bytes for sending
             output.seek(0)
             return send_file(
@@ -755,9 +955,10 @@ def export_csv():
                 as_attachment=True,
                 download_name=f'tasks_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
             )
-    
+
     except Error as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/export/hours-report', methods=['GET'])
 def export_hours_report():
@@ -823,13 +1024,16 @@ def export_hours_report():
                 if task.get('categories'):
                     try:
                         import json
-                        categories_list = json.loads(task['categories']) if isinstance(task['categories'], str) else task['categories']
-                        categories_str = ', '.join(categories_list) if isinstance(categories_list, list) else str(categories_list)
+                        categories_list = json.loads(task['categories']) if isinstance(task['categories'], str) else \
+                        task['categories']
+                        categories_str = ', '.join(categories_list) if isinstance(categories_list, list) else str(
+                            categories_list)
                     except:
                         categories_str = str(task['categories'])
 
                 writer.writerow({
-                    'Date': task['task_date'].strftime('%Y-%m-%d') if hasattr(task['task_date'], 'strftime') else str(task['task_date']),
+                    'Date': task['task_date'].strftime('%Y-%m-%d') if hasattr(task['task_date'], 'strftime') else str(
+                        task['task_date']),
                     'Client': task.get('client', ''),
                     'Task': task.get('title', ''),
                     'Category': categories_str,
@@ -849,6 +1053,7 @@ def export_hours_report():
 
     except Error as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/import/hours-report', methods=['POST'])
 def import_hours_report():
@@ -919,9 +1124,11 @@ def import_hours_report():
                             continue
 
                         client = str(row.get('Client', '')).strip() if pd.notna(row.get('Client')) else ''
-                        category = str(row.get('Category', 'other')).strip() if pd.notna(row.get('Category')) else 'other'
+                        category = str(row.get('Category', 'other')).strip() if pd.notna(
+                            row.get('Category')) else 'other'
                         duration = row.get('Hours')
-                        status = str(row.get('Status', 'completed')).strip().lower() if pd.notna(row.get('Status')) else 'completed'
+                        status = str(row.get('Status', 'completed')).strip().lower() if pd.notna(
+                            row.get('Status')) else 'completed'
                         notes = str(row.get('Notes', '')).strip() if pd.notna(row.get('Notes')) else ''
 
                         # Handle duration - convert to float or None
@@ -935,11 +1142,11 @@ def import_hours_report():
 
                         # Insert into database
                         query = """
-                            INSERT INTO tasks
-                            (title, description, category, categories, client, task_date, task_time,
-                             duration, status, tags, notes)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        """
+                                INSERT INTO tasks
+                                (title, description, category, categories, client, task_date, task_time,
+                                 duration, status, tags, notes)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) \
+                                """
 
                         values = (
                             title,
@@ -988,89 +1195,87 @@ def import_hours_report():
     except Error as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/stats', methods=['GET'])
 def get_stats():
     """Get statistics about tasks"""
     try:
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
-            
+
             # Overall stats
             cursor.execute("""
-                SELECT 
-                    COUNT(*) as total_tasks,
-                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
-                    SUM(CASE WHEN status = 'uncompleted' THEN 1 ELSE 0 END) as uncompleted_tasks,
-                    SUM(duration) as total_duration
-                FROM tasks
-            """)
+                           SELECT COUNT(*)                                                as total_tasks,
+                                  SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END)   as completed_tasks,
+                                  SUM(CASE WHEN status = 'uncompleted' THEN 1 ELSE 0 END) as uncompleted_tasks,
+                                  SUM(duration)                                           as total_duration
+                           FROM tasks
+                           """)
             overall = cursor.fetchone()
-            
+
             # Stats by category
             cursor.execute("""
-                SELECT 
-                    category,
-                    COUNT(*) as count,
+                           SELECT category,
+                                  COUNT(*) as count,
                     SUM(duration) as total_duration,
                     SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed
-                FROM tasks
-                GROUP BY category
-                ORDER BY count DESC
-            """)
+                           FROM tasks
+                           GROUP BY category
+                           ORDER BY count DESC
+                           """)
             by_category = cursor.fetchall()
-            
+
             # Stats by client
             cursor.execute("""
-                SELECT 
-                    client,
-                    COUNT(*) as count,
+                           SELECT client,
+                                  COUNT(*) as count,
                     SUM(duration) as total_duration
-                FROM tasks
-                WHERE client IS NOT NULL AND client != ''
-                GROUP BY client
-                ORDER BY count DESC
-                LIMIT 10
-            """)
+                           FROM tasks
+                           WHERE client IS NOT NULL AND client != ''
+                           GROUP BY client
+                           ORDER BY count DESC
+                               LIMIT 10
+                           """)
             by_client = cursor.fetchall()
-            
+
             # Monthly stats
             cursor.execute("""
-                SELECT 
-                    DATE_FORMAT(task_date, '%Y-%m') as month,
+                           SELECT DATE_FORMAT(task_date, '%Y-%m') as month,
                     COUNT(*) as count,
                     SUM(duration) as total_duration
-                FROM tasks
-                GROUP BY month
-                ORDER BY month DESC
-                LIMIT 12
-            """)
+                           FROM tasks
+                           GROUP BY month
+                           ORDER BY month DESC
+                               LIMIT 12
+                           """)
             monthly = cursor.fetchall()
-            
+
             # Convert Decimal to float
             if overall['total_duration']:
                 overall['total_duration'] = float(overall['total_duration'])
-            
+
             for item in by_category:
                 if item['total_duration']:
                     item['total_duration'] = float(item['total_duration'])
-            
+
             for item in by_client:
                 if item['total_duration']:
                     item['total_duration'] = float(item['total_duration'])
-            
+
             for item in monthly:
                 if item['total_duration']:
                     item['total_duration'] = float(item['total_duration'])
-            
+
             return jsonify({
                 'overall': overall,
                 'by_category': by_category,
                 'by_client': by_client,
                 'monthly': monthly
             })
-    
+
     except Error as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/categories', methods=['GET', 'POST'])
 def manage_categories():
@@ -1080,10 +1285,10 @@ def manage_categories():
             with get_db_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
                 cursor.execute("""
-                    SELECT category_id as id, label, color, icon
-                    FROM categories_master
-                    ORDER BY label
-                """)
+                               SELECT category_id as id, label, color, icon
+                               FROM categories_master
+                               ORDER BY label
+                               """)
                 categories = cursor.fetchall()
                 return jsonify(categories)
         except Error as e:
@@ -1103,9 +1308,9 @@ def manage_categories():
             with get_db_connection() as connection:
                 cursor = connection.cursor()
                 cursor.execute("""
-                    INSERT INTO categories_master (category_id, label, color, icon)
-                    VALUES (%s, %s, %s, %s)
-                """, (category_id, label, color, icon))
+                               INSERT INTO categories_master (category_id, label, color, icon)
+                               VALUES (%s, %s, %s, %s)
+                               """, (category_id, label, color, icon))
                 connection.commit()
 
                 return jsonify({
@@ -1118,6 +1323,7 @@ def manage_categories():
             if 'Duplicate entry' in str(e):
                 return jsonify({'error': 'Category already exists'}), 409
             return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/categories/<category_id>', methods=['PUT', 'DELETE'])
 def update_delete_category(category_id):
@@ -1135,10 +1341,12 @@ def update_delete_category(category_id):
             with get_db_connection() as connection:
                 cursor = connection.cursor()
                 cursor.execute("""
-                    UPDATE categories_master
-                    SET label = %s, color = %s, icon = %s
-                    WHERE category_id = %s
-                """, (label, color, icon, category_id))
+                               UPDATE categories_master
+                               SET label = %s,
+                                   color = %s,
+                                   icon  = %s
+                               WHERE category_id = %s
+                               """, (label, color, icon, category_id))
                 connection.commit()
 
                 if cursor.rowcount == 0:
@@ -1153,9 +1361,10 @@ def update_delete_category(category_id):
             with get_db_connection() as connection:
                 cursor = connection.cursor()
                 cursor.execute("""
-                    DELETE FROM categories_master
-                    WHERE category_id = %s
-                """, (category_id,))
+                               DELETE
+                               FROM categories_master
+                               WHERE category_id = %s
+                               """, (category_id,))
                 connection.commit()
 
                 if cursor.rowcount == 0:
@@ -1165,6 +1374,7 @@ def update_delete_category(category_id):
         except Error as e:
             return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/tags', methods=['GET', 'POST'])
 def manage_tags():
     """Get list of tags or create a new one"""
@@ -1173,10 +1383,10 @@ def manage_tags():
             with get_db_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
                 cursor.execute("""
-                    SELECT id, name, color
-                    FROM tags
-                    ORDER BY name
-                """)
+                               SELECT id, name, color
+                               FROM tags
+                               ORDER BY name
+                               """)
                 tags = cursor.fetchall()
                 return jsonify(tags)
         except Error as e:
@@ -1194,9 +1404,9 @@ def manage_tags():
             with get_db_connection() as connection:
                 cursor = connection.cursor()
                 cursor.execute("""
-                    INSERT INTO tags (name, color)
-                    VALUES (%s, %s)
-                """, (name, color))
+                               INSERT INTO tags (name, color)
+                               VALUES (%s, %s)
+                               """, (name, color))
                 connection.commit()
 
                 return jsonify({
@@ -1208,6 +1418,7 @@ def manage_tags():
             if 'Duplicate entry' in str(e):
                 return jsonify({'error': 'Tag already exists'}), 409
             return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/tags/<int:tag_id>', methods=['PUT', 'DELETE'])
 def update_delete_tag(tag_id):
@@ -1224,10 +1435,11 @@ def update_delete_tag(tag_id):
             with get_db_connection() as connection:
                 cursor = connection.cursor()
                 cursor.execute("""
-                    UPDATE tags
-                    SET name = %s, color = %s
-                    WHERE id = %s
-                """, (name, color, tag_id))
+                               UPDATE tags
+                               SET name  = %s,
+                                   color = %s
+                               WHERE id = %s
+                               """, (name, color, tag_id))
                 connection.commit()
 
                 if cursor.rowcount == 0:
@@ -1242,9 +1454,10 @@ def update_delete_tag(tag_id):
             with get_db_connection() as connection:
                 cursor = connection.cursor()
                 cursor.execute("""
-                    DELETE FROM tags
-                    WHERE id = %s
-                """, (tag_id,))
+                               DELETE
+                               FROM tags
+                               WHERE id = %s
+                               """, (tag_id,))
                 connection.commit()
 
                 if cursor.rowcount == 0:
@@ -1253,6 +1466,7 @@ def update_delete_tag(tag_id):
                 return jsonify({'success': True})
         except Error as e:
             return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/clients', methods=['GET', 'POST'])
 def manage_clients_list():
@@ -1264,21 +1478,21 @@ def manage_clients_list():
 
                 # Get all clients from clients table and tasks table (combined)
                 cursor.execute("""
-                    SELECT name, email, phone, notes, created_at, updated_at
-                    FROM clients
-                    ORDER BY name
-                """)
+                               SELECT name, email, phone, notes, created_at, updated_at
+                               FROM clients
+                               ORDER BY name
+                               """)
                 clients_from_table = cursor.fetchall()
 
                 # Also get clients that only exist in tasks table
                 cursor.execute("""
-                    SELECT DISTINCT client
-                    FROM tasks
-                    WHERE client IS NOT NULL
-                      AND client != ''
+                               SELECT DISTINCT client
+                               FROM tasks
+                               WHERE client IS NOT NULL
+                                 AND client != ''
                       AND client NOT IN (SELECT name FROM clients)
-                    ORDER BY client
-                """)
+                               ORDER BY client
+                               """)
                 clients_from_tasks = [row['client'] for row in cursor.fetchall()]
 
                 # Combine both lists
@@ -1300,14 +1514,14 @@ def manage_clients_list():
             with get_db_connection() as connection:
                 cursor = connection.cursor()
                 cursor.execute("""
-                    INSERT INTO clients (name, email, phone, notes)
-                    VALUES (%s, %s, %s, %s)
-                """, (
-                    name,
-                    data.get('email', ''),
-                    data.get('phone', ''),
-                    data.get('notes', '')
-                ))
+                               INSERT INTO clients (name, email, phone, notes)
+                               VALUES (%s, %s, %s, %s)
+                               """, (
+                                   name,
+                                   data.get('email', ''),
+                                   data.get('phone', ''),
+                                   data.get('notes', '')
+                               ))
                 connection.commit()
 
                 return jsonify({
@@ -1322,6 +1536,7 @@ def manage_clients_list():
             if 'Duplicate entry' in str(e):
                 return jsonify({'error': 'Client already exists'}), 409
             return jsonify({'error': str(e)}), 500
+
 
 # ============ BANK TRANSACTIONS ENDPOINTS ============
 
@@ -1345,15 +1560,16 @@ def clean_transaction_data(df):
 
     return df
 
+
 def parse_cash_transaction_file(file_path):
     """Parse CSV file for cash transactions (handles header row and different column orders)"""
     try:
-        print(f"\n{'='*60}", flush=True)
+        print(f"\n{'=' * 60}", flush=True)
         print(f"[CASH TRANSACTIONS] Starting to parse file", flush=True)
-        
+
         # Try Hebrew encodings
         encodings_to_try = ['utf-8-sig', 'utf-8', 'windows-1255', 'cp1255', 'iso-8859-8']
-        
+
         df = None
         for encoding in encodings_to_try:
             try:
@@ -1371,13 +1587,13 @@ def parse_cash_transaction_file(file_path):
 
         # Remove completely empty rows
         df = df.dropna(how='all')
-        
+
         # Filter out rows that are totals (contain "סה״כ" anywhere)
         for col in df.columns:
             df = df[~df[col].astype(str).str.contains('סה״כ', na=False)]
-        
+
         print(f"[CLEAN] After removing totals: {len(df)} rows", flush=True)
-        
+
         if len(df) == 0:
             raise ValueError("No valid transactions found in file")
 
@@ -1387,7 +1603,7 @@ def parse_cash_transaction_file(file_path):
         amount_col = None
         desc_col = None
         account_col = None
-        
+
         # Check column headers for Hebrew names
         for i, col in enumerate(df.columns):
             col_str = str(col).strip()
@@ -1399,7 +1615,7 @@ def parse_cash_transaction_file(file_path):
                 desc_col = i
             elif 'כרטיס' in col_str or 'חשבון' in col_str or 'account' in col_str.lower():
                 account_col = i
-        
+
         # If headers didn't work, try to detect by content
         if date_col is None:
             date_pattern = r'\d{2}\.\d{2}\.\d{4}'
@@ -1408,7 +1624,7 @@ def parse_cash_transaction_file(file_path):
                 if sample_values.str.match(date_pattern).any():
                     date_col = i
                     break
-        
+
         if amount_col is None:
             for i in range(len(df.columns)):
                 if i == date_col:
@@ -1420,7 +1636,7 @@ def parse_cash_transaction_file(file_path):
                     break
                 except:
                     continue
-        
+
         # Default assignments if still not found
         if date_col is None:
             date_col = 1  # Common position for date
@@ -1430,9 +1646,10 @@ def parse_cash_transaction_file(file_path):
             desc_col = 2  # Common position for description
         if account_col is None:
             account_col = 0  # Common position for account
-        
-        print(f"[COLUMNS] Using: date={date_col}, amount={amount_col}, desc={desc_col}, account={account_col}", flush=True)
-        
+
+        print(f"[COLUMNS] Using: date={date_col}, amount={amount_col}, desc={desc_col}, account={account_col}",
+              flush=True)
+
         # Create structured dataframe
         transactions = []
         for idx, row in df.iterrows():
@@ -1442,7 +1659,7 @@ def parse_cash_transaction_file(file_path):
                 # Skip if not a valid date
                 if not pd.notna(row.iloc[date_col]) or date_str in ['', 'nan', 'NaN']:
                     continue
-                    
+
                 transaction_date = pd.to_datetime(date_str, format='%d.%m.%Y', errors='coerce')
                 if pd.isna(transaction_date):
                     # Try other date formats
@@ -1450,26 +1667,26 @@ def parse_cash_transaction_file(file_path):
                 if pd.isna(transaction_date):
                     print(f"[SKIP] Row {idx}: Invalid date '{date_str}'", flush=True)
                     continue
-                
+
                 # Get amount (remove commas and quotes)
                 amount_str = str(row.iloc[amount_col]).strip().replace(',', '').replace('"', '')
                 if not amount_str or amount_str in ['nan', 'NaN', '']:
                     continue
                 amount = float(amount_str)
-                
+
                 # Get description
                 description = str(row.iloc[desc_col]).strip() if pd.notna(row.iloc[desc_col]) else 'משיכת מזומן'
                 if description in ['nan', 'NaN', '']:
                     description = 'משיכת מזומן'
-                
+
                 # Get account number
                 account_number = str(row.iloc[account_col]).strip() if pd.notna(row.iloc[account_col]) else ''
                 if account_number in ['nan', 'NaN']:
                     account_number = ''
-                
+
                 # Month year
                 month_year = transaction_date.strftime('%Y-%m')
-                
+
                 transactions.append({
                     'transaction_date': transaction_date,
                     'amount': amount,
@@ -1488,12 +1705,13 @@ def parse_cash_transaction_file(file_path):
 
         result_df = pd.DataFrame(transactions)
         print(f"[CASH TRANSACTIONS] Successfully parsed {len(result_df)} transactions", flush=True)
-        
+
         return result_df
 
     except Exception as e:
         print(f"[ERROR] Cash transaction parsing failed: {str(e)}", flush=True)
         raise ValueError(f"Error parsing cash transaction file: {str(e)}")
+
 
 def parse_transaction_file(file_path, transaction_type='credit'):
     """Parse CSV or Excel file and return cleaned dataframe"""
@@ -1512,7 +1730,7 @@ def parse_transaction_file(file_path, transaction_type='credit'):
                 detected_encoding = result['encoding']
                 confidence = result['confidence']
 
-                print(f"\n{'='*60}", flush=True)
+                print(f"\n{'=' * 60}", flush=True)
                 print(f"[ENCODING DEBUG] File: {file_path}", flush=True)
                 print(f"[CHARDET] Detected: {detected_encoding} (confidence: {confidence})", flush=True)
 
@@ -1534,8 +1752,8 @@ def parse_transaction_file(file_path, transaction_type='credit'):
                 # Map common encodings to their variants
                 encoding_map = {
                     'ISO-8859-8': 'windows-1255',  # Hebrew ISO -> Windows Hebrew
-                    'ISO-8859-1': 'cp1252',         # Latin-1 -> Windows-1252
-                    'ascii': 'utf-8'                # ASCII -> UTF-8
+                    'ISO-8859-1': 'cp1252',  # Latin-1 -> Windows-1252
+                    'ascii': 'utf-8'  # ASCII -> UTF-8
                 }
 
                 # Try detected encoding first, then its mapped variant
@@ -1610,7 +1828,9 @@ def parse_transaction_file(file_path, transaction_type='credit'):
         # Show first 3 rows before dropping
         print(f"[PARSE] First 3 rows before dropping NaN:", flush=True)
         for i in range(min(3, len(df))):
-            print(f"  Row {i}: date={df.iloc[i]['transaction_date']}, desc={df.iloc[i]['description']}, amt={df.iloc[i]['amount']}", flush=True)
+            print(
+                f"  Row {i}: date={df.iloc[i]['transaction_date']}, desc={df.iloc[i]['description']}, amt={df.iloc[i]['amount']}",
+                flush=True)
 
         # Remove rows with invalid dates or amounts
         df = df.dropna(subset=['transaction_date', 'amount'])
@@ -1618,7 +1838,7 @@ def parse_transaction_file(file_path, transaction_type='credit'):
 
         # Add month_year column
         df['month_year'] = df['transaction_date'].dt.strftime('%Y-%m')
-        
+
         # Add transaction_type column
         df['transaction_type'] = transaction_type
 
@@ -1626,6 +1846,7 @@ def parse_transaction_file(file_path, transaction_type='credit'):
 
     except Exception as e:
         raise ValueError(f"Error parsing file: {str(e)}")
+
 
 @app.route('/api/transactions/upload', methods=['POST'])
 def upload_transactions():
@@ -1695,7 +1916,7 @@ def upload_transactions():
                 json_str = json.dumps(transactions[0], ensure_ascii=False)
                 print(f"  First transaction JSON: {json_str}", flush=True)
                 print(f"  JSON bytes: {json_str.encode('utf-8').hex()}", flush=True)
-                print(f"{'='*60}\n", flush=True)
+                print(f"{'=' * 60}\n", flush=True)
 
             return jsonify(response_data)
 
@@ -1709,6 +1930,7 @@ def upload_transactions():
         return jsonify({'error': str(e)}), 400
     except Exception as e:
         return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
+
 
 @app.route('/api/transactions/encoding-preview', methods=['POST'])
 def encoding_preview():
@@ -1731,11 +1953,11 @@ def encoding_preview():
         encodings_to_test = [
             'utf-8',
             'windows-1255',  # Hebrew Windows
-            'iso-8859-8',    # Hebrew ISO
-            'cp1255',        # Hebrew Code Page
+            'iso-8859-8',  # Hebrew ISO
+            'cp1255',  # Hebrew Code Page
             'utf-16',
             'windows-1252',  # Western European
-            'iso-8859-1',    # Latin-1
+            'iso-8859-1',  # Latin-1
         ]
 
         previews = []
@@ -1776,6 +1998,7 @@ def encoding_preview():
 
     except Exception as e:
         return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
+
 
 @app.route('/api/transactions/upload-with-encoding', methods=['POST'])
 def upload_with_encoding():
@@ -1837,6 +2060,7 @@ def upload_with_encoding():
     except Exception as e:
         return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
+
 @app.route('/api/transactions/save', methods=['POST'])
 def save_transactions():
     """Save parsed transactions to database"""
@@ -1852,10 +2076,10 @@ def save_transactions():
 
             # Insert transactions
             query = """
-                INSERT INTO bank_transactions
-                (account_number, transaction_date, description, amount, month_year, transaction_type)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """
+                    INSERT INTO bank_transactions
+                    (account_number, transaction_date, description, amount, month_year, transaction_type)
+                    VALUES (%s, %s, %s, %s, %s, %s) \
+                    """
 
             for trans in transactions:
                 values = (
@@ -1878,6 +2102,7 @@ def save_transactions():
     except Error as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/transactions/months', methods=['GET'])
 def get_transaction_months():
     """Get list of months with saved transactions"""
@@ -1886,17 +2111,16 @@ def get_transaction_months():
             cursor = connection.cursor(dictionary=True)
 
             cursor.execute("""
-                SELECT
-                    month_year,
-                    COUNT(*) as transaction_count,
-                    SUM(amount) as total_amount,
-                    MIN(transaction_date) as start_date,
-                    MAX(transaction_date) as end_date,
-                    MAX(upload_date) as last_upload
-                FROM bank_transactions
-                GROUP BY month_year
-                ORDER BY month_year DESC
-            """)
+                           SELECT month_year,
+                                  COUNT(*)              as transaction_count,
+                                  SUM(amount)           as total_amount,
+                                  MIN(transaction_date) as start_date,
+                                  MAX(transaction_date) as end_date,
+                                  MAX(upload_date)      as last_upload
+                           FROM bank_transactions
+                           GROUP BY month_year
+                           ORDER BY month_year DESC
+                           """)
 
             months = cursor.fetchall()
 
@@ -1916,6 +2140,7 @@ def get_transaction_months():
     except Error as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/transactions/all', methods=['GET'])
 def get_all_transactions():
     """Get all transactions (not filtered by month)"""
@@ -1924,18 +2149,17 @@ def get_all_transactions():
             cursor = connection.cursor(dictionary=True)
 
             cursor.execute("""
-                SELECT
-                    id,
-                    account_number,
-                    transaction_date,
-                    description,
-                    amount,
-                    month_year,
-                    transaction_type,
-                    upload_date
-                FROM bank_transactions
-                ORDER BY transaction_date DESC, id DESC
-            """)
+                           SELECT id,
+                                  account_number,
+                                  transaction_date,
+                                  description,
+                                  amount,
+                                  month_year,
+                                  transaction_type,
+                                  upload_date
+                           FROM bank_transactions
+                           ORDER BY transaction_date DESC, id DESC
+                           """)
 
             transactions = cursor.fetchall()
 
@@ -1954,6 +2178,7 @@ def get_all_transactions():
 
     except Error as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/transactions/<month_year>', methods=['GET'])
 def get_transactions_by_month(month_year):
@@ -1963,19 +2188,18 @@ def get_transactions_by_month(month_year):
             cursor = connection.cursor(dictionary=True)
 
             cursor.execute("""
-                SELECT
-                    id,
-                    account_number,
-                    transaction_date,
-                    description,
-                    amount,
-                    month_year,
-                    transaction_type,
-                    upload_date
-                FROM bank_transactions
-                WHERE month_year = %s
-                ORDER BY transaction_date DESC, id DESC
-            """, (month_year,))
+                           SELECT id,
+                                  account_number,
+                                  transaction_date,
+                                  description,
+                                  amount,
+                                  month_year,
+                                  transaction_type,
+                                  upload_date
+                           FROM bank_transactions
+                           WHERE month_year = %s
+                           ORDER BY transaction_date DESC, id DESC
+                           """, (month_year,))
 
             transactions = cursor.fetchall()
 
@@ -1994,6 +2218,7 @@ def get_transactions_by_month(month_year):
 
     except Error as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/transactions/<int:transaction_id>', methods=['DELETE'])
 def delete_transaction(transaction_id):
@@ -2013,6 +2238,7 @@ def delete_transaction(transaction_id):
     except Error as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/transactions/month/<month_year>', methods=['DELETE'])
 def delete_month_transactions(month_year):
     """Delete all transactions for a specific month"""
@@ -2030,6 +2256,7 @@ def delete_month_transactions(month_year):
     except Error as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/transactions/<int:transaction_id>', methods=['PUT'])
 def update_transaction(transaction_id):
     """Update a specific transaction"""
@@ -2040,11 +2267,15 @@ def update_transaction(transaction_id):
             cursor = connection.cursor()
 
             query = """
-                UPDATE bank_transactions
-                SET transaction_date = %s, description = %s, amount = %s,
-                    month_year = %s, account_number = %s, transaction_type = %s
-                WHERE id = %s
-            """
+                    UPDATE bank_transactions
+                    SET transaction_date = %s,
+                        description      = %s,
+                        amount           = %s,
+                        month_year       = %s,
+                        account_number   = %s,
+                        transaction_type = %s
+                    WHERE id = %s \
+                    """
 
             cursor.execute(query, (
                 data['transaction_date'],
@@ -2062,6 +2293,7 @@ def update_transaction(transaction_id):
     except Error as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/transactions/manual', methods=['POST'])
 def add_manual_transaction():
     """Add a transaction manually"""
@@ -2072,10 +2304,10 @@ def add_manual_transaction():
             cursor = connection.cursor()
 
             query = """
-                INSERT INTO bank_transactions
-                (account_number, transaction_date, description, amount, month_year, transaction_type)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """
+                    INSERT INTO bank_transactions
+                    (account_number, transaction_date, description, amount, month_year, transaction_type)
+                    VALUES (%s, %s, %s, %s, %s, %s) \
+                    """
 
             cursor.execute(query, (
                 data.get('account_number', ''),
@@ -2095,6 +2327,7 @@ def add_manual_transaction():
     except Error as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/transactions/descriptions', methods=['GET'])
 def get_all_descriptions():
     """Get all unique transaction descriptions"""
@@ -2103,17 +2336,19 @@ def get_all_descriptions():
             cursor = connection.cursor()
 
             cursor.execute("""
-                SELECT DISTINCT description
-                FROM bank_transactions
-                WHERE description IS NOT NULL AND description != ''
-                ORDER BY description
-            """)
+                           SELECT DISTINCT description
+                           FROM bank_transactions
+                           WHERE description IS NOT NULL
+                             AND description != ''
+                           ORDER BY description
+                           """)
 
             descriptions = [row[0] for row in cursor.fetchall()]
             return jsonify(descriptions)
 
     except Error as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/transactions/stats', methods=['GET'])
 def get_transaction_stats():
@@ -2122,10 +2357,10 @@ def get_transaction_stats():
         # Get optional date filters
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
-        
+
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
-            
+
             # Base query with optional date filtering
             date_filter = ""
             params = []
@@ -2149,9 +2384,9 @@ def get_transaction_stats():
                 WHERE 1=1 {date_filter}
                 GROUP BY transaction_type
             """, params)
-            
+
             by_type = cursor.fetchall()
-            
+
             # Convert Decimal to float
             for item in by_type:
                 if item['total_amount']:
@@ -2175,9 +2410,9 @@ def get_transaction_stats():
                 GROUP BY month_year, transaction_type
                 ORDER BY month_year DESC, transaction_type
             """, params)
-            
+
             monthly_by_type = cursor.fetchall()
-            
+
             # Convert Decimal to float
             for item in monthly_by_type:
                 if item['total_amount']:
@@ -2191,6 +2426,7 @@ def get_transaction_stats():
     except Error as e:
         return jsonify({'error': str(e)}), 500
 
+
 # ============ CLIENT MANAGEMENT ENDPOINTS ============
 
 @app.route('/api/clients/manage', methods=['GET'])
@@ -2201,32 +2437,33 @@ def get_all_clients_with_stats():
             cursor = connection.cursor(dictionary=True)
 
             cursor.execute("""
-                SELECT
-                    client,
-                    COUNT(*) as task_count,
-                    SUM(CASE WHEN duration IS NOT NULL THEN duration ELSE 0 END) as total_hours,
-                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks
-                FROM tasks
-                WHERE client IS NOT NULL AND client != ''
-                GROUP BY client
-                ORDER BY client
-       
-       
-             """)
+                           SELECT client,
+                                  COUNT(*)                                                     as task_count,
+                                  SUM(CASE WHEN duration IS NOT NULL THEN duration ELSE 0 END) as total_hours,
+                                  SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END)        as completed_tasks
+                           FROM tasks
+                           WHERE client IS NOT NULL
+                             AND client != ''
+                           GROUP BY client
+                           ORDER BY client
+
+
+                           """)
 
             clients = cursor.fetchall()
-            
+
             # Convert Decimal to float for JSON serialization
             for client in clients:
                 if client.get('total_hours') is not None:
                     client['total_hours'] = float(client['total_hours'])
                 else:
                     client['total_hours'] = 0.0
-            
+
             return jsonify(clients)
 
     except Error as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/clients/<client_name>', methods=['PUT'])
 def rename_client(client_name):
@@ -2252,6 +2489,7 @@ def rename_client(client_name):
     except Error as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/clients/<client_name>', methods=['DELETE'])
 def delete_client(client_name):
     """Delete all tasks for a specific client"""
@@ -2269,6 +2507,7 @@ def delete_client(client_name):
     except Error as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/api/clients/<client_name>/tasks', methods=['GET'])
 def get_client_tasks(client_name):
     """Get all tasks for a specific client"""
@@ -2277,10 +2516,11 @@ def get_client_tasks(client_name):
             cursor = connection.cursor(dictionary=True)
 
             cursor.execute("""
-                SELECT * FROM tasks
-                WHERE client = %s
-                ORDER BY task_date DESC, task_time DESC
-            """, (client_name,))
+                           SELECT *
+                           FROM tasks
+                           WHERE client = %s
+                           ORDER BY task_date DESC, task_time DESC
+                           """, (client_name,))
 
             tasks = cursor.fetchall()
 
@@ -2302,4 +2542,3 @@ init_db()
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)
-
