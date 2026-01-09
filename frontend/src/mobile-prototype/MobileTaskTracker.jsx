@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Filter, CheckCircle, Circle, Edit2, Trash2, X, Calendar, Clock, Tag, DollarSign, Users, Menu, LogOut, Download, Upload, RefreshCw } from 'lucide-react';
+import { Plus, Filter, CheckCircle, Circle, Edit2, Trash2, X, Calendar, Clock, Tag, DollarSign, Users, Menu, LogOut, Download, Upload, RefreshCw, Copy } from 'lucide-react';
 import API_BASE from '../config';
+
+const DRAFT_STORAGE_KEY = 'taskTracker_mobile_draft';
 
 // Brutalist theme - EXACTLY matching desktop TaskTracker
 const THEME = {
@@ -32,6 +34,8 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [tagInput, setTagInput] = useState('');
+  const formChangeTimeoutRef = useRef(null);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -54,6 +58,34 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
   const touchCurrentX = useRef(0);
   const swipeThreshold = 100; // px to trigger delete
 
+  // Auto-save draft
+  useEffect(() => {
+    if (showTaskModal && (formData.title || formData.description)) {
+      if (formChangeTimeoutRef.current) {
+        clearTimeout(formChangeTimeoutRef.current);
+      }
+      formChangeTimeoutRef.current = setTimeout(() => {
+        saveDraft();
+      }, 1000);
+    }
+  }, [formData, showTaskModal]);
+
+  const saveDraft = () => {
+    localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(formData));
+  };
+
+  const loadDraft = () => {
+    const draft = localStorage.getItem(DRAFT_STORAGE_KEY);
+    if (draft) {
+      return JSON.parse(draft);
+    }
+    return null;
+  };
+
+  const clearDraft = () => {
+    localStorage.removeItem(DRAFT_STORAGE_KEY);
+  };
+
   // Load data
   useEffect(() => {
     fetchTasks();
@@ -67,7 +99,13 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
       setLoading(true);
       const response = await fetch(`${API_BASE}/tasks`);
       const data = await response.json();
-      setTasks(data || []);
+      // Sort: uncompleted first, then completed
+      const sorted = (data || []).sort((a, b) => {
+        if (a.status === 'uncompleted' && b.status === 'completed') return -1;
+        if (a.status === 'completed' && b.status === 'uncompleted') return 1;
+        return 0;
+      });
+      setTasks(sorted);
     } catch (err) {
       console.error('Failed to fetch tasks:', err);
     } finally {
@@ -151,6 +189,7 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
       });
 
       await fetchTasks();
+      clearDraft();
       closeModal();
     } catch (err) {
       console.error('Failed to save task:', err);
@@ -161,19 +200,24 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
 
   const openCreateModal = () => {
     setEditingTask(null);
-    setFormData({
-      title: '',
-      description: '',
-      categories: [],
-      client: '',
-      task_date: new Date().toISOString().split('T')[0],
-      task_time: new Date().toTimeString().slice(0, 5),
-      duration: '',
-      status: 'uncompleted',
-      tags: [],
-      notes: '',
-      shared: false
-    });
+    const draft = loadDraft();
+    if (draft) {
+      setFormData(draft);
+    } else {
+      setFormData({
+        title: '',
+        description: '',
+        categories: [],
+        client: '',
+        task_date: new Date().toISOString().split('T')[0],
+        task_time: new Date().toTimeString().slice(0, 5),
+        duration: '',
+        status: 'uncompleted',
+        tags: [],
+        notes: '',
+        shared: false
+      });
+    }
     setShowTaskModal(true);
   };
 
@@ -198,6 +242,24 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
   const closeModal = () => {
     setShowTaskModal(false);
     setEditingTask(null);
+  };
+
+  const duplicateTask = (task) => {
+    setEditingTask(null);
+    setFormData({
+      title: task.title + ' (copy)',
+      description: task.description || '',
+      categories: task.categories || [],
+      client: task.client || '',
+      task_date: new Date().toISOString().split('T')[0],
+      task_time: new Date().toTimeString().slice(0, 5),
+      duration: task.duration || '',
+      status: 'uncompleted',
+      tags: task.tags || [],
+      notes: task.notes || '',
+      shared: task.shared || false
+    });
+    setShowTaskModal(true);
   };
 
   // Swipe handlers
@@ -248,6 +310,23 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
       categories: prev.categories.includes(catId)
         ? prev.categories.filter(id => id !== catId)
         : [...prev.categories, catId]
+    }));
+  };
+
+  const handleAddTag = () => {
+    if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        tags: [...prev.tags, tagInput.trim()]
+      }));
+      setTagInput('');
+    }
+  };
+
+  const removeTag = (tagToRemove) => {
+    setFormData(prev => ({
+      ...prev,
+      tags: prev.tags.filter(tag => tag !== tagToRemove)
     }));
   };
 
@@ -500,27 +579,44 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
                       </h3>
                     </div>
                     
-                    {/* Edit button */}
-                    <button
-                      onClick={() => openEditModal(task)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        padding: '8px',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <Edit2 size={20} color={THEME.primary} />
-                    </button>
+                    {/* Action buttons */}
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      {/* Duplicate button */}
+                      <button
+                        onClick={() => duplicateTask(task)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: '8px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Copy size={20} color={THEME.secondary} />
+                      </button>
+                      
+                      {/* Edit button */}
+                      <button
+                        onClick={() => openEditModal(task)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: '8px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Edit2 size={20} color={THEME.primary} />
+                      </button>
+                    </div>
                   </div>
 
-                  {/* Description */}
+                  {/* Description with proper line breaks */}
                   {task.description && (
                     <p style={{
                       fontSize: '0.95rem',
                       color: THEME.muted,
                       margin: '0 0 12px 44px',
-                      lineHeight: '1.5'
+                      lineHeight: '1.5',
+                      whiteSpace: 'pre-wrap'
                     }}>
                       {task.description}
                     </p>
@@ -811,17 +907,20 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
           background: 'rgba(0,0,0,0.5)',
           zIndex: 200,
           display: 'flex',
-          alignItems: 'flex-end'
+          alignItems: 'flex-end',
+          padding: 0
         }}>
           <div style={{
             width: '100%',
-            maxHeight: '90vh',
+            height: '95vh',
             background: '#fff',
             borderRadius: '16px 16px 0 0',
             border: '3px solid #000',
             borderBottom: 'none',
             overflowY: 'auto',
-            WebkitOverflowScrolling: 'touch'
+            WebkitOverflowScrolling: 'touch',
+            display: 'flex',
+            flexDirection: 'column'
           }}>
             {/* Modal Header */}
             <div style={{
@@ -1007,6 +1106,71 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Tags */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  Tags
+                </label>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                  <input
+                    type="text"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                    placeholder="Add tag..."
+                    list="tags-list"
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddTag}
+                    className="mobile-btn mobile-btn-primary"
+                    style={{ padding: '14px 20px' }}
+                  >
+                    <Plus size={16} />
+                  </button>
+                </div>
+                <datalist id="tags-list">
+                  {allTags.map(tag => (
+                    <option key={tag} value={tag} />
+                  ))}
+                </datalist>
+                {formData.tags.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                    {formData.tags.map(tag => (
+                      <div
+                        key={tag}
+                        style={{
+                          border: '2px solid #000',
+                          padding: '4px 10px',
+                          fontSize: '0.85rem',
+                          fontWeight: 600,
+                          background: THEME.primary,
+                          color: '#fff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px'
+                        }}
+                      >
+                        {tag}
+                        <X
+                          size={14}
+                          onClick={() => removeTag(tag)}
+                          style={{ cursor: 'pointer' }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Status */}
