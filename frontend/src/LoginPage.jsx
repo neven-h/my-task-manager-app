@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Lock, User, Eye, EyeOff, ArrowLeft, AlertCircle, Loader } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import API_BASE from './config';
 
 const LoginPage = ({ onLogin, onBack }) => {
@@ -338,6 +339,50 @@ const LoginPage = ({ onLogin, onBack }) => {
               'Login'
             )}
           </button>
+
+          {/* Forgot Password & Sign Up Links */}
+          <div style={{
+            marginTop: '24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            alignItems: 'center'
+          }}>
+            <Link
+              to="/forgot-password"
+              style={{
+                color: '#0066cc',
+                textDecoration: 'none',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+                transition: 'color 0.3s ease'
+              }}
+              onMouseEnter={(e) => e.target.style.color = '#004499'}
+              onMouseLeave={(e) => e.target.style.color = '#0066cc'}
+            >
+              Forgot Password?
+            </Link>
+            
+            <div style={{
+              fontSize: '0.9rem',
+              color: '#666'
+            }}>
+              Don't have an account?{' '}
+              <Link
+                to="/signup"
+                style={{
+                  color: '#dc3545',
+                  textDecoration: 'none',
+                  fontWeight: 700,
+                  transition: 'color 0.3s ease'
+                }}
+                onMouseEnter={(e) => e.target.style.color = '#c82333'}
+                onMouseLeave={(e) => e.target.style.color = '#dc3545'}
+              >
+                Sign Up
+              </Link>
+            </div>
+          </div>
         </form>
 
         {/* Color bar */}
