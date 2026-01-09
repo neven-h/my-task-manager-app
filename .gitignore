@@ -32,3 +32,10 @@ yarn-error.log*
 .env.local
 .env.production
 !.env.example
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# JetBrains
+.idea/
