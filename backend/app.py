@@ -535,10 +535,14 @@ def get_tasks():
                 # 'shared' role: only see tasks marked as shared
                 query += " AND shared = TRUE"
             elif user_role == 'limited':
-                # 'limited' role: only see their own tasks
-                query += " AND created_by = %s"
+                # 'limited' role: only see their own tasks (created_by must match)
+                query += " AND created_by = %s AND created_by IS NOT NULL"
                 params.append(username)
             # 'admin' role: see everything (no additional filter)
+
+            # Log for debugging
+            if DEBUG:
+                print(f"User: {username}, Role: {user_role}, Query: {query}, Params: {params}")
 
             # If shared_only is explicitly requested (backward compatibility)
             if shared_only == 'true':

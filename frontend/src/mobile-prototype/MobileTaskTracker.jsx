@@ -99,8 +99,10 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
   const fetchTasks = async () => {
     try {
       setLoading(true);
+      console.log('Mobile: Fetching tasks with:', {username: authUser, role: authRole});
       const response = await fetch(`${API_BASE}/tasks?username=${authUser}&role=${authRole}`);
       const data = await response.json();
+      console.log('Mobile: Received tasks:', data.length, 'tasks');
       // Sort: uncompleted first, then completed
       const sorted = (data || []).sort((a, b) => {
         if (a.status === 'uncompleted' && b.status === 'completed') return -1;
