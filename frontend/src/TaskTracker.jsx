@@ -236,7 +236,7 @@ useEffect(() => {
 
     const fetchStats = async () => {
         try {
-            const response = await fetch(`${API_BASE}/stats`);
+            const response = await fetch(`${API_BASE}/stats?username=${authUser}&role=${authRole}`);
             const data = await response.json();
             setStats(data);
         } catch (err) {
@@ -1425,20 +1425,18 @@ useEffect(() => {
                                 New Task
                             </button>
                         )}
-                        {/* Stats button - only for admin */}
-                        {isAdmin && (
-                            <button className="btn btn-yellow" onClick={() => setView(view === 'list' ? 'stats' : 'list')}>
-                                {view === 'list' ? (
-                                    <><BarChart3 size={18} style={{
-                                        display: 'inline',
-                                        verticalAlign: 'middle',
-                                        marginRight: '8px'
-                                    }}/>Stats</>
-                                ) : (
-                                    <>Tasks</>
-                                )}
-                            </button>
-                        )}
+                        {/* Stats button - for everyone (filtered by backend) */}
+                        <button className="btn btn-yellow" onClick={() => setView(view === 'list' ? 'stats' : 'list')}>
+                            {view === 'list' ? (
+                                <><BarChart3 size={18} style={{
+                                    display: 'inline',
+                                    verticalAlign: 'middle',
+                                    marginRight: '8px'
+                                }}/>Stats</>
+                            ) : (
+                                <>Tasks</>
+                            )}
+                        </button>
                         {onLogout && (
                             <button className="btn btn-white" onClick={onLogout}>
                                 <LogOut size={18}
