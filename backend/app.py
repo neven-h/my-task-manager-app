@@ -201,6 +201,33 @@ def init_db():
             if 'Duplicate column' in str(e):
                 pass  # Column already exists
             else:
+                raise
+
+        # Add created_by column if it doesn't exist
+        try:
+            cursor.execute("""
+                           ALTER TABLE tasks
+                               ADD COLUMN created_by VARCHAR(255)
+                           """)
+            print("Added created_by column to tasks")
+        except Error as e:
+            if 'Duplicate column' in str(e):
+                pass  # Column already exists
+            else:
+                raise
+
+        # Add created_by index
+        try:
+            cursor.execute("""
+                           ALTER TABLE tasks
+                               ADD INDEX idx_created_by (created_by)
+                           """)
+            print("Added created_by index to tasks")
+        except Error as e:
+            if 'Duplicate key' in str(e):
+                pass  # Index already exists
+            else:
+                pass  # Ignore other errors for index creation
                 print(f"Note: {e}")
 
         # Add index for shared column if it doesn't exist

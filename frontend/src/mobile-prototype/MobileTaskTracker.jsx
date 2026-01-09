@@ -20,7 +20,9 @@ const THEME = {
 const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 
 const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
-  const isSharedUser = authRole === 'shared' || authRole === 'limited';
+  const isSharedUser = authRole === 'shared';
+  const isLimitedUser = authRole === 'limited';
+  const isAdmin = authRole === 'admin';
   
   // State
   const [tasks, setTasks] = useState([]);
@@ -97,7 +99,7 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/tasks`);
+      const response = await fetch(`${API_BASE}/tasks?username=${authUser}&role=${authRole}`);
       const data = await response.json();
       // Sort: uncompleted first, then completed
       const sorted = (data || []).sort((a, b) => {
@@ -189,7 +191,11 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
       await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          username: authUser,
+          role: authRole
+        })
       });
 
       await fetchTasks();
@@ -1223,8 +1229,8 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
                 />
               </div>
 
-              {/* Shared checkbox (only for pitz user) */}
-              {!isSharedUser && (
+              {/* Shared checkbox (only for admin) */}
+              {isAdmin && (
                 <div style={{ marginBottom: '24px' }}>
                   <label style={{
                     display: 'flex',
