@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import LandingPage from './LandingPage';
 import LoginPage from './LoginPage';
 import SignUpPage from './SignUpPage';
+import ForgotPasswordPage from './ForgotPasswordPage';
+import ResetPasswordPage from './ResetPasswordPage';
 import TaskTracker from './TaskTracker';
 import MobileTaskTracker from './mobile-prototype/MobileTaskTracker';
 import API_BASE from './config';
 
 const App = () => {
-  const [currentView, setCurrentView] = useState('landing'); // 'landing', 'login', 'signup', 'app'
+  const navigate = useNavigate();
   const [authToken, setAuthToken] = useState(null);
   const [authUser, setAuthUser] = useState(null);
-  const [authRole, setAuthRole] = useState(null); // 'admin' or 'limited'
+  const [authRole, setAuthRole] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isAuthenticating, setIsAuthenticating] = useState(true);
 
   // Detect mobile/desktop on resize
   useEffect(() => {
@@ -22,7 +26,7 @@ const App = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Check if user is already logged in on mount and validate token
+  // Check if user is already logged in on mount
   useEffect(() => {
     const validateAndRestoreSession = async () => {
       const token = localStorage.getItem('authToken');
@@ -31,60 +35,40 @@ const App = () => {
 
       if (token && user) {
         try {
-          // Validate token by making a test request to the API
           const response = await fetch(`${API_BASE}/tasks?limit=1`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
+            headers: { 'Authorization': `Bearer ${token}` }
           });
 
           if (response.ok) {
-            // Token is valid, restore session
             setAuthToken(token);
             setAuthUser(user);
             setAuthRole(role || 'limited');
-            setCurrentView('app');
           } else {
-            // Token is invalid or expired, clear storage
             localStorage.removeItem('authToken');
             localStorage.removeItem('authUser');
             localStorage.removeItem('authRole');
-            setCurrentView('landing');
           }
         } catch (error) {
-          // Network error or API unavailable, clear storage
           console.error('Token validation failed:', error);
           localStorage.removeItem('authToken');
           localStorage.removeItem('authUser');
           localStorage.removeItem('authRole');
-          setCurrentView('landing');
         }
       }
+      setIsAuthenticating(false);
     };
 
     validateAndRestoreSession();
   }, []);
 
-  const handleEnter = () => {
-    // Go to login page
-    setCurrentView('login');
-  };
-
-  const handleSignUp = () => {
-    // Go to sign up page
-    setCurrentView('signup');
-  };
-
   const handleLogin = (token, username, role) => {
-    // Persist authentication data to localStorage
     localStorage.setItem('authToken', token);
     localStorage.setItem('authUser', username);
     localStorage.setItem('authRole', role || 'limited');
-
     setAuthToken(token);
     setAuthUser(username);
     setAuthRole(role || 'limited');
-    setCurrentView('app');
+    navigate('/app');
   };
 
   const handleLogout = () => {
@@ -94,34 +78,55 @@ const App = () => {
     setAuthToken(null);
     setAuthUser(null);
     setAuthRole(null);
-    setCurrentView('landing');
+    navigate('/');
   };
 
-  const handleBackToLanding = () => {
-    setCurrentView('landing');
-  };
-
-  if (currentView === 'landing') {
-    return <LandingPage onEnter={handleEnter} onSignUp={handleSignUp} />;
+  if (isAuthenticating) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#f8f8f8'
+      }}>
+        <div style={{ fontWeight: 700, fontSize: '1.2rem' }}>Loading...</div>
+      </div>
+    );
   }
 
-  if (currentView === 'login') {
-    return <LoginPage onLogin={handleLogin} onBack={handleBackToLanding} />;
-  }
+  return (
+    <Routes>
+      {/* Public routes */}
+      <Route path="/" element={
+        authToken ? <Navigate to="/app" /> : <LandingPage onEnter={() => navigate('/login')} onSignUp={() => navigate('/signup')} />
+      } />
+      <Route path="/login" element={
+        authToken ? <Navigate to="/app" /> : <LoginPage onLogin={handleLogin} onBack={() => navigate('/')} />
+      } />
+      <Route path="/signup" element={
+        authToken ? <Navigate to="/app" /> : <SignUpPage />
+      } />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-  if (currentView === 'signup') {
-    return <SignUpPage onBack={handleBackToLanding} />;
-  }
+      {/* Protected route */}
+      <Route path="/app" element={
+        authToken ? (
+          isMobile ? (
+            <MobileTaskTracker authToken={authToken} authUser={authUser} authRole={authRole} onLogout={handleLogout} />
+          ) : (
+            <TaskTracker authToken={authToken} authUser={authUser} authRole={authRole} onLogout={handleLogout} />
+          )
+        ) : (
+          <Navigate to="/login" />
+        )
+      } />
 
-  if (currentView === 'app') {
-    // Use mobile version on small screens, desktop version on large screens
-    if (isMobile) {
-      return <MobileTaskTracker authToken={authToken} authUser={authUser} authRole={authRole} onLogout={handleLogout} />;
-    }
-    return <TaskTracker authToken={authToken} authUser={authUser} authRole={authRole} onLogout={handleLogout} />;
-  }
-
-  return null;
+      {/* Catch all */}
+      <Route path="*" element={<Navigate to="/" />} />
+    </Routes>
+  );
 };
 
 export default App;
