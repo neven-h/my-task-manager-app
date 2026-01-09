@@ -12,7 +12,10 @@ const DRAFT_STORAGE_KEY = 'taskTracker_draft';
 const BULK_DRAFT_STORAGE_KEY = 'taskTracker_bulkDraft';
 
 const TaskTracker = ({onLogout, authRole, authUser}) => {
-    const isSharedUser = authRole === 'shared' || authRole === 'limited';
+    const isSharedUser = authRole === 'shared';
+    const isLimitedUser = authRole === 'limited';
+    const isAdmin = authRole === 'admin';
+    
     const [appView, setAppView] = useState('tasks'); // 'tasks', 'transactions', or 'clients'
     useEffect(() => {
   const savedView = localStorage.getItem('lastActiveView');
@@ -201,10 +204,9 @@ useEffect(() => {
             setLoading(true);
             const params = buildFilterParams();
 
-            // For shared users, only fetch shared tasks
-            if (isSharedUser) {
-                params.append('shared', 'true');
-            }
+            // Send username and role to backend for filtering
+            params.append('username', authUser);
+            params.append('role', authRole);
 
             const response = await fetch(`${API_BASE}/tasks?${params}`);
             let data = await response.json();
@@ -290,7 +292,11 @@ useEffect(() => {
             const response = await fetch(url, {
                 method,
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(formData)
+                body: JSON.stringify({
+                    ...formData,
+                    username: authUser,
+                    role: authRole
+                })
             });
 
             if (!response.ok) {
@@ -1379,29 +1385,34 @@ useEffect(() => {
                          style={{display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center'}}>
                         {/* Show user info */}
                         <span style={{fontSize: '0.85rem', fontWeight: '600', color: '#666', marginRight: '8px'}}>
-              👤 {authUser} {isSharedUser ? '(shared)' : '(admin)'}
+              👤 {authUser} {isSharedUser ? '(shared)' : isLimitedUser ? '(limited)' : '(admin)'}
             </span>
-                        <button className="btn btn-blue" onClick={() => setAppView('transactions')}>
-                            <DollarSign size={18}
-                                        style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
-                            Bank Transactions
-                        </button>
-                        {/* Hide Clients for shared users */}
-                        {!isSharedUser && (
+                        {/* Bank Transactions - only for admin and shared */}
+                        {(isAdmin || isSharedUser) && (
+                            <button className="btn btn-blue" onClick={() => setAppView('transactions')}>
+                                <DollarSign size={18}
+                                            style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
+                                Bank Transactions
+                            </button>
+                        )}
+                        {/* Clients - only for admin */}
+                        {isAdmin && (
                             <button className="btn btn-green" onClick={() => setAppView('clients')}>
                                 <Tag size={18}
                                      style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
                                 Clients
                             </button>
                         )}
-                        {!isSharedUser && (
+                        {/* Bulk Add - only for admin */}
+                        {isAdmin && (
                             <button className="btn btn-white" onClick={() => setShowBulkInput(true)} disabled={loading}>
                                 <Plus size={18}
                                       style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
                                 Bulk Add
                             </button>
                         )}
-                        {!isSharedUser && (
+                        {/* New Task - only for admin */}
+                        {isAdmin && (
                             <button className="btn btn-red" onClick={openNewTaskForm} disabled={loading}>
                                 <Plus size={18}
                                       style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
