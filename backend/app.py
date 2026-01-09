@@ -394,6 +394,38 @@ def init_db():
             else:
                 pass  # Ignore other errors for index creation
 
+        # Create users table for authentication
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                username VARCHAR(255) UNIQUE NOT NULL,
+                password_hash VARCHAR(255) NOT NULL,
+                role ENUM('admin', 'shared', 'limited') DEFAULT 'limited',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_active BOOLEAN DEFAULT TRUE,
+                INDEX idx_email (email),
+                INDEX idx_username (username)
+            )
+        """)
+        print("Created users table")
+
+        # Create password_reset_tokens table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                token VARCHAR(255) UNIQUE NOT NULL,
+                expires_at DATETIME NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                used BOOLEAN DEFAULT FALSE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                INDEX idx_token (token),
+                INDEX idx_expires (expires_at)
+            )
+        """)
+        print("Created password_reset_tokens table")
+
         # Create tags table
         cursor.execute("""
                        CREATE TABLE IF NOT EXISTS tags
@@ -556,12 +588,40 @@ def init_db():
 
 @app.route('/api/login', methods=['POST'])
 def login():
-    """Authenticate user and return role"""
+    """Authenticate user and return role - checks database first, then hardcoded users"""
     try:
         data = request.json
         username = data.get('username', '').strip()
         password = data.get('password', '')
 
+        # First, check database for registered users
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT id, username, email, password_hash, role, is_active 
+                FROM users 
+                WHERE username = %s
+            """, (username,))
+            user = cursor.fetchone()
+            
+            if user:
+                # Check if user is active
+                if not user['is_active']:
+                    return jsonify({
+                        'success': False,
+                        'error': 'Account is disabled'
+                    }), 401
+                
+                # Verify password with bcrypt
+                if bcrypt.checkpw(password.encode('utf-8'), user['password_hash'].encode('utf-8')):
+                    return jsonify({
+                        'success': True,
+                        'username': user['username'],
+                        'role': user['role'],
+                        'token': f'auth-token-{user["username"]}-{datetime.now().timestamp()}'
+                    })
+        
+        # Fallback to hardcoded users (backward compatibility)
         if username in USERS and USERS[username]['password'] == password:
             return jsonify({
                 'success': True,
@@ -569,12 +629,263 @@ def login():
                 'role': USERS[username]['role'],
                 'token': f'auth-token-{username}-{datetime.now().timestamp()}'
             })
-        else:
-            return jsonify({
-                'success': False,
-                'error': 'Invalid username or password'
-            }), 401
+        
+        return jsonify({
+            'success': False,
+            'error': 'Invalid username or password'
+        }), 401
     except Exception as e:
+        print(f"Login error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/auth/signup', methods=['POST'])
+def signup():
+    """Register a new user"""
+    try:
+        data = request.json
+        email = data.get('email', '').strip().lower()
+        username = data.get('username', '').strip()
+        password = data.get('password', '')
+        
+        # Validate email format
+        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_regex, email):
+            return jsonify({'error': 'Invalid email format'}), 400
+        
+        # Validate password strength
+        if len(password) < 8:
+            return jsonify({'error': 'Password must be at least 8 characters'}), 400
+        if not re.search(r'[A-Z]', password):
+            return jsonify({'error': 'Password must contain at least one uppercase letter'}), 400
+        if not re.search(r'[0-9]', password):
+            return jsonify({'error': 'Password must contain at least one number'}), 400
+        if not re.search(r'[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]', password):
+            return jsonify({'error': 'Password must contain at least one symbol'}), 400
+        
+        # Validate username
+        if len(username) < 3:
+            return jsonify({'error': 'Username must be at least 3 characters'}), 400
+        if not re.match(r'^[a-zA-Z0-9_]+$', username):
+            return jsonify({'error': 'Username can only contain letters, numbers, and underscores'}), 400
+        
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            
+            # Check if email already exists
+            cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
+            if cursor.fetchone():
+                return jsonify({'error': 'Email already registered'}), 409
+            
+            # Check if username already exists
+            cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
+            if cursor.fetchone():
+                return jsonify({'error': 'Username already taken'}), 409
+            
+            # Hash password with bcrypt
+            password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            
+            # Insert new user (default role is 'limited')
+            cursor.execute("""
+                INSERT INTO users (email, username, password_hash, role, is_active)
+                VALUES (%s, %s, %s, 'limited', TRUE)
+            """, (email, username, password_hash))
+            connection.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Account created successfully',
+                'username': username
+            }), 201
+            
+    except Exception as e:
+        print(f"Signup error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/auth/forgot-password', methods=['POST'])
+def forgot_password():
+    """Send password reset email"""
+    try:
+        data = request.json
+        email = data.get('email', '').strip().lower()
+        
+        if not email:
+            return jsonify({'error': 'Email is required'}), 400
+        
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            
+            # Check if user exists
+            cursor.execute("SELECT id, username, email FROM users WHERE email = %s AND is_active = TRUE", (email,))
+            user = cursor.fetchone()
+            
+            if not user:
+                # Don't reveal if email exists or not (security)
+                return jsonify({
+                    'success': True,
+                    'message': 'If that email is registered, you will receive a password reset link'
+                })
+            
+            # Check rate limiting (max 3 requests per hour)
+            cursor.execute("""
+                SELECT COUNT(*) as count 
+                FROM password_reset_tokens 
+                WHERE user_id = %s 
+                AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)
+            """, (user['id'],))
+            result = cursor.fetchone()
+            if result['count'] >= 3:
+                return jsonify({'error': 'Too many reset requests. Please try again later'}), 429
+            
+            # Generate secure token
+            token = str(uuid.uuid4())
+            expires_at = datetime.now() + timedelta(minutes=10)
+            
+            # Save token to database
+            cursor.execute("""
+                INSERT INTO password_reset_tokens (user_id, token, expires_at)
+                VALUES (%s, %s, %s)
+            """, (user['id'], token, expires_at))
+            connection.commit()
+            
+            # Send email
+            reset_url = f"{FRONTEND_URL}/reset-password?token={token}"
+            msg = Message(
+                subject="Password Reset Request",
+                recipients=[user['email']],
+                body=f"""Hello {user['username']},
+
+You requested a password reset for your account.
+
+Click the link below to reset your password (valid for 10 minutes):
+{reset_url}
+
+If you didn't request this, please ignore this email.
+
+Best regards,
+Task Tracker Team"""
+            )
+            
+            mail.send(msg)
+            
+            return jsonify({
+                'success': True,
+                'message': 'If that email is registered, you will receive a password reset link'
+            })
+            
+    except Exception as e:
+        print(f"Forgot password error: {e}")
+        return jsonify({'error': 'Failed to process request'}), 500
+
+
+@app.route('/api/auth/verify-token', methods=['GET'])
+def verify_reset_token():
+    """Verify if reset token is valid"""
+    try:
+        token = request.args.get('token', '')
+        
+        if not token:
+            return jsonify({'valid': False, 'error': 'Token is required'}), 400
+        
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            
+            # Check if token exists and is valid
+            cursor.execute("""
+                SELECT t.id, t.expires_at, t.used, u.username
+                FROM password_reset_tokens t
+                JOIN users u ON t.user_id = u.id
+                WHERE t.token = %s
+            """, (token,))
+            token_data = cursor.fetchone()
+            
+            if not token_data:
+                return jsonify({'valid': False, 'error': 'Invalid token'})
+            
+            if token_data['used']:
+                return jsonify({'valid': False, 'error': 'Token already used'})
+            
+            if datetime.now() > token_data['expires_at']:
+                return jsonify({'valid': False, 'error': 'Token expired'})
+            
+            return jsonify({
+                'valid': True,
+                'username': token_data['username']
+            })
+            
+    except Exception as e:
+        print(f"Verify token error: {e}")
+        return jsonify({'valid': False, 'error': str(e)}), 500
+
+
+@app.route('/api/auth/reset-password', methods=['POST'])
+def reset_password():
+    """Reset password with valid token"""
+    try:
+        data = request.json
+        token = data.get('token', '')
+        new_password = data.get('password', '')
+        
+        if not token or not new_password:
+            return jsonify({'error': 'Token and password are required'}), 400
+        
+        # Validate password strength
+        if len(new_password) < 8:
+            return jsonify({'error': 'Password must be at least 8 characters'}), 400
+        if not re.search(r'[A-Z]', new_password):
+            return jsonify({'error': 'Password must contain at least one uppercase letter'}), 400
+        if not re.search(r'[0-9]', new_password):
+            return jsonify({'error': 'Password must contain at least one number'}), 400
+        if not re.search(r'[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]', new_password):
+            return jsonify({'error': 'Password must contain at least one symbol'}), 400
+        
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            
+            # Verify token is valid
+            cursor.execute("""
+                SELECT t.id, t.user_id, t.expires_at, t.used
+                FROM password_reset_tokens t
+                WHERE t.token = %s
+            """, (token,))
+            token_data = cursor.fetchone()
+            
+            if not token_data:
+                return jsonify({'error': 'Invalid token'}), 400
+            
+            if token_data['used']:
+                return jsonify({'error': 'Token already used'}), 400
+            
+            if datetime.now() > token_data['expires_at']:
+                return jsonify({'error': 'Token expired'}), 400
+            
+            # Hash new password
+            password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            
+            # Update user password
+            cursor.execute("""
+                UPDATE users 
+                SET password_hash = %s 
+                WHERE id = %s
+            """, (password_hash, token_data['user_id']))
+            
+            # Mark token as used
+            cursor.execute("""
+                UPDATE password_reset_tokens 
+                SET used = TRUE 
+                WHERE id = %s
+            """, (token_data['id'],))
+            
+            connection.commit()
+            
+            return jsonify({
+                'success': True,
+                'message': 'Password reset successfully'
+            })
+            
+    except Exception as e:
+        print(f"Reset password error: {e}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -2199,6 +2510,7 @@ def save_transactions():
     try:
         data = request.json
         transactions = data.get('transactions', [])
+        username = data.get('username')  # Get uploader username
 
         if not transactions:
             return jsonify({'error': 'No transactions to save'}), 400
@@ -2206,11 +2518,11 @@ def save_transactions():
         with get_db_connection() as connection:
             cursor = connection.cursor()
 
-            # Insert transactions
+            # Insert transactions with uploaded_by
             query = """
                     INSERT INTO bank_transactions
-                    (account_number, transaction_date, description, amount, month_year, transaction_type)
-                    VALUES (%s, %s, %s, %s, %s, %s) \
+                    (account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """
 
             for trans in transactions:
@@ -2220,7 +2532,8 @@ def save_transactions():
                     trans['description'],
                     trans['amount'],
                     trans['month_year'],
-                    trans.get('transaction_type', 'credit')
+                    trans.get('transaction_type', 'credit'),
+                    username
                 )
                 cursor.execute(query, values)
 
@@ -2237,23 +2550,37 @@ def save_transactions():
 
 @app.route('/api/transactions/months', methods=['GET'])
 def get_transaction_months():
-    """Get list of months with saved transactions"""
+    """Get list of months with saved transactions (filtered by user role)"""
     try:
+        # Get username and role for filtering
+        username = request.args.get('username')
+        user_role = request.args.get('role')
+        
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
-            cursor.execute("""
-                           SELECT month_year,
-                                  COUNT(*)              as transaction_count,
-                                  SUM(amount)           as total_amount,
-                                  MIN(transaction_date) as start_date,
-                                  MAX(transaction_date) as end_date,
-                                  MAX(upload_date)      as last_upload
-                           FROM bank_transactions
-                           GROUP BY month_year
-                           ORDER BY month_year DESC
-                           """)
-
+            # Build query based on role
+            query = """
+                SELECT month_year,
+                       COUNT(*) as transaction_count,
+                       SUM(amount) as total_amount,
+                       MIN(transaction_date) as start_date,
+                       MAX(transaction_date) as end_date,
+                       MAX(upload_date) as last_upload
+                FROM bank_transactions
+                WHERE 1=1
+            """
+            params = []
+            
+            # Filter by role
+            if user_role == 'limited':
+                query += " AND uploaded_by = %s"
+                params.append(username)
+            # admin and shared see all
+            
+            query += " GROUP BY month_year ORDER BY month_year DESC"
+            
+            cursor.execute(query, params)
             months = cursor.fetchall()
 
             # Convert Decimal to float
@@ -2275,24 +2602,40 @@ def get_transaction_months():
 
 @app.route('/api/transactions/all', methods=['GET'])
 def get_all_transactions():
-    """Get all transactions (not filtered by month)"""
+    """Get all transactions (filtered by user role)"""
     try:
+        # Get username and role for filtering
+        username = request.args.get('username')
+        user_role = request.args.get('role')
+        
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
-            cursor.execute("""
-                           SELECT id,
-                                  account_number,
-                                  transaction_date,
-                                  description,
-                                  amount,
-                                  month_year,
-                                  transaction_type,
-                                  upload_date
-                           FROM bank_transactions
-                           ORDER BY transaction_date DESC, id DESC
-                           """)
-
+            # Build query based on role
+            query = """
+                SELECT id,
+                       account_number,
+                       transaction_date,
+                       description,
+                       amount,
+                       month_year,
+                       transaction_type,
+                       upload_date,
+                       uploaded_by
+                FROM bank_transactions
+                WHERE 1=1
+            """
+            params = []
+            
+            # Filter by role
+            if user_role == 'limited':
+                query += " AND uploaded_by = %s"
+                params.append(username)
+            # admin and shared see all transactions
+            
+            query += " ORDER BY transaction_date DESC, id DESC"
+            
+            cursor.execute(query, params)
             transactions = cursor.fetchall()
 
             # Convert types
@@ -2314,25 +2657,40 @@ def get_all_transactions():
 
 @app.route('/api/transactions/<month_year>', methods=['GET'])
 def get_transactions_by_month(month_year):
-    """Get all transactions for a specific month"""
+    """Get all transactions for a specific month (filtered by user role)"""
     try:
+        # Get username and role for filtering
+        username = request.args.get('username')
+        user_role = request.args.get('role')
+        
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
-            cursor.execute("""
-                           SELECT id,
-                                  account_number,
-                                  transaction_date,
-                                  description,
-                                  amount,
-                                  month_year,
-                                  transaction_type,
-                                  upload_date
-                           FROM bank_transactions
-                           WHERE month_year = %s
-                           ORDER BY transaction_date DESC, id DESC
-                           """, (month_year,))
-
+            # Build query based on role
+            query = """
+                SELECT id,
+                       account_number,
+                       transaction_date,
+                       description,
+                       amount,
+                       month_year,
+                       transaction_type,
+                       upload_date,
+                       uploaded_by
+                FROM bank_transactions
+                WHERE month_year = %s
+            """
+            params = [month_year]
+            
+            # Filter by role
+            if user_role == 'limited':
+                query += " AND uploaded_by = %s"
+                params.append(username)
+            # admin and shared see all
+            
+            query += " ORDER BY transaction_date DESC, id DESC"
+            
+            cursor.execute(query, params)
             transactions = cursor.fetchall()
 
             # Convert types
@@ -2484,24 +2842,32 @@ def get_all_descriptions():
 
 @app.route('/api/transactions/stats', methods=['GET'])
 def get_transaction_stats():
-    """Get transaction statistics including cash vs credit breakdown"""
+    """Get transaction statistics including cash vs credit breakdown (filtered by user role)"""
     try:
         # Get optional date filters
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
+        username = request.args.get('username')
+        user_role = request.args.get('role')
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
-            # Base query with optional date filtering
-            date_filter = ""
+            # Build filters
+            filters = []
             params = []
+            
             if start_date:
-                date_filter += " AND transaction_date >= %s"
+                filters.append("transaction_date >= %s")
                 params.append(start_date)
             if end_date:
-                date_filter += " AND transaction_date <= %s"
+                filters.append("transaction_date <= %s")
                 params.append(end_date)
+            if user_role == 'limited':
+                filters.append("uploaded_by = %s")
+                params.append(username)
+            
+            where_clause = " AND ".join(filters) if filters else "1=1"
 
             # Overall stats by type
             cursor.execute(f"""
@@ -2513,7 +2879,7 @@ def get_transaction_stats():
                     MIN(transaction_date) as first_date,
                     MAX(transaction_date) as last_date
                 FROM bank_transactions
-                WHERE 1=1 {date_filter}
+                WHERE {where_clause}
                 GROUP BY transaction_type
             """, params)
 
@@ -2538,7 +2904,7 @@ def get_transaction_stats():
                     COUNT(*) as transaction_count,
                     SUM(amount) as total_amount
                 FROM bank_transactions
-                WHERE 1=1 {date_filter}
+                WHERE {where_clause}
                 GROUP BY month_year, transaction_type
                 ORDER BY month_year DESC, transaction_type
             """, params)
