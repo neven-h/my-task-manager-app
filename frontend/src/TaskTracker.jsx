@@ -1393,8 +1393,8 @@ useEffect(() => {
                                 👤 {authUser} (admin)
                             </span>
                         )}
-                        {/* Bank Transactions - only for admin and shared */}
-                        {(isAdmin || isSharedUser) && (
+                        {/* Bank Transactions - for admin, shared, AND limited users */}
+                        {(isAdmin || isSharedUser || isLimitedUser) && (
                             <button className="btn btn-blue" onClick={() => setAppView('transactions')}>
                                 <DollarSign size={18}
                                             style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
