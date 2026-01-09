@@ -127,7 +127,11 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
     try {
       const response = await fetch(`${API_BASE}/clients`);
       const data = await response.json();
-      setClients(data || []);
+      // Extract client names from objects or strings
+      const clientNames = (data || []).map(client => 
+        typeof client === 'string' ? client : client.name || client.client || client
+      );
+      setClients(clientNames);
     } catch (err) {
       console.error('Failed to fetch clients:', err);
     }
@@ -898,21 +902,26 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
 
       {/* Task Modal */}
       {showTaskModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          zIndex: 200,
-          display: 'flex',
-          alignItems: 'flex-end',
-          padding: 0
-        }}>
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 200,
+            display: 'flex',
+            alignItems: 'flex-end',
+            padding: 0
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeModal();
+          }}
+        >
           <div style={{
             width: '100%',
-            height: '95vh',
+            height: '92vh',
             background: '#fff',
             borderRadius: '16px 16px 0 0',
             border: '3px solid #000',
@@ -1076,8 +1085,8 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
                     list="clients-list"
                   />
                   <datalist id="clients-list">
-                    {clients.map(client => (
-                      <option key={client} value={client} />
+                    {clients.map((client, idx) => (
+                      <option key={idx} value={typeof client === 'string' ? client : String(client)} />
                     ))}
                   </datalist>
                 </div>
