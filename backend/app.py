@@ -1,8 +1,11 @@
 from decimal import Decimal
 from typing import Union
+import uuid
+import secrets
 
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
+from flask_mail import Mail, Message
 import mysql.connector
 from mysql.connector import Error, MySQLConnection
 from datetime import datetime, date, timedelta
@@ -12,10 +15,12 @@ from contextlib import contextmanager
 import pandas as pd
 from mysql.connector.pooling import PooledMySQLConnection
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import chardet
 from dotenv import load_dotenv
 import re
+import bcrypt
 
 # Load environment variables
 load_dotenv()
@@ -26,6 +31,15 @@ app = Flask(__name__)
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3004')
 CORS(app, origins=[FRONTEND_URL, 'http://localhost:3004', 'http://localhost:3005', 'https://drpitz.club',
                    'https://www.drpitz.club'])
+
+# Configure email
+app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True').lower() == 'true'
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', os.getenv('MAIL_USERNAME'))
+mail = Mail(app)
 
 # File upload configuration
 UPLOAD_FOLDER = 'uploads'
@@ -354,6 +368,32 @@ def init_db():
             else:
                 print(f"Note: {e}")
 
+        # Add uploaded_by column to bank_transactions
+        try:
+            cursor.execute("""
+                           ALTER TABLE bank_transactions
+                               ADD COLUMN uploaded_by VARCHAR(255)
+                           """)
+            print("Added uploaded_by column to bank_transactions")
+        except Error as e:
+            if 'Duplicate column' in str(e):
+                pass  # Column already exists
+            else:
+                print(f"Note: {e}")
+
+        # Add index for uploaded_by
+        try:
+            cursor.execute("""
+                           ALTER TABLE bank_transactions
+                               ADD INDEX idx_uploaded_by (uploaded_by)
+                           """)
+            print("Added uploaded_by index to bank_transactions")
+        except Error as e:
+            if 'Duplicate key' in str(e):
+                pass  # Index already exists
+            else:
+                pass  # Ignore other errors for index creation
+
         # Create tags table
         cursor.execute("""
                        CREATE TABLE IF NOT EXISTS tags
@@ -467,6 +507,41 @@ def init_db():
                        )
                            )
                        """)
+
+        # Create users table for authentication
+        cursor.execute("""
+                       CREATE TABLE IF NOT EXISTS users
+                       (
+                           id INT AUTO_INCREMENT PRIMARY KEY,
+                           email VARCHAR(255) UNIQUE NOT NULL,
+                           username VARCHAR(255) UNIQUE NOT NULL,
+                           password_hash VARCHAR(255) NOT NULL,
+                           role ENUM('admin', 'shared', 'limited') DEFAULT 'limited',
+                           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                           is_active BOOLEAN DEFAULT TRUE,
+                           INDEX idx_email (email),
+                           INDEX idx_username (username)
+                       )
+                       """)
+        print("Created users table")
+
+        # Create password_reset_tokens table
+        cursor.execute("""
+                       CREATE TABLE IF NOT EXISTS password_reset_tokens
+                       (
+                           id INT AUTO_INCREMENT PRIMARY KEY,
+                           user_id INT NOT NULL,
+                           token VARCHAR(255) UNIQUE NOT NULL,
+                           expires_at DATETIME NOT NULL,
+                           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                           used BOOLEAN DEFAULT FALSE,
+                           FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                           INDEX idx_token (token),
+                           INDEX idx_expires (expires_at),
+                           INDEX idx_user_id (user_id)
+                       )
+                       """)
+        print("Created password_reset_tokens table")
 
         connection.commit()
         print("Database initialized successfully")
