@@ -781,26 +781,42 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
               <X size={24} color={THEME.text} />
             </button>
 
-            {/* User info */}
-            <div style={{ marginBottom: '32px', paddingTop: '8px' }}>
-              <h2 style={{
-                fontSize: '1.25rem',
-                fontWeight: 900,
-                margin: '0 0 8px 0',
-                textTransform: 'uppercase',
-                fontFamily: FONT_STACK
-              }}>
-                Menu
-              </h2>
-              <p style={{
-                fontSize: '0.85rem',
-                color: THEME.muted,
-                margin: 0,
-                fontFamily: FONT_STACK
-              }}>
-                👤 {authUser} {isSharedUser ? '(shared)' : '(admin)'}
-              </p>
-            </div>
+            {/* User info - only show for admin */}
+            {isAdmin && (
+              <div style={{ marginBottom: '32px', paddingTop: '8px' }}>
+                <h2 style={{
+                  fontSize: '1.25rem',
+                  fontWeight: 900,
+                  margin: '0 0 8px 0',
+                  textTransform: 'uppercase',
+                  fontFamily: FONT_STACK
+                }}>
+                  Menu
+                </h2>
+                <p style={{
+                  fontSize: '0.85rem',
+                  color: THEME.muted,
+                  margin: 0,
+                  fontFamily: FONT_STACK
+                }}>
+                  👤 {authUser} (admin)
+                </p>
+              </div>
+            )}
+
+            {!isAdmin && (
+              <div style={{ marginBottom: '32px', paddingTop: '8px' }}>
+                <h2 style={{
+                  fontSize: '1.25rem',
+                  fontWeight: 900,
+                  margin: 0,
+                  textTransform: 'uppercase',
+                  fontFamily: FONT_STACK
+                }}>
+                  Menu
+                </h2>
+              </div>
+            )}
 
             {/* Menu sections */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>

@@ -1387,10 +1387,12 @@ useEffect(() => {
                     {/* Desktop Header Buttons */}
                     <div className="desktop-header-buttons"
                          style={{display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center'}}>
-                        {/* Show user info */}
-                        <span style={{fontSize: '0.85rem', fontWeight: '600', color: '#666', marginRight: '8px'}}>
-              👤 {authUser} {isSharedUser ? '(shared)' : isLimitedUser ? '(limited)' : '(admin)'}
-            </span>
+                        {/* Show user info - only for admin */}
+                        {isAdmin && (
+                            <span style={{fontSize: '0.85rem', fontWeight: '600', color: '#666', marginRight: '8px'}}>
+                                👤 {authUser} (admin)
+                            </span>
+                        )}
                         {/* Bank Transactions - only for admin and shared */}
                         {(isAdmin || isSharedUser) && (
                             <button className="btn btn-blue" onClick={() => setAppView('transactions')}>
