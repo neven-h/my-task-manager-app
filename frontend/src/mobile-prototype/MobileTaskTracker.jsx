@@ -886,6 +886,69 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
                 </div>
               </div>
 
+              {/* Transactions - only for limited users */}
+              {isLimitedUser && (
+                <div>
+                  <h3 style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 900,
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px',
+                    marginBottom: '12px',
+                    fontFamily: FONT_STACK
+                  }}>
+                    Transactions
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <button
+                      className="mobile-btn"
+                      onClick={() => {
+                        document.getElementById('limited-user-transaction-upload').click();
+                      }}
+                      style={{ width: '100%', justifyContent: 'flex-start' }}
+                    >
+                      <Upload size={16} style={{ marginRight: '8px' }} />
+                      Upload Transactions
+                    </button>
+                    <input
+                      type="file"
+                      id="limited-user-transaction-upload"
+                      accept=".csv,.xlsx,.xls"
+                      style={{ display: 'none' }}
+                      onChange={async (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        formData.append('transaction_type', 'credit'); // default to credit
+                        formData.append('username', authUser); // tag with username
+                        
+                        try {
+                          const response = await fetch(`${API_BASE}/transactions/upload`, {
+                            method: 'POST',
+                            body: formData
+                          });
+                          
+                          const data = await response.json();
+                          
+                          if (response.ok) {
+                            alert(`Successfully uploaded ${data.transaction_count} transactions!`);
+                          } else {
+                            alert(`Error: ${data.error || 'Upload failed'}`);
+                          }
+                        } catch (err) {
+                          alert(`Error uploading file: ${err.message}`);
+                        }
+                        
+                        setShowMobileSidebar(false);
+                        e.target.value = ''; // Reset input
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Account */}
               <div>
                 <h3 style={{

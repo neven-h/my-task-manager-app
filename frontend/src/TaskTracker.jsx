@@ -1425,17 +1425,20 @@ useEffect(() => {
                                 New Task
                             </button>
                         )}
-                        <button className="btn btn-yellow" onClick={() => setView(view === 'list' ? 'stats' : 'list')}>
-                            {view === 'list' ? (
-                                <><BarChart3 size={18} style={{
-                                    display: 'inline',
-                                    verticalAlign: 'middle',
-                                    marginRight: '8px'
-                                }}/>Stats</>
-                            ) : (
-                                <>Tasks</>
-                            )}
-                        </button>
+                        {/* Stats button - only for admin */}
+                        {isAdmin && (
+                            <button className="btn btn-yellow" onClick={() => setView(view === 'list' ? 'stats' : 'list')}>
+                                {view === 'list' ? (
+                                    <><BarChart3 size={18} style={{
+                                        display: 'inline',
+                                        verticalAlign: 'middle',
+                                        marginRight: '8px'
+                                    }}/>Stats</>
+                                ) : (
+                                    <>Tasks</>
+                                )}
+                            </button>
+                        )}
                         {onLogout && (
                             <button className="btn btn-white" onClick={onLogout}>
                                 <LogOut size={18}
