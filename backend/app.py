@@ -1229,56 +1229,82 @@ def import_hours_report():
 
 @app.route('/api/stats', methods=['GET'])
 def get_stats():
-    """Get statistics about tasks"""
+    """Get statistics about tasks - FILTERED BY USER ROLE"""
     try:
+        # CRITICAL: Get username and role for filtering
+        username = request.args.get('username')
+        user_role = request.args.get('role')
+        
+        if not username or not user_role:
+            return jsonify({'error': 'Unauthorized: username and role required'}), 401
+        
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
+            # Build WHERE clause based on role
+            where_clause = "WHERE 1=1"
+            params = []
+            
+            if user_role == 'shared':
+                where_clause += " AND shared = TRUE"
+            elif user_role == 'limited':
+                where_clause += " AND created_by = %s AND created_by IS NOT NULL"
+                params.append(username)
+            # admin: no additional filter
+
             # Overall stats
-            cursor.execute("""
-                           SELECT COUNT(*)                                                as total_tasks,
-                                  SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END)   as completed_tasks,
-                                  SUM(CASE WHEN status = 'uncompleted' THEN 1 ELSE 0 END) as uncompleted_tasks,
-                                  SUM(duration)                                           as total_duration
-                           FROM tasks
-                           """)
+            query = f"""
+                SELECT COUNT(*) as total_tasks,
+                       SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_tasks,
+                       SUM(CASE WHEN status = 'uncompleted' THEN 1 ELSE 0 END) as uncompleted_tasks,
+                       SUM(duration) as total_duration
+                FROM tasks
+                {where_clause}
+            """
+            cursor.execute(query, params)
             overall = cursor.fetchone()
 
             # Stats by category
-            cursor.execute("""
-                           SELECT category,
-                                  COUNT(*) as count,
-                    SUM(duration) as total_duration,
-                    SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed
-                           FROM tasks
-                           GROUP BY category
-                           ORDER BY count DESC
-                           """)
+            query = f"""
+                SELECT category,
+                       COUNT(*) as count,
+                       SUM(duration) as total_duration,
+                       SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed
+                FROM tasks
+                {where_clause}
+                GROUP BY category
+                ORDER BY count DESC
+            """
+            cursor.execute(query, params)
             by_category = cursor.fetchall()
 
             # Stats by client
-            cursor.execute("""
-                           SELECT client,
-                                  COUNT(*) as count,
-                    SUM(duration) as total_duration
-                           FROM tasks
-                           WHERE client IS NOT NULL AND client != ''
-                           GROUP BY client
-                           ORDER BY count DESC
-                               LIMIT 10
-                           """)
+            query = f"""
+                SELECT client,
+                       COUNT(*) as count,
+                       SUM(duration) as total_duration
+                FROM tasks
+                {where_clause}
+                AND client IS NOT NULL AND client != ''
+                GROUP BY client
+                ORDER BY count DESC
+                LIMIT 10
+            """
+            cursor.execute(query, params)
             by_client = cursor.fetchall()
 
             # Monthly stats
-            cursor.execute("""
-                           SELECT DATE_FORMAT(task_date, '%Y-%m') as month,
-                    COUNT(*) as count,
-                    SUM(duration) as total_duration
-                           FROM tasks
-                           GROUP BY month
-                           ORDER BY month DESC
-                               LIMIT 12
-                           """)
+            query = f"""
+                SELECT DATE_FORMAT(task_date, '%Y-%m') as month,
+                       COUNT(*) as count,
+                       SUM(duration) as total_duration
+                FROM tasks
+                {where_clause}
+                GROUP BY month
+                ORDER BY month DESC
+                LIMIT 12
+            """
+            cursor.execute(query, params)
             monthly = cursor.fetchall()
 
             # Convert Decimal to float
