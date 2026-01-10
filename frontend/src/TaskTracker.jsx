@@ -896,7 +896,7 @@ useEffect(() => {
 
     // If viewing transactions, show BankTransactions component
     if (appView === 'transactions') {
-        return <BankTransactions onBackToTasks={() => setAppView('tasks')}/>;
+        return <BankTransactions onBackToTasks={() => setAppView('tasks')} authUser={authUser} authRole={authRole} />;
     }
 
     // If viewing clients, show ClientsManagement component

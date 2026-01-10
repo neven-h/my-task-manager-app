@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Upload, Calendar, Trash2, FileText, AlertCircle, CheckCircle, ArrowLeft, Plus, Edit2, Save, X, FileDown, Banknote, CreditCard, PieChart } from 'lucide-react';
 import API_BASE from './config';
 
-const BankTransactions = ({ onBackToTasks }) => {
+const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
   const [uploadedData, setUploadedData] = useState(null);
   const [savedMonths, setSavedMonths] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(null);
@@ -73,7 +73,7 @@ const BankTransactions = ({ onBackToTasks }) => {
 
   const fetchTransactionStats = async () => {
     try {
-      const response = await fetch(`${API_BASE}/transactions/stats`);
+      const response = await fetch(`${API_BASE}/transactions/stats?username=${authUser}&role=${authRole}`);
       const data = await response.json();
       setTransactionStats(data);
     } catch (err) {
@@ -83,7 +83,7 @@ const BankTransactions = ({ onBackToTasks }) => {
 
   const fetchSavedMonths = async () => {
     try {
-      const response = await fetch(`${API_BASE}/transactions/months`);
+      const response = await fetch(`${API_BASE}/transactions/months?username=${authUser}&role=${authRole}`);
       const data = await response.json();
       setSavedMonths(data);
     } catch (err) {
@@ -94,7 +94,7 @@ const BankTransactions = ({ onBackToTasks }) => {
   const fetchAllTransactions = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/transactions/all`);
+      const response = await fetch(`${API_BASE}/transactions/all?username=${authUser}&role=${authRole}`);
       const data = await response.json();
       setMonthTransactions(data);
       setSelectedMonth('all');
@@ -110,7 +110,7 @@ const BankTransactions = ({ onBackToTasks }) => {
   const fetchMonthTransactions = async (monthYear) => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/transactions/${monthYear}`);
+      const response = await fetch(`${API_BASE}/transactions/${monthYear}?username=${authUser}&role=${authRole}`);
       const data = await response.json();
       setMonthTransactions(data);
       setSelectedMonth(monthYear);
@@ -177,7 +177,10 @@ const BankTransactions = ({ onBackToTasks }) => {
       const response = await fetch(`${API_BASE}/transactions/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ transactions: uploadedData.transactions })
+        body: JSON.stringify({ 
+          transactions: uploadedData.transactions,
+          username: authUser  // Add uploader username
+        })
       });
 
       const data = await response.json();
