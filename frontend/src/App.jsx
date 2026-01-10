@@ -3,8 +3,8 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import LandingPage from './LandingPage';
 import LoginPage from './LoginPage';
 import SignUpPage from './SignUpPage';
-// import ForgotPasswordPage from './ForgotPasswordPage';
-// import ResetPasswordPage from './ResetPasswordPage';
+import ForgotPasswordPage from './ForgotPasswordPage';
+import ResetPasswordPage from './ResetPasswordPage';
 import TaskTracker from './TaskTracker';
 import MobileTaskTracker from './mobile-prototype/MobileTaskTracker';
 import API_BASE from './config';
@@ -107,8 +107,8 @@ const App = () => {
       <Route path="/signup" element={
         authToken ? <Navigate to="/app" /> : <SignUpPage />
       } />
-      {/*<Route path="/forgot-password" element={<ForgotPasswordPage />} />*/}
-      {/*<Route path="/reset-password" element={<ResetPasswordPage />} />*/}
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
 
       {/* Protected route */}
       <Route path="/app" element={
