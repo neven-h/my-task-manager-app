@@ -1293,7 +1293,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                 >
                     <div style={{
                         width: '100%',
-                        height: '92vh',
+                        maxHeight: '90vh',
                         background: '#fff',
                         borderRadius: '16px 16px 0 0',
                         border: '3px solid #000',
@@ -1338,7 +1338,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                         </div>
 
                         {/* Modal Body */}
-                        <div style={{padding: '20px'}}>
+                        <div style={{padding: '20px', paddingBottom: '100px'}}>
                             {/* Title */}
                             <div style={{marginBottom: '20px'}}>
                                 <label style={{
