@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Filter, CheckCircle, Circle, Edit2, Trash2, X, Calendar, Clock, Tag, DollarSign, Users, Menu, LogOut, Download, Upload, RefreshCw, Copy } from 'lucide-react';
+import { Plus, Filter, CheckCircle, Circle, Edit2, Trash2, X, Calendar, Clock, Tag, DollarSign, Users, Menu, LogOut, Download, Upload, RefreshCw, Copy, BarChart3 } from 'lucide-react';
 import API_BASE from '../config';
 
 const DRAFT_STORAGE_KEY = 'taskTracker_mobile_draft';
@@ -886,8 +886,35 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
                 </div>
               </div>
 
-              {/* Transactions - only for limited users */}
-              {isLimitedUser && (
+              {/* Stats - for ALL users */}
+              <div>
+                <h3 style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 900,
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px',
+                  marginBottom: '12px',
+                  fontFamily: FONT_STACK
+                }}>
+                  Analytics
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <button
+                    className="mobile-btn"
+                    onClick={() => {
+                      alert('Stats view coming soon for mobile!');
+                      setShowMobileSidebar(false);
+                    }}
+                    style={{ width: '100%', justifyContent: 'flex-start' }}
+                  >
+                    <BarChart3 size={16} style={{ marginRight: '8px' }} />
+                    View Stats
+                  </button>
+                </div>
+              </div>
+
+              {/* Bank Transactions - for ALL users (admin, shared, limited) */}
+              {(isAdmin || isSharedUser || isLimitedUser) && (
                 <div>
                   <h3 style={{
                     fontSize: '0.75rem',
@@ -897,22 +924,33 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
                     marginBottom: '12px',
                     fontFamily: FONT_STACK
                   }}>
-                    Transactions
+                    Bank Transactions
                   </h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <button
                       className="mobile-btn"
                       onClick={() => {
-                        document.getElementById('limited-user-transaction-upload').click();
+                        alert('Bank Transactions view coming soon for mobile! Use desktop version.');
+                        setShowMobileSidebar(false);
+                      }}
+                      style={{ width: '100%', justifyContent: 'flex-start' }}
+                    >
+                      <DollarSign size={16} style={{ marginRight: '8px' }} />
+                      View Transactions
+                    </button>
+                    <button
+                      className="mobile-btn"
+                      onClick={() => {
+                        document.getElementById('mobile-transaction-upload').click();
                       }}
                       style={{ width: '100%', justifyContent: 'flex-start' }}
                     >
                       <Upload size={16} style={{ marginRight: '8px' }} />
-                      Upload Transactions
+                      Upload File
                     </button>
                     <input
                       type="file"
-                      id="limited-user-transaction-upload"
+                      id="mobile-transaction-upload"
                       accept=".csv,.xlsx,.xls"
                       style={{ display: 'none' }}
                       onChange={async (e) => {
