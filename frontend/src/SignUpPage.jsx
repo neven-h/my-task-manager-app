@@ -1,570 +1,321 @@
 import React, { useState } from 'react';
-import { ArrowLeft, UserPlus, User, Lock, Mail, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 
-const SignUpPage = ({ onBack, onSignUpSuccess }) => {
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5050/api';
+
+const SignUpPage = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    username: '',
     email: '',
+    username: '',
     password: '',
     confirmPassword: ''
   });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState({
+    hasLength: false,
+    hasUppercase: false,
+    hasNumber: false,
+    hasSymbol: false
+  });
 
-  const validateForm = () => {
-    if (!formData.username.trim()) {
-      setError('Username is required');
-      return false;
+  const checkPasswordStrength = (password) => {
+    setPasswordStrength({
+      hasLength: password.length >= 8,
+      hasUppercase: /[A-Z]/.test(password),
+      hasNumber: /[0-9]/.test(password),
+      hasSymbol: /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)
+    });
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    if (name === 'password') {
+      checkPasswordStrength(value);
     }
-    if (formData.username.length < 3) {
-      setError('Username must be at least 3 characters');
-      return false;
-    }
-    if (!formData.email.trim()) {
-      setError('Email is required');
-      return false;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      setError('Please enter a valid email address');
-      return false;
-    }
-    if (!formData.password) {
-      setError('Password is required');
-      return false;
-    }
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return false;
-    }
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return false;
-    }
-    return true;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    setSuccess('');
 
-    if (!validateForm()) {
+    // Validate passwords match
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    // Check all password requirements
+    if (!passwordStrength.hasLength || !passwordStrength.hasUppercase || 
+        !passwordStrength.hasNumber || !passwordStrength.hasSymbol) {
+      setError('Password does not meet all requirements');
       return;
     }
 
     setLoading(true);
 
-    // Simulate API call
-    setTimeout(() => {
-      // In a real app, you would make an API call here
-      // For now, we'll just show success and store in localStorage
-      const userData = {
-        username: formData.username,
-        email: formData.email,
-        createdAt: new Date().toISOString()
-      };
+    try {
+      const response = await fetch(`${API_BASE}/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          username: formData.username,
+          password: formData.password
+        })
+      });
 
-      // Store the new user (in a real app, this would be handled by the backend)
-      localStorage.setItem('pendingUser', JSON.stringify(userData));
+      const data = await response.json();
 
-      setSuccess('Account created successfully! Redirecting to login...');
+      if (response.ok) {
+        alert('Account created successfully! You can now log in.');
+        navigate('/login');
+      } else {
+        setError(data.error || 'Failed to create account');
+      }
+    } catch (err) {
+      setError('Network error. Please try again.');
+    } finally {
       setLoading(false);
-
-      // Redirect to login after 2 seconds
-      setTimeout(() => {
-        if (onSignUpSuccess) {
-          onSignUpSuccess();
-        } else {
-          onBack();
-        }
-      }, 2000);
-    }, 1000);
+    }
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
+  const allRequirementsMet = Object.values(passwordStrength).every(v => v);
 
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'url(/background.jpg)',
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      backgroundRepeat: 'no-repeat',
+      background: '#f8f8f8',
       display: 'flex',
-      flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-      position: 'relative',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       padding: '20px'
     }}>
-      {/* Dark overlay */}
       <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(0, 0, 0, 0.6)',
-        pointerEvents: 'none'
-      }} />
-
-      {/* Back button */}
-      <button
-        onClick={onBack}
-        style={{
-          position: 'absolute',
-          top: '30px',
-          left: '30px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          padding: '12px 24px',
-          fontSize: '1rem',
-          fontWeight: '700',
-          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-          color: 'white',
-          background: 'rgba(255, 255, 255, 0.1)',
-          border: '1px solid rgba(255, 255, 255, 0.3)',
-          borderRadius: '30px',
-          cursor: 'pointer',
-          transition: 'all 0.3s ease',
-          zIndex: 20,
-          textTransform: 'uppercase',
-          letterSpacing: '1px'
-        }}
-        onMouseEnter={(e) => {
-          e.target.style.background = 'rgba(255, 255, 255, 0.2)';
-        }}
-        onMouseLeave={(e) => {
-          e.target.style.background = 'rgba(255, 255, 255, 0.1)';
-        }}
-      >
-        <ArrowLeft size={18} />
-        Back
-      </button>
-
-      {/* Sign-up card */}
-      <div style={{
-        background: 'rgba(255, 255, 255, 0.95)',
-        borderRadius: '24px',
-        padding: '50px 40px',
+        background: 'white',
+        border: '3px solid #000',
+        padding: '40px',
         width: '100%',
-        maxWidth: '480px',
-        boxShadow: '0 25px 50px rgba(0, 0, 0, 0.3)',
-        zIndex: 10
+        maxWidth: '460px',
+        boxShadow: '8px 8px 0 #000'
       }}>
-        {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '80px',
-            height: '80px',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #dc3545 0%, #ffc107 100%)',
-            marginBottom: '20px',
-            boxShadow: '0 10px 30px rgba(220, 53, 69, 0.3)'
-          }}>
-            <UserPlus size={36} color="white" />
-          </div>
-          <h2 style={{
-            color: '#1a1a1a',
-            fontSize: '1.8rem',
-            fontWeight: '900',
-            margin: '0 0 10px 0',
-            textTransform: 'uppercase',
-            letterSpacing: '-1px'
-          }}>
-            Sign Up
-          </h2>
-          <p style={{
-            color: '#666',
-            fontSize: '0.95rem',
-            margin: 0
-          }}>
-            Create your World Wide Pitz account
-          </p>
-        </div>
+        <h1 style={{
+          fontSize: '2rem',
+          fontWeight: 900,
+          textTransform: 'uppercase',
+          marginBottom: '8px',
+          letterSpacing: '-1px'
+        }}>
+          Sign Up
+        </h1>
+        <p style={{ marginBottom: '32px', color: '#666', fontSize: '0.95rem' }}>
+          Create your account
+        </p>
 
-        {/* Error message */}
         {error && (
           <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
+            background: '#dc3545',
+            color: 'white',
             padding: '12px 16px',
-            background: 'rgba(220, 53, 69, 0.1)',
-            border: '1px solid rgba(220, 53, 69, 0.3)',
-            borderRadius: '12px',
             marginBottom: '20px',
-            color: '#dc3545'
+            border: '2px solid #000',
+            fontWeight: 600
           }}>
-            <AlertCircle size={20} />
-            <span>{error}</span>
+            {error}
           </div>
         )}
 
-        {/* Success message */}
-        {success && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            padding: '12px 16px',
-            background: 'rgba(5, 150, 105, 0.1)',
-            border: '1px solid rgba(5, 150, 105, 0.3)',
-            borderRadius: '12px',
-            marginBottom: '20px',
-            color: '#059669'
-          }}>
-            <CheckCircle size={20} />
-            <span>{success}</span>
-          </div>
-        )}
-
-        {/* Form */}
         <form onSubmit={handleSubmit}>
-          {/* Username field */}
+          {/* Email */}
           <div style={{ marginBottom: '20px' }}>
             <label style={{
               display: 'block',
-              color: '#333',
-              fontSize: '0.9rem',
-              fontWeight: '600',
+              fontWeight: 700,
               marginBottom: '8px',
               textTransform: 'uppercase',
-              letterSpacing: '0.5px'
+              fontSize: '0.85rem'
             }}>
-              Username
+              Email *
             </label>
-            <div style={{ position: 'relative' }}>
-              <User
-                size={20}
-                style={{
-                  position: 'absolute',
-                  left: '16px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: '#999'
-                }}
-              />
-              <input
-                type="text"
-                name="username"
-                value={formData.username}
-                onChange={handleChange}
-                required
-                style={{
-                  width: '100%',
-                  padding: '14px 16px 14px 48px',
-                  background: '#f5f5f5',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '12px',
-                  color: '#1a1a1a',
-                  fontSize: '1rem',
-                  outline: 'none',
-                  transition: 'all 0.3s ease',
-                  boxSizing: 'border-box'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#ffc107';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(255, 193, 7, 0.2)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#e0e0e0';
-                  e.target.style.boxShadow = 'none';
-                }}
-                placeholder="Choose a username"
-              />
-            </div>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '2px solid #000',
+                fontSize: '1rem',
+                fontFamily: 'inherit'
+              }}
+              placeholder="your.email@example.com"
+            />
           </div>
 
-          {/* Email field */}
+          {/* Username */}
           <div style={{ marginBottom: '20px' }}>
             <label style={{
               display: 'block',
-              color: '#333',
-              fontSize: '0.9rem',
-              fontWeight: '600',
+              fontWeight: 700,
               marginBottom: '8px',
               textTransform: 'uppercase',
-              letterSpacing: '0.5px'
+              fontSize: '0.85rem'
             }}>
-              Email
+              Username *
             </label>
-            <div style={{ position: 'relative' }}>
-              <Mail
-                size={20}
-                style={{
-                  position: 'absolute',
-                  left: '16px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: '#999'
-                }}
-              />
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                style={{
-                  width: '100%',
-                  padding: '14px 16px 14px 48px',
-                  background: '#f5f5f5',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '12px',
-                  color: '#1a1a1a',
-                  fontSize: '1rem',
-                  outline: 'none',
-                  transition: 'all 0.3s ease',
-                  boxSizing: 'border-box'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#ffc107';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(255, 193, 7, 0.2)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#e0e0e0';
-                  e.target.style.boxShadow = 'none';
-                }}
-                placeholder="your@email.com"
-              />
-            </div>
+            <input
+              type="text"
+              name="username"
+              value={formData.username}
+              onChange={handleChange}
+              required
+              minLength={3}
+              pattern="[a-zA-Z0-9_]+"
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '2px solid #000',
+                fontSize: '1rem',
+                fontFamily: 'inherit'
+              }}
+              placeholder="username"
+            />
+            <small style={{ color: '#666', fontSize: '0.8rem' }}>
+              Letters, numbers, and underscores only (min 3 chars)
+            </small>
           </div>
 
-          {/* Password field */}
+          {/* Password */}
           <div style={{ marginBottom: '20px' }}>
             <label style={{
               display: 'block',
-              color: '#333',
-              fontSize: '0.9rem',
-              fontWeight: '600',
+              fontWeight: 700,
               marginBottom: '8px',
               textTransform: 'uppercase',
-              letterSpacing: '0.5px'
+              fontSize: '0.85rem'
             }}>
-              Password
+              Password *
             </label>
-            <div style={{ position: 'relative' }}>
-              <Lock
-                size={20}
-                style={{
-                  position: 'absolute',
-                  left: '16px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: '#999'
-                }}
-              />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                required
-                style={{
-                  width: '100%',
-                  padding: '14px 48px 14px 48px',
-                  background: '#f5f5f5',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '12px',
-                  color: '#1a1a1a',
-                  fontSize: '1rem',
-                  outline: 'none',
-                  transition: 'all 0.3s ease',
-                  boxSizing: 'border-box'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#ffc107';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(255, 193, 7, 0.2)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#e0e0e0';
-                  e.target.style.boxShadow = 'none';
-                }}
-                placeholder="Choose a password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: 'absolute',
-                  right: '16px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '5px',
-                  color: '#999'
-                }}
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
+            <input
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '2px solid #000',
+                fontSize: '1rem',
+                fontFamily: 'inherit'
+              }}
+              placeholder="••••••••"
+            />
+            
+            {/* Password Strength Indicator */}
+            <div style={{ marginTop: '12px' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '6px' }}>
+                Password Requirements:
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ 
+                  color: passwordStrength.hasLength ? '#28a745' : '#666',
+                  fontSize: '0.8rem'
+                }}>
+                  {passwordStrength.hasLength ? '✓' : '○'} At least 8 characters
+                </div>
+                <div style={{ 
+                  color: passwordStrength.hasUppercase ? '#28a745' : '#666',
+                  fontSize: '0.8rem'
+                }}>
+                  {passwordStrength.hasUppercase ? '✓' : '○'} One uppercase letter
+                </div>
+                <div style={{ 
+                  color: passwordStrength.hasNumber ? '#28a745' : '#666',
+                  fontSize: '0.8rem'
+                }}>
+                  {passwordStrength.hasNumber ? '✓' : '○'} One number
+                </div>
+                <div style={{ 
+                  color: passwordStrength.hasSymbol ? '#28a745' : '#666',
+                  fontSize: '0.8rem'
+                }}>
+                  {passwordStrength.hasSymbol ? '✓' : '○'} One symbol (!@#$%^&*...)
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Confirm Password field */}
-          <div style={{ marginBottom: '30px' }}>
+          {/* Confirm Password */}
+          <div style={{ marginBottom: '24px' }}>
             <label style={{
               display: 'block',
-              color: '#333',
-              fontSize: '0.9rem',
-              fontWeight: '600',
+              fontWeight: 700,
               marginBottom: '8px',
               textTransform: 'uppercase',
-              letterSpacing: '0.5px'
+              fontSize: '0.85rem'
             }}>
-              Confirm Password
+              Confirm Password *
             </label>
-            <div style={{ position: 'relative' }}>
-              <Lock
-                size={20}
-                style={{
-                  position: 'absolute',
-                  left: '16px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: '#999'
-                }}
-              />
-              <input
-                type={showConfirmPassword ? 'text' : 'password'}
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                required
-                style={{
-                  width: '100%',
-                  padding: '14px 48px 14px 48px',
-                  background: '#f5f5f5',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '12px',
-                  color: '#1a1a1a',
-                  fontSize: '1rem',
-                  outline: 'none',
-                  transition: 'all 0.3s ease',
-                  boxSizing: 'border-box'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#ffc107';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(255, 193, 7, 0.2)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = '#e0e0e0';
-                  e.target.style.boxShadow = 'none';
-                }}
-                placeholder="Confirm your password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                style={{
-                  position: 'absolute',
-                  right: '16px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '5px',
-                  color: '#999'
-                }}
-              >
-                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
+            <input
+              type="password"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              required
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '2px solid #000',
+                fontSize: '1rem',
+                fontFamily: 'inherit'
+              }}
+              placeholder="••••••••"
+            />
           </div>
 
-          {/* Submit button */}
+          {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading || success}
+            disabled={loading || !allRequirementsMet}
             style={{
               width: '100%',
-              padding: '16px',
-              background: (loading || success)
-                ? 'rgba(220, 53, 69, 0.5)'
-                : 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
-              border: 'none',
-              borderRadius: '12px',
+              padding: '14px',
+              background: allRequirementsMet ? '#dc3545' : '#ccc',
               color: 'white',
-              fontSize: '1.1rem',
-              fontWeight: '700',
-              cursor: (loading || success) ? 'not-allowed' : 'pointer',
-              transition: 'all 0.3s ease',
-              boxShadow: '0 10px 30px rgba(220, 53, 69, 0.3)',
+              border: '2px solid #000',
+              fontSize: '1rem',
+              fontWeight: 700,
               textTransform: 'uppercase',
-              letterSpacing: '1px'
-            }}
-            onMouseEnter={(e) => {
-              if (!loading && !success) {
-                e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 15px 40px rgba(220, 53, 69, 0.4)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.transform = 'translateY(0)';
-              e.target.style.boxShadow = '0 10px 30px rgba(220, 53, 69, 0.3)';
+              cursor: allRequirementsMet ? 'pointer' : 'not-allowed',
+              boxShadow: '4px 4px 0 #000',
+              marginBottom: '20px'
             }}
           >
-            {loading ? 'Creating Account...' : success ? 'Success!' : 'Sign Up'}
+            {loading ? 'Creating Account...' : 'Create Account'}
           </button>
+
+          {/* Back to Login */}
+          <div style={{ textAlign: 'center' }}>
+            <Link 
+              to="/login"
+              style={{
+                color: '#0066cc',
+                textDecoration: 'none',
+                fontWeight: 600,
+                fontSize: '0.9rem'
+              }}
+            >
+              ← Back to Login
+            </Link>
+          </div>
         </form>
-
-        {/* Color bar */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: '8px',
-          marginTop: '30px'
-        }}>
-          <div style={{
-            width: '40px',
-            height: '4px',
-            background: '#dc3545',
-            borderRadius: '2px'
-          }} />
-          <div style={{
-            width: '40px',
-            height: '4px',
-            background: '#ffc107',
-            borderRadius: '2px'
-          }} />
-          <div style={{
-            width: '40px',
-            height: '4px',
-            background: '#0d6efd',
-            borderRadius: '2px'
-          }} />
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div style={{
-        position: 'absolute',
-        bottom: '30px',
-        color: 'rgba(255, 255, 255, 0.4)',
-        fontSize: '0.9rem',
-        letterSpacing: '1px',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-        zIndex: 10
-      }}>
-        drpitz.club
       </div>
     </div>
   );
