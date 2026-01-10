@@ -1739,12 +1739,12 @@ useEffect(() => {
                                 exportHoursReport();
                                 setShowMobileSidebar(false);
                             }} disabled={tasks.length === 0} style={{width: '100%'}}>
-                                <Download size={16} style={{marginRight: '8px'}}/>Export Hours Report
+                                <Download size={16} style={{marginRight: '8px'}}/>Export Tasks
                             </button>
                             <button className="btn btn-yellow"
                                     onClick={() => document.getElementById('import-hours-report-mobile').click()}
                                     disabled={loading} style={{width: '100%'}}>
-                                <Upload size={16} style={{marginRight: '8px'}}/>Import Hours Report
+                                <Upload size={16} style={{marginRight: '8px'}}/>Import Tasks
                             </button>
                             <input type="file" id="import-hours-report-mobile" accept=".csv,.xlsx,.xls"
                                    onChange={(e) => {
