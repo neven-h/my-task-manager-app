@@ -18,7 +18,8 @@ import {
     RefreshCw,
     Copy,
     BarChart3,
-    ArrowLeft
+    ArrowLeft,
+    Share2
 } from 'lucide-react';
 import BankTransactions from '../BankTransactions';
 import API_BASE from '../config';
@@ -233,6 +234,9 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
     const [showTaskModal, setShowTaskModal] = useState(false);
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
     const [editingTask, setEditingTask] = useState(null);
+    const [showShareModal, setShowShareModal] = useState(false);
+    const [shareEmail, setShareEmail] = useState('');
+    const [sharingTask, setSharingTask] = useState(null);
     const [loading, setLoading] = useState(false);
     const [tagInput, setTagInput] = useState('');
     const formChangeTimeoutRef = useRef(null);
@@ -489,6 +493,53 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
             shared: task.shared || false
         });
         setShowTaskModal(true);
+    };
+
+    const openShareModal = (task) => {
+        setSharingTask(task);
+        setShareEmail('');
+        setShowShareModal(true);
+    };
+
+    const closeShareModal = () => {
+        setShowShareModal(false);
+        setSharingTask(null);
+        setShareEmail('');
+    };
+
+    const shareTask = async () => {
+        if (!shareEmail.trim()) {
+            alert('Please enter an email address');
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(shareEmail)) {
+            alert('Please enter a valid email address');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const response = await fetch(`${API_BASE}/tasks/${sharingTask.id}/share`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email: shareEmail.trim()})
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to share task');
+            }
+
+            alert(`Task shared successfully with ${shareEmail}!`);
+            closeShareModal();
+        } catch (err) {
+            alert(err.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     // Swipe handlers
@@ -850,6 +901,19 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                                     }}
                                                 >
                                                     <Copy size={20} color={THEME.secondary}/>
+                                                </button>
+
+                                                {/* Share button */}
+                                                <button
+                                                    onClick={() => openShareModal(task)}
+                                                    style={{
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        padding: '8px',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    <Share2 size={20} color={THEME.accent}/>
                                                 </button>
 
                                                 {/* Edit button */}
@@ -1668,6 +1732,102 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                     Delete Task
                                 </button>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Share Task Modal */}
+            {showShareModal && sharingTask && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0,0,0,0.5)',
+                        zIndex: 300,
+                        display: 'flex',
+                        alignItems: 'flex-end'
+                    }}
+                    onClick={closeShareModal}
+                >
+                    <div
+                        style={{
+                            width: '100%',
+                            maxHeight: '80vh',
+                            background: '#fff',
+                            borderRadius: '16px 16px 0 0',
+                            border: '3px solid #000',
+                            borderBottom: 'none',
+                            padding: '24px',
+                            fontFamily: FONT_STACK
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+                            <h2 style={{fontSize: '1.5rem', fontWeight: 900, margin: 0, textTransform: 'uppercase'}}>
+                                Share Task
+                            </h2>
+                            <button onClick={closeShareModal} style={{background: 'none', border: 'none', padding: '8px'}}>
+                                <X size={28} />
+                            </button>
+                        </div>
+
+                        <p style={{color: THEME.muted, marginBottom: '24px', fontSize: '0.95rem'}}>
+                            Share "{sharingTask.title}" via email
+                        </p>
+
+                        <div style={{marginBottom: '24px'}}>
+                            <label style={{
+                                display: 'block',
+                                marginBottom: '8px',
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                fontSize: '0.85rem',
+                                letterSpacing: '0.5px'
+                            }}>
+                                Email Address *
+                            </label>
+                            <input
+                                type="email"
+                                placeholder="recipient@example.com"
+                                value={shareEmail}
+                                onChange={(e) => setShareEmail(e.target.value)}
+                                onKeyPress={(e) => {
+                                    if (e.key === 'Enter' && shareEmail.trim()) {
+                                        shareTask();
+                                    }
+                                }}
+                                style={{
+                                    width: '100%',
+                                    padding: '12px',
+                                    border: '2px solid #000',
+                                    fontSize: '1rem',
+                                    fontFamily: 'inherit'
+                                }}
+                            />
+                        </div>
+
+                        <div style={{display: 'flex', gap: '12px'}}>
+                            <button
+                                onClick={closeShareModal}
+                                className="mobile-btn"
+                                style={{flex: 1}}
+                                disabled={loading}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={shareTask}
+                                className="mobile-btn mobile-btn-primary"
+                                style={{flex: 1}}
+                                disabled={loading || !shareEmail.trim()}
+                            >
+                                <Share2 size={16} style={{marginRight: '8px'}}/>
+                                {loading ? 'Sharing...' : 'Share'}
+                            </button>
                         </div>
                     </div>
                 </div>
