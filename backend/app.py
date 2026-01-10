@@ -6,6 +6,8 @@ import secrets
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from flask_mail import Mail, Message
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import mysql.connector
 from mysql.connector import Error, MySQLConnection
 from datetime import datetime, date, timedelta
@@ -21,16 +23,40 @@ import chardet
 from dotenv import load_dotenv
 import re
 import bcrypt
+import jwt
+from functools import wraps
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
 
+# Security Configuration
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+if not app.config['SECRET_KEY']:
+    raise ValueError("SECRET_KEY environment variable must be set")
+
+JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
+if not JWT_SECRET_KEY:
+    raise ValueError("JWT_SECRET_KEY environment variable must be set")
+
+JWT_ALGORITHM = 'HS256'
+JWT_EXPIRATION_HOURS = 24
+
 # Configure CORS - allow frontend origins
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3004')
-CORS(app, origins=[FRONTEND_URL, 'http://localhost:3004', 'http://localhost:3005', 'https://drpitz.club',
-                   'https://www.drpitz.club'])
+CORS(app,
+     origins=[FRONTEND_URL, 'http://localhost:3004', 'http://localhost:3005', 'https://drpitz.club', 'https://www.drpitz.club'],
+     supports_credentials=True,
+     max_age=3600)
+
+# Configure rate limiting
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
 
 # Configure email
 app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
@@ -50,6 +76,42 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 # Create uploads folder if it doesn't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 DEBUG = os.getenv('DEBUG', 'false').lower() == 'true'
+
+
+# Security Headers Middleware
+@app.after_request
+def add_security_headers(response):
+    """Add security headers to all responses"""
+    # Prevent clickjacking
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+
+    # Prevent MIME type sniffing
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+
+    # Enable XSS protection
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+
+    # Strict Transport Security (HSTS) - only in production
+    if not DEBUG and request.is_secure:
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+
+    # Content Security Policy
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: https:; "
+        "font-src 'self' data:; "
+        "connect-src 'self' " + FRONTEND_URL + ";"
+    )
+
+    # Referrer Policy
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+
+    # Permissions Policy
+    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+
+    return response
 
 
 def sanitize_csv_field(value):
@@ -92,16 +154,93 @@ def sanitize_db_name(name: str) -> str:
     return name
 
 
-USERS = {
-    'pitz': {'password': os.getenv('USER_PITZ_PASSWORD', 'default_password'), 'role': 'admin'},
-    'benny': {'password': os.getenv('USER_BENNY_PASSWORD', 'default_password'), 'role': 'shared'},
-    'Hillel': {'password': os.getenv('USER_HILLEL_PASSWORD', 'default_password'), 'role': 'limited'},
-    'Olivia': {'password': os.getenv('USER_OLIVIA_PASSWORD', 'default_password'), 'role': 'limited'}
-}
+# Hardcoded users with hashed passwords (for backward compatibility)
+# These passwords are hashed with bcrypt for security
+# In production, migrate all users to the database
+def _get_hardcoded_users():
+    """Load hardcoded users with bcrypt-hashed passwords from environment variables"""
+    required_passwords = ['USER_PITZ_PASSWORD', 'USER_BENNY_PASSWORD', 'USER_HILLEL_PASSWORD', 'USER_OLIVIA_PASSWORD']
+    if not all(os.getenv(var) for var in required_passwords):
+        raise ValueError(f"{' and '.join(required_passwords)} must be set")
 
-required_passwords = ['USER_PITZ_PASSWORD', 'USER_BENNY_PASSWORD', 'USER_HILLEL_PASSWORD', 'USER_OLIVIA_PASSWORD']
-if not all(os.getenv(var) for var in required_passwords):
-    raise ValueError(f"{' and '.join(required_passwords)} must be set")
+    return {
+        'pitz': {
+            'password_hash': bcrypt.hashpw(os.getenv('USER_PITZ_PASSWORD').encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
+            'role': 'admin'
+        },
+        'benny': {
+            'password_hash': bcrypt.hashpw(os.getenv('USER_BENNY_PASSWORD').encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
+            'role': 'shared'
+        },
+        'Hillel': {
+            'password_hash': bcrypt.hashpw(os.getenv('USER_HILLEL_PASSWORD').encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
+            'role': 'limited'
+        },
+        'Olivia': {
+            'password_hash': bcrypt.hashpw(os.getenv('USER_OLIVIA_PASSWORD').encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
+            'role': 'limited'
+        }
+    }
+
+USERS = _get_hardcoded_users()
+
+
+# Error Handling Helper
+def handle_error(e: Exception, default_message: str = "Internal server error", status_code: int = 500):
+    """
+    Securely handle errors by logging them and returning safe error messages
+    Only exposes detailed error information in DEBUG mode
+    """
+    print(f"Error: {str(e)}")  # Log for debugging
+    if DEBUG:
+        return jsonify({'error': f'{default_message}: {str(e)}'}), status_code
+    return jsonify({'error': default_message}), status_code
+
+
+# JWT Helper Functions
+def generate_jwt_token(username: str, role: str) -> str:
+    """Generate a secure JWT token for authenticated users"""
+    payload = {
+        'username': username,
+        'role': role,
+        'exp': datetime.utcnow() + timedelta(hours=JWT_EXPIRATION_HOURS),
+        'iat': datetime.utcnow()
+    }
+    return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+
+
+def verify_jwt_token(token: str) -> dict:
+    """Verify and decode a JWT token"""
+    try:
+        # Remove 'Bearer ' prefix if present
+        if token.startswith('Bearer '):
+            token = token[7:]
+
+        payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM])
+        return {'valid': True, 'payload': payload}
+    except jwt.ExpiredSignatureError:
+        return {'valid': False, 'error': 'Token has expired'}
+    except jwt.InvalidTokenError as e:
+        return {'valid': False, 'error': f'Invalid token: {str(e)}'}
+
+
+def token_required(f):
+    """Decorator to require valid JWT token for protected routes"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization')
+
+        if not token:
+            return jsonify({'error': 'Authentication token is missing'}), 401
+
+        result = verify_jwt_token(token)
+        if not result['valid']:
+            return jsonify({'error': result.get('error', 'Invalid token')}), 401
+
+        # Pass the payload to the decorated function
+        return f(result['payload'], *args, **kwargs)
+
+    return decorated
 
 
 @contextmanager
@@ -587,23 +726,36 @@ def init_db():
 
 
 @app.route('/api/login', methods=['POST'])
+@limiter.limit("10 per minute")  # Rate limit: max 10 login attempts per minute
 def login():
     """Authenticate user and return role - checks database first, then hardcoded users"""
     try:
         data = request.json
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': 'Invalid request data'
+            }), 400
+
         username = data.get('username', '').strip()
         password = data.get('password', '')
+
+        if not username or not password:
+            return jsonify({
+                'success': False,
+                'error': 'Username and password are required'
+            }), 400
 
         # First, check database for registered users
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
             cursor.execute("""
-                SELECT id, username, email, password_hash, role, is_active 
-                FROM users 
+                SELECT id, username, email, password_hash, role, is_active
+                FROM users
                 WHERE username = %s
             """, (username,))
             user = cursor.fetchone()
-            
+
             if user:
                 # Check if user is active
                 if not user['is_active']:
@@ -611,32 +763,40 @@ def login():
                         'success': False,
                         'error': 'Account is disabled'
                     }), 401
-                
+
                 # Verify password with bcrypt
                 if bcrypt.checkpw(password.encode('utf-8'), user['password_hash'].encode('utf-8')):
+                    # Generate secure JWT token
+                    token = generate_jwt_token(user['username'], user['role'])
                     return jsonify({
                         'success': True,
                         'username': user['username'],
                         'role': user['role'],
-                        'token': f'auth-token-{user["username"]}-{datetime.now().timestamp()}'
+                        'token': token
                     })
-        
+
         # Fallback to hardcoded users (backward compatibility)
-        if username in USERS and USERS[username]['password'] == password:
-            return jsonify({
-                'success': True,
-                'username': username,
-                'role': USERS[username]['role'],
-                'token': f'auth-token-{username}-{datetime.now().timestamp()}'
-            })
-        
+        if username in USERS:
+            if bcrypt.checkpw(password.encode('utf-8'), USERS[username]['password_hash'].encode('utf-8')):
+                # Generate secure JWT token
+                token = generate_jwt_token(username, USERS[username]['role'])
+                return jsonify({
+                    'success': True,
+                    'username': username,
+                    'role': USERS[username]['role'],
+                    'token': token
+                })
+
         return jsonify({
             'success': False,
             'error': 'Invalid username or password'
         }), 401
     except Exception as e:
+        # Log the error but don't expose internal details to the client
         print(f"Login error: {e}")
-        return jsonify({'error': str(e)}), 500
+        if DEBUG:
+            return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @app.route('/api/auth/signup', methods=['POST'])
@@ -697,10 +857,9 @@ def signup():
                 'message': 'Account created successfully',
                 'username': username
             }), 201
-            
+
     except Exception as e:
-        print(f"Signup error: {e}")
-        return jsonify({'error': str(e)}), 500
+        return handle_error(e, "Failed to create account")
 
 
 @app.route('/api/auth/forgot-password', methods=['POST'])
@@ -1160,103 +1319,6 @@ def delete_task(task_id):
 
     except Error as e:
         return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/tasks/<int:task_id>/share', methods=['POST'])
-def share_task(task_id):
-    """Share a task via email"""
-    try:
-        data = request.json
-        recipient_email = data.get('email', '').strip()
-        
-        if not recipient_email:
-            return jsonify({'error': 'Email address is required'}), 400
-        
-        # Validate email format
-        import re
-        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        if not re.match(email_regex, recipient_email):
-            return jsonify({'error': 'Invalid email format'}), 400
-        
-        with get_db_connection() as connection:
-            cursor = connection.cursor(dictionary=True)
-            
-            # Get task details
-            cursor.execute("""
-                SELECT t.*, GROUP_CONCAT(DISTINCT c.name) as categories
-                FROM tasks t
-                LEFT JOIN task_categories tc ON t.id = tc.task_id
-                LEFT JOIN categories c ON tc.category_id = c.id
-                WHERE t.id = %s
-                GROUP BY t.id
-            """, (task_id,))
-            
-            task = cursor.fetchone()
-            
-            if not task:
-                return jsonify({'error': 'Task not found'}), 404
-            
-            # Format task details for email
-            categories = task['categories'].split(',') if task['categories'] else []
-            
-            # Build email content
-            email_body = f"""
-Hello!
-
-Someone has shared a task with you from their Task Tracker:
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📋 TASK: {task['title']}
-
-"""
-            
-            if task['description']:
-                email_body += f"📝 Description:\n{task['description']}\n\n"
-            
-            if task['task_date']:
-                email_body += f"📅 Date: {task['task_date']}\n"
-            
-            if task['duration']:
-                email_body += f"⏱️  Duration: {task['duration']} hours\n"
-            
-            if task['client']:
-                email_body += f"👤 Client: {task['client']}\n"
-            
-            if categories and categories[0]:
-                email_body += f"🏷️  Categories: {', '.join(categories)}\n"
-            
-            if task['tags']:
-                email_body += f"🔖 Tags: {task['tags']}\n"
-            
-            email_body += f"\n📊 Status: {task['status'].title()}\n"
-            
-            if task['notes']:
-                email_body += f"\n📌 Notes:\n{task['notes']}\n"
-            
-            email_body += """
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-This task was shared from Task Tracker at drpitz.club
-"""
-            
-            # Send email
-            msg = Message(
-                subject=f"Shared Task: {task['title']}",
-                recipients=[recipient_email],
-                body=email_body
-            )
-            
-            mail.send(msg)
-            
-            return jsonify({
-                'success': True,
-                'message': f'Task shared successfully with {recipient_email}'
-            })
-    
-    except Exception as e:
-        print(f"Share task error: {e}")
-        return jsonify({'error': 'Failed to share task. Please try again.'}), 500
 
 
 @app.route('/api/tasks/<int:task_id>/toggle-status', methods=['PATCH'])
