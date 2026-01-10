@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Filter, CheckCircle, Circle, Edit2, Trash2, X, Calendar, Clock, Tag, DollarSign, Users, Menu, LogOut, Download, Upload, RefreshCw, Copy, BarChart3, ArrowLeft } from 'lucide-react';
+import { Plus, CheckCircle, Circle, Edit2, Trash2, X, Calendar, Clock, Tag, DollarSign, Users, Menu, LogOut, Download, Upload, RefreshCw, Copy, BarChart3, ArrowLeft } from 'lucide-react';
 import BankTransactions from '../BankTransactions';
 import API_BASE from '../config';
 
@@ -15,6 +15,7 @@ const MobileStatsView = ({ authUser, authRole, onBack }) => {
   const fetchStats = async () => {
     try {
       const response = await fetch(`${API_BASE}/stats?username=${authUser}&role=${authRole}`);
+      if (!response.ok) throw new Error(`Stats fetch failed: ${response.status}`);
       const data = await response.json();
       setStats(data);
     } catch (err) {
@@ -204,6 +205,12 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
         saveDraft();
       }, 1000);
     }
+    // cleanup to avoid leaking timers
+    return () => {
+      if (formChangeTimeoutRef.current) {
+        clearTimeout(formChangeTimeoutRef.current);
+      }
+    };
   }, [formData, showTaskModal]);
 
   const saveDraft = () => {
@@ -228,16 +235,16 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
     fetchCategories();
     fetchClients();
     fetchTags();
-  }, []);
+  }, [authUser, authRole]); // reload when auth context changes
 
   const fetchTasks = async () => {
     try {
       setLoading(true);
       console.log('Mobile: Fetching tasks with:', {username: authUser, role: authRole});
       const response = await fetch(`${API_BASE}/tasks?username=${authUser}&role=${authRole}`);
+      if (!response.ok) throw new Error(`Tasks fetch failed: ${response.status}`);
       const data = await response.json();
-      console.log('Mobile: Received tasks:', data.length, 'tasks');
-      // Sort: uncompleted first, then completed
+      console.log('Mobile: Received tasks:', (data || []).length, 'tasks');
       const sorted = (data || []).sort((a, b) => {
         if (a.status === 'uncompleted' && b.status === 'completed') return -1;
         if (a.status === 'completed' && b.status === 'uncompleted') return 1;
@@ -254,6 +261,7 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
   const fetchCategories = async () => {
     try {
       const response = await fetch(`${API_BASE}/categories`);
+      if (!response.ok) throw new Error(`Categories fetch failed: ${response.status}`);
       const data = await response.json();
       setCategories(data || []);
     } catch (err) {
@@ -264,9 +272,9 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
   const fetchClients = async () => {
     try {
       const response = await fetch(`${API_BASE}/clients`);
+      if (!response.ok) throw new Error(`Clients fetch failed: ${response.status}`);
       const data = await response.json();
-      // Extract client names from objects or strings
-      const clientNames = (data || []).map(client => 
+      const clientNames = (data || []).map(client =>
         typeof client === 'string' ? client : client.name || client.client || client
       );
       setClients(clientNames);
@@ -278,6 +286,7 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
   const fetchTags = async () => {
     try {
       const response = await fetch(`${API_BASE}/tags`);
+      if (!response.ok) throw new Error(`Tags fetch failed: ${response.status}`);
       const data = await response.json();
       setAllTags(data || []);
     } catch (err) {
@@ -324,7 +333,7 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
         ? `${API_BASE}/tasks/${editingTask.id}`
         : `${API_BASE}/tasks`;
 
-      await fetch(url, {
+      const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -334,11 +343,17 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
         })
       });
 
+      if (!response.ok) {
+        const errBody = await response.text().catch(() => null);
+        throw new Error(`Save failed: ${response.status} ${errBody || ''}`);
+      }
+
       await fetchTasks();
       clearDraft();
       closeModal();
     } catch (err) {
       console.error('Failed to save task:', err);
+      alert('Failed to save task. See console for details.');
     } finally {
       setLoading(false);
     }
@@ -884,8 +899,7 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
       >
         <Plus size={32} color="#fff" strokeWidth={3} />
       </button>
-      </> {/* End of tasks view */}
-      )}
+      </> )/* End of tasks view */}
 
       {/* Mobile Sidebar Menu */}
       {showMobileSidebar && (
@@ -1111,26 +1125,26 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
                         const file = e.target.files[0];
                         if (!file) return;
                         
-                        const formData = new FormData();
-                        formData.append('file', file);
-                        formData.append('transaction_type', 'credit'); // default to credit
-                        formData.append('username', authUser); // tag with username
-                        
+                        const uploadFormData = new FormData();
+                        uploadFormData.append('file', file);
+                        uploadFormData.append('transaction_type', 'credit'); // default to credit
+                        uploadFormData.append('username', authUser); // tag with username
+
                         try {
                           const response = await fetch(`${API_BASE}/transactions/upload`, {
                             method: 'POST',
-                            body: formData
+                            body: uploadFormData
                           });
                           
-                          const data = await response.json();
-                          
+                          const data = await response.json().catch(() => null);
+
                           if (response.ok) {
-                            alert(`Successfully uploaded ${data.transaction_count} transactions!`);
+                            alert(`Successfully uploaded ${data?.transaction_count || '0'} transactions!`);
                           } else {
-                            alert(`Error: ${data.error || 'Upload failed'}`);
+                            alert(`Error: ${data?.error || 'Upload failed'}`);
                           }
                         } catch (err) {
-                          alert(`Error uploading file: ${err.message}`);
+                          alert(`Error uploading file: ${err?.message || err}`);
                         }
                         
                         setShowMobileSidebar(false);
@@ -1413,7 +1427,12 @@ const MobileTaskTracker = ({ authRole, authUser, onLogout }) => {
                     type="text"
                     value={tagInput}
                     onChange={(e) => setTagInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddTag();
+                      }
+                    }}
                     placeholder="Add tag..."
                     list="tags-list"
                     style={{ flex: 1 }}
