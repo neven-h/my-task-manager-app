@@ -1535,9 +1535,33 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
                 )}
 
                 {filteredTransactions.length === 0 && (
-                  <p style={{ textAlign: 'center', color: colors.textLight, padding: '3rem', fontSize: '1.1rem' }}>
-                    No transactions found
-                  </p>
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '4rem 2rem',
+                    border: '3px solid #000',
+                    background: '#f8f8f8',
+                    margin: '2rem 0'
+                  }}>
+                    {monthTransactions.length === 0 ? (
+                      <>
+                        <p style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '12px', color: '#0066cc' }}>
+                          💰 Add Your First Transaction
+                        </p>
+                        <p style={{ color: '#666', fontSize: '1rem' }}>
+                          Click the "Add Transaction" button above to get started
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: '12px' }}>
+                          No transactions found
+                        </p>
+                        <p style={{ color: '#666', fontSize: '1rem' }}>
+                          Try adjusting your filters or search term
+                        </p>
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
             )}

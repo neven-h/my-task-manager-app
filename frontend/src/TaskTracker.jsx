@@ -1154,8 +1154,7 @@ useEffect(() => {
         }
         
         .sidebar {
-          border-right: 3px solid #000;
-          background: #f8f8f8;
+          display: none; /* Hidden - use hamburger menu instead */
         }
         
         /* Mobile Responsive Styles */
@@ -1434,6 +1433,16 @@ useEffect(() => {
                             Personal Assistant Management System
                         </p>
                     </div>
+
+                    {/* Filter/Search Button - Always visible */}
+                    <button
+                        className="btn btn-white"
+                        onClick={() => setShowMobileSidebar(true)}
+                        style={{padding: '10px', minWidth: 'auto', marginRight: '12px'}}
+                        title="Search & Filter"
+                    >
+                        <Filter size={24}/>
+                    </button>
 
                     {/* Mobile Menu Button */}
                     <button
@@ -2040,9 +2049,12 @@ useEffect(() => {
                                     border: '3px solid #000',
                                     background: '#f8f8f8'
                                 }}>
-                                    <p style={{fontSize: '1.2rem', fontWeight: 600, marginBottom: '12px'}}>No tasks
-                                        found</p>
-                                    <p style={{color: '#666'}}>Try adjusting your filters or add a new task</p>
+                                    <p style={{fontSize: '1.5rem', fontWeight: 700, marginBottom: '12px', color: '#dc3545'}}>
+                                        📋 Add Your First Task
+                                    </p>
+                                    <p style={{color: '#666', fontSize: '1rem'}}>
+                                        {isAdmin ? 'Click the "New Task" button above to get started' : 'Contact your administrator to add tasks'}
+                                    </p>
                                 </div>
                             ) : (
                                 <>
