@@ -128,7 +128,7 @@ useEffect(() => {
 
     const fetchCategories = async () => {
         try {
-            const response = await fetch(`${API_BASE}/categories`);
+            const response = await fetch(`${API_BASE}/categories?username=${authUser}&role=${authRole}`);
             const data = await response.json();
             setAllCategories(data);
         } catch (err) {
@@ -138,7 +138,7 @@ useEffect(() => {
 
     const fetchTags = async () => {
         try {
-            const response = await fetch(`${API_BASE}/tags`);
+            const response = await fetch(`${API_BASE}/tags?username=${authUser}&role=${authRole}`);
             const data = await response.json();
             setAllTags(data);
         } catch (err) {
@@ -157,7 +157,8 @@ useEffect(() => {
                     id: newCategoryName.toLowerCase().replace(/\s+/g, '-'),
                     label: newCategoryName,
                     color: newCategoryColor,
-                    icon: newCategoryIcon
+                    icon: newCategoryIcon,
+                    owner: authUser  // Add owner for user isolation
                 })
             });
 
@@ -180,7 +181,8 @@ useEffect(() => {
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     name: tagName,
-                    color: '#0d6efd'
+                    color: '#0d6efd',
+                    owner: authUser  // Add owner for user isolation
                 })
             });
 
@@ -194,7 +196,7 @@ useEffect(() => {
 
     const fetchClients = async () => {
         try {
-            const response = await fetch(`${API_BASE}/clients`);
+            const response = await fetch(`${API_BASE}/clients?username=${authUser}&role=${authRole}`);
             const data = await response.json();
             setClients(data);
         } catch (err) {
@@ -1360,14 +1362,10 @@ useEffect(() => {
           }
         }
         @media (min-width: 769px) {
-          .mobile-menu-btn {
-            display: none !important;
-          }
-          
           .mobile-overlay {
             display: none !important;
           }
-          
+
           .mobile-sidebar-close {
             display: none !important;
           }
@@ -1444,11 +1442,12 @@ useEffect(() => {
                         <Filter size={24}/>
                     </button>
 
-                    {/* Mobile Menu Button */}
+                    {/* Hamburger Menu Button - Always visible */}
                     <button
                         className="mobile-menu-btn btn btn-white"
                         onClick={() => setShowMobileMenu(!showMobileMenu)}
-                        style={{padding: '10px', minWidth: 'auto', display: 'none'}}
+                        style={{padding: '10px', minWidth: 'auto'}}
+                        title="Menu"
                     >
                         <Menu size={24}/>
                     </button>
@@ -1470,8 +1469,8 @@ useEffect(() => {
                                 Bank Transactions
                             </button>
                         )}
-                        {/* Clients - only for admin */}
-                        {isAdmin && (
+                        {/* Clients - for admin and limited users (not shared) */}
+                        {!isSharedUser && (
                             <button className="btn btn-green" onClick={() => setAppView('clients')}>
                                 <Tag size={18}
                                      style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>

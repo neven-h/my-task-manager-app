@@ -1992,13 +1992,30 @@ def manage_categories():
     """Get list of categories or create a new one"""
     if request.method == 'GET':
         try:
+            username = request.args.get('username')
+            user_role = request.args.get('role')
+
             with get_db_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
-                cursor.execute("""
-                               SELECT category_id as id, label, color, icon
-                               FROM categories_master
-                               ORDER BY label
-                               """)
+
+                # Build query based on user role
+                if user_role == 'limited':
+                    # Limited users only see their own categories OR categories with no owner (shared)
+                    query = """
+                        SELECT category_id as id, label, color, icon
+                        FROM categories_master
+                        WHERE owner = %s OR owner IS NULL
+                        ORDER BY label
+                    """
+                    cursor.execute(query, (username,))
+                else:
+                    # Admin and shared users see all categories
+                    cursor.execute("""
+                        SELECT category_id as id, label, color, icon
+                        FROM categories_master
+                        ORDER BY label
+                    """)
+
                 categories = cursor.fetchall()
                 return jsonify(categories)
         except Error as e:
@@ -2011,6 +2028,7 @@ def manage_categories():
             label = data.get('label', '').strip()
             color = data.get('color', '#0d6efd')
             icon = data.get('icon', '📝')
+            owner = data.get('owner')  # Get owner from request
 
             if not category_id or not label:
                 return jsonify({'error': 'Category ID and label are required'}), 400
@@ -2018,9 +2036,9 @@ def manage_categories():
             with get_db_connection() as connection:
                 cursor = connection.cursor()
                 cursor.execute("""
-                               INSERT INTO categories_master (category_id, label, color, icon)
-                               VALUES (%s, %s, %s, %s)
-                               """, (category_id, label, color, icon))
+                               INSERT INTO categories_master (category_id, label, color, icon, owner)
+                               VALUES (%s, %s, %s, %s, %s)
+                               """, (category_id, label, color, icon, owner))
                 connection.commit()
 
                 return jsonify({
@@ -2090,13 +2108,30 @@ def manage_tags():
     """Get list of tags or create a new one"""
     if request.method == 'GET':
         try:
+            username = request.args.get('username')
+            user_role = request.args.get('role')
+
             with get_db_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
-                cursor.execute("""
-                               SELECT id, name, color
-                               FROM tags
-                               ORDER BY name
-                               """)
+
+                # Build query based on user role
+                if user_role == 'limited':
+                    # Limited users only see their own tags OR tags with no owner (shared)
+                    query = """
+                        SELECT id, name, color
+                        FROM tags
+                        WHERE owner = %s OR owner IS NULL
+                        ORDER BY name
+                    """
+                    cursor.execute(query, (username,))
+                else:
+                    # Admin and shared users see all tags
+                    cursor.execute("""
+                        SELECT id, name, color
+                        FROM tags
+                        ORDER BY name
+                    """)
+
                 tags = cursor.fetchall()
                 return jsonify(tags)
         except Error as e:
@@ -2107,6 +2142,7 @@ def manage_tags():
             data = request.json
             name = data.get('name', '').strip()
             color = data.get('color', '#0d6efd')
+            owner = data.get('owner')  # Get owner from request
 
             if not name:
                 return jsonify({'error': 'Tag name is required'}), 400
@@ -2114,9 +2150,9 @@ def manage_tags():
             with get_db_connection() as connection:
                 cursor = connection.cursor()
                 cursor.execute("""
-                               INSERT INTO tags (name, color)
-                               VALUES (%s, %s)
-                               """, (name, color))
+                               INSERT INTO tags (name, color, owner)
+                               VALUES (%s, %s, %s)
+                               """, (name, color, owner))
                 connection.commit()
 
                 return jsonify({
@@ -2183,27 +2219,53 @@ def manage_clients_list():
     """Get list of clients or create a new one"""
     if request.method == 'GET':
         try:
+            username = request.args.get('username')
+            user_role = request.args.get('role')
+
             with get_db_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
 
-                # Get all clients from clients table and tasks table (combined)
-                cursor.execute("""
-                               SELECT name, email, phone, notes, created_at, updated_at
-                               FROM clients
-                               ORDER BY name
-                               """)
-                clients_from_table = cursor.fetchall()
+                # Build query based on user role
+                if user_role == 'limited':
+                    # Limited users only see their own clients OR clients with no owner
+                    cursor.execute("""
+                        SELECT name, email, phone, notes, created_at, updated_at
+                        FROM clients
+                        WHERE owner = %s OR owner IS NULL
+                        ORDER BY name
+                    """, (username,))
+                    clients_from_table = cursor.fetchall()
 
-                # Also get clients that only exist in tasks table
-                cursor.execute("""
-                               SELECT DISTINCT client
-                               FROM tasks
-                               WHERE client IS NOT NULL
-                                 AND client != ''
-                      AND client NOT IN (SELECT name FROM clients)
-                               ORDER BY client
-                               """)
-                clients_from_tasks = [row['client'] for row in cursor.fetchall()]
+                    # Also get clients from their own tasks
+                    cursor.execute("""
+                        SELECT DISTINCT client
+                        FROM tasks
+                        WHERE client IS NOT NULL
+                          AND client != ''
+                          AND created_by = %s
+                          AND client NOT IN (SELECT name FROM clients WHERE owner = %s OR owner IS NULL)
+                        ORDER BY client
+                    """, (username, username))
+                    clients_from_tasks = [row['client'] for row in cursor.fetchall()]
+                else:
+                    # Admin and shared users see all clients
+                    cursor.execute("""
+                        SELECT name, email, phone, notes, created_at, updated_at
+                        FROM clients
+                        ORDER BY name
+                    """)
+                    clients_from_table = cursor.fetchall()
+
+                    # Also get clients that only exist in tasks table
+                    cursor.execute("""
+                        SELECT DISTINCT client
+                        FROM tasks
+                        WHERE client IS NOT NULL
+                          AND client != ''
+                          AND client NOT IN (SELECT name FROM clients)
+                        ORDER BY client
+                    """)
+                    clients_from_tasks = [row['client'] for row in cursor.fetchall()]
 
                 # Combine both lists
                 all_clients = clients_from_table + [{'name': c} for c in clients_from_tasks]
@@ -2217,6 +2279,7 @@ def manage_clients_list():
         try:
             data = request.json
             name = data.get('name', '').strip()
+            owner = data.get('owner')  # Get owner from request
 
             if not name:
                 return jsonify({'error': 'Client name is required'}), 400
@@ -2224,13 +2287,14 @@ def manage_clients_list():
             with get_db_connection() as connection:
                 cursor = connection.cursor()
                 cursor.execute("""
-                               INSERT INTO clients (name, email, phone, notes)
-                               VALUES (%s, %s, %s, %s)
+                               INSERT INTO clients (name, email, phone, notes, owner)
+                               VALUES (%s, %s, %s, %s, %s)
                                """, (
                                    name,
                                    data.get('email', ''),
                                    data.get('phone', ''),
-                                   data.get('notes', '')
+                                   data.get('notes', ''),
+                                   owner
                                ))
                 connection.commit()
 
@@ -3299,6 +3363,46 @@ def get_client_tasks(client_name):
             return jsonify(tasks)
 
     except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/migrate-user-ownership', methods=['POST'])
+def migrate_user_ownership():
+    """Add owner column to categories_master, tags, and clients tables for user isolation"""
+    try:
+        with get_db_connection() as connection:
+            cursor = connection.cursor()
+
+            # Add owner column to categories_master if it doesn't exist
+            cursor.execute("""
+                ALTER TABLE categories_master
+                ADD COLUMN IF NOT EXISTS owner VARCHAR(255) DEFAULT NULL,
+                ADD INDEX IF NOT EXISTS idx_owner (owner)
+            """)
+
+            # Add owner column to tags if it doesn't exist
+            cursor.execute("""
+                ALTER TABLE tags
+                ADD COLUMN IF NOT EXISTS owner VARCHAR(255) DEFAULT NULL,
+                ADD INDEX IF NOT EXISTS idx_owner (owner)
+            """)
+
+            # Add owner column to clients if it doesn't exist
+            cursor.execute("""
+                ALTER TABLE clients
+                ADD COLUMN IF NOT EXISTS owner VARCHAR(255) DEFAULT NULL,
+                ADD INDEX IF NOT EXISTS idx_owner (owner)
+            """)
+
+            connection.commit()
+
+            return jsonify({
+                'success': True,
+                'message': 'Database migrated successfully - user ownership columns added'
+            })
+
+    except Error as e:
+        print(f"Migration error: {e}")
         return jsonify({'error': str(e)}), 500
 
 
