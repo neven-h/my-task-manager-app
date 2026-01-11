@@ -32,13 +32,21 @@ load_dotenv()
 app = Flask(__name__)
 
 # Security Configuration
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-if not app.config['SECRET_KEY']:
-    raise ValueError("SECRET_KEY environment variable must be set")
+# Check if running in CI environment (for build/syntax checks)
+IS_CI = os.getenv('CI', 'false').lower() == 'true' or os.getenv('GITHUB_ACTIONS') == 'true'
 
-JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
-if not JWT_SECRET_KEY:
-    raise ValueError("JWT_SECRET_KEY environment variable must be set")
+# Use default keys for CI/build checks, require real keys for actual runtime
+if IS_CI:
+    app.config['SECRET_KEY'] = 'ci-build-key-not-for-production'
+    JWT_SECRET_KEY = 'ci-jwt-key-not-for-production'
+else:
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+    if not app.config['SECRET_KEY']:
+        raise ValueError("SECRET_KEY environment variable must be set")
+
+    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
+    if not JWT_SECRET_KEY:
+        raise ValueError("JWT_SECRET_KEY environment variable must be set")
 
 JWT_ALGORITHM = 'HS256'
 JWT_EXPIRATION_HOURS = 24
@@ -159,6 +167,10 @@ def sanitize_db_name(name: str) -> str:
 # In production, migrate all users to the database
 def _get_hardcoded_users():
     """Load hardcoded users with bcrypt-hashed passwords from environment variables"""
+    # In CI environment, return empty dict (users come from database)
+    if IS_CI:
+        return {}
+
     required_passwords = ['USER_PITZ_PASSWORD', 'USER_BENNY_PASSWORD', 'USER_HILLEL_PASSWORD', 'USER_OLIVIA_PASSWORD']
     if not all(os.getenv(var) for var in required_passwords):
         raise ValueError(f"{' and '.join(required_passwords)} must be set")
@@ -260,7 +272,8 @@ def get_db_connection():
 
 def init_db():
     """Initialize database and create tables"""
-    global connection, cursor
+    connection = None
+    cursor = None
     try:
         # Connect without database to create it
         temp_config = DB_CONFIG.copy()
@@ -720,8 +733,9 @@ def init_db():
     except Error as e:
         print(f"Error initializing database: {e}")
     finally:
-        if connection.is_connected():
-            cursor.close()
+        if connection and connection.is_connected():
+            if cursor:
+                cursor.close()
             connection.close()
 
 
