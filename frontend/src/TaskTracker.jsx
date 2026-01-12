@@ -93,18 +93,22 @@ useEffect(() => {
         }
     }, [formData, showForm]);
 
-    // Load data on mount
+    // Load data on mount and when auth changes
     useEffect(() => {
-        fetchCategories();
-        fetchTags();
-        fetchClients();
-        fetchTasks();
-        fetchStats();
-    }, []);
+        if (authUser && authRole) {
+            fetchCategories();
+            fetchTags();
+            fetchClients();
+            fetchTasks();
+            fetchStats();
+        }
+    }, [authUser, authRole]);
 
     useEffect(() => {
-        fetchTasks();
-    }, [filters]);
+        if (authUser && authRole) {
+            fetchTasks();
+        }
+    }, [filters, authUser, authRole]);
 
     // Auto-save bulk tasks draft
     useEffect(() => {
@@ -128,7 +132,7 @@ useEffect(() => {
 
     const fetchCategories = async () => {
         try {
-            const response = await fetch(`${API_BASE}/categories`);
+            const response = await fetch(`${API_BASE}/categories?username=${authUser}&role=${authRole}`);
             const data = await response.json();
             setAllCategories(data);
         } catch (err) {
@@ -138,7 +142,7 @@ useEffect(() => {
 
     const fetchTags = async () => {
         try {
-            const response = await fetch(`${API_BASE}/tags`);
+            const response = await fetch(`${API_BASE}/tags?username=${authUser}&role=${authRole}`);
             const data = await response.json();
             setAllTags(data);
         } catch (err) {
@@ -157,7 +161,8 @@ useEffect(() => {
                     id: newCategoryName.toLowerCase().replace(/\s+/g, '-'),
                     label: newCategoryName,
                     color: newCategoryColor,
-                    icon: newCategoryIcon
+                    icon: newCategoryIcon,
+                    owner: authUser  // Add owner for user isolation
                 })
             });
 
@@ -180,7 +185,8 @@ useEffect(() => {
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     name: tagName,
-                    color: '#0d6efd'
+                    color: '#0d6efd',
+                    owner: authUser  // Add owner for user isolation
                 })
             });
 
@@ -194,7 +200,7 @@ useEffect(() => {
 
     const fetchClients = async () => {
         try {
-            const response = await fetch(`${API_BASE}/clients`);
+            const response = await fetch(`${API_BASE}/clients?username=${authUser}&role=${authRole}`);
             const data = await response.json();
             setClients(data);
         } catch (err) {
@@ -1154,20 +1160,55 @@ useEffect(() => {
         }
         
         .sidebar {
-          border-right: 3px solid #000;
-          background: #f8f8f8;
+          display: none; /* Hidden - use hamburger menu instead */
         }
         
         /* Mobile Responsive Styles */
         @media (max-width: 768px) {
+          /* Make the app more colorful and modern on mobile */
+          body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          }
+
           .desktop-header-buttons {
             display: none !important;
           }
-          
+
           .mobile-menu-btn {
             display: flex !important;
           }
-          
+
+          /* Header with gradient background */
+          header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            border-bottom: none !important;
+            color: white !important;
+            padding: 20px 16px !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          }
+
+          header h1 {
+            font-size: 1.5rem !important;
+            color: white !important;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+          }
+
+          header p {
+            color: rgba(255, 255, 255, 0.95) !important;
+          }
+
+          /* Colorful buttons in header */
+          .btn-white {
+            background: rgba(255, 255, 255, 0.95) !important;
+            color: #667eea !important;
+            border: none !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+          }
+
+          .btn-white:active {
+            transform: scale(0.95);
+          }
+
           .sidebar {
             position: fixed;
             top: 0;
@@ -1177,136 +1218,323 @@ useEffect(() => {
             z-index: 200;
             transition: left 0.3s ease;
             border-right: none;
+            background: white;
           }
-          
+
           .sidebar.mobile-open {
             left: 0;
           }
-          
+
           .main-content {
             flex-direction: column !important;
+            background: #f5f7fa !important;
+            min-height: 100vh;
           }
-          
+
           .main-area {
-            padding: 12px !important;
+            padding: 16px !important;
+            background: #f5f7fa !important;
           }
-          
+
+          /* Colorful task cards */
           .task-card {
-            padding: 14px !important;
-            margin-bottom: 12px;
+            padding: 16px !important;
+            margin-bottom: 16px;
+            background: white !important;
+            border: none !important;
+            border-radius: 16px !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+            transition: all 0.2s ease;
           }
-          
-          .task-card:hover {
-            box-shadow: none;
-            transform: none;
+
+          .task-card:active {
+            transform: scale(0.98);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
           }
-          
+
           .task-card h3 {
             font-size: 1.1rem !important;
+            color: #2d3748 !important;
+            margin-bottom: 8px;
           }
-          
+
           .task-card p {
             font-size: 0.9rem !important;
+            color: #4a5568 !important;
+            line-height: 1.5;
           }
-          
+
+          /* Colorful buttons */
+          .btn-red {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+            border: none !important;
+            color: white !important;
+            box-shadow: 0 4px 12px rgba(245, 87, 108, 0.3) !important;
+          }
+
+          .btn-blue {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+            border: none !important;
+            color: white !important;
+            box-shadow: 0 4px 12px rgba(79, 172, 254, 0.3) !important;
+          }
+
+          .btn-green {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important;
+            border: none !important;
+            color: white !important;
+            box-shadow: 0 4px 12px rgba(67, 233, 123, 0.3) !important;
+          }
+
+          .btn-yellow {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%) !important;
+            border: none !important;
+            color: white !important;
+            box-shadow: 0 4px 12px rgba(254, 225, 64, 0.3) !important;
+          }
+
           .btn {
-            padding: 10px 14px;
-            font-size: 0.8rem;
+            padding: 12px 16px;
+            font-size: 0.85rem;
+            border-radius: 12px !important;
+            font-weight: 600;
+            transition: all 0.2s ease;
           }
-          
+
+          .btn:active {
+            transform: translateY(2px);
+          }
+
+          /* Stats cards with gradients */
+          .stats-grid {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 12px !important;
+          }
+
+          .stats-card {
+            padding: 20px !important;
+            background: white !important;
+            border: none !important;
+            border-radius: 16px !important;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08) !important;
+          }
+
+          .stats-card:nth-child(1) {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            color: white !important;
+          }
+
+          .stats-card:nth-child(2) {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+            color: white !important;
+          }
+
+          .stats-card:nth-child(3) {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important;
+            color: white !important;
+          }
+
+          .stats-card:nth-child(4) {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%) !important;
+            color: white !important;
+          }
+
+          .stats-number {
+            font-size: 2rem !important;
+            font-weight: 900;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          }
+
+          .stats-label {
+            font-size: 0.75rem !important;
+            opacity: 0.95;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          /* Modal improvements */
           .modal-overlay {
             padding: 0;
             align-items: flex-end;
+            background: rgba(0, 0, 0, 0.5) !important;
+            backdrop-filter: blur(4px);
           }
-          
+
           .modal-content {
-            max-height: 95vh;
-            border-width: 2px;
-            border-radius: 16px 16px 0 0;
+            max-height: 90vh;
+            border-width: 0 !important;
+            border-radius: 24px 24px 0 0 !important;
             border-bottom: none;
+            box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15) !important;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
           }
-          
+
           .modal-header {
-            padding: 16px !important;
+            padding: 20px !important;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            color: white !important;
+            border-radius: 24px 24px 0 0 !important;
+            flex-shrink: 0;
           }
-          
+
+          .modal-header h2 {
+            color: white !important;
+            margin: 0;
+          }
+
           .modal-body {
-            padding: 16px !important;
+            padding: 20px !important;
+            background: white;
+            overflow-y: auto;
+            overflow-x: hidden;
+            flex: 1;
+            -webkit-overflow-scrolling: touch;
           }
-          
+
+          /* Hide scrollbar but keep functionality */
+          .modal-body::-webkit-scrollbar {
+            width: 4px;
+          }
+
+          .modal-body::-webkit-scrollbar-track {
+            background: transparent;
+          }
+
+          .modal-body::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+          }
+
+          .modal-body::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 126, 234, 0.5);
+          }
+
+          /* Form spacing in modals */
+          .modal-body form {
+            padding-bottom: 20px;
+          }
+
+          /* Submit buttons in modals */
+          .modal-body .btn[type="submit"],
+          .modal-body button[type="submit"] {
+            margin-top: 20px !important;
+            margin-bottom: 10px !important;
+          }
+
+          /* Form groups in modals */
+          .modal-body > div,
+          .modal-body form > div {
+            margin-bottom: 16px !important;
+          }
+
+          /* Labels in modals */
+          .modal-body label {
+            font-size: 0.85rem !important;
+            font-weight: 700 !important;
+            margin-bottom: 8px !important;
+            display: block;
+          }
+
+          /* Task view toggle */
           .task-view-toggle {
             flex-wrap: wrap;
-            gap: 8px !important;
+            gap: 10px !important;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
           }
-          
+
           .task-view-toggle .btn {
             flex: 1;
             min-width: 90px;
             padding: 10px 8px;
-            font-size: 0.7rem;
+            font-size: 0.75rem;
+            border-radius: 8px !important;
           }
-          
-          .stats-grid {
-            grid-template-columns: 1fr 1fr !important;
-            gap: 10px !important;
-          }
-          
-          .stats-card {
-            padding: 14px !important;
-          }
-          
-          .stats-number {
-            font-size: 1.8rem !important;
-          }
-          
-          .stats-label {
-            font-size: 0.7rem !important;
-          }
-          
+
+          /* Task actions */
           .task-actions {
             margin-left: 8px !important;
-            gap: 4px !important;
-            flex-direction: column;
+            gap: 6px !important;
+            flex-direction: row;
+            flex-wrap: wrap;
           }
-          
+
           .task-actions .btn {
-            padding: 8px !important;
+            padding: 10px 12px !important;
+            border-radius: 10px !important;
           }
-          
+
           .task-meta-grid {
             grid-template-columns: 1fr 1fr !important;
-            padding: 10px !important;
-            gap: 8px !important;
-            font-size: 0.8rem !important;
+            padding: 12px !important;
+            gap: 10px !important;
+            font-size: 0.85rem !important;
+            background: #f7fafc;
+            border-radius: 12px;
           }
-          
+
           /* Filter section mobile */
           .filter-section {
             flex-direction: column !important;
-            gap: 8px !important;
+            gap: 10px !important;
           }
-          
+
           .filter-section input,
           .filter-section select {
             width: 100% !important;
-            font-size: 16px !important; /* Prevents zoom on iOS */
+            font-size: 16px !important;
+            border-radius: 12px !important;
+            border: 2px solid #e2e8f0 !important;
+            background: white;
           }
-          
+
           /* Form inputs mobile */
           input, select, textarea {
-            font-size: 16px !important; /* Prevents zoom on iOS */
-            padding: 12px !important;
+            font-size: 16px !important;
+            padding: 14px !important;
+            border-radius: 12px !important;
+            border: 2px solid #e2e8f0 !important;
+            transition: all 0.2s ease;
           }
-          
-          /* Header mobile */
-          header h1 {
-            font-size: 1.3rem !important;
+
+          input:focus, select:focus, textarea:focus {
+            border-color: #667eea !important;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
+            outline: none;
           }
-          
+
           /* Category pills mobile */
           .category-pill {
-            padding: 6px 10px;
+            padding: 8px 14px;
             font-size: 0.75rem;
+            border-radius: 20px !important;
+            font-weight: 600;
+            border: none !important;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          }
+
+          /* Section headers */
+          h3 {
+            color: #2d3748 !important;
+            margin-bottom: 16px;
+          }
+
+          /* Empty states */
+          .empty-state {
+            background: white !important;
+            border: none !important;
+            border-radius: 16px !important;
+            padding: 40px 20px !important;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+          }
+
+          /* Color bar - make it more vibrant */
+          .color-bar {
+            height: 6px !important;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #43e97b 100%) !important;
           }
           
           /* Tags mobile */
@@ -1361,14 +1589,10 @@ useEffect(() => {
           }
         }
         @media (min-width: 769px) {
-          .mobile-menu-btn {
-            display: none !important;
-          }
-          
           .mobile-overlay {
             display: none !important;
           }
-          
+
           .mobile-sidebar-close {
             display: none !important;
           }
@@ -1435,11 +1659,22 @@ useEffect(() => {
                         </p>
                     </div>
 
-                    {/* Mobile Menu Button */}
+                    {/* Filter/Search Button - Always visible */}
+                    <button
+                        className="btn btn-white"
+                        onClick={() => setShowMobileSidebar(true)}
+                        style={{padding: '10px', minWidth: 'auto', marginRight: '12px'}}
+                        title="Search & Filter"
+                    >
+                        <Filter size={24}/>
+                    </button>
+
+                    {/* Hamburger Menu Button - Always visible */}
                     <button
                         className="mobile-menu-btn btn btn-white"
                         onClick={() => setShowMobileMenu(!showMobileMenu)}
-                        style={{padding: '10px', minWidth: 'auto', display: 'none'}}
+                        style={{padding: '10px', minWidth: 'auto'}}
+                        title="Menu"
                     >
                         <Menu size={24}/>
                     </button>
@@ -1461,8 +1696,8 @@ useEffect(() => {
                                 Bank Transactions
                             </button>
                         )}
-                        {/* Clients - only for admin */}
-                        {isAdmin && (
+                        {/* Clients - for admin and limited users (not shared) */}
+                        {!isSharedUser && (
                             <button className="btn btn-green" onClick={() => setAppView('clients')}>
                                 <Tag size={18}
                                      style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
@@ -2040,9 +2275,12 @@ useEffect(() => {
                                     border: '3px solid #000',
                                     background: '#f8f8f8'
                                 }}>
-                                    <p style={{fontSize: '1.2rem', fontWeight: 600, marginBottom: '12px'}}>No tasks
-                                        found</p>
-                                    <p style={{color: '#666'}}>Try adjusting your filters or add a new task</p>
+                                    <p style={{fontSize: '1.5rem', fontWeight: 700, marginBottom: '12px', color: '#dc3545'}}>
+                                        📋 Add Your First Task
+                                    </p>
+                                    <p style={{color: '#666', fontSize: '1rem'}}>
+                                        {isAdmin ? 'Click the "New Task" button above to get started' : 'Contact your administrator to add tasks'}
+                                    </p>
                                 </div>
                             ) : (
                                 <>
@@ -2207,7 +2445,7 @@ useEffect(() => {
                     if (e.target.className === 'modal-overlay') attemptCloseForm();
                 }}>
                     <div className="modal-content">
-                        <div style={{
+                        <div className="modal-header" style={{
                             padding: '32px',
                             borderBottom: '3px solid #000',
                             display: 'flex',
@@ -2224,7 +2462,8 @@ useEffect(() => {
                             </button>
                         </div>
 
-                        <form onSubmit={handleSubmit} style={{padding: '32px'}}>
+                        <div className="modal-body">
+                        <form onSubmit={handleSubmit}>
                             <div style={{display: 'flex', flexDirection: 'column', gap: '24px'}}>
                                 <div>
                                     <label style={{
@@ -2557,6 +2796,7 @@ useEffect(() => {
                                 </button>
                             </div>
                         </form>
+                        </div>
                     </div>
                 </div>
             )}

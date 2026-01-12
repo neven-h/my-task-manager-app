@@ -25,11 +25,19 @@ const ForgotPasswordPage = () => {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage('If that email is registered, you will receive a password reset link shortly. Please check your inbox and spam folder.');
+        // If in development mode and token is returned, show it
+        if (data.token && data.reset_url) {
+          setMessage(
+            `${data.message}\n\nDevelopment Mode - Reset Link:\n${data.reset_url}\n\nToken: ${data.token}`
+          );
+        } else {
+          setMessage(data.message || 'If that email is registered, you will receive a password reset link shortly. Please check your inbox and spam folder.');
+        }
       } else {
         setError(data.error || 'Failed to send reset email');
       }
     } catch (err) {
+      console.error('Forgot password error:', err);
       setError('Network error. Please try again.');
     } finally {
       setLoading(false);
@@ -87,7 +95,9 @@ const ForgotPasswordPage = () => {
             padding: '12px 16px',
             marginBottom: '20px',
             border: '2px solid #000',
-            fontWeight: 600
+            fontWeight: 600,
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word'
           }}>
             {message}
           </div>

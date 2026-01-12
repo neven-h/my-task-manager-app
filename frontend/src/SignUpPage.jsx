@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import API_BASE from './config';
 
 const SignUpPage = () => {
@@ -12,6 +13,8 @@ const SignUpPage = () => {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState({
     hasLength: false,
     hasUppercase: false,
@@ -83,6 +86,23 @@ const SignUpPage = () => {
   };
 
   const allRequirementsMet = Object.values(passwordStrength).every(v => v);
+
+  // Check if all fields are filled and valid
+  const isFormValid = () => {
+    // Check email is filled and valid format
+    const emailValid = formData.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email);
+
+    // Check username is filled and valid (min 3 chars, alphanumeric + underscore)
+    const usernameValid = formData.username && formData.username.length >= 3 && /^[a-zA-Z0-9_]+$/.test(formData.username);
+
+    // Check password meets all requirements
+    const passwordValid = allRequirementsMet;
+
+    // Check passwords match
+    const passwordsMatch = formData.password === formData.confirmPassword && formData.confirmPassword !== '';
+
+    return emailValid && usernameValid && passwordValid && passwordsMatch;
+  };
 
   return (
     <div style={{
@@ -201,21 +221,44 @@ const SignUpPage = () => {
             }}>
               Password *
             </label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '2px solid #000',
-                fontSize: '1rem',
-                fontFamily: 'inherit'
-              }}
-              placeholder="••••••••"
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  paddingRight: '48px',
+                  border: '2px solid #000',
+                  fontSize: '1rem',
+                  fontFamily: 'inherit'
+                }}
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '8px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
             
             {/* Password Strength Indicator */}
             <div style={{ marginTop: '12px' }}>
@@ -262,39 +305,63 @@ const SignUpPage = () => {
             }}>
               Confirm Password *
             </label>
-            <input
-              type="password"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              required
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '2px solid #000',
-                fontSize: '1rem',
-                fontFamily: 'inherit'
-              }}
-              placeholder="••••••••"
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                required
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  paddingRight: '48px',
+                  border: '2px solid #000',
+                  fontSize: '1rem',
+                  fontFamily: 'inherit'
+                }}
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '8px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+                title={showConfirmPassword ? "Hide password" : "Show password"}
+              >
+                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
+            </div>
           </div>
 
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading || !allRequirementsMet}
+            disabled={loading || !isFormValid()}
             style={{
               width: '100%',
               padding: '14px',
-              background: allRequirementsMet ? '#dc3545' : '#ccc',
+              background: isFormValid() ? '#dc3545' : '#ccc',
               color: 'white',
               border: '2px solid #000',
               fontSize: '1rem',
               fontWeight: 700,
               textTransform: 'uppercase',
-              cursor: allRequirementsMet ? 'pointer' : 'not-allowed',
+              cursor: isFormValid() ? 'pointer' : 'not-allowed',
               boxShadow: '4px 4px 0 #000',
-              marginBottom: '20px'
+              marginBottom: '20px',
+              transition: 'background 0.2s ease'
             }}
           >
             {loading ? 'Creating Account...' : 'Create Account'}
