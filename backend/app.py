@@ -646,8 +646,7 @@ def init_db():
             cursor.execute("""
                 ALTER TABLE users
                 ADD COLUMN IF NOT EXISTS two_factor_secret VARCHAR(32),
-                ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN DEFAULT FALSE,
-                ADD COLUMN IF NOT EXISTS two_factor_backup_codes TEXT
+                ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN DEFAULT FALSE
             """)
             print("Added 2FA columns to users table")
         except Error as e:
@@ -1319,23 +1318,17 @@ def enable_2fa():
             if not totp.verify(code, valid_window=1):
                 return jsonify({'error': 'Invalid verification code'}), 401
 
-            # Generate backup codes (10 one-time use codes)
-            backup_codes = [secrets.token_hex(4) for _ in range(10)]
-            backup_codes_str = ','.join(backup_codes)
-
             # Enable 2FA
             cursor.execute("""
                 UPDATE users
-                SET two_factor_enabled = TRUE,
-                    two_factor_backup_codes = %s
+                SET two_factor_enabled = TRUE
                 WHERE id = %s
-            """, (backup_codes_str, user['id']))
+            """, (user['id'],))
             connection.commit()
 
             return jsonify({
                 'success': True,
-                'message': '2FA enabled successfully',
-                'backup_codes': backup_codes
+                'message': '2FA enabled successfully. If you lose your phone, you can disable 2FA from any logged-in device using your password.'
             })
 
     except Exception as e:
@@ -1359,7 +1352,7 @@ def verify_2fa():
 
             # Get user
             cursor.execute("""
-                SELECT id, username, role, two_factor_secret, two_factor_enabled, two_factor_backup_codes
+                SELECT id, username, role, two_factor_secret, two_factor_enabled
                 FROM users
                 WHERE username = %s
             """, (username,))
@@ -1368,7 +1361,7 @@ def verify_2fa():
             if not user or not user.get('two_factor_enabled'):
                 return jsonify({'error': 'User not found or 2FA not enabled'}), 404
 
-            # Try TOTP code first
+            # Verify TOTP code
             totp = pyotp.TOTP(user['two_factor_secret'])
             if totp.verify(code, valid_window=1):
                 # Valid TOTP code
@@ -1380,34 +1373,8 @@ def verify_2fa():
                     'token': token
                 })
 
-            # Check if it's a backup code
-            if user.get('two_factor_backup_codes'):
-                backup_codes = user['two_factor_backup_codes'].split(',')
-                if code in backup_codes:
-                    # Valid backup code - remove it after use
-                    backup_codes.remove(code)
-                    new_backup_codes = ','.join(backup_codes)
-
-                    cursor.execute("""
-                        UPDATE users
-                        SET two_factor_backup_codes = %s
-                        WHERE id = %s
-                    """, (new_backup_codes, user['id']))
-                    connection.commit()
-
-                    # Generate token
-                    token = generate_jwt_token(user['username'], user['role'])
-                    return jsonify({
-                        'success': True,
-                        'username': user['username'],
-                        'role': user['role'],
-                        'token': token,
-                        'backup_code_used': True,
-                        'backup_codes_remaining': len(backup_codes)
-                    })
-
             # Invalid code
-            return jsonify({'error': 'Invalid verification code'}), 401
+            return jsonify({'error': 'Invalid verification code. If you lost your phone, disable 2FA from a logged-in device.'}), 401
 
     except Exception as e:
         print(f"2FA verify error: {e}")
@@ -1447,15 +1414,14 @@ def disable_2fa():
             cursor.execute("""
                 UPDATE users
                 SET two_factor_enabled = FALSE,
-                    two_factor_secret = NULL,
-                    two_factor_backup_codes = NULL
+                    two_factor_secret = NULL
                 WHERE id = %s
             """, (user['id'],))
             connection.commit()
 
             return jsonify({
                 'success': True,
-                'message': '2FA disabled successfully'
+                'message': '2FA disabled successfully. You can now log in with just your password.'
             })
 
     except Exception as e:
@@ -1476,7 +1442,7 @@ def get_2fa_status():
             cursor = connection.cursor(dictionary=True)
 
             cursor.execute("""
-                SELECT two_factor_enabled, two_factor_backup_codes
+                SELECT two_factor_enabled
                 FROM users
                 WHERE username = %s
             """, (username,))
@@ -1485,13 +1451,8 @@ def get_2fa_status():
             if not user:
                 return jsonify({'error': 'User not found'}), 404
 
-            backup_codes_count = 0
-            if user.get('two_factor_backup_codes'):
-                backup_codes_count = len(user['two_factor_backup_codes'].split(','))
-
             return jsonify({
-                'enabled': user.get('two_factor_enabled', False),
-                'backup_codes_remaining': backup_codes_count
+                'enabled': user.get('two_factor_enabled', False)
             })
 
     except Exception as e:
