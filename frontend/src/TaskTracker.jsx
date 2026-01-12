@@ -1440,6 +1440,7 @@ useEffect(() => {
           }
 
           /* Form grid layouts - make single column on mobile */
+          /* Note: !important is required to override inline styles in JSX */
           .form-grid-2col {
             display: grid !important;
             grid-template-columns: 1fr !important;
@@ -1447,6 +1448,7 @@ useEffect(() => {
           }
 
           /* Form buttons - stack vertically on mobile */
+          /* Note: !important is required to override inline styles in JSX */
           .form-buttons {
             display: flex !important;
             flex-direction: column !important;
