@@ -31,6 +31,17 @@ const ClientsManagement = ({ onBackToTasks }) => {
   const [error, setError] = useState(null);
   const [editingClient, setEditingClient] = useState(null);
   const [newClientName, setNewClientName] = useState('');
+  
+  // New client form state
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newClient, setNewClient] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    notes: ''
+  });
+  const [createLoading, setCreateLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   useEffect(() => {
     fetchClients();
@@ -116,6 +127,63 @@ const ClientsManagement = ({ onBackToTasks }) => {
       setError(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateClient = async (e) => {
+    e.preventDefault();
+    
+    // Validate name
+    if (!newClient.name?.trim()) {
+      setError('Client name is required');
+      return;
+    }
+
+    try {
+      setCreateLoading(true);
+      setError(null);
+      
+      // Get username from localStorage for owner field
+      const username = localStorage.getItem('authUser');
+      
+      if (!username) {
+        setError('User not authenticated. Please log in again.');
+        setCreateLoading(false);
+        return;
+      }
+      
+      const response = await fetch(`${API_BASE}/api/clients`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newClient.name.trim(),
+          email: newClient.email?.trim() || '',
+          phone: newClient.phone?.trim() || '',
+          notes: newClient.notes?.trim() || '',
+          owner: username
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to create client');
+      }
+
+      // Success - clear form and refresh list
+      setNewClient({ name: '', email: '', phone: '', notes: '' });
+      setShowAddForm(false);
+      setSuccessMessage('Client created successfully!');
+      await fetchClients();
+      
+      // Clear success message after 3 seconds
+      const timeoutId = setTimeout(() => setSuccessMessage(null), 3000);
+      
+      // Note: We don't return a cleanup function here as the component
+      // remains mounted and we want the message to clear
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCreateLoading(false);
     }
   };
 
@@ -219,19 +287,218 @@ const ClientsManagement = ({ onBackToTasks }) => {
         </div>
       )}
 
+      {successMessage && (
+        <div style={{
+          background: THEME.success,
+          color: '#fff',
+          padding: '1rem 3rem',
+          fontWeight: 600,
+          borderBottom: `3px solid ${THEME.border}`
+        }}>
+          {successMessage}
+        </div>
+      )}
+
       <div style={{ padding: '3rem', maxWidth: '1600px', margin: '0 auto' }}>
         {/* Clients List */}
         <div style={{ marginBottom: '3rem' }}>
-          <h2 style={{
-            fontSize: '2rem',
-            fontWeight: 800,
-            marginBottom: '1.5rem',
-            textTransform: 'UPPERCASE',
-            color: THEME.text,
-            letterSpacing: '-0.5px'
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            marginBottom: '1.5rem'
           }}>
-            All Clients
-          </h2>
+            <h2 style={{
+              fontSize: '2rem',
+              fontWeight: 800,
+              margin: 0,
+              textTransform: 'UPPERCASE',
+              color: THEME.text,
+              letterSpacing: '-0.5px'
+            }}>
+              All Clients
+            </h2>
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                setShowAddForm(!showAddForm);
+                setError(null);
+                if (!showAddForm) {
+                  setNewClient({ name: '', email: '', phone: '', notes: '' });
+                }
+              }}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            >
+              <Plus size={18} />
+              {showAddForm ? 'Cancel' : 'Add New Client'}
+            </button>
+          </div>
+
+          {/* Add Client Form */}
+          {showAddForm && (
+            <div style={{
+              border: `3px solid ${THEME.border}`,
+              background: THEME.surface,
+              padding: '2rem',
+              marginBottom: '2rem',
+              boxShadow: '4px 4px 0px #000'
+            }}>
+              <h3 style={{
+                fontSize: '1.5rem',
+                fontWeight: 800,
+                marginBottom: '1.5rem',
+                textTransform: 'UPPERCASE',
+                color: THEME.text
+              }}>
+                Create New Client
+              </h3>
+              
+              <form onSubmit={handleCreateClient}>
+                <div style={{ display: 'grid', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                  {/* Name field - required */}
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      marginBottom: '0.5rem',
+                      color: THEME.text
+                    }}>
+                      Client Name <span style={{ color: THEME.accent }}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={newClient.name}
+                      onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
+                      placeholder="Enter client name"
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        border: `3px solid ${THEME.border}`,
+                        fontWeight: 600,
+                        fontSize: '1rem',
+                        fontFamily: FONT_STACK,
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+
+                  {/* Email field - optional */}
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      marginBottom: '0.5rem',
+                      color: THEME.text
+                    }}>
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      value={newClient.email}
+                      onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
+                      placeholder="client@example.com"
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        border: `3px solid ${THEME.border}`,
+                        fontWeight: 600,
+                        fontSize: '1rem',
+                        fontFamily: FONT_STACK,
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+
+                  {/* Phone field - optional */}
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      marginBottom: '0.5rem',
+                      color: THEME.text
+                    }}>
+                      Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={newClient.phone}
+                      onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
+                      placeholder="+1 (555) 123-4567"
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        border: `3px solid ${THEME.border}`,
+                        fontWeight: 600,
+                        fontSize: '1rem',
+                        fontFamily: FONT_STACK,
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+
+                  {/* Notes field - optional */}
+                  <div>
+                    <label style={{
+                      display: 'block',
+                      fontSize: '0.85rem',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      marginBottom: '0.5rem',
+                      color: THEME.text
+                    }}>
+                      Notes
+                    </label>
+                    <textarea
+                      value={newClient.notes}
+                      onChange={(e) => setNewClient({ ...newClient, notes: e.target.value })}
+                      placeholder="Additional notes about the client"
+                      rows={3}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        border: `3px solid ${THEME.border}`,
+                        fontWeight: 600,
+                        fontSize: '1rem',
+                        fontFamily: FONT_STACK,
+                        resize: 'vertical',
+                        boxSizing: 'border-box'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={createLoading || !newClient.name?.trim()}
+                    style={{ flex: 1 }}
+                  >
+                    {createLoading ? 'Creating...' : 'Create Client'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => {
+                      setShowAddForm(false);
+                      setNewClient({ name: '', email: '', phone: '', notes: '' });
+                      setError(null);
+                    }}
+                    disabled={createLoading}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
 
           {loading ? (
             <div style={{
