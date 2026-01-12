@@ -162,7 +162,7 @@ const CustomAutocomplete = ({
           background: '#fff',
           maxHeight: '240px',
           overflowY: 'auto',
-          zIndex: 1000,
+          zIndex: 2000,
           boxShadow: '4px 4px 0px rgba(0, 0, 0, 1)'
         }}>
           {filteredOptions.map((option, index) => (
@@ -196,7 +196,7 @@ const CustomAutocomplete = ({
           border: '3px solid #000',
           background: '#fff',
           padding: '12px',
-          zIndex: 1000,
+          zIndex: 2000,
           color: '#666',
           fontStyle: 'italic'
         }}>
