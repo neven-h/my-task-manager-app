@@ -93,18 +93,22 @@ useEffect(() => {
         }
     }, [formData, showForm]);
 
-    // Load data on mount
+    // Load data on mount and when auth changes
     useEffect(() => {
-        fetchCategories();
-        fetchTags();
-        fetchClients();
-        fetchTasks();
-        fetchStats();
-    }, []);
+        if (authUser && authRole) {
+            fetchCategories();
+            fetchTags();
+            fetchClients();
+            fetchTasks();
+            fetchStats();
+        }
+    }, [authUser, authRole]);
 
     useEffect(() => {
-        fetchTasks();
-    }, [filters]);
+        if (authUser && authRole) {
+            fetchTasks();
+        }
+    }, [filters, authUser, authRole]);
 
     // Auto-save bulk tasks draft
     useEffect(() => {
@@ -2441,7 +2445,7 @@ useEffect(() => {
                     if (e.target.className === 'modal-overlay') attemptCloseForm();
                 }}>
                     <div className="modal-content">
-                        <div style={{
+                        <div className="modal-header" style={{
                             padding: '32px',
                             borderBottom: '3px solid #000',
                             display: 'flex',
@@ -2458,7 +2462,8 @@ useEffect(() => {
                             </button>
                         </div>
 
-                        <form onSubmit={handleSubmit} style={{padding: '32px'}}>
+                        <div className="modal-body">
+                        <form onSubmit={handleSubmit}>
                             <div style={{display: 'flex', flexDirection: 'column', gap: '24px'}}>
                                 <div>
                                     <label style={{
@@ -2791,6 +2796,7 @@ useEffect(() => {
                                 </button>
                             </div>
                         </form>
+                        </div>
                     </div>
                 </div>
             )}
