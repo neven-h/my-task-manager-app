@@ -41,35 +41,21 @@ Choose one of these apps (all are free):
 2. Enter this code in the Task Manager verification field
 3. Click **"Verify and Enable"**
 
-### Step 5: Save Your Backup Codes
+### Step 5: What If I Lose My Phone?
 
-**⚠️ CRITICAL: DO NOT SKIP THIS STEP!**
+**If you lose your phone and can't access your authenticator app:**
 
-After verification, you'll see 10 backup codes. **Save these immediately!**
+1. **If you're still logged in on another device** (like your computer):
+   - Go to **Settings** → **Security** → **Two-Factor Authentication**
+   - Click **"Disable 2FA"**
+   - Enter your password to confirm
+   - You can now log in with just your password
 
-```
-a1b2c3d4
-e5f6g7h8
-i9j0k1l2
-m3n4o5p6
-q7r8s9t0
-u1v2w3x4
-y5z6a7b8
-c9d0e1f2
-g3h4i5j6
-k7l8m9n0
-```
+2. **If you're NOT logged in anywhere:**
+   - Contact your administrator to reset your 2FA
+   - Administrator can disable 2FA from the database
 
-**How to save them:**
-- Screenshot and save to a secure folder
-- Print and store in a safe place
-- Save in a password manager (recommended)
-- **DON'T** email them to yourself
-
-**Why backup codes matter:**
-- If you lose your phone, you can still log in
-- Each code works only ONCE
-- You have 10 codes total
+**⚠️ IMPORTANT:** There are NO backup codes. This is intentional for security. Keep your phone secure and consider backing up your authenticator app (many apps like Authy support cloud backup).
 
 ---
 
@@ -173,12 +159,7 @@ k7l8m9n0
 ```json
 {
   "success": true,
-  "message": "2FA enabled successfully",
-  "backup_codes": [
-    "a1b2c3d4",
-    "e5f6g7h8",
-    ... (10 total)
-  ]
+  "message": "2FA enabled successfully. If you lose your phone, you can disable 2FA from any logged-in device using your password."
 }
 ```
 
@@ -194,7 +175,7 @@ k7l8m9n0
 }
 ```
 
-**Response (TOTP Code):**
+**Response:**
 ```json
 {
   "success": true,
@@ -204,15 +185,10 @@ k7l8m9n0
 }
 ```
 
-**Response (Backup Code):**
+**Error Response:**
 ```json
 {
-  "success": true,
-  "username": "pitz",
-  "role": "admin",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "backup_code_used": true,
-  "backup_codes_remaining": 9
+  "error": "Invalid verification code. If you lost your phone, disable 2FA from a logged-in device."
 }
 ```
 
@@ -223,8 +199,7 @@ k7l8m9n0
 **Response:**
 ```json
 {
-  "enabled": true,
-  "backup_codes_remaining": 10
+  "enabled": true
 }
 ```
 
@@ -244,7 +219,7 @@ k7l8m9n0
 ```json
 {
   "success": true,
-  "message": "2FA disabled successfully"
+  "message": "2FA disabled successfully. You can now log in with just your password."
 }
 ```
 
@@ -257,15 +232,13 @@ k7l8m9n0
 ```sql
 ALTER TABLE users
 ADD COLUMN two_factor_secret VARCHAR(32),          -- TOTP secret (base32)
-ADD COLUMN two_factor_enabled BOOLEAN DEFAULT FALSE,
-ADD COLUMN two_factor_backup_codes TEXT;           -- Comma-separated backup codes
+ADD COLUMN two_factor_enabled BOOLEAN DEFAULT FALSE;
 ```
 
 **Example Data:**
 ```
 two_factor_secret: "JBSWY3DPEHPK3PXP"
 two_factor_enabled: TRUE
-two_factor_backup_codes: "a1b2c3d4,e5f6g7h8,i9j0k1l2,m3n4o5p6,..."
 ```
 
 ---
@@ -276,11 +249,11 @@ two_factor_backup_codes: "a1b2c3d4,e5f6g7h8,i9j0k1l2,m3n4o5p6,..."
 
 ✅ **TOTP Standard** - Uses RFC 6238 (industry standard)
 ✅ **Clock Skew** - Accepts ±30 seconds (valid_window=1)
-✅ **Backup Codes** - 10 one-time use codes for emergencies
+✅ **No Backup Codes** - Intentional security choice (less attack surface)
 ✅ **Password Required** - Must enter password to disable 2FA
 ✅ **Database Storage** - Secrets stored securely in MySQL
 ✅ **QR Code Generation** - Generated server-side (secure)
-✅ **Single-Use Backup Codes** - Removed after use
+✅ **Recovery via Logged-In Devices** - Can disable 2FA if already logged in
 ✅ **No Rate Limiting Bypass** - 2FA verification subject to rate limits
 
 ### Potential Improvements (Future)
@@ -310,24 +283,25 @@ two_factor_backup_codes: "a1b2c3d4,e5f6g7h8,i9j0k1l2,m3n4o5p6,..."
 
 ### Issue: "Lost my phone, can't access authenticator"
 
-**Solution:** Use a backup code!
-1. Go to login page
-2. Enter username and password
-3. When prompted for 2FA code, enter a backup code
-4. **Important:** Each backup code works only once
-5. After logging in, regenerate backup codes or disable/re-enable 2FA
-
-### Issue: "Backup codes not working"
-
-**Causes:**
-1. Code already used
-2. Typo in code
-3. 2FA was disabled and re-enabled (old codes invalid)
-
 **Solution:**
-- Try another backup code
-- Ensure no spaces or dashes
-- Contact admin to reset 2FA
+
+**If you're STILL LOGGED IN on another device (computer):**
+1. Go to Settings → Security → 2FA
+2. Click "Disable 2FA"
+3. Enter your password
+4. You can now log in with just password
+5. Optionally: Re-enable 2FA with a new device
+
+**If you're NOT logged in anywhere:**
+1. Contact your administrator
+2. Administrator can disable 2FA via database:
+```sql
+UPDATE users
+SET two_factor_enabled = FALSE, two_factor_secret = NULL
+WHERE username = 'your_username';
+```
+3. You can then log in with just your password
+4. Re-enable 2FA with your new phone
 
 ### Issue: "QR code won't scan"
 
@@ -347,20 +321,18 @@ two_factor_backup_codes: "a1b2c3d4,e5f6g7h8,i9j0k1l2,m3n4o5p6,..."
    - Display QR code
    - Show manual entry secret key
    - Verification code input
-   - Backup codes display
-   - Download/Print backup codes button
+   - Warning message about phone loss recovery
 
 2. **Login Page Update** (`LoginPage.jsx`)
    - Detect `requires_2fa` from login response
-   - Show 2FA code input field
-   - "Use backup code" toggle
-   - "Lost access?" help link
+   - Show 2FA code input field (6 digits)
+   - "Lost access?" help link (explains recovery process)
 
 3. **Settings Page** (`Settings.jsx`)
    - Enable/Disable 2FA toggle
-   - View backup codes remaining
-   - Regenerate backup codes
-   - Download backup codes
+   - Show 2FA status (enabled/disabled)
+   - Password input for disabling 2FA
+   - Warning about phone loss recovery
 
 ### Example React Code
 
@@ -435,10 +407,10 @@ const verify2FA = async () => {
    # Response: {"token": "..."}
    ```
 
-5. **Test backup codes:**
-   - Use one of the 10 backup codes instead of TOTP code
-   - Verify it's removed from database
-   - Confirm can't be reused
+5. **Test disabling 2FA:**
+   - Call disable endpoint with password
+   - Verify 2FA is disabled in database
+   - Confirm can log in without 2FA code
 
 ---
 
