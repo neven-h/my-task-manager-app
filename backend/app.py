@@ -231,6 +231,9 @@ def serialize_task(task: dict) -> dict:
     """
     Convert task database record to JSON-serializable format.
     Handles datetime conversion and comma-separated strings to arrays.
+    
+    Note: This function modifies the task dictionary in-place and also returns it
+    for convenience in chaining or comprehension usage.
     """
     if task.get('task_date'):
         task['task_date'] = task['task_date'].isoformat()
