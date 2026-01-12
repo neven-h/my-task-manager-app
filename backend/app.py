@@ -25,6 +25,8 @@ import re
 import bcrypt
 import jwt
 from functools import wraps
+from cryptography.fernet import Fernet
+import base64
 
 # Load environment variables
 load_dotenv()
@@ -50,6 +52,64 @@ else:
 
 JWT_ALGORITHM = 'HS256'
 JWT_EXPIRATION_HOURS = 24
+
+# Data Encryption Configuration for Bank Transactions
+# CRITICAL: This key encrypts sensitive bank transaction data at rest
+if IS_CI:
+    DATA_ENCRYPTION_KEY = base64.urlsafe_b64encode(b'ci-encryption-key-not-for-prod-use-32b!')
+else:
+    encryption_key = os.getenv('DATA_ENCRYPTION_KEY')
+    if not encryption_key:
+        raise ValueError("DATA_ENCRYPTION_KEY environment variable must be set for production")
+    try:
+        # Validate it's a proper base64 Fernet key
+        DATA_ENCRYPTION_KEY = encryption_key.encode()
+        Fernet(DATA_ENCRYPTION_KEY)  # Test if valid
+    except Exception as e:
+        raise ValueError(f"DATA_ENCRYPTION_KEY is invalid. Generate with: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'")
+
+# Initialize encryption cipher
+cipher_suite = Fernet(DATA_ENCRYPTION_KEY)
+
+def encrypt_field(value: str) -> str:
+    """Encrypt a sensitive field value"""
+    if not value:
+        return value
+    try:
+        encrypted = cipher_suite.encrypt(value.encode())
+        return base64.urlsafe_b64encode(encrypted).decode('utf-8')
+    except Exception as e:
+        print(f"Encryption error: {e}")
+        raise
+
+def decrypt_field(encrypted_value: str) -> str:
+    """Decrypt a sensitive field value"""
+    if not encrypted_value:
+        return encrypted_value
+    try:
+        decoded = base64.urlsafe_b64decode(encrypted_value.encode('utf-8'))
+        decrypted = cipher_suite.decrypt(decoded)
+        return decrypted.decode('utf-8')
+    except Exception as e:
+        # If decryption fails, might be legacy plaintext data
+        print(f"Decryption warning: {e}")
+        return encrypted_value  # Return as-is for migration purposes
+
+def log_bank_transaction_access(username: str, action: str, transaction_ids: str = None, month_year: str = None):
+    """Log access to bank transactions for security audit"""
+    try:
+        ip_address = request.remote_addr if request else None
+        with get_db_connection() as connection:
+            cursor = connection.cursor()
+            cursor.execute("""
+                INSERT INTO bank_transaction_audit_log
+                (username, action, transaction_ids, month_year, ip_address)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (username, action, transaction_ids, month_year, ip_address))
+            connection.commit()
+    except Exception as e:
+        # Don't fail the request if audit logging fails
+        print(f"Audit logging error: {e}")
 
 # Configure CORS - allow frontend origins
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3004')
@@ -577,6 +637,38 @@ def init_db():
             )
         """)
         print("Created password_reset_tokens table")
+
+        # Create audit log table for bank transaction access
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS bank_transaction_audit_log (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(255) NOT NULL,
+                action VARCHAR(50) NOT NULL,
+                transaction_ids TEXT,
+                month_year VARCHAR(7),
+                ip_address VARCHAR(45),
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_username (username),
+                INDEX idx_timestamp (timestamp),
+                INDEX idx_action (action)
+            )
+        """)
+        print("Created bank_transaction_audit_log table")
+
+        # Migrate bank_transactions to support encrypted data (larger field sizes)
+        try:
+            cursor.execute("""
+                ALTER TABLE bank_transactions
+                    MODIFY COLUMN account_number TEXT,
+                    MODIFY COLUMN description TEXT,
+                    MODIFY COLUMN amount TEXT
+            """)
+            print("Migrated bank_transactions columns to TEXT for encryption support")
+        except Error as e:
+            if 'Duplicate column' in str(e) or 'already exists' in str(e).lower():
+                pass  # Already migrated
+            else:
+                print(f"Migration note: {e}")
 
         # Create tags table
         cursor.execute("""
@@ -2870,7 +2962,7 @@ def upload_with_encoding():
 
 @app.route('/api/transactions/save', methods=['POST'])
 def save_transactions():
-    """Save parsed transactions to database"""
+    """Save parsed transactions to database with encryption"""
     try:
         data = request.json
         transactions = data.get('transactions', [])
@@ -2882,30 +2974,45 @@ def save_transactions():
         with get_db_connection() as connection:
             cursor = connection.cursor()
 
-            # Insert transactions with uploaded_by
+            # Insert transactions with encryption on sensitive fields
             query = """
                     INSERT INTO bank_transactions
                     (account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by)
                     VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """
 
+            transaction_ids = []
             for trans in transactions:
+                # Encrypt sensitive fields
+                encrypted_account = encrypt_field(trans.get('account_number', ''))
+                encrypted_description = encrypt_field(trans['description'])
+                encrypted_amount = encrypt_field(str(trans['amount']))
+
                 values = (
-                    trans.get('account_number', ''),
+                    encrypted_account,
                     trans['transaction_date'],
-                    trans['description'],
-                    trans['amount'],
+                    encrypted_description,
+                    encrypted_amount,
                     trans['month_year'],
                     trans.get('transaction_type', 'credit'),
                     username
                 )
                 cursor.execute(query, values)
+                transaction_ids.append(str(cursor.lastrowid))
 
             connection.commit()
 
+            # Audit log
+            log_bank_transaction_access(
+                username=username,
+                action='SAVE',
+                transaction_ids=','.join(transaction_ids[:10]) + ('...' if len(transaction_ids) > 10 else ''),
+                month_year=transactions[0].get('month_year')
+            )
+
             return jsonify({
                 'success': True,
-                'message': f'{len(transactions)} transactions saved successfully'
+                'message': f'{len(transactions)} transactions saved successfully (encrypted)'
             })
 
     except Error as e:
@@ -2966,12 +3073,12 @@ def get_transaction_months():
 
 @app.route('/api/transactions/all', methods=['GET'])
 def get_all_transactions():
-    """Get all transactions (filtered by user role)"""
+    """Get all transactions (filtered by user role) with decryption"""
     try:
         # Get username and role for filtering
         username = request.args.get('username')
         user_role = request.args.get('role')
-        
+
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
@@ -2990,28 +3097,44 @@ def get_all_transactions():
                 WHERE 1=1
             """
             params = []
-            
+
             # Filter by role
             if user_role == 'limited':
                 query += " AND uploaded_by = %s"
                 params.append(username)
             # admin and shared see all transactions
-            
+
             query += " ORDER BY transaction_date DESC, id DESC"
-            
+
             cursor.execute(query, params)
             transactions = cursor.fetchall()
 
-            # Convert types
+            # Decrypt sensitive fields and convert types
             for trans in transactions:
+                # Decrypt sensitive fields
+                trans['account_number'] = decrypt_field(trans['account_number'])
+                trans['description'] = decrypt_field(trans['description'])
+                trans['amount'] = decrypt_field(trans['amount'])
+
+                # Convert types after decryption
                 if trans['transaction_date']:
                     trans['transaction_date'] = trans['transaction_date'].isoformat()
                 if trans['amount']:
-                    trans['amount'] = float(trans['amount'])
+                    try:
+                        trans['amount'] = float(trans['amount'])
+                    except (ValueError, TypeError):
+                        trans['amount'] = 0.0
                 if trans['upload_date']:
                     trans['upload_date'] = trans['upload_date'].isoformat()
                 if not trans.get('transaction_type'):
                     trans['transaction_type'] = 'credit'
+
+            # Audit log
+            log_bank_transaction_access(
+                username=username,
+                action='VIEW_ALL',
+                transaction_ids=f"Count: {len(transactions)}"
+            )
 
             return jsonify(transactions)
 
@@ -3021,12 +3144,12 @@ def get_all_transactions():
 
 @app.route('/api/transactions/<month_year>', methods=['GET'])
 def get_transactions_by_month(month_year):
-    """Get all transactions for a specific month (filtered by user role)"""
+    """Get all transactions for a specific month (filtered by user role) with decryption"""
     try:
         # Get username and role for filtering
         username = request.args.get('username')
         user_role = request.args.get('role')
-        
+
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
@@ -3045,28 +3168,45 @@ def get_transactions_by_month(month_year):
                 WHERE month_year = %s
             """
             params = [month_year]
-            
+
             # Filter by role
             if user_role == 'limited':
                 query += " AND uploaded_by = %s"
                 params.append(username)
             # admin and shared see all
-            
+
             query += " ORDER BY transaction_date DESC, id DESC"
-            
+
             cursor.execute(query, params)
             transactions = cursor.fetchall()
 
-            # Convert types
+            # Decrypt sensitive fields and convert types
             for trans in transactions:
+                # Decrypt sensitive fields
+                trans['account_number'] = decrypt_field(trans['account_number'])
+                trans['description'] = decrypt_field(trans['description'])
+                trans['amount'] = decrypt_field(trans['amount'])
+
+                # Convert types after decryption
                 if trans['transaction_date']:
                     trans['transaction_date'] = trans['transaction_date'].isoformat()
                 if trans['amount']:
-                    trans['amount'] = float(trans['amount'])
+                    try:
+                        trans['amount'] = float(trans['amount'])
+                    except (ValueError, TypeError):
+                        trans['amount'] = 0.0
                 if trans['upload_date']:
                     trans['upload_date'] = trans['upload_date'].isoformat()
                 if not trans.get('transaction_type'):
                     trans['transaction_type'] = 'credit'
+
+            # Audit log
+            log_bank_transaction_access(
+                username=username,
+                action='VIEW_MONTH',
+                month_year=month_year,
+                transaction_ids=f"Count: {len(transactions)}"
+            )
 
             return jsonify(transactions)
 
@@ -3076,8 +3216,10 @@ def get_transactions_by_month(month_year):
 
 @app.route('/api/transactions/<int:transaction_id>', methods=['DELETE'])
 def delete_transaction(transaction_id):
-    """Delete a specific transaction"""
+    """Delete a specific transaction with audit logging"""
     try:
+        username = request.args.get('username', 'unknown')
+
         with get_db_connection() as connection:
             cursor = connection.cursor()
 
@@ -3087,6 +3229,13 @@ def delete_transaction(transaction_id):
             if cursor.rowcount == 0:
                 return jsonify({'error': 'Transaction not found'}), 404
 
+            # Audit log
+            log_bank_transaction_access(
+                username=username,
+                action='DELETE',
+                transaction_ids=str(transaction_id)
+            )
+
             return jsonify({'message': 'Transaction deleted successfully'})
 
     except Error as e:
@@ -3095,16 +3244,27 @@ def delete_transaction(transaction_id):
 
 @app.route('/api/transactions/month/<month_year>', methods=['DELETE'])
 def delete_month_transactions(month_year):
-    """Delete all transactions for a specific month"""
+    """Delete all transactions for a specific month with audit logging"""
     try:
+        username = request.args.get('username', 'unknown')
+
         with get_db_connection() as connection:
             cursor = connection.cursor()
 
             cursor.execute("DELETE FROM bank_transactions WHERE month_year = %s", (month_year,))
+            deleted_count = cursor.rowcount
             connection.commit()
 
+            # Audit log
+            log_bank_transaction_access(
+                username=username,
+                action='DELETE_MONTH',
+                month_year=month_year,
+                transaction_ids=f"Count: {deleted_count}"
+            )
+
             return jsonify({
-                'message': f'{cursor.rowcount} transactions deleted successfully'
+                'message': f'{deleted_count} transactions deleted successfully'
             })
 
     except Error as e:
@@ -3113,12 +3273,18 @@ def delete_month_transactions(month_year):
 
 @app.route('/api/transactions/<int:transaction_id>', methods=['PUT'])
 def update_transaction(transaction_id):
-    """Update a specific transaction"""
+    """Update a specific transaction with encryption"""
     try:
         data = request.json
+        username = data.get('username', 'unknown')
 
         with get_db_connection() as connection:
             cursor = connection.cursor()
+
+            # Encrypt sensitive fields
+            encrypted_account = encrypt_field(data.get('account_number', ''))
+            encrypted_description = encrypt_field(data['description'])
+            encrypted_amount = encrypt_field(str(data['amount']))
 
             query = """
                     UPDATE bank_transactions
@@ -3128,21 +3294,28 @@ def update_transaction(transaction_id):
                         month_year       = %s,
                         account_number   = %s,
                         transaction_type = %s
-                    WHERE id = %s \
+                    WHERE id = %s
                     """
 
             cursor.execute(query, (
                 data['transaction_date'],
-                data['description'],
-                data['amount'],
+                encrypted_description,
+                encrypted_amount,
                 data['month_year'],
-                data.get('account_number', ''),
+                encrypted_account,
                 data.get('transaction_type', 'credit'),
                 transaction_id
             ))
             connection.commit()
 
-            return jsonify({'message': 'Transaction updated successfully'})
+            # Audit log
+            log_bank_transaction_access(
+                username=username,
+                action='UPDATE',
+                transaction_ids=str(transaction_id)
+            )
+
+            return jsonify({'message': 'Transaction updated successfully (encrypted)'})
 
     except Error as e:
         return jsonify({'error': str(e)}), 500
@@ -3150,32 +3323,49 @@ def update_transaction(transaction_id):
 
 @app.route('/api/transactions/manual', methods=['POST'])
 def add_manual_transaction():
-    """Add a transaction manually"""
+    """Add a transaction manually with encryption"""
     try:
         data = request.json
+        username = data.get('username', 'admin')
 
         with get_db_connection() as connection:
             cursor = connection.cursor()
 
+            # Encrypt sensitive fields
+            encrypted_account = encrypt_field(data.get('account_number', ''))
+            encrypted_description = encrypt_field(data['description'])
+            encrypted_amount = encrypt_field(str(data['amount']))
+
             query = """
                     INSERT INTO bank_transactions
-                    (account_number, transaction_date, description, amount, month_year, transaction_type)
-                    VALUES (%s, %s, %s, %s, %s, %s) \
+                    (account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """
 
             cursor.execute(query, (
-                data.get('account_number', ''),
+                encrypted_account,
                 data['transaction_date'],
-                data['description'],
-                data['amount'],
+                encrypted_description,
+                encrypted_amount,
                 data['month_year'],
-                data.get('transaction_type', 'credit')
+                data.get('transaction_type', 'credit'),
+                username
             ))
             connection.commit()
 
+            transaction_id = cursor.lastrowid
+
+            # Audit log
+            log_bank_transaction_access(
+                username=username,
+                action='MANUAL_ADD',
+                transaction_ids=str(transaction_id),
+                month_year=data.get('month_year')
+            )
+
             return jsonify({
-                'message': 'Transaction added successfully',
-                'id': cursor.lastrowid
+                'message': 'Transaction added successfully (encrypted)',
+                'id': transaction_id
             })
 
     except Error as e:
@@ -3437,6 +3627,90 @@ def migrate_user_ownership():
     except Error as e:
         print(f"Migration error: {e}")
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/migrate-encrypt-transactions', methods=['POST'])
+def migrate_encrypt_transactions():
+    """
+    CRITICAL SECURITY MIGRATION: Encrypt existing bank transaction data
+
+    This endpoint encrypts all existing plaintext bank transactions.
+    Only needs to be run ONCE after deploying encryption changes.
+
+    WARNING: This operation cannot be easily reversed. Ensure DATA_ENCRYPTION_KEY
+    is properly backed up before running!
+    """
+    try:
+        admin_password = request.json.get('admin_password')
+
+        # Require admin authentication
+        if not admin_password or admin_password != os.getenv('MIGRATION_PASSWORD'):
+            return jsonify({'error': 'Unauthorized - invalid admin password'}), 403
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # Get all transactions
+            cursor.execute("""
+                SELECT id, account_number, description, amount
+                FROM bank_transactions
+            """)
+            transactions = cursor.fetchall()
+
+            if not transactions:
+                return jsonify({
+                    'success': True,
+                    'message': 'No transactions to encrypt',
+                    'encrypted_count': 0
+                })
+
+            encrypted_count = 0
+            already_encrypted_count = 0
+
+            for trans in transactions:
+                try:
+                    # Try to decrypt - if it works, it's already encrypted
+                    decrypt_field(trans['account_number'])
+                    decrypt_field(trans['description'])
+                    decrypt_field(trans['amount'])
+                    already_encrypted_count += 1
+                    continue
+                except:
+                    # Decryption failed, so it's plaintext - encrypt it
+                    encrypted_account = encrypt_field(trans['account_number'] or '')
+                    encrypted_description = encrypt_field(trans['description'])
+                    encrypted_amount = encrypt_field(str(trans['amount']))
+
+                    cursor.execute("""
+                        UPDATE bank_transactions
+                        SET account_number = %s,
+                            description = %s,
+                            amount = %s
+                        WHERE id = %s
+                    """, (encrypted_account, encrypted_description, encrypted_amount, trans['id']))
+
+                    encrypted_count += 1
+
+            connection.commit()
+
+            # Audit log
+            log_bank_transaction_access(
+                username='system',
+                action='ENCRYPT_MIGRATION',
+                transaction_ids=f"Encrypted: {encrypted_count}, Already encrypted: {already_encrypted_count}"
+            )
+
+            return jsonify({
+                'success': True,
+                'message': f'Migration completed successfully',
+                'encrypted_count': encrypted_count,
+                'already_encrypted_count': already_encrypted_count,
+                'total_transactions': len(transactions)
+            })
+
+    except Exception as e:
+        print(f"Encryption migration error: {e}")
+        return jsonify({'error': f'Migration failed: {str(e)}'}), 500
 
 
 # Initialize database on import (works with gunicorn)
