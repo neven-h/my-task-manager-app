@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Upload, Calendar, Trash2, FileText, AlertCircle, CheckCircle, ArrowLeft, Plus, Edit2, Save, X, FileDown, Banknote, CreditCard, PieChart } from 'lucide-react';
 import API_BASE from './config';
 
@@ -483,10 +483,28 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
     });
   };
 
-  const filteredTransactions = getFilteredTransactions();
-  const totalFiltered = filteredTransactions.reduce((sum, t) => sum + t.amount, 0);
-  const creditTotal = filteredTransactions.filter(t => t.transaction_type === 'credit').reduce((sum, t) => sum + t.amount, 0);
-  const cashTotal = filteredTransactions.filter(t => t.transaction_type === 'cash').reduce((sum, t) => sum + t.amount, 0);
+  // PERFORMANCE OPTIMIZATION: Memoize expensive calculations
+  // These computations only run when their dependencies change, not on every render
+  const filteredTransactions = useMemo(() => getFilteredTransactions(), 
+    [monthTransactions, typeFilter, searchTerm, descriptionFilter]);
+  
+  const { totalFiltered, creditTotal, cashTotal } = useMemo(() => ({
+    totalFiltered: filteredTransactions.reduce((sum, t) => sum + t.amount, 0),
+    creditTotal: filteredTransactions.filter(t => t.transaction_type === 'credit').reduce((sum, t) => sum + t.amount, 0),
+    cashTotal: filteredTransactions.filter(t => t.transaction_type === 'cash').reduce((sum, t) => sum + t.amount, 0)
+  }), [filteredTransactions]);
+
+  // PERFORMANCE OPTIMIZATION: Memoize chart data computation
+  // The pie chart aggregation is expensive and only needs to recalculate when transactions change
+  const chartData = useMemo(() => {
+    if (monthTransactions.length === 0) return null;
+    const categoryData = aggregateByCategory(filteredTransactions);
+    const sortedCategories = Object.entries(categoryData)
+      .sort((a, b) => b[1].total - a[1].total)
+      .slice(0, 5);
+    const totalAmount = filteredTransactions.reduce((sum, t) => sum + t.amount, 0);
+    return { sortedCategories, totalAmount };
+  }, [filteredTransactions, monthTransactions.length]);
 
   return (
     <div style={{
@@ -774,13 +792,9 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
         )}
 
         {/* Expense Distribution Chart */}
-        {monthTransactions.length > 0 && (() => {
-          const categoryData = aggregateByCategory(filteredTransactions);
-          const sortedCategories = Object.entries(categoryData)
-            .sort((a, b) => b[1].total - a[1].total)
-            .slice(0, 5);
-
-          const totalAmount = filteredTransactions.reduce((sum, t) => sum + t.amount, 0);
+        {/* PERFORMANCE OPTIMIZATION: Use memoized chartData instead of computing on every render */}
+        {chartData && chartData.sortedCategories.length > 0 && (() => {
+          const { sortedCategories, totalAmount } = chartData;
           
           // Generate distinct colors for pie chart segments
           const pieColors = [
@@ -796,7 +810,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
             '#F77F00'  // Dark Orange
           ];
 
-          return sortedCategories.length > 0 ? (
+          return (
             <div style={{
               background: colors.card,
               border: `2px solid ${colors.border}`,
@@ -968,7 +982,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
                 </div>
               </div>
             </div>
-          ) : null;
+          );
         })()}
 
         {/* Upload Preview */}

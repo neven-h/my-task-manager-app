@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, {useState, useEffect, useRef, useMemo, useCallback} from 'react';
 import {
     Plus, X, BarChart3,
     Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut, Menu, Filter, Copy, Share2
@@ -10,6 +10,29 @@ import API_BASE from './config';
 
 const DRAFT_STORAGE_KEY = 'taskTracker_draft';
 const BULK_DRAFT_STORAGE_KEY = 'taskTracker_bulkDraft';
+
+/**
+ * Custom hook to debounce a value
+ * PERFORMANCE OPTIMIZATION: Prevents excessive API calls when filters change rapidly
+ * @param {any} value - The value to debounce
+ * @param {number} delay - Delay in milliseconds
+ * @returns {any} - The debounced value
+ */
+const useDebounce = (value, delay) => {
+    const [debouncedValue, setDebouncedValue] = useState(value);
+    
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedValue(value);
+        }, delay);
+        
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [value, delay]);
+    
+    return debouncedValue;
+};
 
 const TaskTracker = ({onLogout, authRole, authUser}) => {
     const isSharedUser = authRole === 'shared';
@@ -93,22 +116,31 @@ useEffect(() => {
         }
     }, [formData, showForm]);
 
+    // PERFORMANCE OPTIMIZATION: Debounce filters to avoid excessive API calls
+    // when user types quickly in search or changes filters rapidly
+    const debouncedFilters = useDebounce(filters, 300);
+
     // Load data on mount and when auth changes
+    // PERFORMANCE OPTIMIZATION: Use Promise.all to fetch data in parallel
     useEffect(() => {
         if (authUser && authRole) {
-            fetchCategories();
-            fetchTags();
-            fetchClients();
-            fetchTasks();
-            fetchStats();
+            Promise.all([
+                fetchCategories(),
+                fetchTags(),
+                fetchClients(),
+                fetchTasks(),
+                fetchStats()
+            ]).catch(err => console.error('Error loading initial data:', err));
         }
     }, [authUser, authRole]);
 
+    // PERFORMANCE OPTIMIZATION: Use debounced filters to reduce API calls
+    // Only fetch tasks when debounced filters change (not on every keystroke)
     useEffect(() => {
         if (authUser && authRole) {
             fetchTasks();
         }
-    }, [filters, authUser, authRole]);
+    }, [debouncedFilters, authUser, authRole]);
 
     // Auto-save bulk tasks draft
     useEffect(() => {
@@ -746,6 +778,14 @@ useEffect(() => {
         };
         return labels[status] || status;
     };
+
+    // PERFORMANCE OPTIMIZATION: Memoize filtered task lists
+    // This avoids filtering the tasks array multiple times on each render
+    // The computation only runs when 'tasks' changes, not on every render
+    const { completedTasks, uncompletedTasks } = useMemo(() => ({
+        completedTasks: tasks.filter(t => t.status === 'completed'),
+        uncompletedTasks: tasks.filter(t => t.status === 'uncompleted')
+    }), [tasks]);
 
     // TaskCard component
     const TaskCard = ({task, statusStyle}) => (
@@ -2285,10 +2325,11 @@ useEffect(() => {
                             ) : (
                                 <>
                                     {/* Render tasks based on view mode */}
+                                    {/* PERFORMANCE OPTIMIZATION: Use memoized filtered lists instead of filtering on every render */}
                                     {taskViewMode === 'all' ? (
                                         <>
                                             {/* Uncompleted Tasks Section */}
-                                            {tasks.filter(t => t.status === 'uncompleted').length > 0 && (
+                                            {uncompletedTasks.length > 0 && (
                                                 <div style={{marginBottom: '48px'}}>
                                                     <h3 style={{
                                                         fontSize: '1.5rem',
@@ -2300,11 +2341,11 @@ useEffect(() => {
                                                         paddingBottom: '12px'
                                                     }}>
                                                         Uncompleted Tasks
-                                                        ({tasks.filter(t => t.status === 'uncompleted').length})
+                                                        ({uncompletedTasks.length})
                                                     </h3>
                                                     <div
                                                         style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
-                                                        {tasks.filter(t => t.status === 'uncompleted').map(task => {
+                                                        {uncompletedTasks.map(task => {
                                                             const statusStyle = getStatusColor(task.status);
                                                             return (
                                                                 <TaskCard key={task.id} task={task}
@@ -2316,7 +2357,7 @@ useEffect(() => {
                                             )}
 
                                             {/* Completed Tasks Section */}
-                                            {tasks.filter(t => t.status === 'completed').length > 0 && (
+                                            {completedTasks.length > 0 && (
                                                 <div>
                                                     <h3 style={{
                                                         fontSize: '1.5rem',
@@ -2328,11 +2369,11 @@ useEffect(() => {
                                                         paddingBottom: '12px'
                                                     }}>
                                                         Completed Tasks
-                                                        ({tasks.filter(t => t.status === 'completed').length})
+                                                        ({completedTasks.length})
                                                     </h3>
                                                     <div
                                                         style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
-                                                        {tasks.filter(t => t.status === 'completed').map(task => {
+                                                        {completedTasks.map(task => {
                                                             const statusStyle = getStatusColor(task.status);
                                                             return (
                                                                 <TaskCard key={task.id} task={task}
@@ -2345,7 +2386,7 @@ useEffect(() => {
                                         </>
                                     ) : (
                                         <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
-                                            {tasks.filter(t => taskViewMode === 'completed' ? t.status === 'completed' : t.status === 'uncompleted').map(task => {
+                                            {(taskViewMode === 'completed' ? completedTasks : uncompletedTasks).map(task => {
                                                 const statusStyle = getStatusColor(task.status);
                                                 return (
                                                     <TaskCard key={task.id} task={task} statusStyle={statusStyle}/>
