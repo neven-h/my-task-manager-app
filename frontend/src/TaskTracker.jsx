@@ -1361,6 +1361,8 @@ useEffect(() => {
           }
 
           .modal-content {
+            width: 100vw !important;
+            max-width: 100vw !important;
             max-height: 90vh;
             border-width: 0 !important;
             border-radius: 24px 24px 0 0 !important;
@@ -1435,6 +1437,26 @@ useEffect(() => {
             font-weight: 700 !important;
             margin-bottom: 8px !important;
             display: block;
+          }
+
+          /* Form grid layouts - make single column on mobile */
+          .form-grid-2col {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+          }
+
+          /* Form buttons - stack vertically on mobile */
+          .form-buttons {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 12px !important;
+            margin-top: 24px !important;
+          }
+
+          .form-buttons button {
+            width: 100% !important;
+            justify-content: center;
           }
 
           /* Task view toggle */
@@ -2605,7 +2627,7 @@ useEffect(() => {
                                     options={clients.map(client => typeof client === 'string' ? client : client.name)}
                                 />
 
-                                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
+                                <div className="form-grid-2col" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
                                     <div>
                                         <label style={{
                                             display: 'block',
@@ -2642,7 +2664,7 @@ useEffect(() => {
                                     </div>
                                 </div>
 
-                                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
+                                <div className="form-grid-2col" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
                                     <div>
                                         <label style={{
                                             display: 'block',
@@ -2779,7 +2801,7 @@ useEffect(() => {
                                 )}
                             </div>
 
-                            <div style={{
+                            <div className="form-buttons" style={{
                                 display: 'flex',
                                 gap: '12px',
                                 marginTop: '32px',
@@ -2964,7 +2986,7 @@ useEffect(() => {
                                 </p>
                             </div>
 
-                            <div style={{display: 'flex', gap: '12px', justifyContent: 'flex-end'}}>
+                            <div className="form-buttons" style={{display: 'flex', gap: '12px', justifyContent: 'flex-end'}}>
                                 <button
                                     type="button"
                                     className="btn btn-white"
