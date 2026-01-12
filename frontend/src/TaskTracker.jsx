@@ -1375,14 +1375,15 @@ useEffect(() => {
 
           .modal-header {
             padding: 20px !important;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-            color: white !important;
+            /* Use same yellow color as desktop */
+            background: #FFD500 !important;
+            color: #000 !important;
             border-radius: 24px 24px 0 0 !important;
             flex-shrink: 0;
           }
 
           .modal-header h2 {
-            color: white !important;
+            color: #000 !important;
             margin: 0;
           }
 
@@ -2506,6 +2507,7 @@ useEffect(() => {
                                         placeholder="Task title..."
                                         value={formData.title}
                                         onChange={(e) => setFormData({...formData, title: e.target.value})}
+                                        enterKeyHint="next"
                                     />
                                 </div>
 
@@ -2522,7 +2524,19 @@ useEffect(() => {
                                         rows={3}
                                         placeholder="Details..."
                                         value={formData.description}
-                                        onChange={(e) => setFormData({...formData, description: e.target.value})}
+                                        onChange={(e) => {
+                                            setFormData({...formData, description: e.target.value});
+                                            // Auto-resize textarea
+                                            e.target.style.height = 'auto';
+                                            e.target.style.height = e.target.scrollHeight + 'px';
+                                        }}
+                                        enterKeyHint="next"
+                                        style={{
+                                            minHeight: '80px',
+                                            maxHeight: '300px',
+                                            overflow: 'auto',
+                                            resize: 'vertical'
+                                        }}
                                     />
                                 </div>
 
@@ -2646,6 +2660,7 @@ useEffect(() => {
                                             required
                                             value={formData.task_date}
                                             onChange={(e) => setFormData({...formData, task_date: e.target.value})}
+                                            enterKeyHint="next"
                                         />
                                     </div>
 
@@ -2662,6 +2677,7 @@ useEffect(() => {
                                             type="time"
                                             value={formData.task_time}
                                             onChange={(e) => setFormData({...formData, task_time: e.target.value})}
+                                            enterKeyHint="next"
                                         />
                                     </div>
                                 </div>
@@ -2683,6 +2699,7 @@ useEffect(() => {
                                             placeholder="1.5"
                                             value={formData.duration}
                                             onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                                            enterKeyHint="next"
                                         />
                                     </div>
 
@@ -2731,6 +2748,7 @@ useEffect(() => {
                                                 }
                                             }}
                                             style={{flex: 1}}
+                                            enterKeyHint="done"
                                         />
                                         <datalist id="tag-suggestions">
                                             {allTags.map((tag) => (
@@ -2774,6 +2792,7 @@ useEffect(() => {
                                         placeholder="Additional context..."
                                         value={formData.notes}
                                         onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                                        enterKeyHint="done"
                                     />
                                 </div>
 
