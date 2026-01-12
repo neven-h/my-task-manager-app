@@ -134,7 +134,7 @@ const ClientsManagement = ({ onBackToTasks }) => {
     e.preventDefault();
     
     // Validate name
-    if (!newClient.name.trim()) {
+    if (!newClient.name?.trim()) {
       setError('Client name is required');
       return;
     }
@@ -146,14 +146,20 @@ const ClientsManagement = ({ onBackToTasks }) => {
       // Get username from localStorage for owner field
       const username = localStorage.getItem('authUser');
       
+      if (!username) {
+        setError('User not authenticated. Please log in again.');
+        setCreateLoading(false);
+        return;
+      }
+      
       const response = await fetch(`${API_BASE}/api/clients`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: newClient.name.trim(),
-          email: newClient.email.trim(),
-          phone: newClient.phone.trim(),
-          notes: newClient.notes.trim(),
+          email: newClient.email?.trim() || '',
+          phone: newClient.phone?.trim() || '',
+          notes: newClient.notes?.trim() || '',
           owner: username
         })
       });
@@ -170,7 +176,10 @@ const ClientsManagement = ({ onBackToTasks }) => {
       await fetchClients();
       
       // Clear success message after 3 seconds
-      setTimeout(() => setSuccessMessage(null), 3000);
+      const timeoutId = setTimeout(() => setSuccessMessage(null), 3000);
+      
+      // Note: We don't return a cleanup function here as the component
+      // remains mounted and we want the message to clear
     } catch (err) {
       setError(err.message);
     } finally {
@@ -469,7 +478,7 @@ const ClientsManagement = ({ onBackToTasks }) => {
                   <button
                     type="submit"
                     className="btn btn-primary"
-                    disabled={createLoading || !newClient.name.trim()}
+                    disabled={createLoading || !newClient.name?.trim()}
                     style={{ flex: 1 }}
                   >
                     {createLoading ? 'Creating...' : 'Create Client'}
