@@ -7,6 +7,8 @@ import ForgotPasswordPage from './ForgotPasswordPage';
 import ResetPasswordPage from './ResetPasswordPage';
 import TaskTracker from './TaskTracker';
 import MobileTaskTracker from './mobile-prototype/MobileTaskTracker';
+import TwoFactorSetup from './TwoFactorSetup';
+import SettingsPage from './SettingsPage';
 import API_BASE from './config';
 
 const App = () => {
@@ -110,7 +112,7 @@ const App = () => {
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-      {/* Protected route */}
+      {/* Protected routes */}
       <Route path="/app" element={
         authToken ? (
           isMobile ? (
@@ -121,6 +123,18 @@ const App = () => {
         ) : (
           <Navigate to="/login" />
         )
+      } />
+
+      <Route path="/tasks" element={
+        authToken ? <Navigate to="/app" /> : <Navigate to="/login" />
+      } />
+
+      <Route path="/2fa-setup" element={
+        authToken ? <TwoFactorSetup /> : <Navigate to="/login" />
+      } />
+
+      <Route path="/settings" element={
+        authToken ? <SettingsPage /> : <Navigate to="/login" />
       } />
 
       {/* Catch all */}
