@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import API_BASE from './config';
+import { checkPasswordStrength, allPasswordRequirementsMet } from './utils/passwordValidation';
 
 const SignUpPage = () => {
   const navigate = useNavigate();
@@ -22,21 +23,12 @@ const SignUpPage = () => {
     hasSymbol: false
   });
 
-  const checkPasswordStrength = (password) => {
-    setPasswordStrength({
-      hasLength: password.length >= 8,
-      hasUppercase: /[A-Z]/.test(password),
-      hasNumber: /[0-9]/.test(password),
-      hasSymbol: /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)
-    });
-  };
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     
     if (name === 'password') {
-      checkPasswordStrength(value);
+      setPasswordStrength(checkPasswordStrength(value));
     }
   };
 
@@ -85,7 +77,7 @@ const SignUpPage = () => {
     }
   };
 
-  const allRequirementsMet = Object.values(passwordStrength).every(v => v);
+  const allRequirementsMet = allPasswordRequirementsMet(passwordStrength);
 
   // Check if all fields are filled and valid
   const isFormValid = () => {

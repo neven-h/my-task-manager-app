@@ -283,6 +283,57 @@ def handle_error(e: Exception, default_message: str = "Internal server error", s
     return jsonify({'error': default_message}), status_code
 
 
+# Password Validation Helper
+def validate_password(password: str) -> tuple[bool, str]:
+    """
+    Validate password strength requirements.
+    Returns (is_valid, error_message).
+    """
+    if len(password) < 8:
+        return False, 'Password must be at least 8 characters'
+    if not re.search(r'[A-Z]', password):
+        return False, 'Password must contain at least one uppercase letter'
+    if not re.search(r'[0-9]', password):
+        return False, 'Password must contain at least one number'
+    if not re.search(r'[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]', password):
+        return False, 'Password must contain at least one symbol'
+    return True, ''
+
+
+# Task Serialization Helper
+def serialize_task(task: dict) -> dict:
+    """
+    Convert task database record to JSON-serializable format.
+    Handles datetime conversion and comma-separated strings to arrays.
+    
+    Note: This function modifies the task dictionary in-place and also returns it
+    for convenience in chaining or comprehension usage.
+    """
+    if task.get('task_date'):
+        task['task_date'] = task['task_date'].isoformat()
+    if task.get('task_time'):
+        task['task_time'] = str(task['task_time'])
+    if task.get('created_at'):
+        task['created_at'] = task['created_at'].isoformat()
+    if task.get('updated_at'):
+        task['updated_at'] = task['updated_at'].isoformat()
+    if task.get('duration'):
+        task['duration'] = float(task['duration'])
+    # Convert tags from comma-separated string to array
+    tags_value = task.get('tags')
+    if tags_value:
+        task['tags'] = [t.strip() for t in tags_value.split(',') if t.strip()]
+    else:
+        task['tags'] = []
+    # Convert categories from comma-separated string to array
+    categories_value = task.get('categories')
+    if categories_value:
+        task['categories'] = [c.strip() for c in categories_value.split(',') if c.strip()]
+    else:
+        task['categories'] = [task.get('category', 'other')]
+    return task
+
+
 # JWT Helper Functions
 def generate_jwt_token(username: str, role: str) -> str:
     """Generate a secure JWT token for authenticated users"""
@@ -917,15 +968,10 @@ def signup():
         if not re.match(email_regex, email):
             return jsonify({'error': 'Invalid email format'}), 400
         
-        # Validate password strength
-        if len(password) < 8:
-            return jsonify({'error': 'Password must be at least 8 characters'}), 400
-        if not re.search(r'[A-Z]', password):
-            return jsonify({'error': 'Password must contain at least one uppercase letter'}), 400
-        if not re.search(r'[0-9]', password):
-            return jsonify({'error': 'Password must contain at least one number'}), 400
-        if not re.search(r'[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]', password):
-            return jsonify({'error': 'Password must contain at least one symbol'}), 400
+        # Validate password strength using helper
+        is_valid, error_msg = validate_password(password)
+        if not is_valid:
+            return jsonify({'error': error_msg}), 400
         
         # Validate username
         if len(username) < 3:
@@ -1126,15 +1172,10 @@ def reset_password():
         if not token or not new_password:
             return jsonify({'error': 'Token and password are required'}), 400
         
-        # Validate password strength
-        if len(new_password) < 8:
-            return jsonify({'error': 'Password must be at least 8 characters'}), 400
-        if not re.search(r'[A-Z]', new_password):
-            return jsonify({'error': 'Password must contain at least one uppercase letter'}), 400
-        if not re.search(r'[0-9]', new_password):
-            return jsonify({'error': 'Password must contain at least one number'}), 400
-        if not re.search(r'[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]', new_password):
-            return jsonify({'error': 'Password must contain at least one symbol'}), 400
+        # Validate password strength using helper
+        is_valid, error_msg = validate_password(new_password)
+        if not is_valid:
+            return jsonify({'error': error_msg}), 400
         
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -1260,30 +1301,9 @@ def get_tasks():
             cursor.execute(query, params)
             tasks = cursor.fetchall()
 
-            # Convert datetime objects to strings and tags to array
+            # Convert datetime objects to strings and tags to array using helper
             for task in tasks:
-                if task['task_date']:
-                    task['task_date'] = task['task_date'].isoformat()
-                if task['task_time']:
-                    task['task_time'] = str(task['task_time'])
-                if task['created_at']:
-                    task['created_at'] = task['created_at'].isoformat()
-                if task['updated_at']:
-                    task['updated_at'] = task['updated_at'].isoformat()
-                if task['duration']:
-                    task['duration'] = float(task['duration'])
-                # Convert tags from comma-separated string to array
-                tags_value = task.get('tags')
-                if tags_value:
-                    task['tags'] = [t.strip() for t in tags_value.split(',') if t.strip()]
-                else:
-                    task['tags'] = []
-                # Convert categories from comma-separated string to array
-                categories_value = task.get('categories')
-                if categories_value:
-                    task['categories'] = [c.strip() for c in categories_value.split(',') if c.strip()]
-                else:
-                    task['categories'] = [task.get('category', 'other')]
+                serialize_task(task)
 
             return jsonify(tasks)
 
@@ -1663,30 +1683,9 @@ def get_drafts():
             cursor.execute(query)
             drafts = cursor.fetchall()
 
-            # Convert datetime objects to strings and tags to array
+            # Convert datetime objects to strings and tags to array using helper
             for draft in drafts:
-                if draft['task_date']:
-                    draft['task_date'] = draft['task_date'].isoformat()
-                if draft['task_time']:
-                    draft['task_time'] = str(draft['task_time'])
-                if draft['created_at']:
-                    draft['created_at'] = draft['created_at'].isoformat()
-                if draft['updated_at']:
-                    draft['updated_at'] = draft['updated_at'].isoformat()
-                if draft['duration']:
-                    draft['duration'] = float(draft['duration'])
-                # Convert tags from comma-separated string to array
-                tags_value = draft.get('tags')
-                if tags_value:
-                    draft['tags'] = [t.strip() for t in tags_value.split(',') if t.strip()]
-                else:
-                    draft['tags'] = []
-                # Convert categories from comma-separated string to array
-                categories_value = draft.get('categories')
-                if categories_value:
-                    draft['categories'] = [c.strip() for c in categories_value.split(',') if c.strip()]
-                else:
-                    draft['categories'] = [draft.get('category', 'other')]
+                serialize_task(draft)
 
             return jsonify(drafts)
 

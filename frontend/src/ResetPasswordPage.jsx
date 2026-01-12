@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import API_BASE from './config';
+import { checkPasswordStrength, allPasswordRequirementsMet } from './utils/passwordValidation';
 
 const ResetPasswordPage = () => {
   const navigate = useNavigate();
@@ -51,21 +52,12 @@ const ResetPasswordPage = () => {
     }
   };
 
-  const checkPasswordStrength = (password) => {
-    setPasswordStrength({
-      hasLength: password.length >= 8,
-      hasUppercase: /[A-Z]/.test(password),
-      hasNumber: /[0-9]/.test(password),
-      hasSymbol: /[!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password)
-    });
-  };
-
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     
     if (name === 'password') {
-      checkPasswordStrength(value);
+      setPasswordStrength(checkPasswordStrength(value));
     }
   };
 
@@ -78,7 +70,7 @@ const ResetPasswordPage = () => {
       return;
     }
 
-    if (!Object.values(passwordStrength).every(v => v)) {
+    if (!allPasswordRequirementsMet(passwordStrength)) {
       setError('Password does not meet all requirements');
       return;
     }
@@ -110,7 +102,7 @@ const ResetPasswordPage = () => {
     }
   };
 
-  const allRequirementsMet = Object.values(passwordStrength).every(v => v);
+  const allRequirementsMet = allPasswordRequirementsMet(passwordStrength);
 
   if (verifying) {
     return (

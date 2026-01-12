@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Upload, Calendar, Trash2, FileText, AlertCircle, CheckCircle, ArrowLeft, Plus, Edit2, Save, X, FileDown, Banknote, CreditCard, PieChart } from 'lucide-react';
 import API_BASE from './config';
+import { formatCurrency } from './utils/formatCurrency';
 
 const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
   const [uploadedData, setUploadedData] = useState(null);
@@ -332,14 +333,6 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('he-IL', {
-      style: 'currency',
-      currency: 'ILS',
-      minimumFractionDigits: 2
-    }).format(amount);
   };
 
   const formatMonthYear = (monthYear) => {
