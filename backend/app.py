@@ -32,13 +32,21 @@ load_dotenv()
 app = Flask(__name__)
 
 # Security Configuration
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-if not app.config['SECRET_KEY']:
-    raise ValueError("SECRET_KEY environment variable must be set")
+# Check if running in CI environment (for build/syntax checks)
+IS_CI = os.getenv('CI', 'false').lower() == 'true' or os.getenv('GITHUB_ACTIONS') == 'true'
 
-JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
-if not JWT_SECRET_KEY:
-    raise ValueError("JWT_SECRET_KEY environment variable must be set")
+# Use default keys for CI/build checks, require real keys for actual runtime
+if IS_CI:
+    app.config['SECRET_KEY'] = 'ci-build-key-not-for-production'
+    JWT_SECRET_KEY = 'ci-jwt-key-not-for-production'
+else:
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+    if not app.config['SECRET_KEY']:
+        raise ValueError("SECRET_KEY environment variable must be set")
+
+    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
+    if not JWT_SECRET_KEY:
+        raise ValueError("JWT_SECRET_KEY environment variable must be set")
 
 JWT_ALGORITHM = 'HS256'
 JWT_EXPIRATION_HOURS = 24
@@ -159,6 +167,10 @@ def sanitize_db_name(name: str) -> str:
 # In production, migrate all users to the database
 def _get_hardcoded_users():
     """Load hardcoded users with bcrypt-hashed passwords from environment variables"""
+    # In CI environment, return empty dict (users come from database)
+    if IS_CI:
+        return {}
+
     required_passwords = ['USER_PITZ_PASSWORD', 'USER_BENNY_PASSWORD', 'USER_HILLEL_PASSWORD', 'USER_OLIVIA_PASSWORD']
     if not all(os.getenv(var) for var in required_passwords):
         raise ValueError(f"{' and '.join(required_passwords)} must be set")
@@ -260,7 +272,8 @@ def get_db_connection():
 
 def init_db():
     """Initialize database and create tables"""
-    global connection, cursor
+    connection = None
+    cursor = None
     try:
         # Connect without database to create it
         temp_config = DB_CONFIG.copy()
@@ -720,8 +733,9 @@ def init_db():
     except Error as e:
         print(f"Error initializing database: {e}")
     finally:
-        if connection.is_connected():
-            cursor.close()
+        if connection and connection.is_connected():
+            if cursor:
+                cursor.close()
             connection.close()
 
 
@@ -868,52 +882,57 @@ def forgot_password():
     try:
         data = request.json
         email = data.get('email', '').strip().lower()
-        
+
         if not email:
             return jsonify({'error': 'Email is required'}), 400
-        
+
+        # Check if email is configured
+        email_configured = bool(app.config.get('MAIL_USERNAME') and app.config.get('MAIL_PASSWORD'))
+
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
-            
+
             # Check if user exists
             cursor.execute("SELECT id, username, email FROM users WHERE email = %s AND is_active = TRUE", (email,))
             user = cursor.fetchone()
-            
+
             if not user:
                 # Don't reveal if email exists or not (security)
                 return jsonify({
                     'success': True,
                     'message': 'If that email is registered, you will receive a password reset link'
                 })
-            
+
             # Check rate limiting (max 3 requests per hour)
             cursor.execute("""
-                SELECT COUNT(*) as count 
-                FROM password_reset_tokens 
-                WHERE user_id = %s 
+                SELECT COUNT(*) as count
+                FROM password_reset_tokens
+                WHERE user_id = %s
                 AND created_at > DATE_SUB(NOW(), INTERVAL 1 HOUR)
             """, (user['id'],))
             result = cursor.fetchone()
             if result['count'] >= 3:
                 return jsonify({'error': 'Too many reset requests. Please try again later'}), 429
-            
+
             # Generate secure token
             token = str(uuid.uuid4())
             expires_at = datetime.now() + timedelta(minutes=10)
-            
+
             # Save token to database
             cursor.execute("""
                 INSERT INTO password_reset_tokens (user_id, token, expires_at)
                 VALUES (%s, %s, %s)
             """, (user['id'], token, expires_at))
             connection.commit()
-            
-            # Send email
-            reset_url = f"{FRONTEND_URL}/reset-password?token={token}"
-            msg = Message(
-                subject="Password Reset Request",
-                recipients=[user['email']],
-                body=f"""Hello {user['username']},
+
+            # Try to send email if configured
+            if email_configured:
+                try:
+                    reset_url = f"{FRONTEND_URL}/reset-password?token={token}"
+                    msg = Message(
+                        subject="Password Reset Request",
+                        recipients=[user['email']],
+                        body=f"""Hello {user['username']},
 
 You requested a password reset for your account.
 
@@ -924,18 +943,46 @@ If you didn't request this, please ignore this email.
 
 Best regards,
 Task Tracker Team"""
-            )
-            
-            mail.send(msg)
-            
-            return jsonify({
-                'success': True,
-                'message': 'If that email is registered, you will receive a password reset link'
-            })
-            
+                    )
+
+                    mail.send(msg)
+
+                    return jsonify({
+                        'success': True,
+                        'message': 'If that email is registered, you will receive a password reset link'
+                    })
+                except Exception as mail_error:
+                    print(f"Email sending failed: {mail_error}")
+                    # If email fails, return token in response for development
+                    if DEBUG:
+                        return jsonify({
+                            'success': True,
+                            'message': 'Email service unavailable. Use this token directly',
+                            'token': token,
+                            'reset_url': f"{FRONTEND_URL}/reset-password?token={token}"
+                        })
+                    else:
+                        return jsonify({
+                            'error': 'Email service is temporarily unavailable. Please contact administrator.'
+                        }), 503
+            else:
+                # Email not configured - return token for development/testing
+                print(f"Email not configured. Reset token: {token}")
+                if DEBUG:
+                    return jsonify({
+                        'success': True,
+                        'message': 'Email not configured. Use this reset link',
+                        'token': token,
+                        'reset_url': f"{FRONTEND_URL}/reset-password?token={token}"
+                    })
+                else:
+                    return jsonify({
+                        'error': 'Email service is not configured. Please contact administrator.'
+                    }), 503
+
     except Exception as e:
         print(f"Forgot password error: {e}")
-        return jsonify({'error': 'Failed to process request'}), 500
+        return handle_error(e, "Failed to process password reset request")
 
 
 @app.route('/api/auth/verify-token', methods=['GET'])
@@ -1978,13 +2025,30 @@ def manage_categories():
     """Get list of categories or create a new one"""
     if request.method == 'GET':
         try:
+            username = request.args.get('username')
+            user_role = request.args.get('role')
+
             with get_db_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
-                cursor.execute("""
-                               SELECT category_id as id, label, color, icon
-                               FROM categories_master
-                               ORDER BY label
-                               """)
+
+                # Build query based on user role
+                if user_role == 'limited':
+                    # Limited users only see their own categories OR categories with no owner (shared)
+                    query = """
+                        SELECT category_id as id, label, color, icon
+                        FROM categories_master
+                        WHERE owner = %s OR owner IS NULL
+                        ORDER BY label
+                    """
+                    cursor.execute(query, (username,))
+                else:
+                    # Admin and shared users see all categories
+                    cursor.execute("""
+                        SELECT category_id as id, label, color, icon
+                        FROM categories_master
+                        ORDER BY label
+                    """)
+
                 categories = cursor.fetchall()
                 return jsonify(categories)
         except Error as e:
@@ -1997,6 +2061,7 @@ def manage_categories():
             label = data.get('label', '').strip()
             color = data.get('color', '#0d6efd')
             icon = data.get('icon', '📝')
+            owner = data.get('owner')  # Get owner from request
 
             if not category_id or not label:
                 return jsonify({'error': 'Category ID and label are required'}), 400
@@ -2004,9 +2069,9 @@ def manage_categories():
             with get_db_connection() as connection:
                 cursor = connection.cursor()
                 cursor.execute("""
-                               INSERT INTO categories_master (category_id, label, color, icon)
-                               VALUES (%s, %s, %s, %s)
-                               """, (category_id, label, color, icon))
+                               INSERT INTO categories_master (category_id, label, color, icon, owner)
+                               VALUES (%s, %s, %s, %s, %s)
+                               """, (category_id, label, color, icon, owner))
                 connection.commit()
 
                 return jsonify({
@@ -2076,13 +2141,30 @@ def manage_tags():
     """Get list of tags or create a new one"""
     if request.method == 'GET':
         try:
+            username = request.args.get('username')
+            user_role = request.args.get('role')
+
             with get_db_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
-                cursor.execute("""
-                               SELECT id, name, color
-                               FROM tags
-                               ORDER BY name
-                               """)
+
+                # Build query based on user role
+                if user_role == 'limited':
+                    # Limited users only see their own tags OR tags with no owner (shared)
+                    query = """
+                        SELECT id, name, color
+                        FROM tags
+                        WHERE owner = %s OR owner IS NULL
+                        ORDER BY name
+                    """
+                    cursor.execute(query, (username,))
+                else:
+                    # Admin and shared users see all tags
+                    cursor.execute("""
+                        SELECT id, name, color
+                        FROM tags
+                        ORDER BY name
+                    """)
+
                 tags = cursor.fetchall()
                 return jsonify(tags)
         except Error as e:
@@ -2093,6 +2175,7 @@ def manage_tags():
             data = request.json
             name = data.get('name', '').strip()
             color = data.get('color', '#0d6efd')
+            owner = data.get('owner')  # Get owner from request
 
             if not name:
                 return jsonify({'error': 'Tag name is required'}), 400
@@ -2100,9 +2183,9 @@ def manage_tags():
             with get_db_connection() as connection:
                 cursor = connection.cursor()
                 cursor.execute("""
-                               INSERT INTO tags (name, color)
-                               VALUES (%s, %s)
-                               """, (name, color))
+                               INSERT INTO tags (name, color, owner)
+                               VALUES (%s, %s, %s)
+                               """, (name, color, owner))
                 connection.commit()
 
                 return jsonify({
@@ -2169,27 +2252,53 @@ def manage_clients_list():
     """Get list of clients or create a new one"""
     if request.method == 'GET':
         try:
+            username = request.args.get('username')
+            user_role = request.args.get('role')
+
             with get_db_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
 
-                # Get all clients from clients table and tasks table (combined)
-                cursor.execute("""
-                               SELECT name, email, phone, notes, created_at, updated_at
-                               FROM clients
-                               ORDER BY name
-                               """)
-                clients_from_table = cursor.fetchall()
+                # Build query based on user role
+                if user_role == 'limited':
+                    # Limited users only see their own clients OR clients with no owner
+                    cursor.execute("""
+                        SELECT name, email, phone, notes, created_at, updated_at
+                        FROM clients
+                        WHERE owner = %s OR owner IS NULL
+                        ORDER BY name
+                    """, (username,))
+                    clients_from_table = cursor.fetchall()
 
-                # Also get clients that only exist in tasks table
-                cursor.execute("""
-                               SELECT DISTINCT client
-                               FROM tasks
-                               WHERE client IS NOT NULL
-                                 AND client != ''
-                      AND client NOT IN (SELECT name FROM clients)
-                               ORDER BY client
-                               """)
-                clients_from_tasks = [row['client'] for row in cursor.fetchall()]
+                    # Also get clients from their own tasks
+                    cursor.execute("""
+                        SELECT DISTINCT client
+                        FROM tasks
+                        WHERE client IS NOT NULL
+                          AND client != ''
+                          AND created_by = %s
+                          AND client NOT IN (SELECT name FROM clients WHERE owner = %s OR owner IS NULL)
+                        ORDER BY client
+                    """, (username, username))
+                    clients_from_tasks = [row['client'] for row in cursor.fetchall()]
+                else:
+                    # Admin and shared users see all clients
+                    cursor.execute("""
+                        SELECT name, email, phone, notes, created_at, updated_at
+                        FROM clients
+                        ORDER BY name
+                    """)
+                    clients_from_table = cursor.fetchall()
+
+                    # Also get clients that only exist in tasks table
+                    cursor.execute("""
+                        SELECT DISTINCT client
+                        FROM tasks
+                        WHERE client IS NOT NULL
+                          AND client != ''
+                          AND client NOT IN (SELECT name FROM clients)
+                        ORDER BY client
+                    """)
+                    clients_from_tasks = [row['client'] for row in cursor.fetchall()]
 
                 # Combine both lists
                 all_clients = clients_from_table + [{'name': c} for c in clients_from_tasks]
@@ -2203,6 +2312,7 @@ def manage_clients_list():
         try:
             data = request.json
             name = data.get('name', '').strip()
+            owner = data.get('owner')  # Get owner from request
 
             if not name:
                 return jsonify({'error': 'Client name is required'}), 400
@@ -2210,13 +2320,14 @@ def manage_clients_list():
             with get_db_connection() as connection:
                 cursor = connection.cursor()
                 cursor.execute("""
-                               INSERT INTO clients (name, email, phone, notes)
-                               VALUES (%s, %s, %s, %s)
+                               INSERT INTO clients (name, email, phone, notes, owner)
+                               VALUES (%s, %s, %s, %s, %s)
                                """, (
                                    name,
                                    data.get('email', ''),
                                    data.get('phone', ''),
-                                   data.get('notes', '')
+                                   data.get('notes', ''),
+                                   owner
                                ))
                 connection.commit()
 
@@ -3285,6 +3396,46 @@ def get_client_tasks(client_name):
             return jsonify(tasks)
 
     except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/migrate-user-ownership', methods=['POST'])
+def migrate_user_ownership():
+    """Add owner column to categories_master, tags, and clients tables for user isolation"""
+    try:
+        with get_db_connection() as connection:
+            cursor = connection.cursor()
+
+            # Add owner column to categories_master if it doesn't exist
+            cursor.execute("""
+                ALTER TABLE categories_master
+                ADD COLUMN IF NOT EXISTS owner VARCHAR(255) DEFAULT NULL,
+                ADD INDEX IF NOT EXISTS idx_owner (owner)
+            """)
+
+            # Add owner column to tags if it doesn't exist
+            cursor.execute("""
+                ALTER TABLE tags
+                ADD COLUMN IF NOT EXISTS owner VARCHAR(255) DEFAULT NULL,
+                ADD INDEX IF NOT EXISTS idx_owner (owner)
+            """)
+
+            # Add owner column to clients if it doesn't exist
+            cursor.execute("""
+                ALTER TABLE clients
+                ADD COLUMN IF NOT EXISTS owner VARCHAR(255) DEFAULT NULL,
+                ADD INDEX IF NOT EXISTS idx_owner (owner)
+            """)
+
+            connection.commit()
+
+            return jsonify({
+                'success': True,
+                'message': 'Database migrated successfully - user ownership columns added'
+            })
+
+    except Error as e:
+        print(f"Migration error: {e}")
         return jsonify({'error': str(e)}), 500
 
 
