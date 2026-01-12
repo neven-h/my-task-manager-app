@@ -1361,6 +1361,8 @@ useEffect(() => {
           }
 
           .modal-content {
+            width: 100vw !important;
+            max-width: 100vw !important;
             max-height: 90vh;
             border-width: 0 !important;
             border-radius: 24px 24px 0 0 !important;
@@ -1373,14 +1375,15 @@ useEffect(() => {
 
           .modal-header {
             padding: 20px !important;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-            color: white !important;
+            /* Use same yellow color as desktop */
+            background: #FFD500 !important;
+            color: #000 !important;
             border-radius: 24px 24px 0 0 !important;
             flex-shrink: 0;
           }
 
           .modal-header h2 {
-            color: white !important;
+            color: #000 !important;
             margin: 0;
           }
 
@@ -1435,6 +1438,28 @@ useEffect(() => {
             font-weight: 700 !important;
             margin-bottom: 8px !important;
             display: block;
+          }
+
+          /* Form grid layouts - make single column on mobile */
+          /* Note: !important is required to override inline styles in JSX */
+          .form-grid-2col {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+          }
+
+          /* Form buttons - stack vertically on mobile */
+          /* Note: !important is required to override inline styles in JSX */
+          .form-buttons {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 12px !important;
+            margin-top: 24px !important;
+          }
+
+          .form-buttons button {
+            width: 100% !important;
+            justify-content: center;
           }
 
           /* Task view toggle */
@@ -2482,6 +2507,7 @@ useEffect(() => {
                                         placeholder="Task title..."
                                         value={formData.title}
                                         onChange={(e) => setFormData({...formData, title: e.target.value})}
+                                        enterKeyHint="next"
                                     />
                                 </div>
 
@@ -2498,7 +2524,19 @@ useEffect(() => {
                                         rows={3}
                                         placeholder="Details..."
                                         value={formData.description}
-                                        onChange={(e) => setFormData({...formData, description: e.target.value})}
+                                        onChange={(e) => {
+                                            setFormData({...formData, description: e.target.value});
+                                            // Auto-resize textarea
+                                            e.target.style.height = 'auto';
+                                            e.target.style.height = e.target.scrollHeight + 'px';
+                                        }}
+                                        enterKeyHint="next"
+                                        style={{
+                                            minHeight: '80px',
+                                            maxHeight: '300px',
+                                            overflow: 'auto',
+                                            resize: 'vertical'
+                                        }}
                                     />
                                 </div>
 
@@ -2605,7 +2643,7 @@ useEffect(() => {
                                     options={clients.map(client => typeof client === 'string' ? client : client.name)}
                                 />
 
-                                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
+                                <div className="form-grid-2col" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
                                     <div>
                                         <label style={{
                                             display: 'block',
@@ -2622,6 +2660,7 @@ useEffect(() => {
                                             required
                                             value={formData.task_date}
                                             onChange={(e) => setFormData({...formData, task_date: e.target.value})}
+                                            enterKeyHint="next"
                                         />
                                     </div>
 
@@ -2638,11 +2677,12 @@ useEffect(() => {
                                             type="time"
                                             value={formData.task_time}
                                             onChange={(e) => setFormData({...formData, task_time: e.target.value})}
+                                            enterKeyHint="next"
                                         />
                                     </div>
                                 </div>
 
-                                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
+                                <div className="form-grid-2col" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
                                     <div>
                                         <label style={{
                                             display: 'block',
@@ -2659,6 +2699,7 @@ useEffect(() => {
                                             placeholder="1.5"
                                             value={formData.duration}
                                             onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                                            enterKeyHint="next"
                                         />
                                     </div>
 
@@ -2707,6 +2748,7 @@ useEffect(() => {
                                                 }
                                             }}
                                             style={{flex: 1}}
+                                            enterKeyHint="done"
                                         />
                                         <datalist id="tag-suggestions">
                                             {allTags.map((tag) => (
@@ -2750,6 +2792,7 @@ useEffect(() => {
                                         placeholder="Additional context..."
                                         value={formData.notes}
                                         onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                                        enterKeyHint="done"
                                     />
                                 </div>
 
@@ -2779,7 +2822,7 @@ useEffect(() => {
                                 )}
                             </div>
 
-                            <div style={{
+                            <div className="form-buttons" style={{
                                 display: 'flex',
                                 gap: '12px',
                                 marginTop: '32px',
@@ -2964,7 +3007,7 @@ useEffect(() => {
                                 </p>
                             </div>
 
-                            <div style={{display: 'flex', gap: '12px', justifyContent: 'flex-end'}}>
+                            <div className="form-buttons" style={{display: 'flex', gap: '12px', justifyContent: 'flex-end'}}>
                                 <button
                                     type="button"
                                     className="btn btn-white"

@@ -122,6 +122,7 @@ const CustomAutocomplete = ({
           placeholder={placeholder}
           required={required}
           autoComplete="off"
+          enterKeyHint="next"
           style={{
             width: '100%',
             padding: '12px 40px 12px 12px',
