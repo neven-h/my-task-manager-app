@@ -488,11 +488,15 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
   const filteredTransactions = useMemo(() => getFilteredTransactions(), 
     [monthTransactions, typeFilter, searchTerm, descriptionFilter]);
   
-  const { totalFiltered, creditTotal, cashTotal } = useMemo(() => ({
-    totalFiltered: filteredTransactions.reduce((sum, t) => sum + t.amount, 0),
-    creditTotal: filteredTransactions.filter(t => t.transaction_type === 'credit').reduce((sum, t) => sum + t.amount, 0),
-    cashTotal: filteredTransactions.filter(t => t.transaction_type === 'cash').reduce((sum, t) => sum + t.amount, 0)
-  }), [filteredTransactions]);
+  // PERFORMANCE OPTIMIZATION: Single pass through array to calculate all totals
+  // Instead of filtering twice, we compute all values in one reduce operation
+  const { totalFiltered, creditTotal, cashTotal } = useMemo(() => {
+    return filteredTransactions.reduce((acc, t) => ({
+      totalFiltered: acc.totalFiltered + t.amount,
+      creditTotal: acc.creditTotal + (t.transaction_type === 'credit' ? t.amount : 0),
+      cashTotal: acc.cashTotal + (t.transaction_type === 'cash' ? t.amount : 0)
+    }), { totalFiltered: 0, creditTotal: 0, cashTotal: 0 });
+  }, [filteredTransactions]);
 
   // PERFORMANCE OPTIMIZATION: Memoize chart data computation
   // The pie chart aggregation is expensive and only needs to recalculate when transactions change
@@ -502,9 +506,9 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
     const sortedCategories = Object.entries(categoryData)
       .sort((a, b) => b[1].total - a[1].total)
       .slice(0, 5);
-    const totalAmount = filteredTransactions.reduce((sum, t) => sum + t.amount, 0);
-    return { sortedCategories, totalAmount };
-  }, [filteredTransactions, monthTransactions.length]);
+    // Reuse totalFiltered instead of recalculating
+    return { sortedCategories, totalAmount: totalFiltered };
+  }, [filteredTransactions, monthTransactions.length, totalFiltered]);
 
   return (
     <div style={{
