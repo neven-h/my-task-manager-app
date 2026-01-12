@@ -124,13 +124,19 @@ useEffect(() => {
     // PERFORMANCE OPTIMIZATION: Use Promise.all to fetch data in parallel
     useEffect(() => {
         if (authUser && authRole) {
+            setLoading(true);
             Promise.all([
                 fetchCategories(),
                 fetchTags(),
                 fetchClients(),
                 fetchTasks(),
                 fetchStats()
-            ]).catch(err => console.error('Error loading initial data:', err));
+            ])
+            .catch(err => {
+                console.error('Error loading initial data:', err);
+                setError('Failed to load initial data. Please refresh the page.');
+            })
+            .finally(() => setLoading(false));
         }
     }, [authUser, authRole]);
 

@@ -152,7 +152,21 @@ DB_CONFIG = {
 # Creating a database connection is expensive (~30-50ms). By reusing connections
 # from a pool, subsequent queries avoid this overhead, improving response times.
 # Pool size of 5 is suitable for moderate traffic; increase for high-traffic scenarios.
-DB_POOL_SIZE = int(os.getenv('DB_POOL_SIZE', 5))
+def _get_validated_pool_size():
+    """Get and validate the DB_POOL_SIZE environment variable."""
+    try:
+        size = int(os.getenv('DB_POOL_SIZE', 5))
+        if size < 1:
+            print(f"Warning: DB_POOL_SIZE must be at least 1, using default of 5")
+            return 5
+        if size > 32:
+            print(f"Warning: DB_POOL_SIZE {size} is very large, consider reducing for stability")
+        return size
+    except ValueError:
+        print(f"Warning: Invalid DB_POOL_SIZE value, using default of 5")
+        return 5
+
+DB_POOL_SIZE = _get_validated_pool_size()
 _db_pool = None
 
 
@@ -206,6 +220,10 @@ def _get_hardcoded_users():
     PERFORMANCE OPTIMIZATION: Password hashes are cached to avoid the expensive
     bcrypt.gensalt() operation on every function call. bcrypt is intentionally slow
     (for security), so caching the results significantly improves startup time.
+    
+    Returns:
+        dict: Dictionary of users with their password hashes and roles.
+              Returns empty dict in CI environment or if initialization fails.
     """
     global _USERS_CACHE
     
@@ -222,26 +240,32 @@ def _get_hardcoded_users():
     if not all(os.getenv(var) for var in required_passwords):
         raise ValueError(f"{' and '.join(required_passwords)} must be set")
 
-    # Compute hashes once and cache them
-    _USERS_CACHE = {
-        'pitz': {
-            'password_hash': bcrypt.hashpw(os.getenv('USER_PITZ_PASSWORD').encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
-            'role': 'admin'
-        },
-        'benny': {
-            'password_hash': bcrypt.hashpw(os.getenv('USER_BENNY_PASSWORD').encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
-            'role': 'shared'
-        },
-        'Hillel': {
-            'password_hash': bcrypt.hashpw(os.getenv('USER_HILLEL_PASSWORD').encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
-            'role': 'limited'
-        },
-        'Olivia': {
-            'password_hash': bcrypt.hashpw(os.getenv('USER_OLIVIA_PASSWORD').encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
-            'role': 'limited'
+    try:
+        # Compute hashes once and cache them
+        users = {
+            'pitz': {
+                'password_hash': bcrypt.hashpw(os.getenv('USER_PITZ_PASSWORD').encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
+                'role': 'admin'
+            },
+            'benny': {
+                'password_hash': bcrypt.hashpw(os.getenv('USER_BENNY_PASSWORD').encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
+                'role': 'shared'
+            },
+            'Hillel': {
+                'password_hash': bcrypt.hashpw(os.getenv('USER_HILLEL_PASSWORD').encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
+                'role': 'limited'
+            },
+            'Olivia': {
+                'password_hash': bcrypt.hashpw(os.getenv('USER_OLIVIA_PASSWORD').encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
+                'role': 'limited'
+            }
         }
-    }
-    return _USERS_CACHE
+        # Only set cache after successful computation
+        _USERS_CACHE = users
+        return _USERS_CACHE
+    except Exception as e:
+        print(f"Error computing password hashes: {e}")
+        raise
 
 
 USERS = _get_hardcoded_users()
