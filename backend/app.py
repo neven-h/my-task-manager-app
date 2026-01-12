@@ -27,6 +27,9 @@ import jwt
 from functools import wraps
 from cryptography.fernet import Fernet
 import base64
+import pyotp
+import qrcode
+from io import BytesIO
 
 # Load environment variables
 load_dotenv()
@@ -638,6 +641,21 @@ def init_db():
         """)
         print("Created password_reset_tokens table")
 
+        # Add 2FA columns to users table
+        try:
+            cursor.execute("""
+                ALTER TABLE users
+                ADD COLUMN IF NOT EXISTS two_factor_secret VARCHAR(32),
+                ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN DEFAULT FALSE,
+                ADD COLUMN IF NOT EXISTS two_factor_backup_codes TEXT
+            """)
+            print("Added 2FA columns to users table")
+        except Error as e:
+            if 'Duplicate column' in str(e):
+                pass  # Columns already exist
+            else:
+                print(f"2FA migration note: {e}")
+
         # Create audit log table for bank transaction access
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS bank_transaction_audit_log (
@@ -856,7 +874,8 @@ def login():
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
             cursor.execute("""
-                SELECT id, username, email, password_hash, role, is_active
+                SELECT id, username, email, password_hash, role, is_active,
+                       two_factor_enabled, two_factor_secret
                 FROM users
                 WHERE username = %s
             """, (username,))
@@ -872,13 +891,24 @@ def login():
 
                 # Verify password with bcrypt
                 if bcrypt.checkpw(password.encode('utf-8'), user['password_hash'].encode('utf-8')):
-                    # Generate secure JWT token
+                    # Check if 2FA is enabled
+                    if user.get('two_factor_enabled'):
+                        # Don't return token yet, require 2FA verification
+                        return jsonify({
+                            'success': True,
+                            'requires_2fa': True,
+                            'username': user['username'],
+                            'temp_auth': True
+                        })
+
+                    # No 2FA, generate secure JWT token
                     token = generate_jwt_token(user['username'], user['role'])
                     return jsonify({
                         'success': True,
                         'username': user['username'],
                         'role': user['role'],
-                        'token': token
+                        'token': token,
+                        'requires_2fa': False
                     })
 
         # Fallback to hardcoded users (backward compatibility)
@@ -1186,6 +1216,292 @@ def reset_password():
         print(f"Reset password error: {e}")
         return jsonify({'error': str(e)}), 500
 
+
+# ================================
+# Two-Factor Authentication (2FA) Endpoints
+# ================================
+
+@app.route('/api/auth/2fa/setup', methods=['POST'])
+def setup_2fa():
+    """Generate a new 2FA secret and QR code for user to scan"""
+    try:
+        data = request.json
+        username = data.get('username')
+
+        if not username:
+            return jsonify({'error': 'Username is required'}), 400
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # Get user
+            cursor.execute("""
+                SELECT id, email, two_factor_enabled
+                FROM users
+                WHERE username = %s
+            """, (username,))
+            user = cursor.fetchone()
+
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+
+            # Generate a new secret
+            secret = pyotp.random_base32()
+
+            # Create TOTP URI for QR code
+            app_name = "Task Manager"
+            totp_uri = pyotp.totp.TOTP(secret).provisioning_uri(
+                name=user['email'],
+                issuer_name=app_name
+            )
+
+            # Generate QR code
+            qr = qrcode.QRCode(version=1, box_size=10, border=5)
+            qr.add_data(totp_uri)
+            qr.make(fit=True)
+
+            img = qr.make_image(fill_color="black", back_color="white")
+            buffer = BytesIO()
+            img.save(buffer, format='PNG')
+            buffer.seek(0)
+
+            # Convert to base64
+            import base64 as b64
+            qr_code_base64 = b64.b64encode(buffer.getvalue()).decode('utf-8')
+
+            # Store the secret temporarily (will be activated when user verifies)
+            cursor.execute("""
+                UPDATE users
+                SET two_factor_secret = %s
+                WHERE id = %s
+            """, (secret, user['id']))
+            connection.commit()
+
+            return jsonify({
+                'success': True,
+                'secret': secret,
+                'qr_code': f'data:image/png;base64,{qr_code_base64}',
+                'already_enabled': user.get('two_factor_enabled', False)
+            })
+
+    except Exception as e:
+        print(f"2FA setup error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/auth/2fa/enable', methods=['POST'])
+def enable_2fa():
+    """Enable 2FA after user verifies the code"""
+    try:
+        data = request.json
+        username = data.get('username')
+        code = data.get('code', '').strip()
+
+        if not username or not code:
+            return jsonify({'error': 'Username and code are required'}), 400
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # Get user with secret
+            cursor.execute("""
+                SELECT id, two_factor_secret
+                FROM users
+                WHERE username = %s
+            """, (username,))
+            user = cursor.fetchone()
+
+            if not user or not user.get('two_factor_secret'):
+                return jsonify({'error': 'No 2FA setup found. Please setup 2FA first.'}), 400
+
+            # Verify the code
+            totp = pyotp.TOTP(user['two_factor_secret'])
+            if not totp.verify(code, valid_window=1):
+                return jsonify({'error': 'Invalid verification code'}), 401
+
+            # Generate backup codes (10 one-time use codes)
+            backup_codes = [secrets.token_hex(4) for _ in range(10)]
+            backup_codes_str = ','.join(backup_codes)
+
+            # Enable 2FA
+            cursor.execute("""
+                UPDATE users
+                SET two_factor_enabled = TRUE,
+                    two_factor_backup_codes = %s
+                WHERE id = %s
+            """, (backup_codes_str, user['id']))
+            connection.commit()
+
+            return jsonify({
+                'success': True,
+                'message': '2FA enabled successfully',
+                'backup_codes': backup_codes
+            })
+
+    except Exception as e:
+        print(f"2FA enable error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/auth/2fa/verify', methods=['POST'])
+def verify_2fa():
+    """Verify 2FA code during login and return JWT token"""
+    try:
+        data = request.json
+        username = data.get('username')
+        code = data.get('code', '').strip()
+
+        if not username or not code:
+            return jsonify({'error': 'Username and code are required'}), 400
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # Get user
+            cursor.execute("""
+                SELECT id, username, role, two_factor_secret, two_factor_enabled, two_factor_backup_codes
+                FROM users
+                WHERE username = %s
+            """, (username,))
+            user = cursor.fetchone()
+
+            if not user or not user.get('two_factor_enabled'):
+                return jsonify({'error': 'User not found or 2FA not enabled'}), 404
+
+            # Try TOTP code first
+            totp = pyotp.TOTP(user['two_factor_secret'])
+            if totp.verify(code, valid_window=1):
+                # Valid TOTP code
+                token = generate_jwt_token(user['username'], user['role'])
+                return jsonify({
+                    'success': True,
+                    'username': user['username'],
+                    'role': user['role'],
+                    'token': token
+                })
+
+            # Check if it's a backup code
+            if user.get('two_factor_backup_codes'):
+                backup_codes = user['two_factor_backup_codes'].split(',')
+                if code in backup_codes:
+                    # Valid backup code - remove it after use
+                    backup_codes.remove(code)
+                    new_backup_codes = ','.join(backup_codes)
+
+                    cursor.execute("""
+                        UPDATE users
+                        SET two_factor_backup_codes = %s
+                        WHERE id = %s
+                    """, (new_backup_codes, user['id']))
+                    connection.commit()
+
+                    # Generate token
+                    token = generate_jwt_token(user['username'], user['role'])
+                    return jsonify({
+                        'success': True,
+                        'username': user['username'],
+                        'role': user['role'],
+                        'token': token,
+                        'backup_code_used': True,
+                        'backup_codes_remaining': len(backup_codes)
+                    })
+
+            # Invalid code
+            return jsonify({'error': 'Invalid verification code'}), 401
+
+    except Exception as e:
+        print(f"2FA verify error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/auth/2fa/disable', methods=['POST'])
+def disable_2fa():
+    """Disable 2FA (requires password verification)"""
+    try:
+        data = request.json
+        username = data.get('username')
+        password = data.get('password')
+
+        if not username or not password:
+            return jsonify({'error': 'Username and password are required'}), 400
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # Get user
+            cursor.execute("""
+                SELECT id, password_hash, two_factor_enabled
+                FROM users
+                WHERE username = %s
+            """, (username,))
+            user = cursor.fetchone()
+
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+
+            # Verify password
+            if not bcrypt.checkpw(password.encode('utf-8'), user['password_hash'].encode('utf-8')):
+                return jsonify({'error': 'Invalid password'}), 401
+
+            # Disable 2FA
+            cursor.execute("""
+                UPDATE users
+                SET two_factor_enabled = FALSE,
+                    two_factor_secret = NULL,
+                    two_factor_backup_codes = NULL
+                WHERE id = %s
+            """, (user['id'],))
+            connection.commit()
+
+            return jsonify({
+                'success': True,
+                'message': '2FA disabled successfully'
+            })
+
+    except Exception as e:
+        print(f"2FA disable error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/auth/2fa/status', methods=['GET'])
+def get_2fa_status():
+    """Get 2FA status for a user"""
+    try:
+        username = request.args.get('username')
+
+        if not username:
+            return jsonify({'error': 'Username is required'}), 400
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            cursor.execute("""
+                SELECT two_factor_enabled, two_factor_backup_codes
+                FROM users
+                WHERE username = %s
+            """, (username,))
+            user = cursor.fetchone()
+
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+
+            backup_codes_count = 0
+            if user.get('two_factor_backup_codes'):
+                backup_codes_count = len(user['two_factor_backup_codes'].split(','))
+
+            return jsonify({
+                'enabled': user.get('two_factor_enabled', False),
+                'backup_codes_remaining': backup_codes_count
+            })
+
+    except Exception as e:
+        print(f"2FA status error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+# ================================
+# Tasks Endpoints
+# ================================
 
 @app.route('/api/tasks', methods=['GET'])
 def get_tasks():
