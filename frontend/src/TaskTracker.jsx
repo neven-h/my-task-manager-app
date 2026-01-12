@@ -1362,6 +1362,9 @@ useEffect(() => {
             border-radius: 24px 24px 0 0 !important;
             border-bottom: none;
             box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15) !important;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
           }
 
           .modal-header {
@@ -1369,15 +1372,65 @@ useEffect(() => {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
             color: white !important;
             border-radius: 24px 24px 0 0 !important;
+            flex-shrink: 0;
           }
 
           .modal-header h2 {
             color: white !important;
+            margin: 0;
           }
 
           .modal-body {
             padding: 20px !important;
             background: white;
+            overflow-y: auto;
+            overflow-x: hidden;
+            flex: 1;
+            -webkit-overflow-scrolling: touch;
+          }
+
+          /* Hide scrollbar but keep functionality */
+          .modal-body::-webkit-scrollbar {
+            width: 4px;
+          }
+
+          .modal-body::-webkit-scrollbar-track {
+            background: transparent;
+          }
+
+          .modal-body::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+          }
+
+          .modal-body::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 126, 234, 0.5);
+          }
+
+          /* Form spacing in modals */
+          .modal-body form {
+            padding-bottom: 20px;
+          }
+
+          /* Submit buttons in modals */
+          .modal-body .btn[type="submit"],
+          .modal-body button[type="submit"] {
+            margin-top: 20px !important;
+            margin-bottom: 10px !important;
+          }
+
+          /* Form groups in modals */
+          .modal-body > div,
+          .modal-body form > div {
+            margin-bottom: 16px !important;
+          }
+
+          /* Labels in modals */
+          .modal-body label {
+            font-size: 0.85rem !important;
+            font-weight: 700 !important;
+            margin-bottom: 8px !important;
+            display: block;
           }
 
           /* Task view toggle */
