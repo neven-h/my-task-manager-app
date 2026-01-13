@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import API_BASE from './config';
 import { checkPasswordStrength, allPasswordRequirementsMet } from './utils/passwordValidation';
+import PasswordStrengthIndicator from './components/PasswordStrengthIndicator';
 
 const SignUpPage = () => {
   const navigate = useNavigate();
@@ -253,37 +254,7 @@ const SignUpPage = () => {
             </div>
             
             {/* Password Strength Indicator */}
-            <div style={{ marginTop: '12px' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '6px' }}>
-                Password Requirements:
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <div style={{ 
-                  color: passwordStrength.hasLength ? '#28a745' : '#666',
-                  fontSize: '0.8rem'
-                }}>
-                  {passwordStrength.hasLength ? '✓' : '○'} At least 8 characters
-                </div>
-                <div style={{ 
-                  color: passwordStrength.hasUppercase ? '#28a745' : '#666',
-                  fontSize: '0.8rem'
-                }}>
-                  {passwordStrength.hasUppercase ? '✓' : '○'} One uppercase letter
-                </div>
-                <div style={{ 
-                  color: passwordStrength.hasNumber ? '#28a745' : '#666',
-                  fontSize: '0.8rem'
-                }}>
-                  {passwordStrength.hasNumber ? '✓' : '○'} One number
-                </div>
-                <div style={{ 
-                  color: passwordStrength.hasSymbol ? '#28a745' : '#666',
-                  fontSize: '0.8rem'
-                }}>
-                  {passwordStrength.hasSymbol ? '✓' : '○'} One symbol (!@#$%^&*...)
-                </div>
-              </div>
-            </div>
+            <PasswordStrengthIndicator passwordStrength={passwordStrength} />
           </div>
 
           {/* Confirm Password */}
