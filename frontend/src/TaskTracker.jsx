@@ -1088,6 +1088,7 @@ useEffect(() => {
           width: 100%;
           font-size: 0.95rem;
           background: #fff;
+          box-sizing: border-box;
         }
         
         input:focus, select:focus, textarea:focus {
@@ -1954,14 +1955,15 @@ useEffect(() => {
                             top: 0,
                             right: 0,
                             bottom: 0,
-                            width: '380px',
-                            maxWidth: '90vw',
+                            width: '320px',
+                            maxWidth: '85vw',
                             background: '#f8f8f8',
                             zIndex: 200,
                             overflowY: 'auto',
                             padding: '20px',
                             boxShadow: '-4px 0 24px rgba(0, 0, 0, 0.3)',
-                            animation: 'slideInRight 0.3s ease-out'
+                            animation: 'slideInRight 0.3s ease-out',
+                            boxSizing: 'border-box'
                         }}
                     >
                         <div style={{
