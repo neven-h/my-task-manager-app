@@ -1200,6 +1200,10 @@ useEffect(() => {
             display: flex !important;
           }
 
+          .mobile-filter-btn {
+            display: flex !important;
+          }
+
           /* Header with gradient background */
           header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
@@ -1681,21 +1685,21 @@ useEffect(() => {
                         </p>
                     </div>
 
-                    {/* Filter/Search Button - Always visible */}
+                    {/* Filter/Search Button - Mobile only */}
                     <button
-                        className="btn btn-white"
+                        className="btn btn-white mobile-filter-btn"
                         onClick={() => setShowMobileSidebar(true)}
-                        style={{padding: '10px', minWidth: 'auto', marginRight: '12px'}}
+                        style={{padding: '10px', minWidth: 'auto', marginRight: '12px', display: 'none'}}
                         title="Search & Filter"
                     >
                         <Filter size={24}/>
                     </button>
 
-                    {/* Hamburger Menu Button - Always visible */}
+                    {/* Hamburger Menu Button - Mobile only */}
                     <button
                         className="mobile-menu-btn btn btn-white"
                         onClick={() => setShowMobileMenu(!showMobileMenu)}
-                        style={{padding: '10px', minWidth: 'auto'}}
+                        style={{padding: '10px', minWidth: 'auto', display: 'none'}}
                         title="Menu"
                     >
                         <Menu size={24}/>
