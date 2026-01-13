@@ -1231,7 +1231,22 @@ useEffect(() => {
         .sidebar {
           display: none; /* Hidden - use hamburger menu instead */
         }
-        
+
+        /* Modal body styling for desktop */
+        .modal-body {
+          overflow-y: auto;
+          max-height: calc(90vh - 150px);
+        }
+
+        /* Hide mobile buttons on desktop */
+        .mobile-menu-btn {
+          display: none;
+        }
+
+        .mobile-filter-btn {
+          display: none;
+        }
+
         /* Mobile Responsive Styles */
         @media (max-width: 768px) {
           /* Make the app more colorful and modern on mobile */
@@ -1761,7 +1776,7 @@ useEffect(() => {
                     <button
                         className="btn btn-white mobile-filter-btn"
                         onClick={() => setShowMobileSidebar(true)}
-                        style={{padding: '10px', minWidth: 'auto', marginRight: '12px', display: 'none'}}
+                        style={{padding: '10px', minWidth: 'auto', marginRight: '12px'}}
                         title="Search & Filter"
                     >
                         <Filter size={24}/>
@@ -1771,7 +1786,7 @@ useEffect(() => {
                     <button
                         className="mobile-menu-btn btn btn-white"
                         onClick={() => setShowMobileMenu(!showMobileMenu)}
-                        style={{padding: '10px', minWidth: 'auto', display: 'none'}}
+                        style={{padding: '10px', minWidth: 'auto'}}
                         title="Menu"
                     >
                         <Menu size={24}/>
