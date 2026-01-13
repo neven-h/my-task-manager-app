@@ -3,6 +3,8 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import API_BASE from './config';
 import { checkPasswordStrength, allPasswordRequirementsMet } from './utils/passwordValidation';
 import PasswordStrengthIndicator from './components/PasswordStrengthIndicator';
+import AuthPageContainer from './components/AuthPageContainer';
+import Alert from './components/Alert';
 
 const ResetPasswordPage = () => {
   const navigate = useNavigate();
@@ -192,142 +194,101 @@ const ResetPasswordPage = () => {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#f8f8f8',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      padding: '20px'
-    }}>
-      <div style={{
-        background: 'white',
-        border: '3px solid #000',
-        padding: '40px',
-        width: '100%',
-        maxWidth: '460px',
-        boxShadow: '8px 8px 0 #000'
-      }}>
-        <h1 style={{
-          fontSize: '2rem',
-          fontWeight: 900,
-          textTransform: 'uppercase',
-          marginBottom: '8px',
-          letterSpacing: '-1px'
-        }}>
-          Reset Password
-        </h1>
-        <p style={{ marginBottom: '32px', color: '#666', fontSize: '0.95rem' }}>
-          Hello {username}! Create your new password
-        </p>
+    <AuthPageContainer title="Reset Password" subtitle={`Hello ${username}! Create your new password`}>
+      <Alert type="error" message={error} />
 
-        {error && (
-          <div style={{
-            background: '#dc3545',
-            color: 'white',
-            padding: '12px 16px',
-            marginBottom: '20px',
-            border: '2px solid #000',
-            fontWeight: 600
+      <form onSubmit={handleSubmit}>
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{
+            display: 'block',
+            fontWeight: 700,
+            marginBottom: '8px',
+            textTransform: 'uppercase',
+            fontSize: '0.85rem'
           }}>
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{
-              display: 'block',
-              fontWeight: 700,
-              marginBottom: '8px',
-              textTransform: 'uppercase',
-              fontSize: '0.85rem'
-            }}>
-              New Password *
-            </label>
-            <input
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '2px solid #000',
-                fontSize: '1rem',
-                fontFamily: 'inherit'
-              }}
-              placeholder="••••••••"
-            />
-            
-            <PasswordStrengthIndicator passwordStrength={passwordStrength} />
-          </div>
-
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{
-              display: 'block',
-              fontWeight: 700,
-              marginBottom: '8px',
-              textTransform: 'uppercase',
-              fontSize: '0.85rem'
-            }}>
-              Confirm Password *
-            </label>
-            <input
-              type="password"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              required
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '2px solid #000',
-                fontSize: '1rem',
-                fontFamily: 'inherit'
-              }}
-              placeholder="••••••••"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading || !allRequirementsMet}
+            New Password *
+          </label>
+          <input
+            type="password"
+            name="password"
+            value={formData.password}
+            onChange={handleChange}
+            required
             style={{
               width: '100%',
-              padding: '14px',
-              background: allRequirementsMet ? '#dc3545' : '#ccc',
-              color: 'white',
+              padding: '12px',
               border: '2px solid #000',
               fontSize: '1rem',
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              cursor: allRequirementsMet ? 'pointer' : 'not-allowed',
-              boxShadow: '4px 4px 0 #000',
-              marginBottom: '20px'
+              fontFamily: 'inherit'
+            }}
+            placeholder="••••••••"
+          />
+          
+          <PasswordStrengthIndicator passwordStrength={passwordStrength} />
+        </div>
+
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{
+            display: 'block',
+            fontWeight: 700,
+            marginBottom: '8px',
+            textTransform: 'uppercase',
+            fontSize: '0.85rem'
+          }}>
+            Confirm Password *
+          </label>
+          <input
+            type="password"
+            name="confirmPassword"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            required
+            style={{
+              width: '100%',
+              padding: '12px',
+              border: '2px solid #000',
+              fontSize: '1rem',
+              fontFamily: 'inherit'
+            }}
+            placeholder="••••••••"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading || !allRequirementsMet}
+          style={{
+            width: '100%',
+            padding: '14px',
+            background: allRequirementsMet ? '#dc3545' : '#ccc',
+            color: 'white',
+            border: '2px solid #000',
+            fontSize: '1rem',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            cursor: allRequirementsMet ? 'pointer' : 'not-allowed',
+            boxShadow: '4px 4px 0 #000',
+            marginBottom: '20px'
+          }}
+        >
+          {loading ? 'Resetting...' : 'Reset Password'}
+        </button>
+
+        <div style={{ textAlign: 'center' }}>
+          <Link 
+            to="/login"
+            style={{
+              color: '#0066cc',
+              textDecoration: 'none',
+              fontWeight: 600,
+              fontSize: '0.9rem'
             }}
           >
-            {loading ? 'Resetting...' : 'Reset Password'}
-          </button>
-
-          <div style={{ textAlign: 'center' }}>
-            <Link 
-              to="/login"
-              style={{
-                color: '#0066cc',
-                textDecoration: 'none',
-                fontWeight: 600,
-                fontSize: '0.9rem'
-              }}
-            >
-              ← Back to Login
-            </Link>
-          </div>
-        </form>
-      </div>
-    </div>
+            ← Back to Login
+          </Link>
+        </div>
+      </form>
+    </AuthPageContainer>
   );
 };
 
