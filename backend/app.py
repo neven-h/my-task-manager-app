@@ -1947,14 +1947,27 @@ def share_task(task_id):
         data = request.json
         recipient_email = data.get('email', '').strip().lower()
         sender_name = data.get('sender_name', 'Someone')
-        
+
         if not recipient_email:
             return jsonify({'error': 'Recipient email is required'}), 400
-        
+
         # Validate email format
         email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
         if not re.match(email_regex, recipient_email):
             return jsonify({'error': 'Invalid email format'}), 400
+
+        # Check if email is configured
+        email_configured = bool(
+            app.config.get('MAIL_USERNAME') and
+            app.config.get('MAIL_PASSWORD') and
+            app.config.get('MAIL_USERNAME') != 'your-email@gmail.com' and
+            app.config.get('MAIL_PASSWORD') != 'your-app-password'
+        )
+
+        if not email_configured:
+            return jsonify({
+                'error': 'Email service is not configured. Please contact the administrator to set up email functionality.'
+            }), 503
         
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -2016,19 +2029,26 @@ This task was shared from the Task Tracker app.
 """
             
             # Send email
-            msg = Message(
-                subject=subject,
-                recipients=[recipient_email],
-                body=body
-            )
-            
-            mail.send(msg)
-            
-            return jsonify({
-                'success': True,
-                'message': f'Task shared successfully with {recipient_email}'
-            })
-            
+            try:
+                msg = Message(
+                    subject=subject,
+                    recipients=[recipient_email],
+                    body=body
+                )
+
+                mail.send(msg)
+
+                return jsonify({
+                    'success': True,
+                    'message': f'Task shared successfully with {recipient_email}'
+                })
+
+            except Exception as mail_error:
+                print(f"Email sending failed: {mail_error}")
+                return jsonify({
+                    'error': 'Failed to send email. Please check the email configuration or try again later.'
+                }), 500
+
     except Exception as e:
         print(f"Share task error: {e}")
         return jsonify({'error': 'Failed to share task. Please try again.'}), 500
