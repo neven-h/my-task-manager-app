@@ -1118,7 +1118,12 @@ useEffect(() => {
           max-height: 90vh;
           overflow-y: auto;
         }
-        
+
+        .modal-body {
+          overflow-y: auto;
+          max-height: calc(90vh - 150px);
+        }
+
         .status-badge {
           display: inline-flex;
           align-items: center;
