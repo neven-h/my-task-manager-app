@@ -1205,6 +1205,10 @@ useEffect(() => {
             display: flex !important;
           }
 
+          .desktop-filter-indicator {
+            display: none !important;
+          }
+
           /* Header with gradient background */
           header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
@@ -1709,6 +1713,13 @@ useEffect(() => {
                     {/* Desktop Header Buttons */}
                     <div className="desktop-header-buttons"
                          style={{display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center'}}>
+                        {/* Filter button for desktop - optional, sidebar is always visible */}
+                        <button className="btn btn-white desktop-filter-indicator" onClick={() => {
+                            document.querySelector('.sidebar')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }} title="Filters in left sidebar">
+                            <Filter size={18} style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
+                            Filters
+                        </button>
                         {/* Show user info - only for admin */}
                         {isAdmin && (
                             <span style={{fontSize: '0.85rem', fontWeight: '600', color: '#666', marginRight: '8px'}}>
