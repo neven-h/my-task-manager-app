@@ -31,6 +31,8 @@ const ClientsManagement = ({ onBackToTasks }) => {
   const [error, setError] = useState(null);
   const [editingClient, setEditingClient] = useState(null);
   const [newClientName, setNewClientName] = useState('');
+  const [showAddClient, setShowAddClient] = useState(false);
+  const [addClientName, setAddClientName] = useState('');
 
   useEffect(() => {
     fetchClients();
@@ -111,6 +113,36 @@ const ClientsManagement = ({ onBackToTasks }) => {
 
       setSelectedClient(null);
       setClientTasks([]);
+      await fetchClients();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddClient = async () => {
+    if (!addClientName.trim()) {
+      setError('Client name is required');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch(`${API_BASE}/clients`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: addClientName.trim() })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to add client');
+      }
+
+      setShowAddClient(false);
+      setAddClientName('');
       await fetchClients();
     } catch (err) {
       setError(err.message);
@@ -222,16 +254,98 @@ const ClientsManagement = ({ onBackToTasks }) => {
       <div style={{ padding: '3rem', maxWidth: '1600px', margin: '0 auto' }}>
         {/* Clients List */}
         <div style={{ marginBottom: '3rem' }}>
-          <h2 style={{
-            fontSize: '2rem',
-            fontWeight: 800,
-            marginBottom: '1.5rem',
-            textTransform: 'UPPERCASE',
-            color: THEME.text,
-            letterSpacing: '-0.5px'
-          }}>
-            All Clients
-          </h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h2 style={{
+              fontSize: '2rem',
+              fontWeight: 800,
+              margin: 0,
+              textTransform: 'UPPERCASE',
+              color: THEME.text,
+              letterSpacing: '-0.5px'
+            }}>
+              All Clients
+            </h2>
+            {!showAddClient && (
+              <button
+                className="btn btn-success"
+                onClick={() => setShowAddClient(true)}
+                style={{ background: THEME.success, color: '#fff', borderColor: THEME.border }}
+              >
+                <Plus size={18} style={{ marginRight: '8px', display: 'inline', verticalAlign: 'middle' }} />
+                Add Client
+              </button>
+            )}
+          </div>
+
+          {/* Add Client Form */}
+          {showAddClient && (
+            <div style={{
+              border: `3px solid ${THEME.border}`,
+              background: THEME.surface,
+              padding: '2rem',
+              marginBottom: '1.5rem',
+              boxShadow: '4px 4px 0px #000'
+            }}>
+              <h3 style={{ fontSize: '1.3rem', fontWeight: 800, marginBottom: '1rem', color: THEME.text }}>
+                Add New Client
+              </h3>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    color: THEME.text
+                  }}>
+                    Client Name
+                  </label>
+                  <input
+                    type="text"
+                    value={addClientName}
+                    onChange={(e) => setAddClientName(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddClient();
+                      }
+                    }}
+                    placeholder="Enter client name..."
+                    autoFocus
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: `3px solid ${THEME.border}`,
+                      fontWeight: 600,
+                      fontSize: '1rem',
+                      fontFamily: FONT_STACK,
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                </div>
+                <button
+                  className="btn btn-success"
+                  onClick={handleAddClient}
+                  disabled={loading || !addClientName.trim()}
+                  style={{ background: THEME.success, color: '#fff', borderColor: THEME.border }}
+                >
+                  <Plus size={18} style={{ marginRight: '8px', display: 'inline', verticalAlign: 'middle' }} />
+                  Add
+                </button>
+                <button
+                  className="btn"
+                  onClick={() => {
+                    setShowAddClient(false);
+                    setAddClientName('');
+                    setError(null);
+                  }}
+                  style={{ background: THEME.surface, color: THEME.text, borderColor: THEME.border }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
           {loading ? (
             <div style={{
