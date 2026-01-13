@@ -3,6 +3,9 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import API_BASE from './config';
 import { checkPasswordStrength, allPasswordRequirementsMet } from './utils/passwordValidation';
+import PasswordStrengthIndicator from './components/PasswordStrengthIndicator';
+import AuthPageContainer from './components/AuthPageContainer';
+import Alert from './components/Alert';
 
 const SignUpPage = () => {
   const navigate = useNavigate();
@@ -97,285 +100,214 @@ const SignUpPage = () => {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#f8f8f8',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      padding: '20px'
-    }}>
-      <div style={{
-        background: 'white',
-        border: '3px solid #000',
-        padding: '40px',
-        width: '100%',
-        maxWidth: '460px',
-        boxShadow: '8px 8px 0 #000'
-      }}>
-        <h1 style={{
-          fontSize: '2rem',
-          fontWeight: 900,
-          textTransform: 'uppercase',
-          marginBottom: '8px',
-          letterSpacing: '-1px'
-        }}>
-          Sign Up
-        </h1>
-        <p style={{ marginBottom: '32px', color: '#666', fontSize: '0.95rem' }}>
-          Create your account
-        </p>
+    <AuthPageContainer title="Sign Up" subtitle="Create your account">
+      <Alert type="error" message={error} />
 
-        {error && (
-          <div style={{
-            background: '#dc3545',
-            color: 'white',
-            padding: '12px 16px',
-            marginBottom: '20px',
-            border: '2px solid #000',
-            fontWeight: 600
+      <form onSubmit={handleSubmit}>
+        {/* Email */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{
+            display: 'block',
+            fontWeight: 700,
+            marginBottom: '8px',
+            textTransform: 'uppercase',
+            fontSize: '0.85rem'
           }}>
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          {/* Email */}
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{
-              display: 'block',
-              fontWeight: 700,
-              marginBottom: '8px',
-              textTransform: 'uppercase',
-              fontSize: '0.85rem'
-            }}>
-              Email *
-            </label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '2px solid #000',
-                fontSize: '1rem',
-                fontFamily: 'inherit'
-              }}
-              placeholder="your.email@example.com"
-            />
-          </div>
-
-          {/* Username */}
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{
-              display: 'block',
-              fontWeight: 700,
-              marginBottom: '8px',
-              textTransform: 'uppercase',
-              fontSize: '0.85rem'
-            }}>
-              Username *
-            </label>
-            <input
-              type="text"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              required
-              minLength={3}
-              pattern="[a-zA-Z0-9_]+"
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '2px solid #000',
-                fontSize: '1rem',
-                fontFamily: 'inherit'
-              }}
-              placeholder="username"
-            />
-            <small style={{ color: '#666', fontSize: '0.8rem' }}>
-              Letters, numbers, and underscores only (min 3 chars)
-            </small>
-          </div>
-
-          {/* Password */}
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{
-              display: 'block',
-              fontWeight: 700,
-              marginBottom: '8px',
-              textTransform: 'uppercase',
-              fontSize: '0.85rem'
-            }}>
-              Password *
-            </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type={showPassword ? "text" : "password"}
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  paddingRight: '48px',
-                  border: '2px solid #000',
-                  fontSize: '1rem',
-                  fontFamily: 'inherit'
-                }}
-                placeholder="••••••••"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: 'absolute',
-                  right: '8px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-                title={showPassword ? "Hide password" : "Show password"}
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-            
-            {/* Password Strength Indicator */}
-            <div style={{ marginTop: '12px' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: '6px' }}>
-                Password Requirements:
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <div style={{ 
-                  color: passwordStrength.hasLength ? '#28a745' : '#666',
-                  fontSize: '0.8rem'
-                }}>
-                  {passwordStrength.hasLength ? '✓' : '○'} At least 8 characters
-                </div>
-                <div style={{ 
-                  color: passwordStrength.hasUppercase ? '#28a745' : '#666',
-                  fontSize: '0.8rem'
-                }}>
-                  {passwordStrength.hasUppercase ? '✓' : '○'} One uppercase letter
-                </div>
-                <div style={{ 
-                  color: passwordStrength.hasNumber ? '#28a745' : '#666',
-                  fontSize: '0.8rem'
-                }}>
-                  {passwordStrength.hasNumber ? '✓' : '○'} One number
-                </div>
-                <div style={{ 
-                  color: passwordStrength.hasSymbol ? '#28a745' : '#666',
-                  fontSize: '0.8rem'
-                }}>
-                  {passwordStrength.hasSymbol ? '✓' : '○'} One symbol (!@#$%^&*...)
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Confirm Password */}
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{
-              display: 'block',
-              fontWeight: 700,
-              marginBottom: '8px',
-              textTransform: 'uppercase',
-              fontSize: '0.85rem'
-            }}>
-              Confirm Password *
-            </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type={showConfirmPassword ? "text" : "password"}
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                required
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  paddingRight: '48px',
-                  border: '2px solid #000',
-                  fontSize: '1rem',
-                  fontFamily: 'inherit'
-                }}
-                placeholder="••••••••"
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                style={{
-                  position: 'absolute',
-                  right: '8px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-                title={showConfirmPassword ? "Hide password" : "Show password"}
-              >
-                {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={loading || !isFormValid()}
+            Email *
+          </label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            required
             style={{
               width: '100%',
-              padding: '14px',
-              background: isFormValid() ? '#dc3545' : '#ccc',
-              color: 'white',
+              padding: '12px',
               border: '2px solid #000',
               fontSize: '1rem',
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              cursor: isFormValid() ? 'pointer' : 'not-allowed',
-              boxShadow: '4px 4px 0 #000',
-              marginBottom: '20px',
-              transition: 'background 0.2s ease'
+              fontFamily: 'inherit'
+            }}
+            placeholder="your.email@example.com"
+          />
+        </div>
+
+        {/* Username */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{
+            display: 'block',
+            fontWeight: 700,
+            marginBottom: '8px',
+            textTransform: 'uppercase',
+            fontSize: '0.85rem'
+          }}>
+            Username *
+          </label>
+          <input
+            type="text"
+            name="username"
+            value={formData.username}
+            onChange={handleChange}
+            required
+            minLength={3}
+            pattern="[a-zA-Z0-9_]+"
+            style={{
+              width: '100%',
+              padding: '12px',
+              border: '2px solid #000',
+              fontSize: '1rem',
+              fontFamily: 'inherit'
+            }}
+            placeholder="username"
+          />
+          <small style={{ color: '#666', fontSize: '0.8rem' }}>
+            Letters, numbers, and underscores only (min 3 chars)
+          </small>
+        </div>
+
+        {/* Password */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{
+            display: 'block',
+            fontWeight: 700,
+            marginBottom: '8px',
+            textTransform: 'uppercase',
+            fontSize: '0.85rem'
+          }}>
+            Password *
+          </label>
+          <div style={{ position: 'relative' }}>
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+              style={{
+                width: '100%',
+                padding: '12px',
+                paddingRight: '48px',
+                border: '2px solid #000',
+                fontSize: '1rem',
+                fontFamily: 'inherit'
+              }}
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              style={{
+                position: 'absolute',
+                right: '8px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              title={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
+          
+          {/* Password Strength Indicator */}
+          <PasswordStrengthIndicator passwordStrength={passwordStrength} />
+        </div>
+
+        {/* Confirm Password */}
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{
+            display: 'block',
+            fontWeight: 700,
+            marginBottom: '8px',
+            textTransform: 'uppercase',
+            fontSize: '0.85rem'
+          }}>
+            Confirm Password *
+          </label>
+          <div style={{ position: 'relative' }}>
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              required
+              style={{
+                width: '100%',
+                padding: '12px',
+                paddingRight: '48px',
+                border: '2px solid #000',
+                fontSize: '1rem',
+                fontFamily: 'inherit'
+              }}
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              style={{
+                position: 'absolute',
+                right: '8px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              title={showConfirmPassword ? "Hide password" : "Show password"}
+            >
+              {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
+        </div>
+
+        {/* Submit Button */}
+        <button
+          type="submit"
+          disabled={loading || !isFormValid()}
+          style={{
+            width: '100%',
+            padding: '14px',
+            background: isFormValid() ? '#dc3545' : '#ccc',
+            color: 'white',
+            border: '2px solid #000',
+            fontSize: '1rem',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            cursor: isFormValid() ? 'pointer' : 'not-allowed',
+            boxShadow: '4px 4px 0 #000',
+            marginBottom: '20px',
+            transition: 'background 0.2s ease'
+          }}
+        >
+          {loading ? 'Creating Account...' : 'Create Account'}
+        </button>
+
+        {/* Back to Login */}
+        <div style={{ textAlign: 'center' }}>
+          <Link 
+            to="/login"
+            style={{
+              color: '#0066cc',
+              textDecoration: 'none',
+              fontWeight: 600,
+              fontSize: '0.9rem'
             }}
           >
-            {loading ? 'Creating Account...' : 'Create Account'}
-          </button>
-
-          {/* Back to Login */}
-          <div style={{ textAlign: 'center' }}>
-            <Link 
-              to="/login"
-              style={{
-                color: '#0066cc',
-                textDecoration: 'none',
-                fontWeight: 600,
-                fontSize: '0.9rem'
-              }}
-            >
-              ← Back to Login
-            </Link>
-          </div>
-        </form>
-      </div>
-    </div>
+            ← Back to Login
+          </Link>
+        </div>
+      </form>
+    </AuthPageContainer>
   );
 };
 

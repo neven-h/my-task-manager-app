@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import API_BASE from './config';
+import AuthPageContainer from './components/AuthPageContainer';
+import Alert from './components/Alert';
 
 const ForgotPasswordPage = () => {
   const navigate = useNavigate();
@@ -45,127 +47,72 @@ const ForgotPasswordPage = () => {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#f8f8f8',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      padding: '20px'
-    }}>
-      <div style={{
-        background: 'white',
-        border: '3px solid #000',
-        padding: '40px',
-        width: '100%',
-        maxWidth: '460px',
-        boxShadow: '8px 8px 0 #000'
-      }}>
-        <h1 style={{
-          fontSize: '2rem',
-          fontWeight: 900,
-          textTransform: 'uppercase',
-          marginBottom: '8px',
-          letterSpacing: '-1px'
-        }}>
-          Forgot Password
-        </h1>
-        <p style={{ marginBottom: '32px', color: '#666', fontSize: '0.95rem' }}>
-          Enter your email to receive a password reset link
-        </p>
+    <AuthPageContainer title="Forgot Password" subtitle="Enter your email to receive a password reset link">
+      <Alert type="error" message={error} />
+      <Alert type="success" message={message} />
 
-        {error && (
-          <div style={{
-            background: '#dc3545',
-            color: 'white',
-            padding: '12px 16px',
-            marginBottom: '20px',
-            border: '2px solid #000',
-            fontWeight: 600
+      <form onSubmit={handleSubmit}>
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{
+            display: 'block',
+            fontWeight: 700,
+            marginBottom: '8px',
+            textTransform: 'uppercase',
+            fontSize: '0.85rem'
           }}>
-            {error}
-          </div>
-        )}
-
-        {message && (
-          <div style={{
-            background: '#28a745',
-            color: 'white',
-            padding: '12px 16px',
-            marginBottom: '20px',
-            border: '2px solid #000',
-            fontWeight: 600,
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word'
-          }}>
-            {message}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{
-              display: 'block',
-              fontWeight: 700,
-              marginBottom: '8px',
-              textTransform: 'uppercase',
-              fontSize: '0.85rem'
-            }}>
-              Email Address *
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '2px solid #000',
-                fontSize: '1rem',
-                fontFamily: 'inherit'
-              }}
-              placeholder="your.email@example.com"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
+            Email Address *
+          </label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
             style={{
               width: '100%',
-              padding: '14px',
-              background: '#dc3545',
-              color: 'white',
+              padding: '12px',
               border: '2px solid #000',
               fontSize: '1rem',
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              boxShadow: '4px 4px 0 #000',
-              marginBottom: '20px'
+              fontFamily: 'inherit'
+            }}
+            placeholder="your.email@example.com"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            width: '100%',
+            padding: '14px',
+            background: '#dc3545',
+            color: 'white',
+            border: '2px solid #000',
+            fontSize: '1rem',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            boxShadow: '4px 4px 0 #000',
+            marginBottom: '20px'
+          }}
+        >
+          {loading ? 'Sending...' : 'Send Reset Link'}
+        </button>
+
+        <div style={{ textAlign: 'center' }}>
+          <Link 
+            to="/login"
+            style={{
+              color: '#0066cc',
+              textDecoration: 'none',
+              fontWeight: 600,
+              fontSize: '0.9rem'
             }}
           >
-            {loading ? 'Sending...' : 'Send Reset Link'}
-          </button>
-
-          <div style={{ textAlign: 'center' }}>
-            <Link 
-              to="/login"
-              style={{
-                color: '#0066cc',
-                textDecoration: 'none',
-                fontWeight: 600,
-                fontSize: '0.9rem'
-              }}
-            >
-              ← Back to Login
-            </Link>
-          </div>
-        </form>
-      </div>
-    </div>
+            ← Back to Login
+          </Link>
+        </div>
+      </form>
+    </AuthPageContainer>
   );
 };
 
