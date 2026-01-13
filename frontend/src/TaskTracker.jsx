@@ -1046,7 +1046,18 @@ useEffect(() => {
             opacity: 1;
           }
         }
-        
+
+        @keyframes slideInRight {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+
         .task-card {
           transition: all 0.2s ease;
           border: 3px solid #000;
@@ -1123,6 +1134,7 @@ useEffect(() => {
           width: 100%;
           font-size: 0.95rem;
           background: #fff;
+          box-sizing: border-box;
         }
         
         input:focus, select:focus, textarea:focus {
@@ -1232,6 +1244,10 @@ useEffect(() => {
           }
 
           .mobile-menu-btn {
+            display: flex !important;
+          }
+
+          .mobile-filter-btn {
             display: flex !important;
           }
 
@@ -1741,21 +1757,21 @@ useEffect(() => {
                         </p>
                     </div>
 
-                    {/* Filter/Search Button - Always visible */}
+                    {/* Filter/Search Button - Mobile only */}
                     <button
-                        className="btn btn-white"
+                        className="btn btn-white mobile-filter-btn"
                         onClick={() => setShowMobileSidebar(true)}
-                        style={{padding: '10px', minWidth: 'auto', marginRight: '12px'}}
+                        style={{padding: '10px', minWidth: 'auto', marginRight: '12px', display: 'none'}}
                         title="Search & Filter"
                     >
                         <Filter size={24}/>
                     </button>
 
-                    {/* Hamburger Menu Button - Always visible */}
+                    {/* Hamburger Menu Button - Mobile only */}
                     <button
                         className="mobile-menu-btn btn btn-white"
                         onClick={() => setShowMobileMenu(!showMobileMenu)}
-                        style={{padding: '10px', minWidth: 'auto'}}
+                        style={{padding: '10px', minWidth: 'auto', display: 'none'}}
                         title="Menu"
                     >
                         <Menu size={24}/>
@@ -1987,34 +2003,55 @@ useEffect(() => {
 
             {/* Mobile Sidebar Overlay */}
             {showMobileSidebar && (
-                <div
-                    style={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        background: '#f8f8f8',
-                        zIndex: 200,
-                        overflowY: 'auto',
-                        padding: '20px'
-                    }}
-                >
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '24px'
-                    }}>
-                        <h2 style={{margin: 0, fontSize: '1.5rem', fontWeight: 900}}>Filters & Export</h2>
-                        <button
-                            onClick={() => setShowMobileSidebar(false)}
-                            className="btn btn-white"
-                            style={{padding: '10px', minWidth: 'auto'}}
-                        >
-                            <X size={24}/>
-                        </button>
-                    </div>
+                <>
+                    {/* Backdrop */}
+                    <div
+                        onClick={() => setShowMobileSidebar(false)}
+                        style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: 'rgba(0,0,0,0.5)',
+                            zIndex: 199
+                        }}
+                    />
+
+                    {/* Filters Side Panel */}
+                    <div
+                        className="filters-panel"
+                        style={{
+                            position: 'fixed',
+                            top: 0,
+                            right: 0,
+                            bottom: 0,
+                            width: '320px',
+                            maxWidth: '85vw',
+                            background: '#f8f8f8',
+                            zIndex: 200,
+                            overflowY: 'auto',
+                            padding: '20px',
+                            boxShadow: '-4px 0 24px rgba(0, 0, 0, 0.3)',
+                            animation: 'slideInRight 0.3s ease-out',
+                            boxSizing: 'border-box'
+                        }}
+                    >
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginBottom: '24px'
+                        }}>
+                            <h2 style={{margin: 0, fontSize: '1.5rem', fontWeight: 900}}>Filters & Export</h2>
+                            <button
+                                onClick={() => setShowMobileSidebar(false)}
+                                className="btn btn-white"
+                                style={{padding: '10px', minWidth: 'auto'}}
+                            >
+                                <X size={24}/>
+                            </button>
+                        </div>
 
                     <div style={{marginBottom: '32px'}}>
                         <h3 style={{
@@ -2169,10 +2206,11 @@ useEffect(() => {
                         </div>
                     </div>
 
-                    <button className="btn btn-red" onClick={() => setShowMobileSidebar(false)}
-                            style={{width: '100%', marginTop: '20px'}}>Apply & Close
-                    </button>
-                </div>
+                        <button className="btn btn-red" onClick={() => setShowMobileSidebar(false)}
+                                style={{width: '100%', marginTop: '20px'}}>Apply & Close
+                        </button>
+                    </div>
+                </>
             )}
 
             {/* Main Content */}
