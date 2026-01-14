@@ -782,19 +782,30 @@ def init_db():
         """)
         print("Created password_reset_tokens table")
 
-        # Add 2FA columns to users table
+        # Add 2FA columns to users table (one at a time for MySQL compatibility)
         try:
             cursor.execute("""
                 ALTER TABLE users
-                ADD COLUMN IF NOT EXISTS two_factor_secret VARCHAR(32),
-                ADD COLUMN IF NOT EXISTS two_factor_enabled BOOLEAN DEFAULT FALSE
+                ADD COLUMN two_factor_secret VARCHAR(32)
             """)
-            print("Added 2FA columns to users table")
+            print("Added two_factor_secret column to users table")
         except Error as e:
             if 'Duplicate column' in str(e):
-                pass  # Columns already exist
+                pass  # Column already exists
             else:
-                print(f"2FA migration note: {e}")
+                print(f"2FA secret column migration note: {e}")
+
+        try:
+            cursor.execute("""
+                ALTER TABLE users
+                ADD COLUMN two_factor_enabled BOOLEAN DEFAULT FALSE
+            """)
+            print("Added two_factor_enabled column to users table")
+        except Error as e:
+            if 'Duplicate column' in str(e):
+                pass  # Column already exists
+            else:
+                print(f"2FA enabled column migration note: {e}")
 
         # Create audit log table for bank transaction access
         cursor.execute("""
