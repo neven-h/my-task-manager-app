@@ -899,6 +899,19 @@ def init_db():
                            )
                        """)
 
+        # Add owner column to categories_master table for user isolation
+        try:
+            cursor.execute("""
+                ALTER TABLE categories_master
+                ADD COLUMN owner VARCHAR(255)
+            """)
+            print("Added owner column to categories_master table")
+        except Error as e:
+            if 'Duplicate column' in str(e):
+                pass  # Column already exists
+            else:
+                print(f"Categories owner column migration note: {e}")
+
         # Insert default categories if table is empty
         cursor.execute("SELECT COUNT(*) FROM categories_master")
         if cursor.fetchone()[0] == 0:
