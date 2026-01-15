@@ -1227,11 +1227,7 @@ useEffect(() => {
           width: 100%;
           background: linear-gradient(90deg, #FF0000 0%, #FF0000 33.33%, #FFD500 33.33%, #FFD500 66.66%, #0000FF 66.66%, #0000FF 100%);
         }
-        
-        .sidebar {
-          display: none; /* Hidden - use hamburger menu instead */
-        }
-        
+
         /* Mobile Responsive Styles */
         @media (max-width: 768px) {
           /* Make the app more colorful and modern on mobile */
