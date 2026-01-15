@@ -1177,6 +1177,22 @@ useEffect(() => {
           width: 100%;
           max-height: 90vh;
           overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .modal-header {
+          flex-shrink: 0;
+        }
+
+        .modal-body {
+          flex: 1;
+          overflow-y: auto;
+          padding: 24px;
+        }
+
+        .modal-footer {
+          flex-shrink: 0;
         }
         
         .status-badge {
