@@ -189,9 +189,15 @@ useEffect(() => {
     };
 
     const createCategory = async () => {
-        if (!newCategoryName.trim()) return;
+        if (!newCategoryName.trim()) {
+            setError('Category name is required');
+            return;
+        }
 
         try {
+            setLoading(true);
+            setError(null);
+
             const response = await fetch(`${API_BASE}/categories`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -210,9 +216,16 @@ useEffect(() => {
                 setNewCategoryColor('#0d6efd');
                 setNewCategoryIcon('📁');
                 setShowAddCategory(false);
+            } else {
+                const errorData = await response.json();
+                console.error('Failed to create category:', errorData);
+                setError(`Failed to create category: ${errorData.error || 'Unknown error'}`);
             }
         } catch (err) {
             console.error('Error creating category:', err);
+            setError(`Failed to create category: ${err.message}`);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -2721,14 +2734,27 @@ useEffect(() => {
                                                 <button
                                                     type="button"
                                                     onClick={createCategory}
+                                                    disabled={loading || !newCategoryName.trim()}
                                                     className="btn btn-primary"
-                                                    style={{padding: '6px 16px', fontSize: '0.85rem', flex: 1}}
+                                                    style={{
+                                                        padding: '6px 16px',
+                                                        fontSize: '0.85rem',
+                                                        flex: 1,
+                                                        opacity: (loading || !newCategoryName.trim()) ? 0.5 : 1,
+                                                        cursor: (loading || !newCategoryName.trim()) ? 'not-allowed' : 'pointer'
+                                                    }}
                                                 >
-                                                    Create
+                                                    {loading ? 'Creating...' : 'Create'}
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    onClick={() => setShowAddCategory(false)}
+                                                    onClick={() => {
+                                                        setShowAddCategory(false);
+                                                        setNewCategoryName('');
+                                                        setNewCategoryColor('#0d6efd');
+                                                        setNewCategoryIcon('📁');
+                                                    }}
+                                                    disabled={loading}
                                                     className="btn btn-white"
                                                     style={{padding: '6px 16px', fontSize: '0.85rem'}}
                                                 >
