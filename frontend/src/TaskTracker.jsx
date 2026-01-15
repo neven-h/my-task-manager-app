@@ -61,6 +61,7 @@ useEffect(() => {
     const [error, setError] = useState(null);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+    const [showSidebar, setShowSidebar] = useState(true); // Desktop sidebar visibility
     const [showAddCategory, setShowAddCategory] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
     const [newCategoryColor, setNewCategoryColor] = useState('#0d6efd');
@@ -1292,15 +1293,7 @@ useEffect(() => {
           }
 
           .sidebar {
-            position: fixed;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100vh;
-            z-index: 200;
-            transition: left 0.3s ease;
-            border-right: none;
-            background: white;
+            display: none !important; /* Hide desktop sidebar on mobile */
           }
 
           .sidebar.mobile-open {
@@ -1789,6 +1782,16 @@ useEffect(() => {
                     {/* Desktop Header Buttons */}
                     <div className="desktop-header-buttons"
                          style={{display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center'}}>
+                        {/* Toggle Sidebar Button */}
+                        <button
+                            className="btn btn-white"
+                            onClick={() => setShowSidebar(!showSidebar)}
+                            title={showSidebar ? "Hide Filters" : "Show Filters"}
+                            style={{padding: '10px', minWidth: 'auto'}}
+                        >
+                            <Filter size={18}/>
+                        </button>
+
                         {/* Show user info - only for admin */}
                         {isAdmin && (
                             <span style={{fontSize: '0.85rem', fontWeight: '600', color: '#666', marginRight: '8px'}}>
@@ -2225,7 +2228,8 @@ useEffect(() => {
             {/* Main Content */}
             <div style={{display: 'flex', minHeight: 'calc(100vh - 180px)'}}>
                 {/* Sidebar */}
-                <div className="sidebar" style={{width: '320px', padding: '32px 24px'}}>
+                {showSidebar && (
+                <div className="sidebar" style={{width: '320px', padding: '32px 24px', transition: 'all 0.3s ease'}}>
                     <div style={{marginBottom: '32px'}}>
                         <h3 style={{
                             fontSize: '0.75rem',
@@ -2379,9 +2383,10 @@ useEffect(() => {
                         </button>
                     </div>
                 </div>
+                )}
 
                 {/* Main Area */}
-                <div style={{flex: 1, padding: '48px'}}>
+                <div style={{flex: 1, padding: '48px', transition: 'all 0.3s ease'}}>
                     {view === 'list' ? (
                         <>
                             <div style={{marginBottom: '32px'}}>
