@@ -1,4 +1,5 @@
 import React, {useState, useEffect, useRef} from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Plus,
     CheckCircle,
@@ -18,6 +19,7 @@ import {
     RefreshCw,
     Copy,
     BarChart3,
+    Settings,
     ArrowLeft,
     Share2
 } from 'lucide-react';
@@ -219,6 +221,7 @@ const THEME = {
 const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 
 const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
+    const navigate = useNavigate();
     const isSharedUser = authRole === 'shared';
     const isLimitedUser = authRole === 'limited';
     const isAdmin = authRole === 'admin';
@@ -1310,6 +1313,17 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                 }}>
                                     Account
                                 </h3>
+                                <button
+                                    className="mobile-btn mobile-btn-accent"
+                                    onClick={() => {
+                                        navigate('/settings');
+                                        setShowMobileSidebar(false);
+                                    }}
+                                    style={{width: '100%', justifyContent: 'flex-start', marginBottom: '12px'}}
+                                >
+                                    <Settings size={16} style={{marginRight: '8px'}}/>
+                                    Settings
+                                </button>
                                 <button
                                     className="mobile-btn mobile-btn-accent"
                                     onClick={() => {
