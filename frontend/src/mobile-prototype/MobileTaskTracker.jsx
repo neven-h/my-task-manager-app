@@ -763,31 +763,32 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
         }
         
         .mobile-btn {
-          border: 3px solid #000;
+          border: 1px solid rgba(0,0,0,0.2);
+          border-radius: 10px;
           background: #fff;
           font-family: ${FONT_STACK};
-          font-weight: 700;
-          text-transform: uppercase;
-          font-size: 0.85rem;
-          letter-spacing: 0.5px;
-          padding: 14px 28px;
+          font-weight: 600;
+          text-transform: none;
+          font-size: 1rem;
+          padding: 14px 20px;
           cursor: pointer;
-          transition: all 0.15s ease;
+          transition: all 0.2s ease;
         }
-        
+
         .mobile-btn:active {
-          box-shadow: none;
-          transform: translate(0, 0);
+          opacity: 0.7;
         }
-        
+
         .mobile-btn-primary {
           background: ${THEME.primary};
           color: #fff;
+          border-color: ${THEME.primary};
         }
-        
+
         .mobile-btn-accent {
           background: ${THEME.accent};
           color: #fff;
+          border-color: ${THEME.accent};
         }
         
         .filter-pill {
@@ -815,32 +816,37 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
         }
         
         .category-pill {
-          border: 2px solid #000;
-          padding: 6px 14px;
-          font-size: 0.85rem;
+          border: 1px solid rgba(0,0,0,0.2);
+          border-radius: 16px;
+          padding: 8px 16px;
+          font-size: 0.9rem;
           font-weight: 600;
           cursor: pointer;
-          background: #fff;
+          background: #f5f5f5;
           font-family: ${FONT_STACK};
+          transition: all 0.2s ease;
         }
-        
+
         .category-pill.selected {
           background: ${THEME.primary};
           color: #fff;
+          border-color: ${THEME.primary};
         }
         
         input, textarea, select {
           width: 100%;
-          border: 3px solid #000;
-          padding: 14px;
+          border: 1px solid rgba(0,0,0,0.2);
+          border-radius: 8px;
+          padding: 12px;
           font-size: 1rem;
           font-family: ${FONT_STACK};
           background: #fff;
         }
-        
+
         input:focus, textarea:focus, select:focus {
           outline: none;
-          box-shadow: 4px 4px 0px #000;
+          border-color: ${THEME.primary};
+          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
         
         .color-bar {
@@ -1532,17 +1538,16 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                         maxHeight: '75vh',
                         background: '#fff',
                         borderRadius: '16px 16px 0 0',
-                        border: '3px solid #000',
-                        borderBottom: 'none',
                         overflowY: 'auto',
                         WebkitOverflowScrolling: 'touch',
                         display: 'flex',
-                        flexDirection: 'column'
+                        flexDirection: 'column',
+                        boxShadow: '0 -4px 20px rgba(0,0,0,0.3)'
                     }}>
                         {/* Modal Header */}
                         <div style={{
                             padding: '16px 20px',
-                            borderBottom: '3px solid #000',
+                            borderBottom: '1px solid rgba(0,0,0,0.1)',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
@@ -1928,17 +1933,16 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                         maxHeight: '70vh',
                         background: '#fff',
                         borderRadius: '16px 16px 0 0',
-                        border: '3px solid #000',
-                        borderBottom: 'none',
                         overflowY: 'auto',
                         WebkitOverflowScrolling: 'touch',
                         display: 'flex',
-                        flexDirection: 'column'
+                        flexDirection: 'column',
+                        boxShadow: '0 -4px 20px rgba(0,0,0,0.3)'
                     }}>
                         {/* Modal Header */}
                         <div style={{
-                            padding: '20px',
-                            borderBottom: '3px solid #000',
+                            padding: '16px 20px',
+                            borderBottom: '1px solid rgba(0,0,0,0.1)',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
@@ -2117,10 +2121,9 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                             maxHeight: '65vh',
                             background: '#fff',
                             borderRadius: '16px 16px 0 0',
-                            border: '3px solid #000',
-                            borderBottom: 'none',
-                            padding: '24px',
-                            fontFamily: FONT_STACK
+                            padding: '20px',
+                            fontFamily: FONT_STACK,
+                            boxShadow: '0 -4px 20px rgba(0,0,0,0.3)'
                         }}
                         onClick={(e) => e.stopPropagation()}
                     >
