@@ -1,7 +1,8 @@
 import React, {useState, useEffect, useRef, useMemo, useCallback} from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Plus, X, BarChart3,
-    Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut, Menu, Filter, Copy, Share2
+    Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut, Menu, Filter, Copy, Share2, Settings
 } from 'lucide-react';
 import BankTransactions from './BankTransactions';
 import ClientsManagement from './ClientsManagement';
@@ -35,10 +36,11 @@ const useDebounce = (value, delay) => {
 };
 
 const TaskTracker = ({onLogout, authRole, authUser}) => {
+    const navigate = useNavigate();
     const isSharedUser = authRole === 'shared';
     const isLimitedUser = authRole === 'limited';
     const isAdmin = authRole === 'admin';
-    
+
     const [appView, setAppView] = useState('tasks'); // 'tasks', 'transactions', or 'clients'
     useEffect(() => {
   const savedView = localStorage.getItem('lastActiveView');
@@ -61,6 +63,7 @@ useEffect(() => {
     const [error, setError] = useState(null);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+    const [showSidebar, setShowSidebar] = useState(true); // Desktop sidebar visibility
     const [showAddCategory, setShowAddCategory] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
     const [newCategoryColor, setNewCategoryColor] = useState('#0d6efd');
@@ -189,9 +192,15 @@ useEffect(() => {
     };
 
     const createCategory = async () => {
-        if (!newCategoryName.trim()) return;
+        if (!newCategoryName.trim()) {
+            setError('Category name is required');
+            return;
+        }
 
         try {
+            setLoading(true);
+            setError(null);
+
             const response = await fetch(`${API_BASE}/categories`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -210,9 +219,16 @@ useEffect(() => {
                 setNewCategoryColor('#0d6efd');
                 setNewCategoryIcon('📁');
                 setShowAddCategory(false);
+            } else {
+                const errorData = await response.json();
+                console.error('Failed to create category:', errorData);
+                setError(`Failed to create category: ${errorData.error || 'Unknown error'}`);
             }
         } catch (err) {
             console.error('Error creating category:', err);
+            setError(`Failed to create category: ${err.message}`);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -1163,6 +1179,22 @@ useEffect(() => {
           width: 100%;
           max-height: 90vh;
           overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .modal-header {
+          flex-shrink: 0;
+        }
+
+        .modal-body {
+          flex: 1;
+          overflow-y: auto;
+          padding: 24px;
+        }
+
+        .modal-footer {
+          flex-shrink: 0;
         }
         
         .status-badge {
@@ -1227,25 +1259,6 @@ useEffect(() => {
           width: 100%;
           background: linear-gradient(90deg, #FF0000 0%, #FF0000 33.33%, #FFD500 33.33%, #FFD500 66.66%, #0000FF 66.66%, #0000FF 100%);
         }
-        
-        .sidebar {
-          display: none; /* Hidden - use hamburger menu instead */
-        }
-
-        /* Modal body styling for desktop */
-        .modal-body {
-          overflow-y: auto;
-          max-height: calc(90vh - 150px);
-        }
-
-        /* Hide mobile buttons on desktop */
-        .mobile-menu-btn {
-          display: none;
-        }
-
-        .mobile-filter-btn {
-          display: none;
-        }
 
         /* Mobile Responsive Styles */
         @media (max-width: 768px) {
@@ -1298,15 +1311,7 @@ useEffect(() => {
           }
 
           .sidebar {
-            position: fixed;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100vh;
-            z-index: 200;
-            transition: left 0.3s ease;
-            border-right: none;
-            background: white;
+            display: none !important; /* Hide desktop sidebar on mobile */
           }
 
           .sidebar.mobile-open {
@@ -1795,6 +1800,16 @@ useEffect(() => {
                     {/* Desktop Header Buttons */}
                     <div className="desktop-header-buttons"
                          style={{display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center'}}>
+                        {/* Toggle Sidebar Button */}
+                        <button
+                            className="btn btn-white"
+                            onClick={() => setShowSidebar(!showSidebar)}
+                            title={showSidebar ? "Hide Filters" : "Show Filters"}
+                            style={{padding: '10px', minWidth: 'auto'}}
+                        >
+                            <Filter size={18}/>
+                        </button>
+
                         {/* Show user info - only for admin */}
                         {isAdmin && (
                             <span style={{fontSize: '0.85rem', fontWeight: '600', color: '#666', marginRight: '8px'}}>
@@ -1844,6 +1859,11 @@ useEffect(() => {
                             ) : (
                                 <>Tasks</>
                             )}
+                        </button>
+                        <button className="btn btn-white" onClick={() => navigate('/settings')}>
+                            <Settings size={18}
+                                    style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
+                            Settings
                         </button>
                         {onLogout && (
                             <button className="btn btn-white" onClick={onLogout}>
@@ -1974,11 +1994,18 @@ useEffect(() => {
                             <Filter size={18} style={{marginRight: '8px'}}/>
                             Filters & Export
                         </button>
+                        <button className="btn btn-white" onClick={() => {
+                            navigate('/settings');
+                            setShowMobileMenu(false);
+                        }} style={{width: '100%', marginTop: '20px'}}>
+                            <Settings size={18} style={{marginRight: '8px'}}/>
+                            Settings
+                        </button>
                         {onLogout && (
                             <button className="btn btn-white" onClick={() => {
                                 onLogout();
                                 setShowMobileMenu(false);
-                            }} style={{width: '100%', marginTop: '20px'}}>
+                            }} style={{width: '100%'}}>
                                 <LogOut size={18} style={{marginRight: '8px'}}/>
                                 Logout
                             </button>
@@ -2231,7 +2258,8 @@ useEffect(() => {
             {/* Main Content */}
             <div style={{display: 'flex', minHeight: 'calc(100vh - 180px)'}}>
                 {/* Sidebar */}
-                <div className="sidebar" style={{width: '320px', padding: '32px 24px'}}>
+                {showSidebar && (
+                <div className="sidebar" style={{width: '320px', padding: '32px 24px', transition: 'all 0.3s ease'}}>
                     <div style={{marginBottom: '32px'}}>
                         <h3 style={{
                             fontSize: '0.75rem',
@@ -2385,9 +2413,10 @@ useEffect(() => {
                         </button>
                     </div>
                 </div>
+                )}
 
                 {/* Main Area */}
-                <div style={{flex: 1, padding: '48px'}}>
+                <div style={{flex: 1, padding: '48px', transition: 'all 0.3s ease'}}>
                     {view === 'list' ? (
                         <>
                             <div style={{marginBottom: '32px'}}>
@@ -2740,14 +2769,27 @@ useEffect(() => {
                                                 <button
                                                     type="button"
                                                     onClick={createCategory}
+                                                    disabled={loading || !newCategoryName.trim()}
                                                     className="btn btn-primary"
-                                                    style={{padding: '6px 16px', fontSize: '0.85rem', flex: 1}}
+                                                    style={{
+                                                        padding: '6px 16px',
+                                                        fontSize: '0.85rem',
+                                                        flex: 1,
+                                                        opacity: (loading || !newCategoryName.trim()) ? 0.5 : 1,
+                                                        cursor: (loading || !newCategoryName.trim()) ? 'not-allowed' : 'pointer'
+                                                    }}
                                                 >
-                                                    Create
+                                                    {loading ? 'Creating...' : 'Create'}
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    onClick={() => setShowAddCategory(false)}
+                                                    onClick={() => {
+                                                        setShowAddCategory(false);
+                                                        setNewCategoryName('');
+                                                        setNewCategoryColor('#0d6efd');
+                                                        setNewCategoryIcon('📁');
+                                                    }}
+                                                    disabled={loading}
                                                     className="btn btn-white"
                                                     style={{padding: '6px 16px', fontSize: '0.85rem'}}
                                                 >

@@ -152,7 +152,7 @@ const ClientsManagement = ({ onBackToTasks }) => {
         return;
       }
       
-      const response = await fetch(`${API_BASE}/api/clients`, {
+      const response = await fetch(`${API_BASE}/clients`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
