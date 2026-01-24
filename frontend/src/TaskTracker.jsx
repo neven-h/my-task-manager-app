@@ -1,7 +1,8 @@
 import React, {useState, useEffect, useRef, useMemo, useCallback} from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Plus, X, BarChart3,
-    Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut, Menu, Filter, Copy, Share2
+    Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut, Menu, Filter, Copy, Share2, Settings
 } from 'lucide-react';
 import BankTransactions from './BankTransactions';
 import ClientsManagement from './ClientsManagement';
@@ -35,10 +36,11 @@ const useDebounce = (value, delay) => {
 };
 
 const TaskTracker = ({onLogout, authRole, authUser}) => {
+    const navigate = useNavigate();
     const isSharedUser = authRole === 'shared';
     const isLimitedUser = authRole === 'limited';
     const isAdmin = authRole === 'admin';
-    
+
     const [appView, setAppView] = useState('tasks'); // 'tasks', 'transactions', or 'clients'
     useEffect(() => {
   const savedView = localStorage.getItem('lastActiveView');
@@ -1858,6 +1860,11 @@ useEffect(() => {
                                 <>Tasks</>
                             )}
                         </button>
+                        <button className="btn btn-white" onClick={() => navigate('/settings')}>
+                            <Settings size={18}
+                                    style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
+                            Settings
+                        </button>
                         {onLogout && (
                             <button className="btn btn-white" onClick={onLogout}>
                                 <LogOut size={18}
@@ -1987,11 +1994,18 @@ useEffect(() => {
                             <Filter size={18} style={{marginRight: '8px'}}/>
                             Filters & Export
                         </button>
+                        <button className="btn btn-white" onClick={() => {
+                            navigate('/settings');
+                            setShowMobileMenu(false);
+                        }} style={{width: '100%', marginTop: '20px'}}>
+                            <Settings size={18} style={{marginRight: '8px'}}/>
+                            Settings
+                        </button>
                         {onLogout && (
                             <button className="btn btn-white" onClick={() => {
                                 onLogout();
                                 setShowMobileMenu(false);
-                            }} style={{width: '100%', marginTop: '20px'}}>
+                            }} style={{width: '100%'}}>
                                 <LogOut size={18} style={{marginRight: '8px'}}/>
                                 Logout
                             </button>
