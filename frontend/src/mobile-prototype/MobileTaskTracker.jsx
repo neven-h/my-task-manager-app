@@ -1529,7 +1529,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                 >
                     <div style={{
                         width: '100%',
-                        maxHeight: '90vh',
+                        maxHeight: '75vh',
                         background: '#fff',
                         borderRadius: '16px 16px 0 0',
                         border: '3px solid #000',
@@ -1541,7 +1541,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                     }}>
                         {/* Modal Header */}
                         <div style={{
-                            padding: '20px',
+                            padding: '16px 20px',
                             borderBottom: '3px solid #000',
                             display: 'flex',
                             justifyContent: 'space-between',
@@ -1552,7 +1552,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                             zIndex: 1
                         }}>
                             <h2 style={{
-                                fontSize: '1.5rem',
+                                fontSize: '1.3rem',
                                 fontWeight: 900,
                                 margin: 0,
                                 textTransform: 'uppercase',
@@ -1574,9 +1574,9 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                         </div>
 
                         {/* Modal Body */}
-                        <div style={{padding: '20px', paddingBottom: '40px'}}>
+                        <div style={{padding: '16px', paddingBottom: '32px'}}>
                             {/* Title */}
-                            <div style={{marginBottom: '20px'}}>
+                            <div style={{marginBottom: '16px'}}>
                                 <label style={{
                                     display: 'block',
                                     marginBottom: '8px',
@@ -1596,7 +1596,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                             </div>
 
                             {/* Description */}
-                            <div style={{marginBottom: '20px'}}>
+                            <div style={{marginBottom: '16px'}}>
                                 <label style={{
                                     display: 'block',
                                     marginBottom: '8px',
@@ -1620,7 +1620,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                 display: 'grid',
                                 gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
                                 gap: '12px',
-                                marginBottom: '20px'
+                                marginBottom: '16px'
                             }}>
                                 <div>
                                     <label style={{
@@ -1663,7 +1663,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                 display: 'grid',
                                 gridTemplateColumns: '100px 1fr',
                                 gap: '12px',
-                                marginBottom: '20px'
+                                marginBottom: '16px'
                             }}>
                                 <div>
                                     <label style={{
@@ -1705,7 +1705,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                             </div>
 
                             {/* Categories */}
-                            <div style={{marginBottom: '20px'}}>
+                            <div style={{marginBottom: '16px'}}>
                                 <label style={{
                                     display: 'block',
                                     marginBottom: '12px',
@@ -1730,7 +1730,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                             </div>
 
                             {/* Tags */}
-                            <div style={{marginBottom: '20px'}}>
+                            <div style={{marginBottom: '16px'}}>
                                 <label style={{
                                     display: 'block',
                                     marginBottom: '8px',
@@ -1800,7 +1800,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                             </div>
 
                             {/* Status */}
-                            <div style={{marginBottom: '20px'}}>
+                            <div style={{marginBottom: '16px'}}>
                                 <label style={{
                                     display: 'block',
                                     marginBottom: '8px',
@@ -1821,7 +1821,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                             </div>
 
                             {/* Notes */}
-                            <div style={{marginBottom: '20px'}}>
+                            <div style={{marginBottom: '16px'}}>
                                 <label style={{
                                     display: 'block',
                                     marginBottom: '8px',
@@ -1925,7 +1925,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                 >
                     <div style={{
                         width: '100%',
-                        maxHeight: '85vh',
+                        maxHeight: '70vh',
                         background: '#fff',
                         borderRadius: '16px 16px 0 0',
                         border: '3px solid #000',
@@ -1971,7 +1971,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                         </div>
 
                         {/* Modal Body */}
-                        <div style={{padding: '20px', paddingBottom: '40px'}}>
+                        <div style={{padding: '16px', paddingBottom: '32px'}}>
                             <p style={{
                                 marginBottom: '16px',
                                 fontSize: '0.9rem',
@@ -1982,7 +1982,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                             </p>
 
                             {/* Task List Textarea */}
-                            <div style={{marginBottom: '20px'}}>
+                            <div style={{marginBottom: '16px'}}>
                                 <label style={{
                                     display: 'block',
                                     marginBottom: '8px',
@@ -2015,7 +2015,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                             </div>
 
                             {/* Categories */}
-                            <div style={{marginBottom: '20px'}}>
+                            <div style={{marginBottom: '16px'}}>
                                 <label style={{
                                     display: 'block',
                                     marginBottom: '12px',
@@ -2114,7 +2114,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                     <div
                         style={{
                             width: '100%',
-                            maxHeight: '80vh',
+                            maxHeight: '65vh',
                             background: '#fff',
                             borderRadius: '16px 16px 0 0',
                             border: '3px solid #000',
