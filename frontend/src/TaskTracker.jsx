@@ -1781,7 +1781,7 @@ useEffect(() => {
                     <button
                         className="btn btn-white mobile-filter-btn"
                         onClick={() => setShowMobileSidebar(true)}
-                        style={{padding: '10px', minWidth: 'auto', marginRight: '12px', display: 'none'}}
+                        style={{padding: '10px', minWidth: 'auto', marginRight: '12px'}}
                         title="Search & Filter"
                     >
                         <Filter size={24}/>
@@ -1791,7 +1791,7 @@ useEffect(() => {
                     <button
                         className="mobile-menu-btn btn btn-white"
                         onClick={() => setShowMobileMenu(!showMobileMenu)}
-                        style={{padding: '10px', minWidth: 'auto', display: 'none'}}
+                        style={{padding: '10px', minWidth: 'auto'}}
                         title="Menu"
                     >
                         <Menu size={24}/>
