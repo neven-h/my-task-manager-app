@@ -1,4 +1,5 @@
 import React, {useState, useEffect, useRef} from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Plus,
     CheckCircle,
@@ -18,10 +19,12 @@ import {
     RefreshCw,
     Copy,
     BarChart3,
+    Settings,
     ArrowLeft,
     Share2
 } from 'lucide-react';
 import BankTransactions from '../BankTransactions';
+import CustomAutocomplete from '../components/CustomAutocomplete';
 import API_BASE from '../config';
 
 // Mobile Stats View Component
@@ -202,6 +205,7 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
 };
 
 const DRAFT_STORAGE_KEY = 'taskTracker_mobile_draft';
+const BULK_DRAFT_STORAGE_KEY = 'taskTracker_mobile_bulkDraft';
 
 // Brutalist theme - EXACTLY matching desktop TaskTracker
 const THEME = {
@@ -219,6 +223,7 @@ const THEME = {
 const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 
 const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
+    const navigate = useNavigate();
     const isSharedUser = authRole === 'shared';
     const isLimitedUser = authRole === 'limited';
     const isAdmin = authRole === 'admin';
@@ -239,6 +244,10 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
     const [sharingTask, setSharingTask] = useState(null);
     const [loading, setLoading] = useState(false);
     const [tagInput, setTagInput] = useState('');
+    const [showBulkInput, setShowBulkInput] = useState(false);
+    const [bulkTasksText, setBulkTasksText] = useState('');
+    const [bulkCategory, setBulkCategory] = useState([]);
+    const [bulkClient, setBulkClient] = useState('');
     const formChangeTimeoutRef = useRef(null);
 
     // Form state
@@ -280,6 +289,26 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
         };
     }, [formData, showTaskModal]);
 
+    // Auto-save bulk draft
+    useEffect(() => {
+        if (showBulkInput && bulkTasksText) {
+            const timeoutId = setTimeout(() => {
+                saveBulkDraft();
+            }, 1000); // Auto-save after 1 second of no changes
+            return () => clearTimeout(timeoutId);
+        }
+    }, [bulkTasksText, showBulkInput]);
+
+    // Load bulk draft when modal opens
+    useEffect(() => {
+        if (showBulkInput && !bulkTasksText) {
+            const draft = loadBulkDraft();
+            if (draft) {
+                setBulkTasksText(draft);
+            }
+        }
+    }, [showBulkInput]);
+
     const saveDraft = () => {
         localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(formData));
     };
@@ -294,6 +323,21 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
 
     const clearDraft = () => {
         localStorage.removeItem(DRAFT_STORAGE_KEY);
+    };
+
+    const saveBulkDraft = () => {
+        if (bulkTasksText.trim()) {
+            localStorage.setItem(BULK_DRAFT_STORAGE_KEY, bulkTasksText);
+        }
+    };
+
+    const loadBulkDraft = () => {
+        const draft = localStorage.getItem(BULK_DRAFT_STORAGE_KEY);
+        return draft || '';
+    };
+
+    const clearBulkDraft = () => {
+        localStorage.removeItem(BULK_DRAFT_STORAGE_KEY);
     };
 
     // Load data
@@ -426,6 +470,95 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
         } catch (err) {
             console.error('Failed to save task:', err);
             alert('Failed to save task. See console for details.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const parseBulkTasks = (text) => {
+        const lines = text.split('\n');
+        const tasksToCreate = [];
+        let currentTask = '';
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+
+            // Check if line starts with a number followed by . or )
+            const numberedMatch = line.match(/^(\d+)[.)]\s+(.+)$/);
+
+            if (numberedMatch) {
+                // This is a new numbered task
+                if (currentTask) {
+                    // Save previous task
+                    tasksToCreate.push(currentTask.trim());
+                }
+                // Start new task
+                currentTask = numberedMatch[2];
+            } else {
+                // This is either a continuation of current task or a new unnumbered task
+                if (currentTask) {
+                    // Append to current task (multi-line task)
+                    currentTask += '\n' + line;
+                } else {
+                    // Unnumbered single-line task
+                    tasksToCreate.push(line);
+                }
+            }
+        }
+
+        // Add the last numbered task if exists
+        if (currentTask) {
+            tasksToCreate.push(currentTask.trim());
+        }
+
+        return tasksToCreate;
+    };
+
+    const handleBulkTaskSubmit = async () => {
+        if (!bulkTasksText.trim()) return;
+
+        const taskTitles = parseBulkTasks(bulkTasksText);
+        if (taskTitles.length === 0) return;
+
+        const tasksToCreate = taskTitles.map(title => ({
+            title,
+            description: '',
+            categories: bulkCategory.length > 0 ? bulkCategory : [],
+            client: bulkClient || '',
+            task_date: formData.task_date,
+            task_time: formData.task_time || '',
+            duration: '',
+            status: 'uncompleted',
+            tags: [],
+            notes: '',
+            username: authUser,
+            role: authRole
+        }));
+
+        try {
+            setLoading(true);
+            const promises = tasksToCreate.map(task =>
+                fetch(`${API_BASE}/tasks`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(task)
+                })
+            );
+
+            await Promise.all(promises);
+
+            await fetchTasks();
+            await fetchClients();
+
+            setBulkTasksText('');
+            setBulkCategory([]);
+            setBulkClient('');
+            clearBulkDraft();
+            setShowBulkInput(false);
+        } catch (err) {
+            console.error('Failed to create bulk tasks:', err);
+            alert('Failed to create bulk tasks. See console for details.');
         } finally {
             setLoading(false);
         }
@@ -1020,7 +1153,35 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                     )}
                 </div>
 
-                {/* Floating Action Button */}
+                {/* Floating Action Buttons */}
+                {/* Bulk Add Button */}
+                <button
+                    onClick={() => setShowBulkInput(true)}
+                    style={{
+                        position: 'fixed',
+                        bottom: '100px',
+                        right: '20px',
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        background: THEME.accent,
+                        border: '3px solid #000',
+                        boxShadow: '4px 4px 0px #000',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        zIndex: 90,
+                        fontSize: '20px',
+                        fontWeight: 'bold',
+                        color: '#000'
+                    }}
+                    title="Bulk Add Tasks"
+                >
+                    ≡
+                </button>
+
+                {/* Main Add Button */}
                 <button
                     onClick={openCreateModal}
                     style={{
@@ -1313,6 +1474,17 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                 <button
                                     className="mobile-btn mobile-btn-accent"
                                     onClick={() => {
+                                        navigate('/settings');
+                                        setShowMobileSidebar(false);
+                                    }}
+                                    style={{width: '100%', justifyContent: 'flex-start', marginBottom: '12px'}}
+                                >
+                                    <Settings size={16} style={{marginRight: '8px'}}/>
+                                    Settings
+                                </button>
+                                <button
+                                    className="mobile-btn mobile-btn-accent"
+                                    onClick={() => {
                                         setShowMobileSidebar(false);
                                         if (onLogout) onLogout();
                                     }}
@@ -1402,7 +1574,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                         </div>
 
                         {/* Modal Body */}
-                        <div style={{padding: '20px', paddingBottom: '100px'}}>
+                        <div style={{padding: '20px', paddingBottom: '40px'}}>
                             {/* Title */}
                             <div style={{marginBottom: '20px'}}>
                                 <label style={{
@@ -1446,7 +1618,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                             {/* Date & Time */}
                             <div style={{
                                 display: 'grid',
-                                gridTemplateColumns: '1fr 1fr',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
                                 gap: '12px',
                                 marginBottom: '20px'
                             }}>
@@ -1489,7 +1661,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                             {/* Duration & Client */}
                             <div style={{
                                 display: 'grid',
-                                gridTemplateColumns: '1fr 2fr',
+                                gridTemplateColumns: '100px 1fr',
                                 gap: '12px',
                                 marginBottom: '20px'
                             }}>
@@ -1523,19 +1695,12 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                     }}>
                                         Client
                                     </label>
-                                    <input
-                                        type="text"
+                                    <CustomAutocomplete
                                         value={formData.client}
-                                        onChange={(e) => setFormData({...formData, client: e.target.value})}
+                                        onChange={(value) => setFormData({...formData, client: value})}
+                                        options={clients.map(c => typeof c === 'string' ? c : String(c))}
                                         placeholder="Client name..."
-                                        list="clients-list"
                                     />
-                                    <datalist id="clients-list">
-                                        {clients.map((client, idx) => (
-                                            <option key={idx}
-                                                    value={typeof client === 'string' ? client : String(client)}/>
-                                        ))}
-                                    </datalist>
                                 </div>
                             </div>
 
@@ -1732,6 +1897,199 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                     Delete Task
                                 </button>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Bulk Add Tasks Modal */}
+            {showBulkInput && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0,0,0,0.5)',
+                        zIndex: 200,
+                        display: 'flex',
+                        alignItems: 'flex-end',
+                        padding: 0
+                    }}
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) {
+                            setShowBulkInput(false);
+                        }
+                    }}
+                >
+                    <div style={{
+                        width: '100%',
+                        maxHeight: '85vh',
+                        background: '#fff',
+                        borderRadius: '16px 16px 0 0',
+                        border: '3px solid #000',
+                        borderBottom: 'none',
+                        overflowY: 'auto',
+                        WebkitOverflowScrolling: 'touch',
+                        display: 'flex',
+                        flexDirection: 'column'
+                    }}>
+                        {/* Modal Header */}
+                        <div style={{
+                            padding: '20px',
+                            borderBottom: '3px solid #000',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            position: 'sticky',
+                            top: 0,
+                            background: THEME.accent,
+                            zIndex: 1
+                        }}>
+                            <h2 style={{
+                                fontSize: '1.3rem',
+                                fontWeight: 900,
+                                margin: 0,
+                                textTransform: 'uppercase',
+                                fontFamily: FONT_STACK,
+                                color: '#000'
+                            }}>
+                                Bulk Add Tasks
+                            </h2>
+                            <button
+                                onClick={() => setShowBulkInput(false)}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    padding: '8px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <X size={28} color="#000"/>
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div style={{padding: '20px', paddingBottom: '40px'}}>
+                            <p style={{
+                                marginBottom: '16px',
+                                fontSize: '0.9rem',
+                                color: '#666',
+                                lineHeight: '1.5'
+                            }}>
+                                Enter each task on a new line. You can use numbered lists (1., 2.) or just plain text.
+                            </p>
+
+                            {/* Task List Textarea */}
+                            <div style={{marginBottom: '20px'}}>
+                                <label style={{
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px'
+                                }}>
+                                    Tasks ({parseBulkTasks(bulkTasksText).length})
+                                </label>
+                                <textarea
+                                    rows={10}
+                                    value={bulkTasksText}
+                                    onChange={(e) => setBulkTasksText(e.target.value)}
+                                    placeholder={"1. First task\n2. Second task\n3. Third task"}
+                                    style={{
+                                        width: '100%',
+                                        padding: '14px',
+                                        border: '3px solid #000',
+                                        borderRadius: '0',
+                                        fontSize: '1rem',
+                                        fontFamily: 'monospace',
+                                        lineHeight: '1.6',
+                                        boxSizing: 'border-box',
+                                        resize: 'vertical',
+                                        minHeight: '200px'
+                                    }}
+                                    autoFocus
+                                />
+                            </div>
+
+                            {/* Categories */}
+                            <div style={{marginBottom: '20px'}}>
+                                <label style={{
+                                    display: 'block',
+                                    marginBottom: '12px',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px'
+                                }}>
+                                    Category (Optional)
+                                </label>
+                                <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px'}}>
+                                    {categories.map(cat => (
+                                        <div
+                                            key={cat.id}
+                                            className={`category-pill ${bulkCategory.includes(cat.id) ? 'selected' : ''}`}
+                                            onClick={() => {
+                                                if (bulkCategory.includes(cat.id)) {
+                                                    setBulkCategory(bulkCategory.filter(c => c !== cat.id));
+                                                } else {
+                                                    setBulkCategory([...bulkCategory, cat.id]);
+                                                }
+                                            }}
+                                        >
+                                            {cat.label}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Client */}
+                            <div style={{marginBottom: '24px'}}>
+                                <label style={{
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px'
+                                }}>
+                                    Client (Optional)
+                                </label>
+                                <CustomAutocomplete
+                                    value={bulkClient}
+                                    onChange={(value) => setBulkClient(value)}
+                                    options={clients.map(c => typeof c === 'string' ? c : String(c))}
+                                    placeholder="Client name..."
+                                />
+                            </div>
+
+                            {/* Action buttons */}
+                            <div style={{display: 'flex', gap: '12px'}}>
+                                <button
+                                    onClick={() => {
+                                        setBulkTasksText('');
+                                        setBulkCategory([]);
+                                        setBulkClient('');
+                                        clearBulkDraft();
+                                        setShowBulkInput(false);
+                                    }}
+                                    className="mobile-btn"
+                                    style={{flex: 1}}
+                                    disabled={loading}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleBulkTaskSubmit}
+                                    className="mobile-btn mobile-btn-accent"
+                                    style={{flex: 1}}
+                                    disabled={loading || !bulkTasksText.trim()}
+                                >
+                                    {loading ? 'Creating...' : `Create ${parseBulkTasks(bulkTasksText).length} Tasks`}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
