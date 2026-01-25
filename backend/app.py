@@ -299,7 +299,7 @@ def _get_hardcoded_users():
         _USERS_CACHE = {}
         return _USERS_CACHE
 
-    required_passwords = ['USER_PITZ_PASSWORD', 'USER_BENNY_PASSWORD', 'USER_HILLEL_PASSWORD', 'USER_OLIVIA_PASSWORD']
+    required_passwords = ['USER_PITZ_PASSWORD', 'USER_HILLEL_PASSWORD', 'USER_OLIVIA_PASSWORD']
     if not all(os.getenv(var) for var in required_passwords):
         raise ValueError(f"{' and '.join(required_passwords)} must be set")
 
@@ -309,10 +309,6 @@ def _get_hardcoded_users():
             'pitz': {
                 'password_hash': bcrypt.hashpw(os.getenv('USER_PITZ_PASSWORD').encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
                 'role': 'admin'
-            },
-            'benny': {
-                'password_hash': bcrypt.hashpw(os.getenv('USER_BENNY_PASSWORD').encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
-                'role': 'shared'
             },
             'Hillel': {
                 'password_hash': bcrypt.hashpw(os.getenv('USER_HILLEL_PASSWORD').encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
@@ -1630,7 +1626,7 @@ def get_tasks():
         search = request.args.get('search')
         date_start = request.args.get('date_start')
         date_end = request.args.get('date_end')
-        shared_only = request.args.get('shared')  # For limited users (benny)
+        shared_only = request.args.get('shared')  # For users with 'shared' role
         username = request.args.get('username')  # NEW: Get username from query
         user_role = request.args.get('role')  # NEW: Get role from query
         include_drafts = request.args.get('include_drafts', 'false')
@@ -1962,120 +1958,6 @@ def duplicate_task(task_id):
 
     except Error as e:
         return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/tasks/<int:task_id>/share', methods=['POST'])
-def share_task(task_id):
-    """Share a task via email"""
-    try:
-        data = request.json
-        recipient_email = data.get('email', '').strip().lower()
-        sender_name = data.get('sender_name', 'Someone')
-
-        if not recipient_email:
-            return jsonify({'error': 'Recipient email is required'}), 400
-
-        # Validate email format
-        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-        if not re.match(email_regex, recipient_email):
-            return jsonify({'error': 'Invalid email format'}), 400
-
-        # Check if email is configured
-        email_configured = bool(
-            app.config.get('MAIL_USERNAME') and
-            app.config.get('MAIL_PASSWORD') and
-            app.config.get('MAIL_USERNAME') != 'your-email@gmail.com' and
-            app.config.get('MAIL_PASSWORD') != 'your-app-password'
-        )
-
-        if not email_configured:
-            return jsonify({
-                'error': 'Email service is not configured. Please contact the administrator to set up email functionality.'
-            }), 503
-        
-        with get_db_connection() as connection:
-            cursor = connection.cursor(dictionary=True)
-            
-            # Get task details
-            cursor.execute("SELECT * FROM tasks WHERE id = %s", (task_id,))
-            task = cursor.fetchone()
-            
-            if not task:
-                return jsonify({'error': 'Task not found'}), 404
-            
-            # Format task details for email
-            task_date = task['task_date'].strftime('%B %d, %Y') if task['task_date'] else 'Not set'
-            task_time = str(task['task_time']) if task['task_time'] else 'Not set'
-            duration = f"{task['duration']} hours" if task['duration'] else 'Not set'
-            status = task['status'].title() if task['status'] else 'Uncompleted'
-            
-            # Handle categories
-            categories_str = 'None'
-            if task.get('categories'):
-                categories_list = [c.strip() for c in task['categories'].split(',') if c.strip()]
-                categories_str = ', '.join(categories_list)
-            
-            # Handle tags
-            tags_str = 'None'
-            if task.get('tags'):
-                tags_list = [t.strip() for t in task['tags'].split(',') if t.strip()]
-                tags_str = ', '.join(tags_list)
-            
-            # Create email content
-            subject = f"Task Shared: {task['title']}"
-            
-            body = f"""Hello!
-
-{sender_name} has shared a task with you:
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-TASK: {task['title']}
-
-{task['description'] or 'No description provided'}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-DETAILS:
-• Date: {task_date}
-• Time: {task_time}
-• Duration: {duration}
-• Status: {status}
-• Categories: {categories_str}
-• Tags: {tags_str}
-• Client: {task.get('client') or 'None'}
-
-{f"NOTES:{chr(10)}{task['notes']}" if task.get('notes') else ''}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-This task was shared from the Task Tracker app.
-"""
-            
-            # Send email
-            try:
-                msg = Message(
-                    subject=subject,
-                    recipients=[recipient_email],
-                    body=body
-                )
-
-                mail.send(msg)
-
-                return jsonify({
-                    'success': True,
-                    'message': f'Task shared successfully with {recipient_email}'
-                })
-
-            except Exception as mail_error:
-                print(f"Email sending failed: {mail_error}")
-                return jsonify({
-                    'error': 'Failed to send email. Please check the email configuration or try again later.'
-                }), 500
-
-    except Exception as e:
-        print(f"Share task error: {e}")
-        return jsonify({'error': 'Failed to share task. Please try again.'}), 500
 
 
 # noinspection DuplicatedCode
