@@ -2,7 +2,7 @@ import React, {useState, useEffect, useRef, useMemo, useCallback} from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Plus, X, BarChart3,
-    Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut, Menu, Filter, Copy, Settings
+    Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut, Menu, Filter, Copy, Settings, Share2
 } from 'lucide-react';
 import BankTransactions from './BankTransactions';
 import ClientsManagement from './ClientsManagement';
@@ -76,6 +76,9 @@ useEffect(() => {
     const [showBulkInput, setShowBulkInput] = useState(false);
     const [bulkTasksText, setBulkTasksText] = useState('');
     const [taskViewMode, setTaskViewMode] = useState('all'); // 'all', 'completed', 'uncompleted'
+    const [showShareModal, setShowShareModal] = useState(false);
+    const [sharingTask, setSharingTask] = useState(null);
+    const [shareEmail, setShareEmail] = useState('');
 
     const [filters, setFilters] = useState({
         search: '',
@@ -416,6 +419,54 @@ useEffect(() => {
             setError(null);
         } catch (err) {
             setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Share task functions
+    const openShareModal = (task) => {
+        setSharingTask(task);
+        setShareEmail('');
+        setShowShareModal(true);
+    };
+
+    const closeShareModal = () => {
+        setShowShareModal(false);
+        setSharingTask(null);
+        setShareEmail('');
+    };
+
+    const shareTask = async () => {
+        if (!shareEmail.trim()) {
+            alert('Please enter an email address');
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(shareEmail)) {
+            alert('Please enter a valid email address');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const response = await fetch(`${API_BASE}/tasks/${sharingTask.id}/share`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email: shareEmail.trim()})
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to share task');
+            }
+
+            alert(`Task shared successfully with ${shareEmail}!`);
+            closeShareModal();
+        } catch (err) {
+            alert(err.message);
         } finally {
             setLoading(false);
         }
