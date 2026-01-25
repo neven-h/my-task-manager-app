@@ -60,7 +60,9 @@ JWT_EXPIRATION_HOURS = 24
 # Data Encryption Configuration for Bank Transactions
 # CRITICAL: This key encrypts sensitive bank transaction data at rest
 if IS_CI:
-    DATA_ENCRYPTION_KEY = base64.urlsafe_b64encode(b'ci-encryption-key-not-for-prod-use-32b!')
+    # Use a deterministic 32-byte key for CI (must be exactly 32 bytes before base64 encoding)
+    # This ensures consistent behavior across CI runs
+    DATA_ENCRYPTION_KEY = base64.urlsafe_b64encode(b'0' * 32)  # 32 bytes = 44 chars when base64-encoded
 else:
     encryption_key = os.getenv('DATA_ENCRYPTION_KEY')
     if not encryption_key:
