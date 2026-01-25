@@ -299,7 +299,7 @@ def _get_hardcoded_users():
         _USERS_CACHE = {}
         return _USERS_CACHE
 
-    required_passwords = ['USER_PITZ_PASSWORD', 'USER_HILLEL_PASSWORD', 'USER_OLIVIA_PASSWORD']
+    required_passwords = ['USER_PITZ_PASSWORD']
     if not all(os.getenv(var) for var in required_passwords):
         raise ValueError(f"{' and '.join(required_passwords)} must be set")
 
@@ -309,14 +309,6 @@ def _get_hardcoded_users():
             'pitz': {
                 'password_hash': bcrypt.hashpw(os.getenv('USER_PITZ_PASSWORD').encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
                 'role': 'admin'
-            },
-            'Hillel': {
-                'password_hash': bcrypt.hashpw(os.getenv('USER_HILLEL_PASSWORD').encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
-                'role': 'limited'
-            },
-            'Olivia': {
-                'password_hash': bcrypt.hashpw(os.getenv('USER_OLIVIA_PASSWORD').encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
-                'role': 'limited'
             }
         }
         # Only set cache after successful computation
