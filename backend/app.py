@@ -60,8 +60,9 @@ JWT_EXPIRATION_HOURS = 24
 # Data Encryption Configuration for Bank Transactions
 # CRITICAL: This key encrypts sensitive bank transaction data at rest
 if IS_CI:
-    # Generate a valid 32-byte Fernet key for CI
-    DATA_ENCRYPTION_KEY = base64.urlsafe_b64encode(b'ci-encrypt-key-32-bytes-long' + b'\x00' * 4)
+    # Use a deterministic 32-byte key for CI (must be exactly 32 bytes before base64 encoding)
+    # This ensures consistent behavior across CI runs
+    DATA_ENCRYPTION_KEY = base64.urlsafe_b64encode(b'0' * 32)  # 32 bytes = 44 chars when base64-encoded
 else:
     encryption_key = os.getenv('DATA_ENCRYPTION_KEY')
     if not encryption_key:
