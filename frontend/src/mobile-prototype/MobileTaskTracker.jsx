@@ -1897,7 +1897,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                             onChange={(e) => setFormData({...formData, shared: e.target.checked})}
                                             style={{width: 'auto', margin: 0}}
                                         />
-                                        Share with Benny
+                                        Share with other users
                                     </label>
                                 </div>
                             )}
