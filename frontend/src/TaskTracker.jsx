@@ -1,25 +1,8 @@
 import React, {useState, useEffect, useRef, useMemo, useCallback} from 'react';
-import {useNavigate} from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
-    Plus,
-    X,
-    BarChart3,
-    Check,
-    Edit2,
-    Trash2,
-    Download,
-    RefreshCw,
-    AlertCircle,
-    Tag,
-    Save,
-    DollarSign,
-    Upload,
-    LogOut,
-    Menu,
-    Filter,
-    Copy,
-    Share2,
-    Settings
+    Plus, X, BarChart3,
+    Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut, Menu, Filter, Copy, Settings
 } from 'lucide-react';
 import BankTransactions from './BankTransactions';
 import ClientsManagement from './ClientsManagement';
@@ -38,17 +21,17 @@ const BULK_DRAFT_STORAGE_KEY = 'taskTracker_bulkDraft';
  */
 const useDebounce = (value, delay) => {
     const [debouncedValue, setDebouncedValue] = useState(value);
-
+    
     useEffect(() => {
         const handler = setTimeout(() => {
             setDebouncedValue(value);
         }, delay);
-
+        
         return () => {
             clearTimeout(handler);
         };
     }, [value, delay]);
-
+    
     return debouncedValue;
 };
 
@@ -60,16 +43,16 @@ const TaskTracker = ({onLogout, authRole, authUser}) => {
 
     const [appView, setAppView] = useState('tasks'); // 'tasks', 'transactions', or 'clients'
     useEffect(() => {
-        const savedView = localStorage.getItem('lastActiveView');
-        if (savedView && (savedView === 'tasks' || savedView === 'transactions' || savedView === 'clients')) {
-            setAppView(savedView);
-        }
-    }, []);
+  const savedView = localStorage.getItem('lastActiveView');
+  if (savedView && (savedView === 'tasks' || savedView === 'transactions' || savedView === 'clients')) {
+    setAppView(savedView);
+  }
+}, []);
 
 // Save active tab whenever it changes
-    useEffect(() => {
-        localStorage.setItem('lastActiveView', appView);
-    }, [appView]);
+useEffect(() => {
+  localStorage.setItem('lastActiveView', appView);
+}, [appView]);
 
     const [tasks, setTasks] = useState([]);
     const [allCategories, setAllCategories] = useState([]);
@@ -92,9 +75,6 @@ const TaskTracker = ({onLogout, authRole, authUser}) => {
     const [showExitConfirm, setShowExitConfirm] = useState(false);
     const [showBulkInput, setShowBulkInput] = useState(false);
     const [bulkTasksText, setBulkTasksText] = useState('');
-    const [showShareModal, setShowShareModal] = useState(false);
-    const [shareEmail, setShareEmail] = useState('');
-    const [sharingTask, setSharingTask] = useState(null);
     const [taskViewMode, setTaskViewMode] = useState('all'); // 'all', 'completed', 'uncompleted'
 
     const [filters, setFilters] = useState({
@@ -152,11 +132,11 @@ const TaskTracker = ({onLogout, authRole, authUser}) => {
                 fetchTasks(),
                 fetchStats()
             ])
-                .catch(err => {
-                    console.error('Error loading initial data:', err);
-                    setError('Failed to load initial data. Please refresh the page.');
-                })
-                .finally(() => setLoading(false));
+            .catch(err => {
+                console.error('Error loading initial data:', err);
+                setError('Failed to load initial data. Please refresh the page.');
+            })
+            .finally(() => setLoading(false));
         }
     }, [authUser, authRole]);
 
@@ -441,55 +421,6 @@ const TaskTracker = ({onLogout, authRole, authUser}) => {
         }
     };
 
-    const openShareModal = (task) => {
-        setSharingTask(task);
-        setShareEmail('');
-        setShowShareModal(true);
-    };
-
-    const closeShareModal = () => {
-        setShowShareModal(false);
-        setSharingTask(null);
-        setShareEmail('');
-    };
-
-    const shareTask = async () => {
-        if (!shareEmail.trim()) {
-            setError('Please enter an email address');
-            return;
-        }
-
-        // Basic email validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(shareEmail)) {
-            setError('Please enter a valid email address');
-            return;
-        }
-
-        try {
-            setLoading(true);
-            const response = await fetch(`${API_BASE}/tasks/${sharingTask.id}/share`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({email: shareEmail.trim()})
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to share task');
-            }
-
-            setError(null);
-            alert(`Task shared successfully with ${shareEmail}!`);
-            closeShareModal();
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const toggleTaskStatus = async (id) => {
         try {
             const response = await fetch(`${API_BASE}/tasks/${id}/toggle-status`, {
@@ -517,8 +448,7 @@ const TaskTracker = ({onLogout, authRole, authUser}) => {
             duration: task.duration || '',
             status: task.status,
             tags: task.tags || [],
-            notes: task.notes || '',
-            shared: task.shared || false
+            notes: task.notes || ''
         });
         setShowForm(true);
     };
@@ -590,7 +520,6 @@ const TaskTracker = ({onLogout, authRole, authUser}) => {
             resetForm();
         }
     };
-
 
     const handleDiscardAndClose = () => {
         clearDraft();
@@ -844,7 +773,7 @@ const TaskTracker = ({onLogout, authRole, authUser}) => {
     // PERFORMANCE OPTIMIZATION: Memoize filtered task lists
     // This avoids filtering the tasks array multiple times on each render
     // The computation only runs when 'tasks' changes, not on every render
-    const {completedTasks, uncompletedTasks} = useMemo(() => ({
+    const { completedTasks, uncompletedTasks } = useMemo(() => ({
         completedTasks: tasks.filter(t => t.status === 'completed'),
         uncompletedTasks: tasks.filter(t => t.status === 'uncompleted')
     }), [tasks]);
@@ -956,14 +885,6 @@ const TaskTracker = ({onLogout, authRole, authUser}) => {
                             <Copy size={18}/>
                         </button>
                         <button
-                            onClick={() => openShareModal(task)}
-                            className="btn"
-                            style={{padding: '10px', minWidth: 'auto'}}
-                            title="Share via Email"
-                        >
-                            <Share2 size={18}/>
-                        </button>
-                        <button
                             onClick={() => deleteTask(task.id)}
                             className="btn"
                             style={{padding: '10px', minWidth: 'auto'}}
@@ -1064,7 +985,7 @@ const TaskTracker = ({onLogout, authRole, authUser}) => {
 
     // If viewing transactions, show BankTransactions component
     if (appView === 'transactions') {
-        return <BankTransactions onBackToTasks={() => setAppView('tasks')} authUser={authUser} authRole={authRole}/>;
+        return <BankTransactions onBackToTasks={() => setAppView('tasks')} authUser={authUser} authRole={authRole} />;
     }
 
     // If viewing clients, show ClientsManagement component
@@ -1902,7 +1823,7 @@ const TaskTracker = ({onLogout, authRole, authUser}) => {
                         </button>
                         <button className="btn btn-white" onClick={() => navigate('/settings')}>
                             <Settings size={18}
-                                      style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
+                                    style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
                             Settings
                         </button>
                         {onLogout && (
@@ -1972,91 +1893,85 @@ const TaskTracker = ({onLogout, authRole, authUser}) => {
                             <X size={24}/>
                         </button>
 
+                        <div style={{marginTop: '60px', display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto'}}>
+                        {/* Show user info */}
                         <div style={{
-                            marginTop: '60px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '12px',
-                            overflowY: 'auto'
+                            color: '#fff',
+                            fontSize: '1rem',
+                            fontWeight: '600',
+                            marginBottom: '12px',
+                            textAlign: 'center'
                         }}>
-                            {/* Show user info */}
-                            <div style={{
-                                color: '#fff',
-                                fontSize: '1rem',
-                                fontWeight: '600',
-                                marginBottom: '12px',
-                                textAlign: 'center'
-                            }}>
-                                👤 {authUser} {isSharedUser ? '(shared view)' : '(admin)'}
-                            </div>
-                            {!isSharedUser && (
-                                <button className="btn btn-red" onClick={() => {
-                                    openNewTaskForm();
-                                    setShowMobileMenu(false);
-                                }} style={{width: '100%'}}>
-                                    <Plus size={18} style={{marginRight: '8px'}}/>
-                                    New Task
-                                </button>
-                            )}
-                            {!isSharedUser && (
-                                <button className="btn btn-white" onClick={() => {
-                                    setShowBulkInput(true);
-                                    setShowMobileMenu(false);
-                                }} style={{width: '100%'}}>
-                                    <Plus size={18} style={{marginRight: '8px'}}/>
-                                    Bulk Add
-                                </button>
-                            )}
-                            <button className="btn btn-blue" onClick={() => {
-                                setAppView('transactions');
-                                setShowMobileMenu(false);
-                            }} style={{width: '100%'}}>
-                                <DollarSign size={18} style={{marginRight: '8px'}}/>
-                                Bank Transactions
-                            </button>
-                            {!isSharedUser && (
-                                <button className="btn btn-green" onClick={() => {
-                                    setAppView('clients');
-                                    setShowMobileMenu(false);
-                                }} style={{width: '100%'}}>
-                                    <Tag size={18} style={{marginRight: '8px'}}/>
-                                    Clients
-                                </button>
-                            )}
-                            <button className="btn btn-yellow" onClick={() => {
-                                setView(view === 'list' ? 'stats' : 'list');
-                                setShowMobileMenu(false);
-                            }} style={{width: '100%'}}>
-                                {view === 'list' ? (
-                                    <><BarChart3 size={18} style={{marginRight: '8px'}}/>Stats</>
-                                ) : (
-                                    <>Tasks</>
-                                )}
-                            </button>
-                            <button className="btn btn-white" onClick={() => {
-                                setShowMobileSidebar(true);
-                                setShowMobileMenu(false);
-                            }} style={{width: '100%'}}>
-                                <Filter size={18} style={{marginRight: '8px'}}/>
-                                Filters & Export
-                            </button>
-                            <button className="btn btn-white" onClick={() => {
-                                navigate('/settings');
-                                setShowMobileMenu(false);
-                            }} style={{width: '100%', marginTop: '20px'}}>
-                                <Settings size={18} style={{marginRight: '8px'}}/>
-                                Settings
-                            </button>
-                            {onLogout && (
-                                <button className="btn btn-white" onClick={() => {
-                                    onLogout();
-                                    setShowMobileMenu(false);
-                                }} style={{width: '100%'}}>
-                                    <LogOut size={18} style={{marginRight: '8px'}}/>
-                                    Logout
-                                </button>
-                            )}
+                            👤 {authUser} {isSharedUser ? '(shared view)' : '(admin)'}
                         </div>
+                        {!isSharedUser && (
+                            <button className="btn btn-red" onClick={() => {
+                                openNewTaskForm();
+                                setShowMobileMenu(false);
+                            }} style={{width: '100%'}}>
+                                <Plus size={18} style={{marginRight: '8px'}}/>
+                                New Task
+                            </button>
+                        )}
+                        {!isSharedUser && (
+                            <button className="btn btn-white" onClick={() => {
+                                setShowBulkInput(true);
+                                setShowMobileMenu(false);
+                            }} style={{width: '100%'}}>
+                                <Plus size={18} style={{marginRight: '8px'}}/>
+                                Bulk Add
+                            </button>
+                        )}
+                        <button className="btn btn-blue" onClick={() => {
+                            setAppView('transactions');
+                            setShowMobileMenu(false);
+                        }} style={{width: '100%'}}>
+                            <DollarSign size={18} style={{marginRight: '8px'}}/>
+                            Bank Transactions
+                        </button>
+                        {!isSharedUser && (
+                            <button className="btn btn-green" onClick={() => {
+                                setAppView('clients');
+                                setShowMobileMenu(false);
+                            }} style={{width: '100%'}}>
+                                <Tag size={18} style={{marginRight: '8px'}}/>
+                                Clients
+                            </button>
+                        )}
+                        <button className="btn btn-yellow" onClick={() => {
+                            setView(view === 'list' ? 'stats' : 'list');
+                            setShowMobileMenu(false);
+                        }} style={{width: '100%'}}>
+                            {view === 'list' ? (
+                                <><BarChart3 size={18} style={{marginRight: '8px'}}/>Stats</>
+                            ) : (
+                                <>Tasks</>
+                            )}
+                        </button>
+                        <button className="btn btn-white" onClick={() => {
+                            setShowMobileSidebar(true);
+                            setShowMobileMenu(false);
+                        }} style={{width: '100%'}}>
+                            <Filter size={18} style={{marginRight: '8px'}}/>
+                            Filters & Export
+                        </button>
+                        <button className="btn btn-white" onClick={() => {
+                            navigate('/settings');
+                            setShowMobileMenu(false);
+                        }} style={{width: '100%', marginTop: '20px'}}>
+                            <Settings size={18} style={{marginRight: '8px'}}/>
+                            Settings
+                        </button>
+                        {onLogout && (
+                            <button className="btn btn-white" onClick={() => {
+                                onLogout();
+                                setShowMobileMenu(false);
+                            }} style={{width: '100%'}}>
+                                <LogOut size={18} style={{marginRight: '8px'}}/>
+                                Logout
+                            </button>
+                        )}
+                    </div>
                     </div>
                 </>
             )}
@@ -2141,158 +2056,158 @@ const TaskTracker = ({onLogout, authRole, authUser}) => {
                             </button>
                         </div>
 
-                        <div style={{marginBottom: '32px'}}>
-                            <h3 style={{
-                                fontSize: '0.75rem',
-                                fontWeight: 900,
-                                textTransform: 'uppercase',
-                                letterSpacing: '1px',
-                                marginBottom: '16px'
-                            }}>Filters</h3>
-                            <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
-                                <div>
-                                    <label style={{
-                                        display: 'block',
-                                        marginBottom: '8px',
-                                        fontWeight: 700,
-                                        fontSize: '0.85rem'
-                                    }}>Search</label>
-                                    <input type="text" placeholder="Keywords..." value={filters.search}
-                                           onChange={(e) => setFilters({...filters, search: e.target.value})}/>
-                                </div>
-                                <div>
-                                    <label style={{
-                                        display: 'block',
-                                        marginBottom: '8px',
-                                        fontWeight: 700,
-                                        fontSize: '0.85rem'
-                                    }}>Status</label>
-                                    <select value={filters.status}
-                                            onChange={(e) => setFilters({...filters, status: e.target.value})}>
-                                        <option value="all">All Status</option>
-                                        <option value="uncompleted">Uncompleted</option>
-                                        <option value="completed">Completed</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label style={{
-                                        display: 'block',
-                                        marginBottom: '8px',
-                                        fontWeight: 700,
-                                        fontSize: '0.85rem'
-                                    }}>Category</label>
-                                    <select value={filters.category}
-                                            onChange={(e) => setFilters({...filters, category: e.target.value})}>
-                                        <option value="all">All Categories</option>
-                                        {allCategories.map(cat => (
-                                            <option key={cat.id} value={cat.id}>{cat.label}</option>))}
-                                    </select>
-                                </div>
-                                <CustomAutocomplete
-                                    label="Client"
-                                    placeholder="Client name..."
-                                    value={filters.client}
-                                    onChange={(value) => setFilters({...filters, client: value})}
-                                    options={clients.map(client => typeof client === 'string' ? client : client.name)}
-                                />
-                                <div>
-                                    <label style={{
-                                        display: 'block',
-                                        marginBottom: '8px',
-                                        fontWeight: 700,
-                                        fontSize: '0.85rem'
-                                    }}>Date From</label>
-                                    <input type="date" value={filters.dateStart}
-                                           onChange={(e) => setFilters({...filters, dateStart: e.target.value})}/>
-                                </div>
-                                <div>
-                                    <label style={{
-                                        display: 'block',
-                                        marginBottom: '8px',
-                                        fontWeight: 700,
-                                        fontSize: '0.85rem'
-                                    }}>Date To</label>
-                                    <input type="date" value={filters.dateEnd}
-                                           onChange={(e) => setFilters({...filters, dateEnd: e.target.value})}/>
-                                </div>
-                                <div>
-                                    <label style={{
-                                        display: 'block',
-                                        marginBottom: '8px',
-                                        fontWeight: 700,
-                                        fontSize: '0.85rem'
-                                    }}>Tags</label>
-                                    <select
-                                        multiple
-                                        value={filters.tags}
-                                        onChange={(e) => setFilters({
-                                            ...filters,
-                                            tags: Array.from(e.target.selectedOptions, option => option.value)
-                                        })}
-                                        style={{minHeight: '80px'}}
-                                    >
-                                        {allTags.map(tag => (
-                                            <option key={tag.id} value={tag.name}>{tag.name}</option>
-                                        ))}
-                                    </select>
-                                    <div style={{fontSize: '0.75rem', color: '#64748b', marginTop: '4px'}}>
-                                        Hold Ctrl/Cmd to select multiple
-                                    </div>
-                                </div>
-                                {(filters.search || filters.category !== 'all' || filters.status !== 'all' || filters.client || filters.dateStart || filters.dateEnd || filters.tags.length > 0) && (
-                                    <button className="btn btn-white" onClick={() => setFilters({
-                                        search: '',
-                                        category: 'all',
-                                        status: 'all',
-                                        client: '',
-                                        dateStart: '',
-                                        dateEnd: '',
-                                        tags: []
-                                    })} style={{width: '100%'}}>Clear Filters</button>
-                                )}
+                    <div style={{marginBottom: '32px'}}>
+                        <h3 style={{
+                            fontSize: '0.75rem',
+                            fontWeight: 900,
+                            textTransform: 'uppercase',
+                            letterSpacing: '1px',
+                            marginBottom: '16px'
+                        }}>Filters</h3>
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+                            <div>
+                                <label style={{
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem'
+                                }}>Search</label>
+                                <input type="text" placeholder="Keywords..." value={filters.search}
+                                       onChange={(e) => setFilters({...filters, search: e.target.value})}/>
                             </div>
+                            <div>
+                                <label style={{
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem'
+                                }}>Status</label>
+                                <select value={filters.status}
+                                        onChange={(e) => setFilters({...filters, status: e.target.value})}>
+                                    <option value="all">All Status</option>
+                                    <option value="uncompleted">Uncompleted</option>
+                                    <option value="completed">Completed</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style={{
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem'
+                                }}>Category</label>
+                                <select value={filters.category}
+                                        onChange={(e) => setFilters({...filters, category: e.target.value})}>
+                                    <option value="all">All Categories</option>
+                                    {allCategories.map(cat => (
+                                        <option key={cat.id} value={cat.id}>{cat.label}</option>))}
+                                </select>
+                            </div>
+                            <CustomAutocomplete
+                                label="Client"
+                                placeholder="Client name..."
+                                value={filters.client}
+                                onChange={(value) => setFilters({...filters, client: value})}
+                                options={clients.map(client => typeof client === 'string' ? client : client.name)}
+                            />
+                            <div>
+                                <label style={{
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem'
+                                }}>Date From</label>
+                                <input type="date" value={filters.dateStart}
+                                       onChange={(e) => setFilters({...filters, dateStart: e.target.value})}/>
+                            </div>
+                            <div>
+                                <label style={{
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem'
+                                }}>Date To</label>
+                                <input type="date" value={filters.dateEnd}
+                                       onChange={(e) => setFilters({...filters, dateEnd: e.target.value})}/>
+                            </div>
+                            <div>
+                                <label style={{
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem'
+                                }}>Tags</label>
+                                <select
+                                    multiple
+                                    value={filters.tags}
+                                    onChange={(e) => setFilters({
+                                        ...filters,
+                                        tags: Array.from(e.target.selectedOptions, option => option.value)
+                                    })}
+                                    style={{minHeight: '80px'}}
+                                >
+                                    {allTags.map(tag => (
+                                        <option key={tag.id} value={tag.name}>{tag.name}</option>
+                                    ))}
+                                </select>
+                                <div style={{fontSize: '0.75rem', color: '#64748b', marginTop: '4px'}}>
+                                    Hold Ctrl/Cmd to select multiple
+                                </div>
+                            </div>
+                            {(filters.search || filters.category !== 'all' || filters.status !== 'all' || filters.client || filters.dateStart || filters.dateEnd || filters.tags.length > 0) && (
+                                <button className="btn btn-white" onClick={() => setFilters({
+                                    search: '',
+                                    category: 'all',
+                                    status: 'all',
+                                    client: '',
+                                    dateStart: '',
+                                    dateEnd: '',
+                                    tags: []
+                                })} style={{width: '100%'}}>Clear Filters</button>
+                            )}
                         </div>
+                    </div>
 
-                        <div style={{marginBottom: '24px'}}>
-                            <h3 style={{
-                                fontSize: '0.75rem',
-                                fontWeight: 900,
-                                textTransform: 'uppercase',
-                                letterSpacing: '1px',
-                                marginBottom: '16px'
-                            }}>Export / Import</h3>
-                            <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
-                                <button className="btn btn-yellow" onClick={() => {
-                                    exportHoursReport();
-                                    setShowMobileSidebar(false);
-                                }} disabled={tasks.length === 0} style={{width: '100%'}}>
-                                    <Download size={16} style={{marginRight: '8px'}}/>Export Tasks
-                                </button>
-                                <button className="btn btn-yellow"
-                                        onClick={() => document.getElementById('import-hours-report-mobile').click()}
-                                        disabled={loading} style={{width: '100%'}}>
-                                    <Upload size={16} style={{marginRight: '8px'}}/>Import Tasks
-                                </button>
-                                <input type="file" id="import-hours-report-mobile" accept=".csv,.xlsx,.xls"
-                                       onChange={(e) => {
-                                           importHoursReport(e);
-                                           setShowMobileSidebar(false);
-                                       }} style={{display: 'none'}}/>
-                                <button className="btn btn-blue" onClick={() => {
-                                    exportToCSV();
-                                    setShowMobileSidebar(false);
-                                }} disabled={tasks.length === 0} style={{width: '100%'}}>
-                                    <Download size={16} style={{marginRight: '8px'}}/>Export CSV
-                                </button>
-                                <button className="btn btn-white" onClick={() => {
-                                    fetchTasks();
-                                    fetchStats();
-                                    setShowMobileSidebar(false);
-                                }} disabled={loading} style={{width: '100%'}}>
-                                    <RefreshCw size={16} style={{marginRight: '8px'}}/>Refresh
-                                </button>
-                            </div>
+                    <div style={{marginBottom: '24px'}}>
+                        <h3 style={{
+                            fontSize: '0.75rem',
+                            fontWeight: 900,
+                            textTransform: 'uppercase',
+                            letterSpacing: '1px',
+                            marginBottom: '16px'
+                        }}>Export / Import</h3>
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+                            <button className="btn btn-yellow" onClick={() => {
+                                exportHoursReport();
+                                setShowMobileSidebar(false);
+                            }} disabled={tasks.length === 0} style={{width: '100%'}}>
+                                <Download size={16} style={{marginRight: '8px'}}/>Export Tasks
+                            </button>
+                            <button className="btn btn-yellow"
+                                    onClick={() => document.getElementById('import-hours-report-mobile').click()}
+                                    disabled={loading} style={{width: '100%'}}>
+                                <Upload size={16} style={{marginRight: '8px'}}/>Import Tasks
+                            </button>
+                            <input type="file" id="import-hours-report-mobile" accept=".csv,.xlsx,.xls"
+                                   onChange={(e) => {
+                                       importHoursReport(e);
+                                       setShowMobileSidebar(false);
+                                   }} style={{display: 'none'}}/>
+                            <button className="btn btn-blue" onClick={() => {
+                                exportToCSV();
+                                setShowMobileSidebar(false);
+                            }} disabled={tasks.length === 0} style={{width: '100%'}}>
+                                <Download size={16} style={{marginRight: '8px'}}/>Export CSV
+                            </button>
+                            <button className="btn btn-white" onClick={() => {
+                                fetchTasks();
+                                fetchStats();
+                                setShowMobileSidebar(false);
+                            }} disabled={loading} style={{width: '100%'}}>
+                                <RefreshCw size={16} style={{marginRight: '8px'}}/>Refresh
+                            </button>
                         </div>
+                    </div>
 
                         <button className="btn btn-red" onClick={() => setShowMobileSidebar(false)}
                                 style={{width: '100%', marginTop: '20px'}}>Apply & Close
@@ -2305,162 +2220,160 @@ const TaskTracker = ({onLogout, authRole, authUser}) => {
             <div style={{display: 'flex', minHeight: 'calc(100vh - 180px)'}}>
                 {/* Sidebar */}
                 {showSidebar && (
-                    <div className="sidebar"
-                         style={{width: '320px', padding: '32px 24px', transition: 'all 0.3s ease'}}>
-                        <div style={{marginBottom: '32px'}}>
-                            <h3 style={{
-                                fontSize: '0.75rem',
-                                fontWeight: 900,
-                                textTransform: 'uppercase',
-                                letterSpacing: '1px',
-                                marginBottom: '16px'
-                            }}>
-                                Filters
-                            </h3>
+                <div className="sidebar" style={{width: '320px', padding: '32px 24px', transition: 'all 0.3s ease'}}>
+                    <div style={{marginBottom: '32px'}}>
+                        <h3 style={{
+                            fontSize: '0.75rem',
+                            fontWeight: 900,
+                            textTransform: 'uppercase',
+                            letterSpacing: '1px',
+                            marginBottom: '16px'
+                        }}>
+                            Filters
+                        </h3>
 
-                            <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
-                                <div>
-                                    <label style={{
-                                        display: 'block',
-                                        marginBottom: '8px',
-                                        fontWeight: 700,
-                                        fontSize: '0.85rem'
-                                    }}>Search</label>
-                                    <input
-                                        type="text"
-                                        placeholder="Keywords..."
-                                        value={filters.search}
-                                        onChange={(e) => setFilters({...filters, search: e.target.value})}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label style={{
-                                        display: 'block',
-                                        marginBottom: '8px',
-                                        fontWeight: 700,
-                                        fontSize: '0.85rem'
-                                    }}>Status</label>
-                                    <select value={filters.status}
-                                            onChange={(e) => setFilters({...filters, status: e.target.value})}>
-                                        <option value="all">All Status</option>
-                                        <option value="uncompleted">Uncompleted</option>
-                                        <option value="completed">Completed</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label style={{
-                                        display: 'block',
-                                        marginBottom: '8px',
-                                        fontWeight: 700,
-                                        fontSize: '0.85rem'
-                                    }}>Category</label>
-                                    <select value={filters.category}
-                                            onChange={(e) => setFilters({...filters, category: e.target.value})}>
-                                        <option value="all">All Categories</option>
-                                        {allCategories.map(cat => (
-                                            <option key={cat.id} value={cat.id}>{cat.label}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <CustomAutocomplete
-                                    label="Client"
-                                    placeholder="Client name..."
-                                    value={filters.client}
-                                    onChange={(value) => setFilters({...filters, client: value})}
-                                    options={clients.map(client => typeof client === 'string' ? client : client.name)}
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '20px'}}>
+                            <div>
+                                <label style={{
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem'
+                                }}>Search</label>
+                                <input
+                                    type="text"
+                                    placeholder="Keywords..."
+                                    value={filters.search}
+                                    onChange={(e) => setFilters({...filters, search: e.target.value})}
                                 />
-
-                                <div>
-                                    <label style={{
-                                        display: 'block',
-                                        marginBottom: '8px',
-                                        fontWeight: 700,
-                                        fontSize: '0.85rem'
-                                    }}>Date From</label>
-                                    <input
-                                        type="date"
-                                        value={filters.dateStart}
-                                        onChange={(e) => setFilters({...filters, dateStart: e.target.value})}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label style={{
-                                        display: 'block',
-                                        marginBottom: '8px',
-                                        fontWeight: 700,
-                                        fontSize: '0.85rem'
-                                    }}>Date To</label>
-                                    <input
-                                        type="date"
-                                        value={filters.dateEnd}
-                                        onChange={(e) => setFilters({...filters, dateEnd: e.target.value})}
-                                    />
-                                </div>
-
-                                {(filters.search || filters.category !== 'all' || filters.status !== 'all' ||
-                                    filters.client || filters.dateStart || filters.dateEnd) && (
-                                    <button
-                                        className="btn btn-white"
-                                        onClick={() => setFilters({
-                                            search: '',
-                                            category: 'all',
-                                            status: 'all',
-                                            client: '',
-                                            dateStart: '',
-                                            dateEnd: ''
-                                        })}
-                                        style={{width: '100%', padding: '12px'}}
-                                    >
-                                        Clear Filters
-                                    </button>
-                                )}
                             </div>
-                        </div>
 
-                        <div style={{marginTop: '48px'}}>
-                            <button className="btn btn-yellow" onClick={exportHoursReport} disabled={tasks.length === 0}
-                                    style={{width: '100%', marginBottom: '12px'}}>
-                                <Download size={16}
-                                          style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
-                                Export Hours Report
-                            </button>
-                            <input
-                                type="file"
-                                id="import-hours-report"
-                                accept=".csv,.xlsx,.xls"
-                                onChange={importHoursReport}
-                                style={{display: 'none'}}
+                            <div>
+                                <label style={{
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem'
+                                }}>Status</label>
+                                <select value={filters.status}
+                                        onChange={(e) => setFilters({...filters, status: e.target.value})}>
+                                    <option value="all">All Status</option>
+                                    <option value="uncompleted">Uncompleted</option>
+                                    <option value="completed">Completed</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label style={{
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem'
+                                }}>Category</label>
+                                <select value={filters.category}
+                                        onChange={(e) => setFilters({...filters, category: e.target.value})}>
+                                    <option value="all">All Categories</option>
+                                    {allCategories.map(cat => (
+                                        <option key={cat.id} value={cat.id}>{cat.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <CustomAutocomplete
+                                label="Client"
+                                placeholder="Client name..."
+                                value={filters.client}
+                                onChange={(value) => setFilters({...filters, client: value})}
+                                options={clients.map(client => typeof client === 'string' ? client : client.name)}
                             />
-                            <button
-                                className="btn btn-yellow"
-                                onClick={() => document.getElementById('import-hours-report').click()}
-                                disabled={loading}
-                                style={{width: '100%', marginBottom: '12px'}}
-                            >
-                                <Upload size={16}
-                                        style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
-                                Import Hours Report
-                            </button>
-                            <button className="btn btn-blue" onClick={exportToCSV} disabled={tasks.length === 0}
-                                    style={{width: '100%', marginBottom: '12px'}}>
-                                <Download size={16}
-                                          style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
-                                Export CSV
-                            </button>
-                            <button className="btn btn-white" onClick={() => {
-                                fetchTasks();
-                                fetchStats();
-                            }} disabled={loading} style={{width: '100%'}}>
-                                <RefreshCw size={16}
-                                           style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
-                                Refresh
-                            </button>
+
+                            <div>
+                                <label style={{
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem'
+                                }}>Date From</label>
+                                <input
+                                    type="date"
+                                    value={filters.dateStart}
+                                    onChange={(e) => setFilters({...filters, dateStart: e.target.value})}
+                                />
+                            </div>
+
+                            <div>
+                                <label style={{
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem'
+                                }}>Date To</label>
+                                <input
+                                    type="date"
+                                    value={filters.dateEnd}
+                                    onChange={(e) => setFilters({...filters, dateEnd: e.target.value})}
+                                />
+                            </div>
+
+                            {(filters.search || filters.category !== 'all' || filters.status !== 'all' ||
+                                filters.client || filters.dateStart || filters.dateEnd) && (
+                                <button
+                                    className="btn btn-white"
+                                    onClick={() => setFilters({
+                                        search: '',
+                                        category: 'all',
+                                        status: 'all',
+                                        client: '',
+                                        dateStart: '',
+                                        dateEnd: ''
+                                    })}
+                                    style={{width: '100%', padding: '12px'}}
+                                >
+                                    Clear Filters
+                                </button>
+                            )}
                         </div>
                     </div>
+
+                    <div style={{marginTop: '48px'}}>
+                        <button className="btn btn-yellow" onClick={exportHoursReport} disabled={tasks.length === 0}
+                                style={{width: '100%', marginBottom: '12px'}}>
+                            <Download size={16}
+                                      style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
+                            Export Hours Report
+                        </button>
+                        <input
+                            type="file"
+                            id="import-hours-report"
+                            accept=".csv,.xlsx,.xls"
+                            onChange={importHoursReport}
+                            style={{display: 'none'}}
+                        />
+                        <button
+                            className="btn btn-yellow"
+                            onClick={() => document.getElementById('import-hours-report').click()}
+                            disabled={loading}
+                            style={{width: '100%', marginBottom: '12px'}}
+                        >
+                            <Upload size={16} style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
+                            Import Hours Report
+                        </button>
+                        <button className="btn btn-blue" onClick={exportToCSV} disabled={tasks.length === 0}
+                                style={{width: '100%', marginBottom: '12px'}}>
+                            <Download size={16}
+                                      style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
+                            Export CSV
+                        </button>
+                        <button className="btn btn-white" onClick={() => {
+                            fetchTasks();
+                            fetchStats();
+                        }} disabled={loading} style={{width: '100%'}}>
+                            <RefreshCw size={16}
+                                       style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
+                            Refresh
+                        </button>
+                    </div>
+                </div>
                 )}
 
                 {/* Main Area */}
@@ -2512,12 +2425,7 @@ const TaskTracker = ({onLogout, authRole, authUser}) => {
                                     border: '3px solid #000',
                                     background: '#f8f8f8'
                                 }}>
-                                    <p style={{
-                                        fontSize: '1.5rem',
-                                        fontWeight: 700,
-                                        marginBottom: '12px',
-                                        color: '#dc3545'
-                                    }}>
+                                    <p style={{fontSize: '1.5rem', fontWeight: 700, marginBottom: '12px', color: '#dc3545'}}>
                                         📋 Add Your First Task
                                     </p>
                                     <p style={{color: '#666', fontSize: '1rem'}}>
@@ -2706,257 +2614,193 @@ const TaskTracker = ({onLogout, authRole, authUser}) => {
                         </div>
 
                         <div className="modal-body">
-                            <form onSubmit={handleSubmit}>
-                                <div style={{display: 'flex', flexDirection: 'column', gap: '24px'}}>
-                                    <div>
+                        <form onSubmit={handleSubmit}>
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '24px'}}>
+                                <div>
+                                    <label style={{
+                                        display: 'block',
+                                        marginBottom: '8px',
+                                        fontWeight: 700,
+                                        fontSize: '0.85rem',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}>
+                                        Title <span style={{color: '#FF0000'}}>*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="Task title..."
+                                        value={formData.title}
+                                        onChange={(e) => setFormData({...formData, title: e.target.value})}
+                                        enterKeyHint="next"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label style={{
+                                        display: 'block',
+                                        marginBottom: '8px',
+                                        fontWeight: 700,
+                                        fontSize: '0.85rem',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}>Description</label>
+                                    <textarea
+                                        rows={3}
+                                        placeholder="Details..."
+                                        value={formData.description}
+                                        onChange={(e) => {
+                                            setFormData({...formData, description: e.target.value});
+                                            // Auto-resize textarea
+                                            e.target.style.height = 'auto';
+                                            e.target.style.height = e.target.scrollHeight + 'px';
+                                        }}
+                                        enterKeyHint="next"
+                                        style={{
+                                            minHeight: '80px',
+                                            maxHeight: '300px',
+                                            overflow: 'auto',
+                                            resize: 'vertical'
+                                        }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <div style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        marginBottom: '12px'
+                                    }}>
                                         <label style={{
-                                            display: 'block',
-                                            marginBottom: '8px',
                                             fontWeight: 700,
                                             fontSize: '0.85rem',
                                             textTransform: 'uppercase',
-                                            letterSpacing: '0.5px'
+                                            letterSpacing: '0.5px',
+                                            margin: 0
                                         }}>
-                                            Title <span style={{color: '#FF0000'}}>*</span>
+                                            Categories <span style={{color: '#FF0000'}}>*</span> (Select one or more)
                                         </label>
-                                        <input
-                                            type="text"
-                                            required
-                                            placeholder="Task title..."
-                                            value={formData.title}
-                                            onChange={(e) => setFormData({...formData, title: e.target.value})}
-                                            enterKeyHint="next"
-                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowAddCategory(!showAddCategory)}
+                                            className="btn btn-white"
+                                            style={{padding: '6px 12px', fontSize: '0.75rem'}}
+                                        >
+                                            <Plus size={14}/> New Category
+                                        </button>
                                     </div>
 
-                                    <div>
-                                        <label style={{
-                                            display: 'block',
-                                            marginBottom: '8px',
-                                            fontWeight: 700,
-                                            fontSize: '0.85rem',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.5px'
-                                        }}>Description</label>
-                                        <textarea
-                                            rows={3}
-                                            placeholder="Details..."
-                                            value={formData.description}
-                                            onChange={(e) => {
-                                                setFormData({...formData, description: e.target.value});
-                                                // Auto-resize textarea
-                                                e.target.style.height = 'auto';
-                                                e.target.style.height = e.target.scrollHeight + 'px';
-                                            }}
-                                            enterKeyHint="next"
-                                            style={{
-                                                minHeight: '80px',
-                                                maxHeight: '300px',
-                                                overflow: 'auto',
-                                                resize: 'vertical'
-                                            }}
-                                        />
-                                    </div>
-
-                                    <div>
+                                    {showAddCategory && (
                                         <div style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
+                                            padding: '12px',
+                                            background: '#f8fafc',
+                                            borderRadius: '8px',
                                             marginBottom: '12px'
                                         }}>
-                                            <label style={{
-                                                fontWeight: 700,
-                                                fontSize: '0.85rem',
-                                                textTransform: 'uppercase',
-                                                letterSpacing: '0.5px',
-                                                margin: 0
-                                            }}>
-                                                Categories <span style={{color: '#FF0000'}}>*</span> (Select one or
-                                                more)
-                                            </label>
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowAddCategory(!showAddCategory)}
-                                                className="btn btn-white"
-                                                style={{padding: '6px 12px', fontSize: '0.75rem'}}
-                                            >
-                                                <Plus size={14}/> New Category
-                                            </button>
-                                        </div>
-
-                                        {showAddCategory && (
                                             <div style={{
-                                                padding: '12px',
-                                                background: '#f8fafc',
-                                                borderRadius: '8px',
-                                                marginBottom: '12px'
+                                                display: 'grid',
+                                                gridTemplateColumns: '1fr auto auto',
+                                                gap: '8px',
+                                                marginBottom: '8px'
                                             }}>
-                                                <div style={{
-                                                    display: 'grid',
-                                                    gridTemplateColumns: '1fr auto auto',
-                                                    gap: '8px',
-                                                    marginBottom: '8px'
-                                                }}>
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Category name..."
-                                                        value={newCategoryName}
-                                                        onChange={(e) => setNewCategoryName(e.target.value)}
-                                                        style={{fontSize: '0.9rem'}}
-                                                    />
-                                                    <input
-                                                        type="text"
-                                                        placeholder="Icon"
-                                                        value={newCategoryIcon}
-                                                        onChange={(e) => setNewCategoryIcon(e.target.value)}
-                                                        style={{width: '60px', fontSize: '0.9rem', textAlign: 'center'}}
-                                                    />
-                                                    <input
-                                                        type="color"
-                                                        value={newCategoryColor}
-                                                        onChange={(e) => setNewCategoryColor(e.target.value)}
-                                                        style={{width: '50px'}}
-                                                    />
-                                                </div>
-                                                <div style={{display: 'flex', gap: '8px'}}>
-                                                    <button
-                                                        type="button"
-                                                        onClick={createCategory}
-                                                        disabled={loading || !newCategoryName.trim()}
-                                                        className="btn btn-primary"
-                                                        style={{
-                                                            padding: '6px 16px',
-                                                            fontSize: '0.85rem',
-                                                            flex: 1,
-                                                            opacity: (loading || !newCategoryName.trim()) ? 0.5 : 1,
-                                                            cursor: (loading || !newCategoryName.trim()) ? 'not-allowed' : 'pointer'
-                                                        }}
-                                                    >
-                                                        {loading ? 'Creating...' : 'Create'}
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setShowAddCategory(false);
-                                                            setNewCategoryName('');
-                                                            setNewCategoryColor('#0d6efd');
-                                                            setNewCategoryIcon('📁');
-                                                        }}
-                                                        disabled={loading}
-                                                        className="btn btn-white"
-                                                        style={{padding: '6px 16px', fontSize: '0.85rem'}}
-                                                    >
-                                                        Cancel
-                                                    </button>
-                                                </div>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Category name..."
+                                                    value={newCategoryName}
+                                                    onChange={(e) => setNewCategoryName(e.target.value)}
+                                                    style={{fontSize: '0.9rem'}}
+                                                />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Icon"
+                                                    value={newCategoryIcon}
+                                                    onChange={(e) => setNewCategoryIcon(e.target.value)}
+                                                    style={{width: '60px', fontSize: '0.9rem', textAlign: 'center'}}
+                                                />
+                                                <input
+                                                    type="color"
+                                                    value={newCategoryColor}
+                                                    onChange={(e) => setNewCategoryColor(e.target.value)}
+                                                    style={{width: '50px'}}
+                                                />
                                             </div>
-                                        )}
-
-                                        <div style={{display: 'flex', flexWrap: 'wrap', gap: '10px'}}>
-                                            {allCategories.map(cat => (
-                                                <div
-                                                    key={cat.id}
-                                                    className={`category-pill ${formData.categories.includes(cat.id) ? 'selected' : ''}`}
-                                                    onClick={() => toggleCategory(cat.id)}
-                                                    style={{backgroundColor: formData.categories.includes(cat.id) ? (cat.color || '#0d6efd') : undefined}}
+                                            <div style={{display: 'flex', gap: '8px'}}>
+                                                <button
+                                                    type="button"
+                                                    onClick={createCategory}
+                                                    disabled={loading || !newCategoryName.trim()}
+                                                    className="btn btn-primary"
+                                                    style={{
+                                                        padding: '6px 16px',
+                                                        fontSize: '0.85rem',
+                                                        flex: 1,
+                                                        opacity: (loading || !newCategoryName.trim()) ? 0.5 : 1,
+                                                        cursor: (loading || !newCategoryName.trim()) ? 'not-allowed' : 'pointer'
+                                                    }}
                                                 >
-                                                    {cat.icon} {cat.label}
-                                                </div>
-                                            ))}
+                                                    {loading ? 'Creating...' : 'Create'}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setShowAddCategory(false);
+                                                        setNewCategoryName('');
+                                                        setNewCategoryColor('#0d6efd');
+                                                        setNewCategoryIcon('📁');
+                                                    }}
+                                                    disabled={loading}
+                                                    className="btn btn-white"
+                                                    style={{padding: '6px 16px', fontSize: '0.85rem'}}
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
 
-                                    <CustomAutocomplete
-                                        label="Client"
-                                        placeholder="Client..."
-                                        value={formData.client}
-                                        onChange={(value) => setFormData({...formData, client: value})}
-                                        options={clients.map(client => typeof client === 'string' ? client : client.name)}
-                                    />
-
-                                    <div className="form-grid-2col"
-                                         style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
-                                        <div>
-                                            <label style={{
-                                                display: 'block',
-                                                marginBottom: '8px',
-                                                fontWeight: 700,
-                                                fontSize: '0.85rem',
-                                                textTransform: 'uppercase',
-                                                letterSpacing: '0.5px'
-                                            }}>
-                                                Date <span style={{color: '#FF0000'}}>*</span>
-                                            </label>
-                                            <input
-                                                type="date"
-                                                required
-                                                value={formData.task_date}
-                                                onChange={(e) => setFormData({...formData, task_date: e.target.value})}
-                                                enterKeyHint="next"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label style={{
-                                                display: 'block',
-                                                marginBottom: '8px',
-                                                fontWeight: 700,
-                                                fontSize: '0.85rem',
-                                                textTransform: 'uppercase',
-                                                letterSpacing: '0.5px'
-                                            }}>Time</label>
-                                            <input
-                                                type="time"
-                                                value={formData.task_time}
-                                                onChange={(e) => setFormData({...formData, task_time: e.target.value})}
-                                                enterKeyHint="next"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="form-grid-2col"
-                                         style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
-                                        <div>
-                                            <label style={{
-                                                display: 'block',
-                                                marginBottom: '8px',
-                                                fontWeight: 700,
-                                                fontSize: '0.85rem',
-                                                textTransform: 'uppercase',
-                                                letterSpacing: '0.5px'
-                                            }}>Duration (hours)</label>
-                                            <input
-                                                type="number"
-                                                step="0.25"
-                                                min="0"
-                                                placeholder="1.5"
-                                                value={formData.duration}
-                                                onChange={(e) => setFormData({...formData, duration: e.target.value})}
-                                                enterKeyHint="next"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label style={{
-                                                display: 'block',
-                                                marginBottom: '8px',
-                                                fontWeight: 700,
-                                                fontSize: '0.85rem',
-                                                textTransform: 'uppercase',
-                                                letterSpacing: '0.5px'
-                                            }}>
-                                                Status <span style={{color: '#FF0000'}}>*</span>
-                                            </label>
-                                            <select
-                                                required
-                                                value={formData.status}
-                                                onChange={(e) => setFormData({...formData, status: e.target.value})}
+                                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '10px'}}>
+                                        {allCategories.map(cat => (
+                                            <div
+                                                key={cat.id}
+                                                className={`category-pill ${formData.categories.includes(cat.id) ? 'selected' : ''}`}
+                                                onClick={() => toggleCategory(cat.id)}
+                                                style={{backgroundColor: formData.categories.includes(cat.id) ? (cat.color || '#0d6efd') : undefined}}
                                             >
-                                                <option value="uncompleted">Uncompleted</option>
-                                                <option value="completed">Completed</option>
-                                            </select>
-                                        </div>
+                                                {cat.icon} {cat.label}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <CustomAutocomplete
+                                    label="Client"
+                                    placeholder="Client..."
+                                    value={formData.client}
+                                    onChange={(value) => setFormData({...formData, client: value})}
+                                    options={clients.map(client => typeof client === 'string' ? client : client.name)}
+                                />
+
+                                <div className="form-grid-2col" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
+                                    <div>
+                                        <label style={{
+                                            display: 'block',
+                                            marginBottom: '8px',
+                                            fontWeight: 700,
+                                            fontSize: '0.85rem',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.5px'
+                                        }}>
+                                            Date <span style={{color: '#FF0000'}}>*</span>
+                                        </label>
+                                        <input
+                                            type="date"
+                                            required
+                                            value={formData.task_date}
+                                            onChange={(e) => setFormData({...formData, task_date: e.target.value})}
+                                            enterKeyHint="next"
+                                        />
                                     </div>
 
                                     <div>
@@ -2967,115 +2811,148 @@ const TaskTracker = ({onLogout, authRole, authUser}) => {
                                             fontSize: '0.85rem',
                                             textTransform: 'uppercase',
                                             letterSpacing: '0.5px'
-                                        }}>Tags</label>
-                                        <div style={{display: 'flex', gap: '8px', marginBottom: '8px'}}>
-                                            <input
-                                                type="text"
-                                                list="tag-suggestions"
-                                                placeholder="Add tag... (autocomplete)"
-                                                value={tagInput}
-                                                onChange={(e) => setTagInput(e.target.value)}
-                                                onKeyPress={(e) => {
-                                                    if (e.key === 'Enter') {
-                                                        e.preventDefault();
-                                                        addTag();
-                                                    }
-                                                }}
-                                                style={{flex: 1}}
-                                                enterKeyHint="done"
-                                            />
-                                            <datalist id="tag-suggestions">
-                                                {allTags.map((tag) => (
-                                                    <option key={tag.id} value={tag.name}/>
-                                                ))}
-                                            </datalist>
-                                            <button
-                                                type="button"
-                                                onClick={addTag}
-                                                className="btn btn-white"
-                                                style={{padding: '12px 20px'}}
-                                            >
-                                                <Tag size={16} style={{marginRight: '4px'}}/> Add
-                                            </button>
-                                        </div>
-                                        {formData.tags.length > 0 && (
-                                            <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
-                                                {formData.tags.map((tag, idx) => (
-                                                    <span key={idx} className="tag">
+                                        }}>Time</label>
+                                        <input
+                                            type="time"
+                                            value={formData.task_time}
+                                            onChange={(e) => setFormData({...formData, task_time: e.target.value})}
+                                            enterKeyHint="next"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="form-grid-2col" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px'}}>
+                                    <div>
+                                        <label style={{
+                                            display: 'block',
+                                            marginBottom: '8px',
+                                            fontWeight: 700,
+                                            fontSize: '0.85rem',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.5px'
+                                        }}>Duration (hours)</label>
+                                        <input
+                                            type="number"
+                                            step="0.25"
+                                            min="0"
+                                            placeholder="1.5"
+                                            value={formData.duration}
+                                            onChange={(e) => setFormData({...formData, duration: e.target.value})}
+                                            enterKeyHint="next"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label style={{
+                                            display: 'block',
+                                            marginBottom: '8px',
+                                            fontWeight: 700,
+                                            fontSize: '0.85rem',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.5px'
+                                        }}>
+                                            Status <span style={{color: '#FF0000'}}>*</span>
+                                        </label>
+                                        <select
+                                            required
+                                            value={formData.status}
+                                            onChange={(e) => setFormData({...formData, status: e.target.value})}
+                                        >
+                                            <option value="uncompleted">Uncompleted</option>
+                                            <option value="completed">Completed</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label style={{
+                                        display: 'block',
+                                        marginBottom: '8px',
+                                        fontWeight: 700,
+                                        fontSize: '0.85rem',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}>Tags</label>
+                                    <div style={{display: 'flex', gap: '8px', marginBottom: '8px'}}>
+                                        <input
+                                            type="text"
+                                            list="tag-suggestions"
+                                            placeholder="Add tag... (autocomplete)"
+                                            value={tagInput}
+                                            onChange={(e) => setTagInput(e.target.value)}
+                                            onKeyPress={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    addTag();
+                                                }
+                                            }}
+                                            style={{flex: 1}}
+                                            enterKeyHint="done"
+                                        />
+                                        <datalist id="tag-suggestions">
+                                            {allTags.map((tag) => (
+                                                <option key={tag.id} value={tag.name}/>
+                                            ))}
+                                        </datalist>
+                                        <button
+                                            type="button"
+                                            onClick={addTag}
+                                            className="btn btn-white"
+                                            style={{padding: '12px 20px'}}
+                                        >
+                                            <Tag size={16} style={{marginRight: '4px'}}/> Add
+                                        </button>
+                                    </div>
+                                    {formData.tags.length > 0 && (
+                                        <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
+                                            {formData.tags.map((tag, idx) => (
+                                                <span key={idx} className="tag">
                           {tag}
-                                                        <button type="button" onClick={() => removeTag(tag)}>
+                                                    <button type="button" onClick={() => removeTag(tag)}>
                             <X size={14}/>
                           </button>
                         </span>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        <label style={{
-                                            display: 'block',
-                                            marginBottom: '8px',
-                                            fontWeight: 700,
-                                            fontSize: '0.85rem',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.5px'
-                                        }}>Notes</label>
-                                        <textarea
-                                            rows={3}
-                                            placeholder="Additional context..."
-                                            value={formData.notes}
-                                            onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                                            enterKeyHint="done"
-                                        />
-                                    </div>
-
-                                    {/* Shared checkbox - only visible for admin */}
-                                    {!isSharedUser && (
-                                        <div style={{marginTop: '16px'}}>
-                                            <label style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '12px',
-                                                cursor: 'pointer',
-                                                padding: '12px',
-                                                border: formData.shared ? '3px solid #0000FF' : '3px solid #ccc',
-                                                background: formData.shared ? '#e3f2fd' : '#fff'
-                                            }}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={formData.shared}
-                                                    onChange={(e) => setFormData({
-                                                        ...formData,
-                                                        shared: e.target.checked
-                                                    })}
-                                                    style={{width: '20px', height: '20px', cursor: 'pointer'}}
-                                                />
-                                                <span style={{fontWeight: 700, fontSize: '0.9rem'}}>
-                        🔗 Share this task (visible to shared users like Benny)
-                      </span>
-                                            </label>
+                                            ))}
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="form-buttons" style={{
-                                    display: 'flex',
-                                    gap: '12px',
-                                    marginTop: '32px',
-                                    justifyContent: 'flex-end'
-                                }}>
-                                    <button type="button" className="btn btn-white" onClick={attemptCloseForm}
-                                            disabled={loading}>
-                                        Cancel
-                                    </button>
-                                    <button type="submit" className="btn btn-red" disabled={loading}>
-                                        <Save size={16}
-                                              style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
-                                        {loading ? 'Saving...' : (editingTask ? 'Update' : 'Save Task')}
-                                    </button>
+                                <div>
+                                    <label style={{
+                                        display: 'block',
+                                        marginBottom: '8px',
+                                        fontWeight: 700,
+                                        fontSize: '0.85rem',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}>Notes</label>
+                                    <textarea
+                                        rows={3}
+                                        placeholder="Additional context..."
+                                        value={formData.notes}
+                                        onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                                        enterKeyHint="done"
+                                    />
                                 </div>
-                            </form>
+                            </div>
+
+                            <div className="form-buttons" style={{
+                                display: 'flex',
+                                gap: '12px',
+                                marginTop: '32px',
+                                justifyContent: 'flex-end'
+                            }}>
+                                <button type="button" className="btn btn-white" onClick={attemptCloseForm}
+                                        disabled={loading}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn btn-red" disabled={loading}>
+                                    <Save size={16}
+                                          style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
+                                    {loading ? 'Saving...' : (editingTask ? 'Update' : 'Save Task')}
+                                </button>
+                            </div>
+                        </form>
                         </div>
                     </div>
                 </div>
@@ -3094,16 +2971,14 @@ const TaskTracker = ({onLogout, authRole, authUser}) => {
                             <h2 style={{margin: 0, fontSize: '1.8rem', fontWeight: 900}}>
                                 {editingTask ? 'Unsaved Changes' : 'Save Draft?'}
                             </h2>
-
                         </div>
                         <div style={{padding: '32px'}}>
                             <p style={{fontSize: '1.1rem', marginBottom: '24px', lineHeight: '1.6'}}>
-                                 {editingTask
-                                     ? 'You have unsaved changes to this task. What would you like to do?'
-                                     : 'You have unsaved changes. Your work has been automatically saved as a draft. What would you like to do?'
-                                 }
+                                {editingTask
+                                    ? 'You have unsaved changes to this task. What would you like to do?'
+                                    : 'You have unsaved changes. Your work has been automatically saved as a draft. What would you like to do?'
+                                }
                             </p>
-
                             <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
                                 <button
                                     className="btn btn-blue"
@@ -3121,14 +2996,12 @@ const TaskTracker = ({onLogout, authRole, authUser}) => {
                                         Close & Keep Draft
                                     </button>
                                 )}
-
                                 <button
-                                        className="btn btn-white"
-                                        onClick={handleDiscardAndClose}
-                                        style={{width: '100%'}}
-                                    >
-                                        {editingTask ? 'Discard Changes' : 'Discard Draft'}
-
+                                    className="btn btn-white"
+                                    onClick={handleDiscardAndClose}
+                                    style={{width: '100%'}}
+                                >
+                                    {editingTask ? 'Discard Changes' : 'Discard Draft'}
                                 </button>
                             </div>
                         </div>
@@ -3254,8 +3127,7 @@ const TaskTracker = ({onLogout, authRole, authUser}) => {
                                 </p>
                             </div>
 
-                            <div className="form-buttons"
-                                 style={{display: 'flex', gap: '12px', justifyContent: 'flex-end'}}>
+                            <div className="form-buttons" style={{display: 'flex', gap: '12px', justifyContent: 'flex-end'}}>
                                 <button
                                     type="button"
                                     className="btn btn-white"
@@ -3367,8 +3239,7 @@ const TaskTracker = ({onLogout, authRole, authUser}) => {
                                 onClick={shareTask}
                                 disabled={loading || !shareEmail.trim()}
                             >
-                                <Share2 size={16}
-                                        style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
+                                <Share2 size={16} style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
                                 {loading ? 'Sharing...' : 'Share Task'}
                             </button>
                         </div>
