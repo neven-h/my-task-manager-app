@@ -2,7 +2,7 @@ import React, {useState, useEffect, useRef, useMemo, useCallback} from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Plus, X, BarChart3,
-    Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut, Menu, Filter, Copy, Share2, Settings
+    Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut, Menu, Filter, Copy, Settings
 } from 'lucide-react';
 import BankTransactions from './BankTransactions';
 import ClientsManagement from './ClientsManagement';
@@ -75,9 +75,6 @@ useEffect(() => {
     const [showExitConfirm, setShowExitConfirm] = useState(false);
     const [showBulkInput, setShowBulkInput] = useState(false);
     const [bulkTasksText, setBulkTasksText] = useState('');
-    const [showShareModal, setShowShareModal] = useState(false);
-    const [shareEmail, setShareEmail] = useState('');
-    const [sharingTask, setSharingTask] = useState(null);
     const [taskViewMode, setTaskViewMode] = useState('all'); // 'all', 'completed', 'uncompleted'
 
     const [filters, setFilters] = useState({
@@ -424,55 +421,6 @@ useEffect(() => {
         }
     };
 
-    const openShareModal = (task) => {
-        setSharingTask(task);
-        setShareEmail('');
-        setShowShareModal(true);
-    };
-
-    const closeShareModal = () => {
-        setShowShareModal(false);
-        setSharingTask(null);
-        setShareEmail('');
-    };
-
-    const shareTask = async () => {
-        if (!shareEmail.trim()) {
-            setError('Please enter an email address');
-            return;
-        }
-
-        // Basic email validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(shareEmail)) {
-            setError('Please enter a valid email address');
-            return;
-        }
-
-        try {
-            setLoading(true);
-            const response = await fetch(`${API_BASE}/tasks/${sharingTask.id}/share`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({email: shareEmail.trim()})
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Failed to share task');
-            }
-
-            setError(null);
-            alert(`Task shared successfully with ${shareEmail}!`);
-            closeShareModal();
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const toggleTaskStatus = async (id) => {
         try {
             const response = await fetch(`${API_BASE}/tasks/${id}/toggle-status`, {
@@ -500,8 +448,7 @@ useEffect(() => {
             duration: task.duration || '',
             status: task.status,
             tags: task.tags || [],
-            notes: task.notes || '',
-            shared: task.shared || false
+            notes: task.notes || ''
         });
         setShowForm(true);
     };
@@ -936,14 +883,6 @@ useEffect(() => {
                             title="Duplicate"
                         >
                             <Copy size={18}/>
-                        </button>
-                        <button
-                            onClick={() => openShareModal(task)}
-                            className="btn"
-                            style={{padding: '10px', minWidth: 'auto'}}
-                            title="Share via Email"
-                        >
-                            <Share2 size={18}/>
                         </button>
                         <button
                             onClick={() => deleteTask(task.id)}
@@ -2995,31 +2934,6 @@ useEffect(() => {
                                         enterKeyHint="done"
                                     />
                                 </div>
-
-                                {/* Shared checkbox - only visible for admin */}
-                                {!isSharedUser && (
-                                    <div style={{marginTop: '16px'}}>
-                                        <label style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '12px',
-                                            cursor: 'pointer',
-                                            padding: '12px',
-                                            border: formData.shared ? '3px solid #0000FF' : '3px solid #ccc',
-                                            background: formData.shared ? '#e3f2fd' : '#fff'
-                                        }}>
-                                            <input
-                                                type="checkbox"
-                                                checked={formData.shared}
-                                                onChange={(e) => setFormData({...formData, shared: e.target.checked})}
-                                                style={{width: '20px', height: '20px', cursor: 'pointer'}}
-                                            />
-                                            <span style={{fontWeight: 700, fontSize: '0.9rem'}}>
-                        🔗 Share this task (visible to shared users like Benny)
-                      </span>
-                                        </label>
-                                    </div>
-                                )}
                             </div>
 
                             <div className="form-buttons" style={{
