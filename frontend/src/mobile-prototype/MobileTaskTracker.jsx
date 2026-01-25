@@ -605,9 +605,45 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
         setShowTaskModal(true);
     };
 
+    const hasUnsavedChanges = () => {
+        if (editingTask) {
+            // Check if editing task has unsaved changes
+            return (
+                formData.title !== editingTask.title ||
+                formData.description !== (editingTask.description || '') ||
+                JSON.stringify(formData.categories) !== JSON.stringify(editingTask.categories || []) ||
+                formData.client !== (editingTask.client || '') ||
+                formData.task_date !== editingTask.task_date ||
+                formData.task_time !== (editingTask.task_time || '') ||
+                formData.duration !== (editingTask.duration || '') ||
+                formData.status !== editingTask.status ||
+                JSON.stringify(formData.tags) !== JSON.stringify(editingTask.tags || []) ||
+                formData.notes !== (editingTask.notes || '') ||
+                formData.shared !== (editingTask.shared || false)
+            );
+        } else {
+            // Check if new task has any data
+            return !!(formData.title || formData.description);
+        }
+    };
+
     const closeModal = () => {
-        setShowTaskModal(false);
-        setEditingTask(null);
+        if (hasUnsavedChanges()) {
+            const message = editingTask
+                ? 'You have unsaved changes. Are you sure you want to close without saving?'
+                : 'You have unsaved changes. Are you sure you want to discard this draft?';
+
+            if (window.confirm(message)) {
+                if (!editingTask) {
+                    clearDraft();
+                }
+                setShowTaskModal(false);
+                setEditingTask(null);
+            }
+        } else {
+            setShowTaskModal(false);
+            setEditingTask(null);
+        }
     };
 
     const duplicateTask = (task) => {

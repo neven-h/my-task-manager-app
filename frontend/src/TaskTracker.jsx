@@ -544,8 +544,30 @@ useEffect(() => {
         setShowExitConfirm(false);
     };
 
+    const hasUnsavedChanges = () => {
+        if (editingTask) {
+            // Check if editing task has unsaved changes
+            return (
+                formData.title !== editingTask.title ||
+                formData.description !== (editingTask.description || '') ||
+                JSON.stringify(formData.categories) !== JSON.stringify(editingTask.categories || []) ||
+                formData.client !== (editingTask.client || '') ||
+                formData.task_date !== editingTask.task_date ||
+                formData.task_time !== (editingTask.task_time || '') ||
+                formData.duration !== (editingTask.duration || '') ||
+                formData.status !== editingTask.status ||
+                JSON.stringify(formData.tags) !== JSON.stringify(editingTask.tags || []) ||
+                formData.notes !== (editingTask.notes || '') ||
+                formData.shared !== (editingTask.shared || false)
+            );
+        } else {
+            // Check if new task has any data
+            return !!(formData.title || formData.description);
+        }
+    };
+
     const attemptCloseForm = () => {
-        if (!editingTask && (formData.title || formData.description)) {
+        if (hasUnsavedChanges()) {
             setShowExitConfirm(true);
         } else {
             resetForm();
@@ -3032,12 +3054,16 @@ useEffect(() => {
                             background: '#FF0000',
                             color: '#fff'
                         }}>
-                            <h2 style={{margin: 0, fontSize: '1.8rem', fontWeight: 900}}>Save Draft?</h2>
+                            <h2 style={{margin: 0, fontSize: '1.8rem', fontWeight: 900}}>
+                                {editingTask ? 'Unsaved Changes' : 'Save Draft?'}
+                            </h2>
                         </div>
                         <div style={{padding: '32px'}}>
                             <p style={{fontSize: '1.1rem', marginBottom: '24px', lineHeight: '1.6'}}>
-                                You have unsaved changes. Your work has been automatically saved as a draft. What would
-                                you like to do?
+                                {editingTask
+                                    ? 'You have unsaved changes to this task. What would you like to do?'
+                                    : 'You have unsaved changes. Your work has been automatically saved as a draft. What would you like to do?'
+                                }
                             </p>
                             <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
                                 <button
@@ -3047,19 +3073,21 @@ useEffect(() => {
                                 >
                                     Continue Editing
                                 </button>
-                                <button
-                                    className="btn btn-yellow"
-                                    onClick={resetForm}
-                                    style={{width: '100%'}}
-                                >
-                                    Close & Keep Draft
-                                </button>
+                                {!editingTask && (
+                                    <button
+                                        className="btn btn-yellow"
+                                        onClick={resetForm}
+                                        style={{width: '100%'}}
+                                    >
+                                        Close & Keep Draft
+                                    </button>
+                                )}
                                 <button
                                     className="btn btn-white"
                                     onClick={handleDiscardAndClose}
                                     style={{width: '100%'}}
                                 >
-                                    Discard Draft
+                                    {editingTask ? 'Discard Changes' : 'Discard Draft'}
                                 </button>
                             </div>
                         </div>
