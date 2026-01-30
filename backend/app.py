@@ -118,11 +118,31 @@ def log_bank_transaction_access(username: str, action: str, transaction_ids: str
         print(f"Audit logging error: {e}")
 
 # Configure CORS - allow frontend origins
-FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3004')
-CORS(app,
-     origins=[FRONTEND_URL, 'http://localhost:3004', 'http://localhost:3005', 'https://drpitz.club', 'https://www.drpitz.club'],
-     supports_credentials=True,
-     max_age=3600)
+# Default to Vite's common local dev port (3000)
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+
+# Allow common local dev origins + production domains
+# (Fixes local dev when Vite runs on :3000)
+ALLOWED_FRONTEND_ORIGINS = [
+    FRONTEND_URL,
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://localhost:3004',
+    'http://localhost:3005',
+    'https://drpitz.club',
+    'https://www.drpitz.club',
+]
+
+# Remove duplicates while preserving order
+_seen = set()
+ALLOWED_FRONTEND_ORIGINS = [o for o in ALLOWED_FRONTEND_ORIGINS if not (o in _seen or _seen.add(o))]
+
+CORS(
+    app,
+    origins=ALLOWED_FRONTEND_ORIGINS,
+    supports_credentials=True,
+    max_age=3600,
+)
 
 # Configure rate limiting
 limiter = Limiter(
@@ -176,7 +196,7 @@ def add_security_headers(response):
         "style-src 'self' 'unsafe-inline'; "
         "img-src 'self' data: https:; "
         "font-src 'self' data:; "
-        "connect-src 'self' " + FRONTEND_URL + ";"
+        "connect-src " + " ".join(["'self'"] + ALLOWED_FRONTEND_ORIGINS) + ";"
     )
 
     # Referrer Policy
