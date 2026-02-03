@@ -4020,7 +4020,12 @@ def migrate_encrypt_transactions():
 
 
 # Initialize database on import (works with gunicorn)
-init_db()
+try:
+    init_db()
+    print("✓ Database initialized successfully")
+except Exception as e:
+    print(f"⚠ Warning: Database initialization failed: {e}")
+    print("⚠ App will start but database operations will fail until MySQL is configured")
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)
