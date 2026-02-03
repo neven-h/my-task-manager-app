@@ -760,6 +760,32 @@ def init_db():
             else:
                 pass  # Ignore other errors for index creation
 
+        # Create transaction_tabs table for organizing transactions by client/name
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS transaction_tabs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                owner VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_owner (owner)
+            )
+        """)
+        print("Created transaction_tabs table")
+
+        # Add tab_id column to bank_transactions
+        try:
+            cursor.execute("""
+                ALTER TABLE bank_transactions
+                    ADD COLUMN tab_id INT,
+                    ADD INDEX idx_tab_id (tab_id)
+            """)
+            print("Added tab_id column to bank_transactions")
+        except Error as e:
+            if 'Duplicate column' in str(e):
+                pass  # Column already exists
+            else:
+                print(f"Note: {e}")
+
         # Create users table for authentication
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -3053,6 +3079,133 @@ def parse_transaction_file(file_path, transaction_type='credit'):
         raise ValueError(f"Error parsing file: {str(e)}")
 
 
+# ==================== TRANSACTION TABS ENDPOINTS ====================
+
+@app.route('/api/transaction-tabs', methods=['GET'])
+def get_transaction_tabs():
+    """Get all transaction tabs for the current user"""
+    try:
+        username = request.args.get('username')
+        user_role = request.args.get('role')
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            query = "SELECT * FROM transaction_tabs WHERE 1=1"
+            params = []
+
+            if user_role == 'limited':
+                query += " AND owner = %s"
+                params.append(username)
+
+            query += " ORDER BY created_at ASC"
+            cursor.execute(query, params)
+            tabs = cursor.fetchall()
+
+            for tab in tabs:
+                if tab.get('created_at'):
+                    tab['created_at'] = tab['created_at'].isoformat()
+
+            return jsonify(tabs)
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/transaction-tabs', methods=['POST'])
+def create_transaction_tab():
+    """Create a new transaction tab"""
+    try:
+        data = request.json
+        name = data.get('name', '').strip()
+        owner = data.get('username')
+
+        if not name:
+            return jsonify({'error': 'Tab name is required'}), 400
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            cursor.execute(
+                "INSERT INTO transaction_tabs (name, owner) VALUES (%s, %s)",
+                (name, owner)
+            )
+            connection.commit()
+
+            tab_id = cursor.lastrowid
+            return jsonify({
+                'id': tab_id,
+                'name': name,
+                'owner': owner,
+                'message': 'Tab created successfully'
+            })
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/transaction-tabs/<int:tab_id>', methods=['PUT'])
+def update_transaction_tab(tab_id):
+    """Rename a transaction tab"""
+    try:
+        data = request.json
+        name = data.get('name', '').strip()
+
+        if not name:
+            return jsonify({'error': 'Tab name is required'}), 400
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor()
+
+            cursor.execute(
+                "UPDATE transaction_tabs SET name = %s WHERE id = %s",
+                (name, tab_id)
+            )
+            connection.commit()
+
+            if cursor.rowcount == 0:
+                return jsonify({'error': 'Tab not found'}), 404
+
+            return jsonify({'message': 'Tab updated successfully'})
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/transaction-tabs/<int:tab_id>', methods=['DELETE'])
+def delete_transaction_tab(tab_id):
+    """Delete a transaction tab and its associated transactions"""
+    try:
+        with get_db_connection() as connection:
+            cursor = connection.cursor()
+
+            # Delete associated transactions first
+            cursor.execute(
+                "DELETE FROM bank_transactions WHERE tab_id = %s",
+                (tab_id,)
+            )
+            deleted_transactions = cursor.rowcount
+
+            # Delete the tab
+            cursor.execute(
+                "DELETE FROM transaction_tabs WHERE id = %s",
+                (tab_id,)
+            )
+            connection.commit()
+
+            if cursor.rowcount == 0:
+                return jsonify({'error': 'Tab not found'}), 404
+
+            return jsonify({
+                'message': f'Tab deleted with {deleted_transactions} transactions'
+            })
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ==================== TRANSACTION ENDPOINTS ====================
+
 @app.route('/api/transactions/upload', methods=['POST'])
 def upload_transactions():
     """Upload and parse bank transaction file"""
@@ -3273,6 +3426,7 @@ def save_transactions():
         data = request.json
         transactions = data.get('transactions', [])
         username = data.get('username')  # Get uploader username
+        tab_id = data.get('tab_id')  # Get tab ID for organizing by client
 
         if not transactions:
             return jsonify({'error': 'No transactions to save'}), 400
@@ -3283,8 +3437,8 @@ def save_transactions():
             # Insert transactions with encryption on sensitive fields
             query = """
                     INSERT INTO bank_transactions
-                    (account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    (account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by, tab_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """
 
             transaction_ids = []
@@ -3301,7 +3455,8 @@ def save_transactions():
                     encrypted_amount,
                     trans['month_year'],
                     trans.get('transaction_type', 'credit'),
-                    username
+                    username,
+                    tab_id
                 )
                 cursor.execute(query, values)
                 transaction_ids.append(str(cursor.lastrowid))
@@ -3327,12 +3482,13 @@ def save_transactions():
 
 @app.route('/api/transactions/months', methods=['GET'])
 def get_transaction_months():
-    """Get list of months with saved transactions (filtered by user role)"""
+    """Get list of months with saved transactions (filtered by user role and tab)"""
     try:
         # Get username and role for filtering
         username = request.args.get('username')
         user_role = request.args.get('role')
-        
+        tab_id = request.args.get('tab_id')
+
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
@@ -3348,7 +3504,14 @@ def get_transaction_months():
                 WHERE 1=1
             """
             params = []
-            
+
+            # Filter by tab
+            if tab_id:
+                query += " AND tab_id = %s"
+                params.append(tab_id)
+            else:
+                query += " AND tab_id IS NULL"
+
             # Filter by role
             if user_role == 'limited':
                 query += " AND uploaded_by = %s"
@@ -3379,11 +3542,12 @@ def get_transaction_months():
 
 @app.route('/api/transactions/all', methods=['GET'])
 def get_all_transactions():
-    """Get all transactions (filtered by user role) with decryption"""
+    """Get all transactions (filtered by user role and tab) with decryption"""
     try:
         # Get username and role for filtering
         username = request.args.get('username')
         user_role = request.args.get('role')
+        tab_id = request.args.get('tab_id')
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -3398,11 +3562,19 @@ def get_all_transactions():
                        month_year,
                        transaction_type,
                        upload_date,
-                       uploaded_by
+                       uploaded_by,
+                       tab_id
                 FROM bank_transactions
                 WHERE 1=1
             """
             params = []
+
+            # Filter by tab
+            if tab_id:
+                query += " AND tab_id = %s"
+                params.append(tab_id)
+            else:
+                query += " AND tab_id IS NULL"
 
             # Filter by role
             if user_role == 'limited':
@@ -3450,11 +3622,12 @@ def get_all_transactions():
 
 @app.route('/api/transactions/<month_year>', methods=['GET'])
 def get_transactions_by_month(month_year):
-    """Get all transactions for a specific month (filtered by user role) with decryption"""
+    """Get all transactions for a specific month (filtered by user role and tab) with decryption"""
     try:
         # Get username and role for filtering
         username = request.args.get('username')
         user_role = request.args.get('role')
+        tab_id = request.args.get('tab_id')
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -3469,11 +3642,19 @@ def get_transactions_by_month(month_year):
                        month_year,
                        transaction_type,
                        upload_date,
-                       uploaded_by
+                       uploaded_by,
+                       tab_id
                 FROM bank_transactions
                 WHERE month_year = %s
             """
             params = [month_year]
+
+            # Filter by tab
+            if tab_id:
+                query += " AND tab_id = %s"
+                params.append(tab_id)
+            else:
+                query += " AND tab_id IS NULL"
 
             # Filter by role
             if user_role == 'limited':
@@ -3553,11 +3734,15 @@ def delete_month_transactions(month_year):
     """Delete all transactions for a specific month with audit logging"""
     try:
         username = request.args.get('username', 'unknown')
+        tab_id = request.args.get('tab_id')
 
         with get_db_connection() as connection:
             cursor = connection.cursor()
 
-            cursor.execute("DELETE FROM bank_transactions WHERE month_year = %s", (month_year,))
+            if tab_id:
+                cursor.execute("DELETE FROM bank_transactions WHERE month_year = %s AND tab_id = %s", (month_year, tab_id))
+            else:
+                cursor.execute("DELETE FROM bank_transactions WHERE month_year = %s AND tab_id IS NULL", (month_year,))
             deleted_count = cursor.rowcount
             connection.commit()
 
@@ -3633,6 +3818,7 @@ def add_manual_transaction():
     try:
         data = request.json
         username = data.get('username', 'admin')
+        tab_id = data.get('tab_id')
 
         with get_db_connection() as connection:
             cursor = connection.cursor()
@@ -3644,8 +3830,8 @@ def add_manual_transaction():
 
             query = """
                     INSERT INTO bank_transactions
-                    (account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    (account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by, tab_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """
 
             cursor.execute(query, (
@@ -3655,7 +3841,8 @@ def add_manual_transaction():
                 encrypted_amount,
                 data['month_year'],
                 data.get('transaction_type', 'credit'),
-                username
+                username,
+                tab_id
             ))
             connection.commit()
 
@@ -3702,13 +3889,14 @@ def get_all_descriptions():
 
 @app.route('/api/transactions/stats', methods=['GET'])
 def get_transaction_stats():
-    """Get transaction statistics including cash vs credit breakdown (filtered by user role)"""
+    """Get transaction statistics including cash vs credit breakdown (filtered by user role and tab)"""
     try:
         # Get optional date filters
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         username = request.args.get('username')
         user_role = request.args.get('role')
+        tab_id = request.args.get('tab_id')
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -3716,7 +3904,14 @@ def get_transaction_stats():
             # Build filters
             filters = []
             params = []
-            
+
+            # Filter by tab
+            if tab_id:
+                filters.append("tab_id = %s")
+                params.append(tab_id)
+            else:
+                filters.append("tab_id IS NULL")
+
             if start_date:
                 filters.append("transaction_date >= %s")
                 params.append(start_date)
@@ -3726,7 +3921,7 @@ def get_transaction_stats():
             if user_role == 'limited':
                 filters.append("uploaded_by = %s")
                 params.append(username)
-            
+
             where_clause = " AND ".join(filters) if filters else "1=1"
 
             # Overall stats by type
