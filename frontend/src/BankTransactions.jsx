@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Upload, Calendar, Trash2, FileText, AlertCircle, CheckCircle, ArrowLeft, Plus, Edit2, Save, X, FileDown, Banknote, CreditCard, PieChart } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Upload, Calendar, Trash2, FileText, AlertCircle, CheckCircle, ArrowLeft, Plus, Edit2, Save, X, FileDown, Banknote, CreditCard, PieChart, Users, MoreVertical } from 'lucide-react';
 import API_BASE from './config';
 import { formatCurrency } from './utils/formatCurrency';
 
@@ -31,6 +31,16 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
   const [dateRangeFilter, setDateRangeFilter] = useState('all');
   const [visibleTransactions, setVisibleTransactions] = useState(50);
 
+  // Tab state for organizing transactions by client/name
+  const [tabs, setTabs] = useState([]);
+  const [activeTabId, setActiveTabId] = useState(null); // null = default (no tab)
+  const [showNewTabInput, setShowNewTabInput] = useState(false);
+  const [newTabName, setNewTabName] = useState('');
+  const [editingTab, setEditingTab] = useState(null);
+  const [editingTabName, setEditingTabName] = useState('');
+  const [tabMenuOpen, setTabMenuOpen] = useState(null);
+  const tabMenuRef = useRef(null);
+
   // Color scheme - matching TaskTracker theme
   const colors = {
     primary: '#0000FF',      // Blue (primary actions)
@@ -44,19 +54,125 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
     border: '#000'           // Black
   };
 
+  // ==================== TAB FUNCTIONS ====================
+
+  const fetchTabs = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/transaction-tabs?username=${authUser}&role=${authRole}`);
+      const data = await response.json();
+      setTabs(data);
+    } catch (err) {
+      console.error('Error fetching tabs:', err);
+    }
+  };
+
+  const handleCreateTab = async () => {
+    if (!newTabName.trim()) return;
+    try {
+      const response = await fetch(`${API_BASE}/transaction-tabs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newTabName.trim(), username: authUser })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setNewTabName('');
+        setShowNewTabInput(false);
+        await fetchTabs();
+        handleSwitchTab(data.id);
+      }
+    } catch (err) {
+      setError('Failed to create tab');
+    }
+  };
+
+  const handleRenameTab = async (tabId) => {
+    if (!editingTabName.trim()) return;
+    try {
+      const response = await fetch(`${API_BASE}/transaction-tabs/${tabId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editingTabName.trim() })
+      });
+      if (response.ok) {
+        setEditingTab(null);
+        setEditingTabName('');
+        await fetchTabs();
+      }
+    } catch (err) {
+      setError('Failed to rename tab');
+    }
+  };
+
+  const handleDeleteTab = async (tabId) => {
+    const tab = tabs.find(t => t.id === tabId);
+    if (!window.confirm(`Delete tab "${tab?.name}" and all its transactions?`)) return;
+    try {
+      const response = await fetch(`${API_BASE}/transaction-tabs/${tabId}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        await fetchTabs();
+        if (activeTabId === tabId) {
+          handleSwitchTab(null);
+        }
+        setTabMenuOpen(null);
+      }
+    } catch (err) {
+      setError('Failed to delete tab');
+    }
+  };
+
+  const handleSwitchTab = async (tabId) => {
+    setActiveTabId(tabId);
+    localStorage.setItem('activeTabId', String(tabId));
+    setTabMenuOpen(null);
+    setSelectedMonth(null);
+    setMonthTransactions([]);
+    setUploadedData(null);
+    setSearchTerm('');
+    setDescriptionFilter('');
+    setTypeFilter('all');
+
+    await fetchSavedMonths(tabId);
+    await fetchAllDescriptions();
+    await fetchTransactionStats(tabId);
+    await fetchAllTransactions(tabId);
+  };
+
+  // ==================== DATA FUNCTIONS ====================
+
+  // Close tab menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (tabMenuRef.current && !tabMenuRef.current.contains(e.target)) {
+        setTabMenuOpen(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   useEffect(() => {
     const initializeData = async () => {
-      await fetchSavedMonths();
+      await fetchTabs();
+      // Restore last active tab from localStorage
+      const savedTabId = localStorage.getItem('activeTabId');
+      const tabIdToUse = savedTabId ? (savedTabId === 'null' ? null : parseInt(savedTabId)) : null;
+
+      await fetchSavedMonths(tabIdToUse);
       await fetchAllDescriptions();
-      await fetchTransactionStats();
+      await fetchTransactionStats(tabIdToUse);
 
       // Restore last selected month from localStorage
       const savedMonth = localStorage.getItem('selectedMonth');
       if (savedMonth && savedMonth !== 'all') {
-        await fetchMonthTransactions(savedMonth);
+        await fetchMonthTransactions(savedMonth, tabIdToUse);
       } else {
-        await fetchAllTransactions();
+        await fetchAllTransactions(tabIdToUse);
       }
+
+      setActiveTabId(tabIdToUse);
     };
 
     initializeData();
@@ -72,9 +188,11 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
     }
   };
 
-  const fetchTransactionStats = async () => {
+  const fetchTransactionStats = async (tabId) => {
     try {
-      const response = await fetch(`${API_BASE}/transactions/stats?username=${authUser}&role=${authRole}`);
+      const tid = tabId !== undefined ? tabId : activeTabId;
+      const tabParam = tid ? `&tab_id=${tid}` : '';
+      const response = await fetch(`${API_BASE}/transactions/stats?username=${authUser}&role=${authRole}${tabParam}`);
       const data = await response.json();
       setTransactionStats(data);
     } catch (err) {
@@ -82,9 +200,11 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
     }
   };
 
-  const fetchSavedMonths = async () => {
+  const fetchSavedMonths = async (tabId) => {
     try {
-      const response = await fetch(`${API_BASE}/transactions/months?username=${authUser}&role=${authRole}`);
+      const tid = tabId !== undefined ? tabId : activeTabId;
+      const tabParam = tid ? `&tab_id=${tid}` : '';
+      const response = await fetch(`${API_BASE}/transactions/months?username=${authUser}&role=${authRole}${tabParam}`);
       const data = await response.json();
       setSavedMonths(data);
     } catch (err) {
@@ -92,10 +212,12 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
     }
   };
 
-  const fetchAllTransactions = async () => {
+  const fetchAllTransactions = async (tabId) => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/transactions/all?username=${authUser}&role=${authRole}`);
+      const tid = tabId !== undefined ? tabId : activeTabId;
+      const tabParam = tid ? `&tab_id=${tid}` : '';
+      const response = await fetch(`${API_BASE}/transactions/all?username=${authUser}&role=${authRole}${tabParam}`);
       const data = await response.json();
       setMonthTransactions(data);
       setSelectedMonth('all');
@@ -108,10 +230,12 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
     }
   };
 
-  const fetchMonthTransactions = async (monthYear) => {
+  const fetchMonthTransactions = async (monthYear, tabId) => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/transactions/${monthYear}?username=${authUser}&role=${authRole}`);
+      const tid = tabId !== undefined ? tabId : activeTabId;
+      const tabParam = tid ? `&tab_id=${tid}` : '';
+      const response = await fetch(`${API_BASE}/transactions/${monthYear}?username=${authUser}&role=${authRole}${tabParam}`);
       const data = await response.json();
       setMonthTransactions(data);
       setSelectedMonth(monthYear);
@@ -178,9 +302,10 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
       const response = await fetch(`${API_BASE}/transactions/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           transactions: uploadedData.transactions,
-          username: authUser  // Add uploader username
+          username: authUser,
+          tab_id: activeTabId
         })
       });
 
@@ -210,7 +335,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
       const response = await fetch(`${API_BASE}/transactions/manual`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newTransaction)
+        body: JSON.stringify({ ...newTransaction, tab_id: activeTabId })
       });
 
       const data = await response.json();
@@ -313,7 +438,8 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
 
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/transactions/month/${monthYear}`, {
+      const tabParam = activeTabId ? `?tab_id=${activeTabId}` : '';
+      const response = await fetch(`${API_BASE}/transactions/month/${monthYear}${tabParam}`, {
         method: 'DELETE'
       });
 
@@ -513,6 +639,12 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
     }}>
       {/* Mobile Responsive Styles */}
       <style>{`
+        .tab-bar::-webkit-scrollbar {
+          height: 3px;
+        }
+        .tab-bar::-webkit-scrollbar-thumb {
+          background: #ccc;
+        }
         @media (max-width: 768px) {
           .bank-header {
             flex-direction: column !important;
@@ -689,6 +821,244 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
           </button>
         </div>
       </header>
+
+      {/* Transaction Tabs Bar */}
+      <div className="tab-bar" style={{
+        background: '#f8f8f8',
+        borderBottom: `3px solid ${colors.border}`,
+        padding: '0',
+        display: 'flex',
+        alignItems: 'stretch',
+        overflowX: 'auto',
+        minHeight: '48px'
+      }}>
+        {/* Default tab (General / no tab) */}
+        <button
+          onClick={() => handleSwitchTab(null)}
+          style={{
+            padding: '0.75rem 1.5rem',
+            border: 'none',
+            borderBottom: activeTabId === null ? `4px solid ${colors.primary}` : '4px solid transparent',
+            background: activeTabId === null ? '#fff' : 'transparent',
+            cursor: 'pointer',
+            fontWeight: activeTabId === null ? '700' : '500',
+            fontSize: '0.95rem',
+            color: activeTabId === null ? colors.primary : colors.text,
+            fontFamily: '"Inter", sans-serif',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            whiteSpace: 'nowrap',
+            transition: 'all 0.15s ease'
+          }}
+        >
+          <CreditCard size={16} />
+          General
+        </button>
+
+        {/* Client/Name tabs */}
+        {tabs.map(tab => (
+          <div key={tab.id} style={{ position: 'relative', display: 'flex', alignItems: 'stretch' }}>
+            {editingTab === tab.id ? (
+              <div style={{ display: 'flex', alignItems: 'center', padding: '0.5rem', gap: '0.25rem' }}>
+                <input
+                  type="text"
+                  value={editingTabName}
+                  onChange={(e) => setEditingTabName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleRenameTab(tab.id);
+                    if (e.key === 'Escape') { setEditingTab(null); setEditingTabName(''); }
+                  }}
+                  autoFocus
+                  style={{
+                    padding: '0.35rem 0.5rem',
+                    border: `2px solid ${colors.primary}`,
+                    fontSize: '0.9rem',
+                    fontFamily: '"Inter", sans-serif',
+                    width: '120px'
+                  }}
+                />
+                <button
+                  onClick={() => handleRenameTab(tab.id)}
+                  style={{ background: colors.success, border: 'none', color: '#fff', padding: '0.35rem', cursor: 'pointer', display: 'flex' }}
+                >
+                  <Save size={14} />
+                </button>
+                <button
+                  onClick={() => { setEditingTab(null); setEditingTabName(''); }}
+                  style={{ background: colors.accent, border: 'none', color: '#fff', padding: '0.35rem', cursor: 'pointer', display: 'flex' }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => handleSwitchTab(tab.id)}
+                style={{
+                  padding: '0.75rem 1.25rem',
+                  border: 'none',
+                  borderBottom: activeTabId === tab.id ? `4px solid ${colors.primary}` : '4px solid transparent',
+                  background: activeTabId === tab.id ? '#fff' : 'transparent',
+                  cursor: 'pointer',
+                  fontWeight: activeTabId === tab.id ? '700' : '500',
+                  fontSize: '0.95rem',
+                  color: activeTabId === tab.id ? colors.primary : colors.text,
+                  fontFamily: '"Inter", sans-serif',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                <Users size={16} />
+                {tab.name}
+              </button>
+            )}
+
+            {/* Tab context menu trigger */}
+            {activeTabId === tab.id && editingTab !== tab.id && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setTabMenuOpen(tabMenuOpen === tab.id ? null : tab.id); }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '0 0.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: colors.textLight
+                }}
+              >
+                <MoreVertical size={16} />
+              </button>
+            )}
+
+            {/* Tab context menu */}
+            {tabMenuOpen === tab.id && (
+              <div ref={tabMenuRef} style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                background: '#fff',
+                border: `2px solid ${colors.border}`,
+                zIndex: 100,
+                minWidth: '140px',
+                boxShadow: '4px 4px 0px rgba(0,0,0,0.15)'
+              }}>
+                <button
+                  onClick={() => { setEditingTab(tab.id); setEditingTabName(tab.name); setTabMenuOpen(null); }}
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem 1rem',
+                    border: 'none',
+                    background: '#fff',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontSize: '0.9rem',
+                    fontFamily: '"Inter", sans-serif',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}
+                  onMouseEnter={(e) => e.target.style.background = '#f0f0f0'}
+                  onMouseLeave={(e) => e.target.style.background = '#fff'}
+                >
+                  <Edit2 size={14} /> Rename
+                </button>
+                <button
+                  onClick={() => handleDeleteTab(tab.id)}
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem 1rem',
+                    border: 'none',
+                    background: '#fff',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontSize: '0.9rem',
+                    fontFamily: '"Inter", sans-serif',
+                    color: colors.accent,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}
+                  onMouseEnter={(e) => e.target.style.background = '#fff0f0'}
+                  onMouseLeave={(e) => e.target.style.background = '#fff'}
+                >
+                  <Trash2 size={14} /> Delete
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* Add new tab */}
+        {showNewTabInput ? (
+          <div style={{ display: 'flex', alignItems: 'center', padding: '0.5rem', gap: '0.25rem' }}>
+            <input
+              type="text"
+              value={newTabName}
+              onChange={(e) => setNewTabName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleCreateTab();
+                if (e.key === 'Escape') { setShowNewTabInput(false); setNewTabName(''); }
+              }}
+              placeholder="Client name..."
+              autoFocus
+              style={{
+                padding: '0.35rem 0.5rem',
+                border: `2px solid ${colors.primary}`,
+                fontSize: '0.9rem',
+                fontFamily: '"Inter", sans-serif',
+                width: '140px'
+              }}
+            />
+            <button
+              onClick={handleCreateTab}
+              disabled={!newTabName.trim()}
+              style={{
+                background: newTabName.trim() ? colors.success : '#ccc',
+                border: 'none',
+                color: '#fff',
+                padding: '0.35rem',
+                cursor: newTabName.trim() ? 'pointer' : 'not-allowed',
+                display: 'flex'
+              }}
+            >
+              <Save size={14} />
+            </button>
+            <button
+              onClick={() => { setShowNewTabInput(false); setNewTabName(''); }}
+              style={{ background: colors.accent, border: 'none', color: '#fff', padding: '0.35rem', cursor: 'pointer', display: 'flex' }}
+            >
+              <X size={14} />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowNewTabInput(true)}
+            style={{
+              padding: '0.75rem 1rem',
+              border: 'none',
+              borderBottom: '4px solid transparent',
+              background: 'transparent',
+              cursor: 'pointer',
+              fontSize: '0.9rem',
+              color: colors.textLight,
+              fontFamily: '"Inter", sans-serif',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              whiteSpace: 'nowrap',
+              transition: 'color 0.15s ease'
+            }}
+            onMouseEnter={(e) => e.target.style.color = colors.primary}
+            onMouseLeave={(e) => e.target.style.color = colors.textLight}
+          >
+            <Plus size={16} /> Add Client
+          </button>
+        )}
+      </div>
 
       {/* Messages */}
       {error && (
