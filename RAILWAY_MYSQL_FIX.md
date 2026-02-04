@@ -18,7 +18,7 @@ This error occurs when a **custom Start Command is configured** for the MySQL da
 #### Step 1: Access the MySQL Service Settings
 1. Log in to [railway.app](https://railway.app)
 2. Select your project
-3. Select the staging-test environment (or whichever environment is affected)
+3. Select the environment where MySQL is crashing (e.g., staging-test, production, etc.)
 4. Click on the **MySQL service**
 
 #### Step 2: Remove Custom Start Command
