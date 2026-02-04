@@ -3560,11 +3560,10 @@ def get_transaction_months():
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
-            # Build query based on role
+            # Build query based on role - fetch raw amounts for decryption
             query = """
                 SELECT month_year,
-                       COUNT(*) as transaction_count,
-                       SUM(amount) as total_amount,
+                       amount,
                        MIN(transaction_date) as start_date,
                        MAX(transaction_date) as end_date,
                        MAX(upload_date) as last_upload
@@ -3586,12 +3585,39 @@ def get_transaction_months():
                 params.append(username)
             # admin and shared see all
 
-            query += " GROUP BY month_year ORDER BY month_year DESC"
-
             cursor.execute(query, params)
-            months = cursor.fetchall()
+            rows = cursor.fetchall()
 
-            # Convert Decimal to float
+            # Decrypt amounts and aggregate by month
+            month_data = {}
+            for row in rows:
+                my = row['month_year']
+                if my not in month_data:
+                    month_data[my] = {
+                        'month_year': my,
+                        'transaction_count': 0,
+                        'total_amount': 0.0,
+                        'start_date': row['start_date'],
+                        'end_date': row['end_date'],
+                        'last_upload': row['last_upload']
+                    }
+                month_data[my]['transaction_count'] += 1
+                try:
+                    decrypted = decrypt_field(row['amount'])
+                    month_data[my]['total_amount'] += float(decrypted) if decrypted else 0.0
+                except (ValueError, TypeError):
+                    pass
+                # Track min/max dates
+                if row['start_date'] and (not month_data[my]['start_date'] or row['start_date'] < month_data[my]['start_date']):
+                    month_data[my]['start_date'] = row['start_date']
+                if row['end_date'] and (not month_data[my]['end_date'] or row['end_date'] > month_data[my]['end_date']):
+                    month_data[my]['end_date'] = row['end_date']
+                if row['last_upload'] and (not month_data[my]['last_upload'] or row['last_upload'] > month_data[my]['last_upload']):
+                    month_data[my]['last_upload'] = row['last_upload']
+
+            # Convert to sorted list
+            months = sorted(month_data.values(), key=lambda x: x['month_year'], reverse=True)
+
             for month in months:
                 if month['total_amount']:
                     month['total_amount'] = float(month['total_amount'])
