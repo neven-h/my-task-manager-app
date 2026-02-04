@@ -31,7 +31,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
   const [dateRangeFilter, setDateRangeFilter] = useState('all');
   const [visibleTransactions, setVisibleTransactions] = useState(50);
 
-  // Tab state for organizing transactions by client/name
+  // Tab state for organizing transactions
   const [tabs, setTabs] = useState([]);
   const [activeTabId, setActiveTabId] = useState(null); // null = default (no tab)
   const [showNewTabInput, setShowNewTabInput] = useState(false);
@@ -882,7 +882,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
         overflowX: 'auto',
         minHeight: '48px'
       }}>
-        {/* Client tabs */}
+        {/* Tabs */}
         {tabs.map(tab => (
           <div key={tab.id} style={{ position: 'relative', display: 'flex', alignItems: 'stretch' }}>
             {editingTab === tab.id ? (
@@ -1029,7 +1029,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
                 if (e.key === 'Enter') handleCreateTab();
                 if (e.key === 'Escape') { setShowNewTabInput(false); setNewTabName(''); }
               }}
-              placeholder="Client name..."
+              placeholder="Tab name..."
               autoFocus
               style={{
                 padding: '0.35rem 0.5rem',
@@ -1081,7 +1081,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
             onMouseEnter={(e) => e.target.style.color = colors.primary}
             onMouseLeave={(e) => e.target.style.color = colors.textLight}
           >
-            <Plus size={16} /> Add Client
+            <Plus size={16} /> Add Tab
           </button>
         )}
       </div>
@@ -1125,7 +1125,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
         </div>
       )}
 
-      {/* No tabs - prompt to create first client */}
+      {/* No tabs - prompt to create first tab */}
       {tabs.length === 0 && (
         <div style={{
           maxWidth: '500px',
@@ -1137,10 +1137,10 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
         }}>
           <Users size={48} style={{ color: colors.primary, marginBottom: '1rem' }} />
           <h2 style={{ margin: '0 0 0.75rem 0', fontFamily: '"Inter", sans-serif', fontSize: '1.4rem' }}>
-            Create Your First Client
+            Create Your First Tab
           </h2>
           <p style={{ color: colors.textLight, margin: '0 0 1.5rem 0', fontSize: '1rem', lineHeight: '1.5' }}>
-            Each client has their own separate bank transactions. Create a client tab to get started.
+            Each tab has its own separate bank transactions. Create a tab to get started.
           </p>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
             <input
@@ -1148,7 +1148,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
               value={newTabName}
               onChange={(e) => setNewTabName(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleCreateTab(); }}
-              placeholder="Client name..."
+              placeholder="Tab name..."
               style={{
                 padding: '0.7rem 1rem',
                 border: `3px solid ${colors.border}`,
