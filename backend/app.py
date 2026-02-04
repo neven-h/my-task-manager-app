@@ -3533,11 +3533,18 @@ def save_transactions():
         with get_db_connection() as connection:
             cursor = connection.cursor()
 
-            # Insert transactions with encryption on sensitive fields
-            query = """
+            # Build INSERT query - only include tab_id when it has a value
+            if tab_id:
+                query = """
                     INSERT INTO bank_transactions
                     (account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by, tab_id)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    """
+            else:
+                query = """
+                    INSERT INTO bank_transactions
+                    (account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """
 
             transaction_ids = []
@@ -3554,9 +3561,10 @@ def save_transactions():
                     encrypted_amount,
                     trans['month_year'],
                     trans.get('transaction_type', 'credit'),
-                    username,
-                    tab_id
+                    username
                 )
+                if tab_id:
+                    values = values + (tab_id,)
                 cursor.execute(query, values)
                 transaction_ids.append(str(cursor.lastrowid))
 
@@ -3604,19 +3612,17 @@ def get_transaction_months():
             """
             params = []
 
-            # Filter by tab
+            # Filter by tab (only when a specific tab is selected)
             if tab_id:
                 query += " AND tab_id = %s"
                 params.append(tab_id)
-            else:
-                query += " AND tab_id IS NULL"
 
             # Filter by role
             if user_role == 'limited':
                 query += " AND uploaded_by = %s"
                 params.append(username)
             # admin and shared see all
-            
+
             query += " GROUP BY month_year ORDER BY month_year DESC"
             
             cursor.execute(query, params)
@@ -3661,19 +3667,16 @@ def get_all_transactions():
                        month_year,
                        transaction_type,
                        upload_date,
-                       uploaded_by,
-                       tab_id
+                       uploaded_by
                 FROM bank_transactions
                 WHERE 1=1
             """
             params = []
 
-            # Filter by tab
+            # Filter by tab (only when a specific tab is selected)
             if tab_id:
                 query += " AND tab_id = %s"
                 params.append(tab_id)
-            else:
-                query += " AND tab_id IS NULL"
 
             # Filter by role
             if user_role == 'limited':
@@ -3741,19 +3744,16 @@ def get_transactions_by_month(month_year):
                        month_year,
                        transaction_type,
                        upload_date,
-                       uploaded_by,
-                       tab_id
+                       uploaded_by
                 FROM bank_transactions
                 WHERE month_year = %s
             """
             params = [month_year]
 
-            # Filter by tab
+            # Filter by tab (only when a specific tab is selected)
             if tab_id:
                 query += " AND tab_id = %s"
                 params.append(tab_id)
-            else:
-                query += " AND tab_id IS NULL"
 
             # Filter by role
             if user_role == 'limited':
@@ -3841,7 +3841,7 @@ def delete_month_transactions(month_year):
             if tab_id:
                 cursor.execute("DELETE FROM bank_transactions WHERE month_year = %s AND tab_id = %s", (month_year, tab_id))
             else:
-                cursor.execute("DELETE FROM bank_transactions WHERE month_year = %s AND tab_id IS NULL", (month_year,))
+                cursor.execute("DELETE FROM bank_transactions WHERE month_year = %s", (month_year,))
             deleted_count = cursor.rowcount
             connection.commit()
 
@@ -3927,22 +3927,37 @@ def add_manual_transaction():
             encrypted_description = encrypt_field(data['description'])
             encrypted_amount = encrypt_field(str(data['amount']))
 
-            query = """
+            if tab_id:
+                query = """
                     INSERT INTO bank_transactions
                     (account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by, tab_id)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """
-
-            cursor.execute(query, (
-                encrypted_account,
-                data['transaction_date'],
-                encrypted_description,
-                encrypted_amount,
-                data['month_year'],
-                data.get('transaction_type', 'credit'),
-                username,
-                tab_id
-            ))
+                cursor.execute(query, (
+                    encrypted_account,
+                    data['transaction_date'],
+                    encrypted_description,
+                    encrypted_amount,
+                    data['month_year'],
+                    data.get('transaction_type', 'credit'),
+                    username,
+                    tab_id
+                ))
+            else:
+                query = """
+                    INSERT INTO bank_transactions
+                    (account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """
+                cursor.execute(query, (
+                    encrypted_account,
+                    data['transaction_date'],
+                    encrypted_description,
+                    encrypted_amount,
+                    data['month_year'],
+                    data.get('transaction_type', 'credit'),
+                    username
+                ))
             connection.commit()
 
             transaction_id = cursor.lastrowid
@@ -4004,12 +4019,10 @@ def get_transaction_stats():
             filters = []
             params = []
 
-            # Filter by tab
+            # Filter by tab (only when a specific tab is selected)
             if tab_id:
                 filters.append("tab_id = %s")
                 params.append(tab_id)
-            else:
-                filters.append("tab_id IS NULL")
 
             if start_date:
                 filters.append("transaction_date >= %s")
