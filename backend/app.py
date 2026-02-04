@@ -3621,13 +3621,12 @@ def get_transaction_months():
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
-            # Build query based on role - fetch raw amounts for decryption
+            # Fetch individual rows to decrypt amounts in Python
             query = """
                 SELECT month_year,
                        amount,
-                       MIN(transaction_date) as start_date,
-                       MAX(transaction_date) as end_date,
-                       MAX(upload_date) as last_upload
+                       transaction_date,
+                       upload_date
                 FROM bank_transactions
                 WHERE 1=1
             """
@@ -3658,9 +3657,9 @@ def get_transaction_months():
                         'month_year': my,
                         'transaction_count': 0,
                         'total_amount': 0.0,
-                        'start_date': row['start_date'],
-                        'end_date': row['end_date'],
-                        'last_upload': row['last_upload']
+                        'start_date': row['transaction_date'],
+                        'end_date': row['transaction_date'],
+                        'last_upload': row['upload_date']
                     }
                 month_data[my]['transaction_count'] += 1
                 try:
@@ -3669,12 +3668,14 @@ def get_transaction_months():
                 except (ValueError, TypeError):
                     pass
                 # Track min/max dates
-                if row['start_date'] and (not month_data[my]['start_date'] or row['start_date'] < month_data[my]['start_date']):
-                    month_data[my]['start_date'] = row['start_date']
-                if row['end_date'] and (not month_data[my]['end_date'] or row['end_date'] > month_data[my]['end_date']):
-                    month_data[my]['end_date'] = row['end_date']
-                if row['last_upload'] and (not month_data[my]['last_upload'] or row['last_upload'] > month_data[my]['last_upload']):
-                    month_data[my]['last_upload'] = row['last_upload']
+                if row['transaction_date']:
+                    if not month_data[my]['start_date'] or row['transaction_date'] < month_data[my]['start_date']:
+                        month_data[my]['start_date'] = row['transaction_date']
+                    if not month_data[my]['end_date'] or row['transaction_date'] > month_data[my]['end_date']:
+                        month_data[my]['end_date'] = row['transaction_date']
+                if row['upload_date']:
+                    if not month_data[my]['last_upload'] or row['upload_date'] > month_data[my]['last_upload']:
+                        month_data[my]['last_upload'] = row['upload_date']
 
             # Convert to sorted list
             months = sorted(month_data.values(), key=lambda x: x['month_year'], reverse=True)
