@@ -12,5 +12,7 @@ healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 5
 
-# Do not use a custom start command - let the Docker entrypoint handle it
-# The entrypoint script at /usr/local/bin/docker-entrypoint.sh will handle MySQL initialization
+# Explicitly set startCommand to empty to use Docker ENTRYPOINT/CMD
+# This prevents the "docker-entrypoint.sh: command not found" error
+# caused by Railway trying to run a custom start command through /bin/bash -c
+startCommand = ""
