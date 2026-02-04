@@ -80,9 +80,12 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
         setShowNewTabInput(false);
         await fetchTabs();
         handleSwitchTab(data.id);
+      } else {
+        setError(data.error || 'Failed to create tab');
       }
     } catch (err) {
-      setError('Failed to create tab');
+      console.error('Create tab error:', err);
+      setError('Failed to create tab - server may be unavailable');
     }
   };
 

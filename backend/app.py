@@ -776,15 +776,26 @@ def init_db():
         try:
             cursor.execute("""
                 ALTER TABLE bank_transactions
-                    ADD COLUMN tab_id INT,
-                    ADD INDEX idx_tab_id (tab_id)
+                    ADD COLUMN tab_id INT
             """)
             print("Added tab_id column to bank_transactions")
         except Error as e:
             if 'Duplicate column' in str(e):
                 pass  # Column already exists
             else:
-                print(f"Note: {e}")
+                print(f"Note adding tab_id column: {e}")
+
+        try:
+            cursor.execute("""
+                ALTER TABLE bank_transactions
+                    ADD INDEX idx_tab_id (tab_id)
+            """)
+            print("Added tab_id index to bank_transactions")
+        except Error as e:
+            if 'Duplicate key' in str(e):
+                pass  # Index already exists
+            else:
+                print(f"Note adding tab_id index: {e}")
 
         # Create users table for authentication
         cursor.execute("""
@@ -2891,10 +2902,14 @@ def parse_cash_transaction_file(file_path):
                 if not pd.notna(row.iloc[date_col]) or date_str in ['', 'nan', 'NaN']:
                     continue
 
-                transaction_date = pd.to_datetime(date_str, format='%d.%m.%Y', errors='coerce')
+                transaction_date = None
+                for dfmt in ['%d.%m.%Y', '%d/%m/%Y', '%d/%m/%y', '%d.%m.%y', '%Y-%m-%d']:
+                    transaction_date = pd.to_datetime(date_str, format=dfmt, errors='coerce')
+                    if pd.notna(transaction_date):
+                        break
                 if pd.isna(transaction_date):
-                    # Try other date formats
-                    transaction_date = pd.to_datetime(date_str, errors='coerce')
+                    # Final fallback: let pandas infer
+                    transaction_date = pd.to_datetime(date_str, dayfirst=True, errors='coerce')
                 if pd.isna(transaction_date):
                     print(f"[SKIP] Row {idx}: Invalid date '{date_str}'", flush=True)
                     continue
@@ -3047,9 +3062,32 @@ def parse_transaction_file(file_path, transaction_type='credit'):
         # Rename columns to standard names
         df.columns = ['account_number', 'transaction_date', 'description', 'amount'] + list(df.columns[4:])
 
-        # Parse dates - handle DD.MM.YYYY format
+        # Parse dates - try multiple formats
         print(f"[PARSE] Before date parsing: {len(df)} rows", flush=True)
-        df['transaction_date'] = pd.to_datetime(df['transaction_date'], format='%d.%m.%Y', errors='coerce')
+
+        # Try multiple date formats in order of specificity
+        date_formats = [
+            '%d.%m.%Y',   # DD.MM.YYYY (e.g., 03.02.2026)
+            '%d/%m/%Y',   # DD/MM/YYYY (e.g., 03/02/2026)
+            '%d/%m/%y',   # D/M/YY (e.g., 3/2/26)
+            '%d.%m.%y',   # D.M.YY (e.g., 3.2.26)
+            '%Y-%m-%d',   # YYYY-MM-DD (e.g., 2026-02-03)
+        ]
+
+        parsed_dates = None
+        for fmt in date_formats:
+            attempt = pd.to_datetime(df['transaction_date'], format=fmt, errors='coerce')
+            valid_count = attempt.notna().sum()
+            print(f"[PARSE] Format '{fmt}': {valid_count}/{len(df)} dates parsed", flush=True)
+            if valid_count > 0 and (parsed_dates is None or valid_count > parsed_dates.notna().sum()):
+                parsed_dates = attempt
+
+        # Final fallback: let pandas infer the format
+        if parsed_dates is None or parsed_dates.notna().sum() == 0:
+            parsed_dates = pd.to_datetime(df['transaction_date'], dayfirst=True, errors='coerce')
+            print(f"[PARSE] Fallback (dayfirst=True): {parsed_dates.notna().sum()}/{len(df)} dates parsed", flush=True)
+
+        df['transaction_date'] = parsed_dates
         print(f"[PARSE] After date parsing, rows with NaT dates: {df['transaction_date'].isna().sum()}", flush=True)
 
         # Convert amount to float
