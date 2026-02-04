@@ -50,7 +50,8 @@ If clearing the start command doesn't work:
 1. **Backup your database:**
    ```bash
    # Export from Railway MySQL
-   mysqldump -h [MYSQLHOST] -P [MYSQLPORT] -u [MYSQLUSER] -p[MYSQLPASSWORD] [MYSQLDATABASE] > backup.sql
+   # Note: You will be prompted to enter the password securely
+   mysqldump -h [MYSQLHOST] -P [MYSQLPORT] -u [MYSQLUSER] -p [MYSQLDATABASE] > backup.sql
    ```
 
 2. **Delete the problematic MySQL service** in Railway
@@ -64,7 +65,8 @@ If clearing the start command doesn't work:
 
 5. **Restore your data:**
    ```bash
-   mysql -h [NEW_MYSQLHOST] -P [NEW_MYSQLPORT] -u [NEW_MYSQLUSER] -p[NEW_MYSQLPASSWORD] [NEW_MYSQLDATABASE] < backup.sql
+   # Note: You will be prompted to enter the password securely
+   mysql -h [NEW_MYSQLHOST] -P [NEW_MYSQLPORT] -u [NEW_MYSQLUSER] -p [NEW_MYSQLDATABASE] < backup.sql
    ```
 
 ### Why This Happens
