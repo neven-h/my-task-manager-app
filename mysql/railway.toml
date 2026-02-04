@@ -1,0 +1,16 @@
+# Railway Configuration for MySQL Service
+# This file configures the MySQL database deployment on Railway
+
+[build]
+# Use the custom Dockerfile to ensure proper entrypoint configuration
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# MySQL health check timeout - uses Railway's default TCP health check on port 3306
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 5
+
+# Do not use a custom start command - let the Docker entrypoint handle it
+# The entrypoint script at /usr/local/bin/docker-entrypoint.sh will handle MySQL initialization
