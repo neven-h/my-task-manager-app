@@ -1988,19 +1988,6 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
                                 }}>
                                   {t.description}
                                 </span>
-                                {(() => {
-                                  const count = monthTransactions.filter(o => o.id !== t.id && o.description === t.description).length;
-                                  return count > 0 ? (
-                                    <span style={{
-                                      marginLeft: '0.4rem',
-                                      fontSize: '0.75rem',
-                                      color: colors.primary,
-                                      fontWeight: '600'
-                                    }}>
-                                      ({count})
-                                    </span>
-                                  ) : null;
-                                })()}
                               </td>
                               <td style={{ padding: '0.65rem 0.75rem', textAlign: 'center' }}>
                                 <span style={{
@@ -2065,44 +2052,44 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
                         {expandedDescriptionId === t.id && (() => {
                           const history = getDescriptionHistory(t);
                           if (history.length === 0) return null;
-                          return (
-                            <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
-                              <td colSpan={5} style={{ padding: '0', background: '#f5f7ff' }}>
-                                <div style={{
-                                  padding: '0.5rem 0.75rem 0.65rem 2.5rem',
-                                  fontSize: '0.82rem',
-                                  color: colors.textLight
-                                }}>
-                                  <div style={{ fontWeight: '600', color: colors.primary, marginBottom: '0.35rem', fontSize: '0.8rem' }}>
-                                    Previous transactions at "{t.description}":
-                                  </div>
-                                  {history.map(h => (
-                                    <div key={h.id} style={{
-                                      display: 'flex',
-                                      justifyContent: 'space-between',
-                                      padding: '0.2rem 0',
-                                      borderBottom: '1px solid #e8e8e8',
-                                      gap: '1rem'
-                                    }}>
-                                      <span>{new Date(h.transaction_date).toLocaleDateString('he-IL')}</span>
-                                      <span style={{
-                                        fontWeight: '600',
-                                        fontFamily: 'Consolas, "Courier New", monospace',
-                                        color: h.amount < 0 ? colors.accent : colors.text
-                                      }}>
-                                        {formatCurrency(h.amount)}
-                                      </span>
-                                    </div>
-                                  ))}
-                                  {monthTransactions.filter(o => o.id !== t.id && o.description === t.description).length > 5 && (
-                                    <div style={{ fontSize: '0.75rem', color: colors.textLight, marginTop: '0.25rem', fontStyle: 'italic' }}>
-                                      + {monthTransactions.filter(o => o.id !== t.id && o.description === t.description).length - 5} more
-                                    </div>
-                                  )}
-                                </div>
+                          return history.map(h => (
+                            <tr key={h.id} style={{ borderBottom: `1px solid ${colors.border}`, background: '#f9f9f9' }}>
+                              <td style={{ padding: '0.65rem 0.75rem', fontSize: '0.9rem', color: colors.textLight }}>
+                                {new Date(h.transaction_date).toLocaleDateString('he-IL')}
                               </td>
+                              <td style={{ padding: '0.65rem 0.75rem', fontSize: '0.9rem', color: colors.textLight }}>
+                                {h.description}
+                              </td>
+                              <td style={{ padding: '0.65rem 0.75rem', textAlign: 'center' }}>
+                                <span style={{
+                                  padding: '0.3rem 0.6rem',
+                                  background: h.transaction_type === 'cash' ? colors.success : colors.accent,
+                                  color: '#fff',
+                                  fontSize: '0.8rem',
+                                  fontWeight: '600',
+                                  border: `2px solid ${colors.border}`,
+                                  fontFamily: '"Inter", sans-serif',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.3px'
+                                }}>
+                                  {h.transaction_type === 'cash' ? 'Cash' : 'Credit'}
+                                </span>
+                              </td>
+                              <td style={{
+                                padding: '0.65rem 0.75rem',
+                                textAlign: 'right',
+                                fontWeight: '700',
+                                fontFamily: 'Consolas, "Courier New", monospace',
+                                fontVariantNumeric: 'tabular-nums',
+                                letterSpacing: '0.05em',
+                                fontSize: '0.95rem',
+                                color: h.amount < 0 ? colors.accent : colors.textLight
+                              }}>
+                                {formatCurrency(h.amount)}
+                              </td>
+                              <td style={{ padding: '0.65rem 0.75rem' }}></td>
                             </tr>
-                          );
+                          ));
                         })()}
                         </React.Fragment>
                       ))}
