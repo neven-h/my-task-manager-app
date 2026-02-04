@@ -2,6 +2,7 @@ from decimal import Decimal
 from typing import Union
 import uuid
 import secrets
+import time
 
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
@@ -453,34 +454,61 @@ def token_required(f):
     return decorated
 
 
+DB_CONNECT_MAX_RETRIES = int(os.getenv('DB_CONNECT_MAX_RETRIES', 3))
+DB_CONNECT_BASE_DELAY = float(os.getenv('DB_CONNECT_BASE_DELAY', 1.0))
+
+
+def _reset_db_pool():
+    """Reset the connection pool so it will be re-created on next use."""
+    global _db_pool
+    _db_pool = None
+
+
 @contextmanager
 def get_db_connection():
-    """Context manager for database connections.
-    
+    """Context manager for database connections with retry logic.
+
     PERFORMANCE OPTIMIZATION: Uses connection pooling when available.
     Pooled connections are reused instead of creating new ones each time,
     which saves ~30-50ms per request. When the connection is closed,
     it's returned to the pool for reuse rather than being destroyed.
-    
+
+    RELIABILITY: Retries with exponential backoff when the database is
+    temporarily unavailable (e.g. after a container restart). Resets
+    the connection pool on failure so stale connections are discarded.
+
     Falls back to creating individual connections if the pool is unavailable.
     """
     connection = None
-    pool = _get_db_pool()
+    last_error = None
+
+    for attempt in range(DB_CONNECT_MAX_RETRIES):
+        try:
+            pool = _get_db_pool()
+            if pool:
+                connection = pool.get_connection()
+            else:
+                connection = mysql.connector.connect(**DB_CONFIG)
+            break
+        except Error as e:
+            last_error = e
+            _reset_db_pool()
+            if attempt < DB_CONNECT_MAX_RETRIES - 1:
+                delay = DB_CONNECT_BASE_DELAY * (2 ** attempt)
+                print(f"Database connection attempt {attempt + 1} failed: {e}. Retrying in {delay}s...")
+                time.sleep(delay)
+
+    if connection is None:
+        print(f"Database connection failed after {DB_CONNECT_MAX_RETRIES} attempts: {last_error}")
+        raise last_error
+
     try:
-        if pool:
-            # Get connection from pool (fast - reuses existing connection)
-            connection = pool.get_connection()
-        else:
-            # Fall back to creating new connection (slower, but works without pool)
-            connection = mysql.connector.connect(**DB_CONFIG)
         yield connection
     except Error as e:
         print(f"Database error: {e}")
         raise
     finally:
         if connection and connection.is_connected():
-            # When using pooling, close() returns the connection to the pool
-            # When not using pooling, close() destroys the connection
             connection.close()
 
 
@@ -1058,6 +1086,29 @@ def init_db():
             if cursor:
                 cursor.close()
             connection.close()
+
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Health check endpoint that reports app and database status."""
+    db_ok = False
+    db_error = None
+    try:
+        with get_db_connection() as connection:
+            cursor = connection.cursor()
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+            cursor.close()
+            db_ok = True
+    except Exception as e:
+        db_error = str(e)
+
+    status = "healthy" if db_ok else "degraded"
+    code = 200 if db_ok else 503
+    result = {"status": status, "database": "connected" if db_ok else "unavailable"}
+    if db_error:
+        result["database_error"] = db_error
+    return jsonify(result), code
 
 
 @app.route('/api/login', methods=['POST'])
