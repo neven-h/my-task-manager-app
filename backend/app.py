@@ -3469,22 +3469,18 @@ def save_transactions():
         if not transactions:
             return jsonify({'error': 'No transactions to save'}), 400
 
+        # Require tab_id for strict client separation
+        if not tab_id:
+            return jsonify({'error': 'tab_id is required - select a client tab first'}), 400
+
         with get_db_connection() as connection:
             cursor = connection.cursor()
 
-            # Build INSERT query - only include tab_id when it has a value
-            if tab_id:
-                query = """
-                    INSERT INTO bank_transactions
-                    (account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by, tab_id)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                    """
-            else:
-                query = """
-                    INSERT INTO bank_transactions
-                    (account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    """
+            query = """
+                INSERT INTO bank_transactions
+                (account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by, tab_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """
 
             transaction_ids = []
             for trans in transactions:
@@ -3500,10 +3496,9 @@ def save_transactions():
                     encrypted_amount,
                     trans['month_year'],
                     trans.get('transaction_type', 'credit'),
-                    username
+                    username,
+                    tab_id
                 )
-                if tab_id:
-                    values = values + (tab_id,)
                 cursor.execute(query, values)
                 transaction_ids.append(str(cursor.lastrowid))
 
@@ -3551,10 +3546,12 @@ def get_transaction_months():
             """
             params = []
 
-            # Filter by tab (only when a specific tab is selected)
-            if tab_id:
-                query += " AND tab_id = %s"
-                params.append(tab_id)
+            # Require tab_id for strict client separation
+            if not tab_id:
+                return jsonify([])
+
+            query += " AND tab_id = %s"
+            params.append(tab_id)
 
             # Filter by role
             if user_role == 'limited':
@@ -3563,7 +3560,7 @@ def get_transaction_months():
             # admin and shared see all
 
             query += " GROUP BY month_year ORDER BY month_year DESC"
-            
+
             cursor.execute(query, params)
             months = cursor.fetchall()
 
@@ -3612,10 +3609,12 @@ def get_all_transactions():
             """
             params = []
 
-            # Filter by tab (only when a specific tab is selected)
-            if tab_id:
-                query += " AND tab_id = %s"
-                params.append(tab_id)
+            # Require tab_id for strict client separation
+            if not tab_id:
+                return jsonify([])
+
+            query += " AND tab_id = %s"
+            params.append(tab_id)
 
             # Filter by role
             if user_role == 'limited':
@@ -3689,10 +3688,12 @@ def get_transactions_by_month(month_year):
             """
             params = [month_year]
 
-            # Filter by tab (only when a specific tab is selected)
-            if tab_id:
-                query += " AND tab_id = %s"
-                params.append(tab_id)
+            # Require tab_id for strict client separation
+            if not tab_id:
+                return jsonify([])
+
+            query += " AND tab_id = %s"
+            params.append(tab_id)
 
             # Filter by role
             if user_role == 'limited':
@@ -3777,10 +3778,11 @@ def delete_month_transactions(month_year):
         with get_db_connection() as connection:
             cursor = connection.cursor()
 
-            if tab_id:
-                cursor.execute("DELETE FROM bank_transactions WHERE month_year = %s AND tab_id = %s", (month_year, tab_id))
-            else:
-                cursor.execute("DELETE FROM bank_transactions WHERE month_year = %s", (month_year,))
+            # Require tab_id for strict client separation
+            if not tab_id:
+                return jsonify({'error': 'tab_id is required'}), 400
+
+            cursor.execute("DELETE FROM bank_transactions WHERE month_year = %s AND tab_id = %s", (month_year, tab_id))
             deleted_count = cursor.rowcount
             connection.commit()
 
@@ -3858,6 +3860,10 @@ def add_manual_transaction():
         username = data.get('username', 'admin')
         tab_id = data.get('tab_id')
 
+        # Require tab_id for strict client separation
+        if not tab_id:
+            return jsonify({'error': 'tab_id is required - select a client tab first'}), 400
+
         with get_db_connection() as connection:
             cursor = connection.cursor()
 
@@ -3866,37 +3872,21 @@ def add_manual_transaction():
             encrypted_description = encrypt_field(data['description'])
             encrypted_amount = encrypt_field(str(data['amount']))
 
-            if tab_id:
-                query = """
-                    INSERT INTO bank_transactions
-                    (account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by, tab_id)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                    """
-                cursor.execute(query, (
-                    encrypted_account,
-                    data['transaction_date'],
-                    encrypted_description,
-                    encrypted_amount,
-                    data['month_year'],
-                    data.get('transaction_type', 'credit'),
-                    username,
-                    tab_id
-                ))
-            else:
-                query = """
-                    INSERT INTO bank_transactions
-                    (account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    """
-                cursor.execute(query, (
-                    encrypted_account,
-                    data['transaction_date'],
-                    encrypted_description,
-                    encrypted_amount,
-                    data['month_year'],
-                    data.get('transaction_type', 'credit'),
-                    username
-                ))
+            query = """
+                INSERT INTO bank_transactions
+                (account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by, tab_id)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """
+            cursor.execute(query, (
+                encrypted_account,
+                data['transaction_date'],
+                encrypted_description,
+                encrypted_amount,
+                data['month_year'],
+                data.get('transaction_type', 'credit'),
+                username,
+                tab_id
+            ))
             connection.commit()
 
             transaction_id = cursor.lastrowid
@@ -3954,14 +3944,13 @@ def get_transaction_stats():
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
-            # Build filters
-            filters = []
-            params = []
+            # Require tab_id for strict client separation
+            if not tab_id:
+                return jsonify({'by_type': [], 'monthly': []})
 
-            # Filter by tab (only when a specific tab is selected)
-            if tab_id:
-                filters.append("tab_id = %s")
-                params.append(tab_id)
+            # Build filters
+            filters = ["tab_id = %s"]
+            params = [tab_id]
 
             if start_date:
                 filters.append("transaction_date >= %s")
