@@ -41,6 +41,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
   const [tabMenuOpen, setTabMenuOpen] = useState(null);
   const tabMenuRef = useRef(null);
   const [expandedDescriptionId, setExpandedDescriptionId] = useState(null);
+  const [orphanedCount, setOrphanedCount] = useState(0);
 
   // Color scheme - matching TaskTracker theme
   const colors = {
@@ -168,6 +169,31 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
     await fetchAllTransactions(tabId);
   };
 
+  const checkOrphanedTransactions = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/transaction-tabs/orphaned`);
+      const data = await response.json();
+      setOrphanedCount(data.count || 0);
+    } catch (err) {
+      console.error('Error checking orphaned transactions:', err);
+    }
+  };
+
+  const adoptOrphanedTransactions = async (tabId) => {
+    try {
+      const response = await fetch(`${API_BASE}/transaction-tabs/${tabId}/adopt`, { method: 'POST' });
+      if (response.ok) {
+        setOrphanedCount(0);
+        // Refresh data for the current tab
+        await fetchSavedMonths(tabId);
+        await fetchTransactionStats(tabId);
+        await fetchAllTransactions(tabId);
+      }
+    } catch (err) {
+      setError('Failed to assign transactions');
+    }
+  };
+
   // ==================== DATA FUNCTIONS ====================
 
   // Close tab menu when clicking outside
@@ -184,6 +210,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
   useEffect(() => {
     const initializeData = async () => {
       const fetchedTabs = await fetchTabs();
+      await checkOrphanedTransactions();
 
       if (!fetchedTabs || fetchedTabs.length === 0) {
         // No tabs yet - don't load any transactions
@@ -1122,6 +1149,44 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
           <button onClick={() => setSuccess(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: colors.text }}>
             <X size={20} />
           </button>
+        </div>
+      )}
+
+      {/* Orphaned transactions banner */}
+      {orphanedCount > 0 && activeTabId && (
+        <div style={{
+          padding: '1rem 1.5rem',
+          background: '#FFF3CD',
+          border: `3px solid ${colors.border}`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '1rem',
+          flexWrap: 'wrap'
+        }}>
+          <span style={{ fontFamily: '"Inter", sans-serif', fontSize: '0.95rem' }}>
+            <strong>{orphanedCount}</strong> transaction{orphanedCount !== 1 ? 's' : ''} from before tabs were added {orphanedCount !== 1 ? 'are' : 'is'} not assigned to any tab.
+          </span>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => adoptOrphanedTransactions(tab.id)}
+                style={{
+                  padding: '0.4rem 1rem',
+                  background: colors.primary,
+                  color: '#fff',
+                  border: `2px solid ${colors.border}`,
+                  cursor: 'pointer',
+                  fontWeight: '700',
+                  fontSize: '0.85rem',
+                  fontFamily: '"Inter", sans-serif'
+                }}
+              >
+                Assign to "{tab.name}"
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
