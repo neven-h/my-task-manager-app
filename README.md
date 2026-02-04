@@ -40,6 +40,8 @@ Go to [railway.app](https://railway.app) and sign up with GitHub.
 ### 3. Add MySQL Database
 - Click "New" → "Database" → "MySQL"
 - Railway auto-configures connection variables
+- ⚠️ **IMPORTANT**: Do NOT set a custom "Start Command" for the MySQL service (leave it empty)
+- See `RAILWAY_MYSQL_FIX.md` if you encounter MySQL startup errors
 
 ### 4. Set Environment Variables
 In the Railway dashboard, add these variables:
@@ -65,3 +67,8 @@ For the frontend, either:
 ## Environment Variables
 
 See `.env.example` for all configuration options.
+
+## Troubleshooting
+
+### MySQL Service Crashes on Railway
+If you see "docker-entrypoint.sh: command not found" errors in Railway logs, see `RAILWAY_MYSQL_FIX.md` for the solution.
