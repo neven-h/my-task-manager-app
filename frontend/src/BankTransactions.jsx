@@ -61,9 +61,16 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
     try {
       const response = await fetch(`${API_BASE}/transaction-tabs?username=${authUser}&role=${authRole}`);
       const data = await response.json();
-      setTabs(data);
+      if (Array.isArray(data)) {
+        setTabs(data);
+        return data;
+      }
+      setTabs([]);
+      return [];
     } catch (err) {
       console.error('Error fetching tabs:', err);
+      setTabs([]);
+      return [];
     }
   };
 
@@ -79,8 +86,16 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
       if (response.ok) {
         setNewTabName('');
         setShowNewTabInput(false);
-        await fetchTabs();
-        handleSwitchTab(data.id);
+        const updatedTabs = await fetchTabs();
+        // Auto-select the new tab
+        setActiveTabId(data.id);
+        localStorage.setItem('activeTabId', String(data.id));
+        setMonthTransactions([]);
+        setSavedMonths([]);
+        setSelectedMonth(null);
+        await fetchSavedMonths(data.id);
+        await fetchTransactionStats(data.id);
+        await fetchAllTransactions(data.id);
       } else {
         setError(data.error || 'Failed to create tab');
       }
@@ -110,17 +125,26 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
 
   const handleDeleteTab = async (tabId) => {
     const tab = tabs.find(t => t.id === tabId);
-    if (!window.confirm(`Delete tab "${tab?.name}" and all its transactions?`)) return;
+    if (!window.confirm(`Delete "${tab?.name}" and all its transactions?`)) return;
     try {
       const response = await fetch(`${API_BASE}/transaction-tabs/${tabId}`, {
         method: 'DELETE'
       });
       if (response.ok) {
-        await fetchTabs();
-        if (activeTabId === tabId) {
-          handleSwitchTab(null);
-        }
+        const updatedTabs = await fetchTabs();
         setTabMenuOpen(null);
+        if (activeTabId === tabId) {
+          // Switch to another tab, or clear if none left
+          if (updatedTabs.length > 0) {
+            handleSwitchTab(updatedTabs[0].id);
+          } else {
+            setActiveTabId(null);
+            localStorage.removeItem('activeTabId');
+            setMonthTransactions([]);
+            setSavedMonths([]);
+            setSelectedMonth(null);
+          }
+        }
       }
     } catch (err) {
       setError('Failed to delete tab');
@@ -159,10 +183,25 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
 
   useEffect(() => {
     const initializeData = async () => {
-      await fetchTabs();
-      // Restore last active tab from localStorage
+      const fetchedTabs = await fetchTabs();
+
+      if (!fetchedTabs || fetchedTabs.length === 0) {
+        // No tabs yet - don't load any transactions
+        setActiveTabId(null);
+        return;
+      }
+
+      // Restore last active tab, or pick the first tab
       const savedTabId = localStorage.getItem('activeTabId');
-      const tabIdToUse = savedTabId ? (savedTabId === 'null' ? null : parseInt(savedTabId)) : null;
+      let tabIdToUse = savedTabId && savedTabId !== 'null' ? parseInt(savedTabId) : null;
+
+      // Make sure the saved tab still exists
+      if (!tabIdToUse || !fetchedTabs.find(t => t.id === tabIdToUse)) {
+        tabIdToUse = fetchedTabs[0].id;
+      }
+
+      setActiveTabId(tabIdToUse);
+      localStorage.setItem('activeTabId', String(tabIdToUse));
 
       await fetchSavedMonths(tabIdToUse);
       await fetchAllDescriptions();
@@ -175,8 +214,6 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
       } else {
         await fetchAllTransactions(tabIdToUse);
       }
-
-      setActiveTabId(tabIdToUse);
     };
 
     initializeData();
@@ -845,31 +882,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
         overflowX: 'auto',
         minHeight: '48px'
       }}>
-        {/* Default tab (General / no tab) */}
-        <button
-          onClick={() => handleSwitchTab(null)}
-          style={{
-            padding: '0.75rem 1.5rem',
-            border: 'none',
-            borderBottom: activeTabId === null ? `4px solid ${colors.primary}` : '4px solid transparent',
-            background: activeTabId === null ? '#fff' : 'transparent',
-            cursor: 'pointer',
-            fontWeight: activeTabId === null ? '700' : '500',
-            fontSize: '0.95rem',
-            color: activeTabId === null ? colors.primary : colors.text,
-            fontFamily: '"Inter", sans-serif',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            whiteSpace: 'nowrap',
-            transition: 'all 0.15s ease'
-          }}
-        >
-          <CreditCard size={16} />
-          General
-        </button>
-
-        {/* Client/Name tabs */}
+        {/* Client tabs */}
         {tabs.map(tab => (
           <div key={tab.id} style={{ position: 'relative', display: 'flex', alignItems: 'stretch' }}>
             {editingTab === tab.id ? (
@@ -1112,6 +1125,59 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
         </div>
       )}
 
+      {/* No tabs - prompt to create first client */}
+      {tabs.length === 0 && (
+        <div style={{
+          maxWidth: '500px',
+          margin: '4rem auto',
+          textAlign: 'center',
+          padding: '3rem 2rem',
+          border: `3px solid ${colors.border}`,
+          background: colors.card
+        }}>
+          <Users size={48} style={{ color: colors.primary, marginBottom: '1rem' }} />
+          <h2 style={{ margin: '0 0 0.75rem 0', fontFamily: '"Inter", sans-serif', fontSize: '1.4rem' }}>
+            Create Your First Client
+          </h2>
+          <p style={{ color: colors.textLight, margin: '0 0 1.5rem 0', fontSize: '1rem', lineHeight: '1.5' }}>
+            Each client has their own separate bank transactions. Create a client tab to get started.
+          </p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+            <input
+              type="text"
+              value={newTabName}
+              onChange={(e) => setNewTabName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleCreateTab(); }}
+              placeholder="Client name..."
+              style={{
+                padding: '0.7rem 1rem',
+                border: `3px solid ${colors.border}`,
+                fontSize: '1rem',
+                fontFamily: '"Inter", sans-serif',
+                width: '200px'
+              }}
+            />
+            <button
+              onClick={handleCreateTab}
+              disabled={!newTabName.trim()}
+              style={{
+                padding: '0.7rem 1.5rem',
+                background: newTabName.trim() ? colors.primary : '#ccc',
+                color: '#fff',
+                border: `3px solid ${colors.border}`,
+                cursor: newTabName.trim() ? 'pointer' : 'not-allowed',
+                fontWeight: '700',
+                fontSize: '1rem',
+                fontFamily: '"Inter", sans-serif'
+              }}
+            >
+              Create
+            </button>
+          </div>
+        </div>
+      )}
+
+      {activeTabId && (
       <div className="bank-main" style={{ maxWidth: '1500px', margin: '0 auto', padding: '2rem' }}>
         {/* Stats Cards */}
         {transactionStats && transactionStats.by_type && (
@@ -2036,6 +2102,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
           </div>
         </div>
       </div>
+      )}
 
       {/* Add Transaction Modal */}
       {showAddForm && (
