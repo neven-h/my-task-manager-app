@@ -3303,6 +3303,33 @@ def delete_transaction_tab(tab_id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/transaction-tabs/orphaned', methods=['GET'])
+def get_orphaned_transaction_count():
+    """Get count of transactions with no tab_id (orphaned from before tabs existed)"""
+    try:
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute("SELECT COUNT(*) as count FROM bank_transactions WHERE tab_id IS NULL")
+            result = cursor.fetchone()
+            return jsonify({'count': result['count']})
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/transaction-tabs/<int:tab_id>/adopt', methods=['POST'])
+def adopt_orphaned_transactions(tab_id):
+    """Assign all transactions with tab_id=NULL to the specified tab"""
+    try:
+        with get_db_connection() as connection:
+            cursor = connection.cursor()
+            cursor.execute("UPDATE bank_transactions SET tab_id = %s WHERE tab_id IS NULL", (tab_id,))
+            adopted_count = cursor.rowcount
+            connection.commit()
+            return jsonify({'message': f'{adopted_count} transactions assigned to tab', 'count': adopted_count})
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
 # ==================== TRANSACTION ENDPOINTS ====================
 
 @app.route('/api/transactions/upload', methods=['POST'])
