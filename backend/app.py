@@ -900,6 +900,13 @@ def init_db():
         print("Created bank_transaction_audit_log table")
 
         # Migrate bank_transactions to support encrypted data (larger field sizes)
+        # Drop the index on account_number first — TEXT columns can't have a
+        # plain index, and the index is useless on encrypted data anyway.
+        try:
+            cursor.execute("DROP INDEX idx_account ON bank_transactions")
+        except Error:
+            pass  # Index may already be dropped or never existed
+
         try:
             cursor.execute("""
                 ALTER TABLE bank_transactions
