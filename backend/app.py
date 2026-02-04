@@ -760,7 +760,7 @@ def init_db():
             else:
                 pass  # Ignore other errors for index creation
 
-        # Create transaction_tabs table for organizing transactions by client/name
+        # Create transaction_tabs table for organizing transactions
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS transaction_tabs (
                 id INT AUTO_INCREMENT PRIMARY KEY,
@@ -3464,14 +3464,14 @@ def save_transactions():
         data = request.json
         transactions = data.get('transactions', [])
         username = data.get('username')  # Get uploader username
-        tab_id = data.get('tab_id')  # Get tab ID for organizing by client
+        tab_id = data.get('tab_id')
 
         if not transactions:
             return jsonify({'error': 'No transactions to save'}), 400
 
-        # Require tab_id for strict client separation
+        # Require tab_id for strict tab separation
         if not tab_id:
-            return jsonify({'error': 'tab_id is required - select a client tab first'}), 400
+            return jsonify({'error': 'tab_id is required - select a tab first'}), 400
 
         with get_db_connection() as connection:
             cursor = connection.cursor()
@@ -3546,7 +3546,7 @@ def get_transaction_months():
             """
             params = []
 
-            # Require tab_id for strict client separation
+            # Require tab_id for strict tab separation
             if not tab_id:
                 return jsonify([])
 
@@ -3609,7 +3609,7 @@ def get_all_transactions():
             """
             params = []
 
-            # Require tab_id for strict client separation
+            # Require tab_id for strict tab separation
             if not tab_id:
                 return jsonify([])
 
@@ -3688,7 +3688,7 @@ def get_transactions_by_month(month_year):
             """
             params = [month_year]
 
-            # Require tab_id for strict client separation
+            # Require tab_id for strict tab separation
             if not tab_id:
                 return jsonify([])
 
@@ -3778,7 +3778,7 @@ def delete_month_transactions(month_year):
         with get_db_connection() as connection:
             cursor = connection.cursor()
 
-            # Require tab_id for strict client separation
+            # Require tab_id for strict tab separation
             if not tab_id:
                 return jsonify({'error': 'tab_id is required'}), 400
 
@@ -3860,9 +3860,9 @@ def add_manual_transaction():
         username = data.get('username', 'admin')
         tab_id = data.get('tab_id')
 
-        # Require tab_id for strict client separation
+        # Require tab_id for strict tab separation
         if not tab_id:
-            return jsonify({'error': 'tab_id is required - select a client tab first'}), 400
+            return jsonify({'error': 'tab_id is required - select a tab first'}), 400
 
         with get_db_connection() as connection:
             cursor = connection.cursor()
@@ -3944,7 +3944,7 @@ def get_transaction_stats():
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
-            # Require tab_id for strict client separation
+            # Require tab_id for strict tab separation
             if not tab_id:
                 return jsonify({'by_type': [], 'monthly': []})
 
