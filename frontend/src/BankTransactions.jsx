@@ -315,7 +315,8 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
       const data = await response.json();
 
       if (!response.ok) {
-        console.error('Failed to save task');
+        setError(data.error || 'Failed to save transactions');
+        return;
       }
 
       setSuccess(data.message);
