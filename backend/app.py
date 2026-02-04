@@ -899,20 +899,30 @@ def init_db():
         """)
         print("Created bank_transaction_audit_log table")
 
-        # Migrate bank_transactions to support encrypted data (larger field sizes)
-        try:
-            cursor.execute("""
-                ALTER TABLE bank_transactions
-                    MODIFY COLUMN account_number TEXT,
-                    MODIFY COLUMN description TEXT,
-                    MODIFY COLUMN amount TEXT
-            """)
-            print("Migrated bank_transactions columns to TEXT for encryption support")
-        except Error as e:
-            if 'Duplicate column' in str(e) or 'already exists' in str(e).lower():
-                pass  # Already migrated
-            else:
-                print(f"Migration note: {e}")
+        # Migrate bank_transactions to support encrypted data (larger field sizes).
+        # Drop indexes that block TEXT conversion, then alter each column
+        # individually so a failure in one doesn't block the others.
+        for idx_name in ('idx_account',):
+            try:
+                cursor.execute(f"DROP INDEX {idx_name} ON bank_transactions")
+                print(f"Dropped index {idx_name}")
+            except Error:
+                pass  # Already dropped or never existed
+
+        for col, col_def in (
+            ('account_number', 'TEXT'),
+            ('description', 'TEXT'),
+            ('amount', 'TEXT'),
+        ):
+            try:
+                cursor.execute(
+                    f"ALTER TABLE bank_transactions MODIFY COLUMN {col} {col_def}"
+                )
+                print(f"Migrated bank_transactions.{col} to {col_def}")
+            except Error as e:
+                # Column may already be the right type
+                if 'already' not in str(e).lower():
+                    print(f"Migration note ({col}): {e}")
 
         # Create tags table
         cursor.execute("""
