@@ -2,6 +2,7 @@ from decimal import Decimal
 from typing import Union
 import uuid
 import secrets
+import time
 
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
@@ -453,34 +454,61 @@ def token_required(f):
     return decorated
 
 
+DB_CONNECT_MAX_RETRIES = int(os.getenv('DB_CONNECT_MAX_RETRIES', 3))
+DB_CONNECT_BASE_DELAY = float(os.getenv('DB_CONNECT_BASE_DELAY', 1.0))
+
+
+def _reset_db_pool():
+    """Reset the connection pool so it will be re-created on next use."""
+    global _db_pool
+    _db_pool = None
+
+
 @contextmanager
 def get_db_connection():
-    """Context manager for database connections.
-    
+    """Context manager for database connections with retry logic.
+
     PERFORMANCE OPTIMIZATION: Uses connection pooling when available.
     Pooled connections are reused instead of creating new ones each time,
     which saves ~30-50ms per request. When the connection is closed,
     it's returned to the pool for reuse rather than being destroyed.
-    
+
+    RELIABILITY: Retries with exponential backoff when the database is
+    temporarily unavailable (e.g. after a container restart). Resets
+    the connection pool on failure so stale connections are discarded.
+
     Falls back to creating individual connections if the pool is unavailable.
     """
     connection = None
-    pool = _get_db_pool()
+    last_error = None
+
+    for attempt in range(DB_CONNECT_MAX_RETRIES):
+        try:
+            pool = _get_db_pool()
+            if pool:
+                connection = pool.get_connection()
+            else:
+                connection = mysql.connector.connect(**DB_CONFIG)
+            break
+        except Error as e:
+            last_error = e
+            _reset_db_pool()
+            if attempt < DB_CONNECT_MAX_RETRIES - 1:
+                delay = DB_CONNECT_BASE_DELAY * (2 ** attempt)
+                print(f"Database connection attempt {attempt + 1} failed: {e}. Retrying in {delay}s...")
+                time.sleep(delay)
+
+    if connection is None:
+        print(f"Database connection failed after {DB_CONNECT_MAX_RETRIES} attempts: {last_error}")
+        raise last_error
+
     try:
-        if pool:
-            # Get connection from pool (fast - reuses existing connection)
-            connection = pool.get_connection()
-        else:
-            # Fall back to creating new connection (slower, but works without pool)
-            connection = mysql.connector.connect(**DB_CONFIG)
         yield connection
     except Error as e:
         print(f"Database error: {e}")
         raise
     finally:
         if connection and connection.is_connected():
-            # When using pooling, close() returns the connection to the pool
-            # When not using pooling, close() destroys the connection
             connection.close()
 
 
@@ -776,15 +804,26 @@ def init_db():
         try:
             cursor.execute("""
                 ALTER TABLE bank_transactions
-                    ADD COLUMN tab_id INT,
-                    ADD INDEX idx_tab_id (tab_id)
+                    ADD COLUMN tab_id INT
             """)
             print("Added tab_id column to bank_transactions")
         except Error as e:
             if 'Duplicate column' in str(e):
                 pass  # Column already exists
             else:
-                print(f"Note: {e}")
+                print(f"Note adding tab_id column: {e}")
+
+        try:
+            cursor.execute("""
+                ALTER TABLE bank_transactions
+                    ADD INDEX idx_tab_id (tab_id)
+            """)
+            print("Added tab_id index to bank_transactions")
+        except Error as e:
+            if 'Duplicate key' in str(e):
+                pass  # Index already exists
+            else:
+                print(f"Note adding tab_id index: {e}")
 
         # Create users table for authentication
         cursor.execute("""
@@ -860,20 +899,30 @@ def init_db():
         """)
         print("Created bank_transaction_audit_log table")
 
-        # Migrate bank_transactions to support encrypted data (larger field sizes)
-        try:
-            cursor.execute("""
-                ALTER TABLE bank_transactions
-                    MODIFY COLUMN account_number TEXT,
-                    MODIFY COLUMN description TEXT,
-                    MODIFY COLUMN amount TEXT
-            """)
-            print("Migrated bank_transactions columns to TEXT for encryption support")
-        except Error as e:
-            if 'Duplicate column' in str(e) or 'already exists' in str(e).lower():
-                pass  # Already migrated
-            else:
-                print(f"Migration note: {e}")
+        # Migrate bank_transactions to support encrypted data (larger field sizes).
+        # Drop indexes that block TEXT conversion, then alter each column
+        # individually so a failure in one doesn't block the others.
+        for idx_name in ('idx_account',):
+            try:
+                cursor.execute(f"DROP INDEX {idx_name} ON bank_transactions")
+                print(f"Dropped index {idx_name}")
+            except Error:
+                pass  # Already dropped or never existed
+
+        for col, col_def in (
+            ('account_number', 'TEXT'),
+            ('description', 'TEXT'),
+            ('amount', 'TEXT'),
+        ):
+            try:
+                cursor.execute(
+                    f"ALTER TABLE bank_transactions MODIFY COLUMN {col} {col_def}"
+                )
+                print(f"Migrated bank_transactions.{col} to {col_def}")
+            except Error as e:
+                # Column may already be the right type
+                if 'already' not in str(e).lower():
+                    print(f"Migration note ({col}): {e}")
 
         # Create tags table
         cursor.execute("""
@@ -1047,6 +1096,29 @@ def init_db():
             if cursor:
                 cursor.close()
             connection.close()
+
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Health check endpoint that reports app and database status."""
+    db_ok = False
+    db_error = None
+    try:
+        with get_db_connection() as connection:
+            cursor = connection.cursor()
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+            cursor.close()
+            db_ok = True
+    except Exception as e:
+        db_error = str(e)
+
+    status = "healthy" if db_ok else "degraded"
+    code = 200 if db_ok else 503
+    result = {"status": status, "database": "connected" if db_ok else "unavailable"}
+    if db_error:
+        result["database_error"] = db_error
+    return jsonify(result), code
 
 
 @app.route('/api/login', methods=['POST'])
@@ -2891,10 +2963,14 @@ def parse_cash_transaction_file(file_path):
                 if not pd.notna(row.iloc[date_col]) or date_str in ['', 'nan', 'NaN']:
                     continue
 
-                transaction_date = pd.to_datetime(date_str, format='%d.%m.%Y', errors='coerce')
+                transaction_date = None
+                for dfmt in ['%d.%m.%Y', '%d/%m/%Y', '%d/%m/%y', '%d.%m.%y', '%Y-%m-%d']:
+                    transaction_date = pd.to_datetime(date_str, format=dfmt, errors='coerce')
+                    if pd.notna(transaction_date):
+                        break
                 if pd.isna(transaction_date):
-                    # Try other date formats
-                    transaction_date = pd.to_datetime(date_str, errors='coerce')
+                    # Final fallback: let pandas infer
+                    transaction_date = pd.to_datetime(date_str, dayfirst=True, errors='coerce')
                 if pd.isna(transaction_date):
                     print(f"[SKIP] Row {idx}: Invalid date '{date_str}'", flush=True)
                     continue
@@ -3047,9 +3123,32 @@ def parse_transaction_file(file_path, transaction_type='credit'):
         # Rename columns to standard names
         df.columns = ['account_number', 'transaction_date', 'description', 'amount'] + list(df.columns[4:])
 
-        # Parse dates - handle DD.MM.YYYY format
+        # Parse dates - try multiple formats
         print(f"[PARSE] Before date parsing: {len(df)} rows", flush=True)
-        df['transaction_date'] = pd.to_datetime(df['transaction_date'], format='%d.%m.%Y', errors='coerce')
+
+        # Try multiple date formats in order of specificity
+        date_formats = [
+            '%d.%m.%Y',   # DD.MM.YYYY (e.g., 03.02.2026)
+            '%d/%m/%Y',   # DD/MM/YYYY (e.g., 03/02/2026)
+            '%d/%m/%y',   # D/M/YY (e.g., 3/2/26)
+            '%d.%m.%y',   # D.M.YY (e.g., 3.2.26)
+            '%Y-%m-%d',   # YYYY-MM-DD (e.g., 2026-02-03)
+        ]
+
+        parsed_dates = None
+        for fmt in date_formats:
+            attempt = pd.to_datetime(df['transaction_date'], format=fmt, errors='coerce')
+            valid_count = attempt.notna().sum()
+            print(f"[PARSE] Format '{fmt}': {valid_count}/{len(df)} dates parsed", flush=True)
+            if valid_count > 0 and (parsed_dates is None or valid_count > parsed_dates.notna().sum()):
+                parsed_dates = attempt
+
+        # Final fallback: let pandas infer the format
+        if parsed_dates is None or parsed_dates.notna().sum() == 0:
+            parsed_dates = pd.to_datetime(df['transaction_date'], dayfirst=True, errors='coerce')
+            print(f"[PARSE] Fallback (dayfirst=True): {parsed_dates.notna().sum()}/{len(df)} dates parsed", flush=True)
+
+        df['transaction_date'] = parsed_dates
         print(f"[PARSE] After date parsing, rows with NaT dates: {df['transaction_date'].isna().sum()}", flush=True)
 
         # Convert amount to float
