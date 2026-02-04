@@ -40,6 +40,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
   const [editingTabName, setEditingTabName] = useState('');
   const [tabMenuOpen, setTabMenuOpen] = useState(null);
   const tabMenuRef = useRef(null);
+  const [expandedDescriptionId, setExpandedDescriptionId] = useState(null);
 
   // Color scheme - matching TaskTracker theme
   const colors = {
@@ -632,6 +633,14 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
     // Reuse totalFiltered instead of recalculating
     return { sortedCategories, totalAmount: totalFiltered };
   }, [filteredTransactions, monthTransactions.length, totalFiltered]);
+
+  // Get other transactions with the same description (for description history)
+  const getDescriptionHistory = (transaction) => {
+    return monthTransactions
+      .filter(t => t.id !== transaction.id && t.description === transaction.description)
+      .sort((a, b) => new Date(b.transaction_date) - new Date(a.transaction_date))
+      .slice(0, 5);
+  };
 
   return (
     <div style={{
@@ -1769,7 +1778,8 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
                     </thead>
                     <tbody>
                       {filteredTransactions.slice(0, visibleTransactions).map(t => (
-                        <tr key={t.id} style={{ borderBottom: `1px solid ${colors.border}` }}>
+                        <React.Fragment key={t.id}>
+                        <tr style={{ borderBottom: expandedDescriptionId === t.id ? 'none' : `1px solid ${colors.border}` }}>
                           {editingTransaction?.id === t.id ? (
                             <>
                               <td style={{ padding: '0.5rem' }}>
@@ -1831,7 +1841,36 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
                               <td style={{ padding: '0.65rem 0.75rem', fontSize: '0.9rem', color: colors.text }}>
                                 {new Date(t.transaction_date).toLocaleDateString('he-IL')}
                               </td>
-                              <td style={{ padding: '0.65rem 0.75rem', fontSize: '0.9rem', color: colors.text }}>{t.description}</td>
+                              <td
+                                onClick={() => setExpandedDescriptionId(expandedDescriptionId === t.id ? null : t.id)}
+                                style={{
+                                  padding: '0.65rem 0.75rem',
+                                  fontSize: '0.9rem',
+                                  color: colors.text,
+                                  cursor: 'pointer',
+                                  position: 'relative'
+                                }}
+                              >
+                                <span style={{
+                                  borderBottom: `1px dashed ${colors.textLight}`,
+                                  paddingBottom: '1px'
+                                }}>
+                                  {t.description}
+                                </span>
+                                {(() => {
+                                  const count = monthTransactions.filter(o => o.id !== t.id && o.description === t.description).length;
+                                  return count > 0 ? (
+                                    <span style={{
+                                      marginLeft: '0.4rem',
+                                      fontSize: '0.75rem',
+                                      color: colors.primary,
+                                      fontWeight: '600'
+                                    }}>
+                                      ({count})
+                                    </span>
+                                  ) : null;
+                                })()}
+                              </td>
                               <td style={{ padding: '0.65rem 0.75rem', textAlign: 'center' }}>
                                 <span style={{
                                   padding: '0.3rem 0.6rem',
@@ -1891,6 +1930,50 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
                             </>
                           )}
                         </tr>
+                        {/* Expanded description history */}
+                        {expandedDescriptionId === t.id && (() => {
+                          const history = getDescriptionHistory(t);
+                          if (history.length === 0) return null;
+                          return (
+                            <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
+                              <td colSpan={5} style={{ padding: '0', background: '#f5f7ff' }}>
+                                <div style={{
+                                  padding: '0.5rem 0.75rem 0.65rem 2.5rem',
+                                  fontSize: '0.82rem',
+                                  color: colors.textLight
+                                }}>
+                                  <div style={{ fontWeight: '600', color: colors.primary, marginBottom: '0.35rem', fontSize: '0.8rem' }}>
+                                    Previous transactions at "{t.description}":
+                                  </div>
+                                  {history.map(h => (
+                                    <div key={h.id} style={{
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      padding: '0.2rem 0',
+                                      borderBottom: '1px solid #e8e8e8',
+                                      gap: '1rem'
+                                    }}>
+                                      <span>{new Date(h.transaction_date).toLocaleDateString('he-IL')}</span>
+                                      <span style={{
+                                        fontWeight: '600',
+                                        fontFamily: 'Consolas, "Courier New", monospace',
+                                        color: h.amount < 0 ? colors.accent : colors.text
+                                      }}>
+                                        {formatCurrency(h.amount)}
+                                      </span>
+                                    </div>
+                                  ))}
+                                  {monthTransactions.filter(o => o.id !== t.id && o.description === t.description).length > 5 && (
+                                    <div style={{ fontSize: '0.75rem', color: colors.textLight, marginTop: '0.25rem', fontStyle: 'italic' }}>
+                                      + {monthTransactions.filter(o => o.id !== t.id && o.description === t.description).length - 5} more
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })()}
+                        </React.Fragment>
                       ))}
                     </tbody>
                   </table>
