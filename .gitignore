@@ -39,3 +39,5 @@ yarn-error.log*
 
 # JetBrains
 .idea/
+.vercel
+.env*.local
