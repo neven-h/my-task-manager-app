@@ -38,16 +38,9 @@ Go to [railway.app](https://railway.app) and sign up with GitHub.
 - Select this repository
 
 ### 3. Add MySQL Database
-
-**Option A: Use Railway's Built-in MySQL (Recommended)**
 - Click "New" → "Database" → "MySQL"
 - Railway auto-configures connection variables
-
-**Option B: Deploy Custom MySQL from this Repository**
-- Click "New" → "Deploy from GitHub repo"
-- Select this repository and set the root directory to `mysql/`
-- This uses a custom Dockerfile that fixes entrypoint issues
-- **Important**: If you see `docker-entrypoint.sh: command not found` errors, use this option or ensure no custom start command is set in the MySQL service settings
+- **Important**: Do NOT set a custom start command on the MySQL service. If you see `docker-entrypoint.sh: command not found` errors, clear any custom start command and redeploy, or delete and re-add the MySQL service.
 
 ### 4. Set Environment Variables
 In the Railway dashboard, add these variables:
