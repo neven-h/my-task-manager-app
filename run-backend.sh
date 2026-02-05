@@ -37,10 +37,11 @@ fi
 # Navigate to backend directory
 cd backend
 
-# Check if dependencies are installed
-if ! python3 -c "import flask" 2>/dev/null; then
-    echo "Installing Python dependencies..."
-    pip install -r requirements.txt
+# Kill any process using port 5001
+if lsof -ti:5001 > /dev/null 2>&1; then
+    echo "Stopping existing server on port 5001..."
+    lsof -ti:5001 | xargs kill -9
+    sleep 1
 fi
 
 echo ""
@@ -48,5 +49,5 @@ echo "Starting Flask server..."
 echo "Press Ctrl+C to stop"
 echo ""
 
-# Start the Flask app
-python3 app.py
+# Start the Flask app with Python 3.9
+/Library/Frameworks/Python.framework/Versions/3.9/bin/python3 app.py
