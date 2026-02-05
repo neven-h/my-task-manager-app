@@ -1163,6 +1163,11 @@ def init_db():
             if cursor.fetchone()['count'] == 0:
                 cursor.execute("ALTER TABLE stock_portfolio ADD COLUMN currency VARCHAR(3) DEFAULT 'ILS'")
             
+            # Check and add units
+            cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND COLUMN_NAME = 'units'")
+            if cursor.fetchone()['count'] == 0:
+                cursor.execute("ALTER TABLE stock_portfolio ADD COLUMN units DECIMAL(12,4) DEFAULT 1")
+            
             # Add indexes if they don't exist
             try:
                 cursor.execute("ALTER TABLE stock_portfolio ADD INDEX idx_tab_id (tab_id)")
@@ -2374,8 +2379,8 @@ def create_portfolio_entry():
 
             query = """
                 INSERT INTO stock_portfolio
-                (name, ticker_symbol, percentage, value_ils, base_price, entry_date, tab_id, created_by, currency)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                (name, ticker_symbol, percentage, value_ils, base_price, entry_date, tab_id, created_by, currency, units)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
 
             values = (
@@ -2387,7 +2392,8 @@ def create_portfolio_entry():
                 data.get('entry_date'),
                 tab_id,
                 username,
-                data.get('currency', 'ILS')
+                data.get('currency', 'ILS'),
+                data.get('units', 1)
             )
 
             cursor.execute(query, values)
@@ -2429,7 +2435,7 @@ def update_portfolio_entry(entry_id):
             # Update the entry
             update_query = """
                 UPDATE stock_portfolio
-                SET name = %s, ticker_symbol = %s, percentage = %s, value_ils = %s, base_price = %s, entry_date = %s, currency = %s
+                SET name = %s, ticker_symbol = %s, percentage = %s, value_ils = %s, base_price = %s, entry_date = %s, currency = %s, units = %s
                 WHERE id = %s
             """
 
@@ -2441,6 +2447,7 @@ def update_portfolio_entry(entry_id):
                 data.get('base_price'),
                 data.get('entry_date'),
                 data.get('currency', 'ILS'),
+                data.get('units', 1),
                 entry_id
             )
 

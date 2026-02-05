@@ -32,7 +32,8 @@ const StockPortfolio = ({ onBackToTasks }) => {
     value_ils: '',
     base_price: '',
     entry_date: new Date().toISOString().split('T')[0],
-    currency: 'ILS'
+    currency: 'ILS',
+    units: 1
   });
 
   // Live stock prices state
@@ -325,7 +326,8 @@ const StockPortfolio = ({ onBackToTasks }) => {
         value_ils: '',
         base_price: '',
         entry_date: new Date().toISOString().split('T')[0],
-        currency: 'ILS'
+        currency: 'ILS',
+        units: 1
       });
 
       await fetchEntries(activeTabId);
@@ -348,7 +350,8 @@ const StockPortfolio = ({ onBackToTasks }) => {
       value_ils: entry.value_ils,
       base_price: entry.base_price || '',
       entry_date: entry.entry_date,
-      currency: entry.currency || 'ILS'
+      currency: entry.currency || 'ILS',
+      units: entry.units || 1
     });
     setShowForm(true);
   };
@@ -752,7 +755,8 @@ const StockPortfolio = ({ onBackToTasks }) => {
                 value_ils: '',
                 base_price: '',
                 entry_date: new Date().toISOString().split('T')[0],
-                currency: 'ILS'
+                currency: 'ILS',
+                units: 1
               });
               setShowForm(true);
             }}
@@ -1359,7 +1363,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                               marginBottom: '0.5rem',
                               color: colors.text
                             }}>
-                              {formatCurrencyWithCode(price.currentPrice, price.currency || 'USD')}
+                              {Number(price.currentPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
                             {price.change !== null && price.change !== undefined && (
                               <div style={{
@@ -1514,7 +1518,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                             {livePriceValue !== null && livePriceValue !== undefined ? (
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
                                 <div style={{ color: colors.text }}>
-                                  {formatCurrencyWithCode(livePriceValue, liveCurrency)}
+                                  {Number(livePriceValue).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </div>
                                 {liveChange !== null && liveChange !== undefined && (
                                   <div style={{
@@ -1557,7 +1561,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                             fontSize: '0.9rem',
                             color: colors.textLight
                           }}>
-                            {stock.basePrice ? formatCurrencyWithCode(stock.basePrice, stock.latestEntry.currency || 'ILS') : '-'}
+                            {stock.basePrice ? Number(stock.basePrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
                           </td>
                           <td style={{
                             padding: '0.75rem 1rem',
@@ -1684,7 +1688,8 @@ const StockPortfolio = ({ onBackToTasks }) => {
                 <thead>
                   <tr style={{ background: '#f8f8f8', borderBottom: `2px solid ${colors.border}` }}>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>📅 Date</th>
-                    <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>💰 Value (ILS)</th>
+                    <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>📦 Units</th>
+                    <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>💰 Value</th>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>📈 Change</th>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>📊 Percentage</th>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontWeight: '700', fontSize: '0.9rem', color: colors.text, width: '140px' }}>Actions</th>
@@ -1703,6 +1708,17 @@ const StockPortfolio = ({ onBackToTasks }) => {
                         <tr key={entry.id} style={{ borderBottom: `1px solid ${colors.border}` }}>
                         <td style={{ padding: '0.75rem 1rem', fontSize: '0.9rem', color: colors.text }}>
                           {new Date(entry.entry_date).toLocaleDateString('he-IL')}
+                        </td>
+                        <td style={{
+                          padding: '0.75rem 1rem',
+                          textAlign: 'right',
+                          fontWeight: '700',
+                          fontFamily: 'Consolas, "Courier New", monospace',
+                          fontVariantNumeric: 'tabular-nums',
+                          fontSize: '0.95rem',
+                          color: colors.text
+                        }}>
+                          {(entry.units || 1).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 4 })}
                         </td>
                         <td style={{
                           padding: '0.75rem 1rem',
@@ -1923,7 +1939,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
               {isNewStock && !editingEntry && (
                 <div style={{ marginBottom: '1.5rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '1.05rem', color: colors.text }}>
-                    💵 Base Price (ILS) *
+                    💵 Base Price *
                   </label>
                   <input
                     type="number"
@@ -1945,7 +1961,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                     }}
                   />
                   <small style={{ color: colors.textLight, fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                    This is the initial purchase price for tracking growth
+                    This is the initial purchase price for tracking growth (in {formData.currency || 'ILS'})
                   </small>
                 </div>
               )}
@@ -1984,6 +2000,34 @@ const StockPortfolio = ({ onBackToTasks }) => {
                 </select>
                 <small style={{ color: colors.textLight, fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
                   Select the currency for this stock entry
+                </small>
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '1.05rem', color: colors.text }}>
+                  📦 Number of Units/Shares *
+                </label>
+                <input
+                  type="number"
+                  name="units"
+                  value={formData.units}
+                  onChange={handleInputChange}
+                  required
+                  step="0.0001"
+                  min="0.0001"
+                  placeholder="1"
+                  style={{
+                    width: '100%',
+                    padding: '1rem',
+                    border: `3px solid ${colors.border}`,
+                    fontSize: '1.05rem',
+                    fontFamily: '"Inter", sans-serif',
+                    boxSizing: 'border-box',
+                    outline: 'none'
+                  }}
+                />
+                <small style={{ color: colors.textLight, fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
+                  Enter the number of shares/units (default: 1)
                 </small>
               </div>
 
