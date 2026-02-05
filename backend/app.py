@@ -1086,6 +1086,25 @@ def init_db():
                        """)
         print("Created password_reset_tokens table")
 
+        # Create stock_portfolio table
+        cursor.execute("""
+                       CREATE TABLE IF NOT EXISTS stock_portfolio
+                       (
+                           id INT AUTO_INCREMENT PRIMARY KEY,
+                           name VARCHAR(255) NOT NULL,
+                           percentage DECIMAL(5,2),
+                           value_ils DECIMAL(12,2) NOT NULL,
+                           entry_date DATE NOT NULL,
+                           created_by VARCHAR(255),
+                           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                           INDEX idx_entry_date (entry_date),
+                           INDEX idx_name (name),
+                           INDEX idx_created_by (created_by)
+                       )
+                       """)
+        print("Created stock_portfolio table")
+
         connection.commit()
         print("Database initialized successfully")
 
@@ -2168,6 +2187,215 @@ def export_csv():
                 as_attachment=True,
                 download_name=f'tasks_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
             )
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ==========================================
+# STOCK PORTFOLIO ENDPOINTS
+# ==========================================
+
+@app.route('/api/portfolio', methods=['GET'])
+def get_portfolio_entries():
+    """Get all portfolio entries with optional filtering"""
+    try:
+        username = request.args.get('username')
+        user_role = request.args.get('role')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        name = request.args.get('name')
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            query = "SELECT * FROM stock_portfolio WHERE 1=1"
+            params = []
+
+            # Role-based filtering
+            if user_role == 'limited':
+                query += " AND created_by = %s"
+                params.append(username)
+
+            # Date range filtering
+            if start_date:
+                query += " AND entry_date >= %s"
+                params.append(start_date)
+
+            if end_date:
+                query += " AND entry_date <= %s"
+                params.append(end_date)
+
+            # Filter by stock name
+            if name:
+                query += " AND name LIKE %s"
+                params.append(f"%{name}%")
+
+            query += " ORDER BY entry_date DESC, id DESC"
+
+            cursor.execute(query, params)
+            entries = cursor.fetchall()
+
+            # Serialize dates and decimals
+            for entry in entries:
+                if entry.get('entry_date'):
+                    entry['entry_date'] = entry['entry_date'].isoformat()
+                if entry.get('created_at'):
+                    entry['created_at'] = entry['created_at'].isoformat()
+                if entry.get('updated_at'):
+                    entry['updated_at'] = entry['updated_at'].isoformat()
+                if entry.get('percentage'):
+                    entry['percentage'] = float(entry['percentage'])
+                if entry.get('value_ils'):
+                    entry['value_ils'] = float(entry['value_ils'])
+
+            return jsonify(entries)
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/portfolio', methods=['POST'])
+def create_portfolio_entry():
+    """Create a new portfolio entry"""
+    try:
+        data = request.json
+        username = data.get('username')
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor()
+
+            query = """
+                INSERT INTO stock_portfolio
+                (name, percentage, value_ils, entry_date, created_by)
+                VALUES (%s, %s, %s, %s, %s)
+            """
+
+            values = (
+                data.get('name'),
+                data.get('percentage'),
+                data.get('value_ils'),
+                data.get('entry_date'),
+                username
+            )
+
+            cursor.execute(query, values)
+            connection.commit()
+
+            entry_id = cursor.lastrowid
+            return jsonify({
+                'id': entry_id,
+                'message': 'Portfolio entry created successfully'
+            }), 201
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/portfolio/<int:entry_id>', methods=['PUT'])
+def update_portfolio_entry(entry_id):
+    """Update an existing portfolio entry"""
+    try:
+        data = request.json
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor()
+
+            query = """
+                UPDATE stock_portfolio
+                SET name = %s, percentage = %s, value_ils = %s, entry_date = %s
+                WHERE id = %s
+            """
+
+            values = (
+                data.get('name'),
+                data.get('percentage'),
+                data.get('value_ils'),
+                data.get('entry_date'),
+                entry_id
+            )
+
+            cursor.execute(query, values)
+            connection.commit()
+
+            if cursor.rowcount == 0:
+                return jsonify({'error': 'Portfolio entry not found'}), 404
+
+            return jsonify({'message': 'Portfolio entry updated successfully'})
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/portfolio/<int:entry_id>', methods=['DELETE'])
+def delete_portfolio_entry(entry_id):
+    """Delete a portfolio entry"""
+    try:
+        with get_db_connection() as connection:
+            cursor = connection.cursor()
+
+            cursor.execute("DELETE FROM stock_portfolio WHERE id = %s", (entry_id,))
+            connection.commit()
+
+            if cursor.rowcount == 0:
+                return jsonify({'error': 'Portfolio entry not found'}), 404
+
+            return jsonify({'message': 'Portfolio entry deleted successfully'})
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/portfolio/summary', methods=['GET'])
+def get_portfolio_summary():
+    """Get portfolio summary with total value and latest entries"""
+    try:
+        username = request.args.get('username')
+        user_role = request.args.get('role')
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # Get latest entry for each stock
+            query = """
+                SELECT name, percentage, value_ils, entry_date, created_by
+                FROM stock_portfolio sp1
+                WHERE entry_date = (
+                    SELECT MAX(entry_date)
+                    FROM stock_portfolio sp2
+                    WHERE sp2.name = sp1.name
+                )
+            """
+
+            params = []
+
+            # Role-based filtering
+            if user_role == 'limited':
+                query += " AND created_by = %s"
+                params.append(username)
+
+            query += " GROUP BY name ORDER BY value_ils DESC"
+
+            cursor.execute(query, params)
+            latest_entries = cursor.fetchall()
+
+            # Calculate total value
+            total_value = sum(float(entry['value_ils']) for entry in latest_entries)
+
+            # Serialize
+            for entry in latest_entries:
+                if entry.get('entry_date'):
+                    entry['entry_date'] = entry['entry_date'].isoformat()
+                if entry.get('percentage'):
+                    entry['percentage'] = float(entry['percentage'])
+                if entry.get('value_ils'):
+                    entry['value_ils'] = float(entry['value_ils'])
+
+            return jsonify({
+                'total_value': total_value,
+                'entries': latest_entries,
+                'count': len(latest_entries)
+            })
 
     except Error as e:
         return jsonify({'error': str(e)}), 500
