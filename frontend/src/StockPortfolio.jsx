@@ -46,9 +46,14 @@ const StockPortfolio = ({ onBackToTasks }) => {
         `${API_BASE}/portfolio/summary?username=${authUser}&role=${authRole}`
       );
       const data = await response.json();
+      // Ensure total_value is always a valid number
+      if (data && typeof data.total_value !== 'number') {
+        data.total_value = 0;
+      }
       setSummary(data);
     } catch (err) {
       console.error('Failed to load summary:', err);
+      setSummary({ total_value: 0, entries: [], count: 0 });
     }
   };
 
@@ -137,10 +142,12 @@ const StockPortfolio = ({ onBackToTasks }) => {
   };
 
   const formatCurrency = (amount) => {
+    // Handle invalid values
+    const numAmount = typeof amount === 'number' && !isNaN(amount) ? amount : 0;
     return new Intl.NumberFormat('he-IL', {
       style: 'currency',
       currency: 'ILS'
-    }).format(amount);
+    }).format(numAmount);
   };
 
   // Group entries by stock name

@@ -2379,8 +2379,8 @@ def get_portfolio_summary():
             cursor.execute(query, params)
             latest_entries = cursor.fetchall()
 
-            # Calculate total value
-            total_value = sum(float(entry['value_ils']) for entry in latest_entries)
+            # Calculate total value (ensure it's never NaN)
+            total_value = sum(float(entry['value_ils']) for entry in latest_entries) if latest_entries else 0.0
 
             # Serialize
             for entry in latest_entries:
@@ -2392,7 +2392,7 @@ def get_portfolio_summary():
                     entry['value_ils'] = float(entry['value_ils'])
 
             return jsonify({
-                'total_value': total_value,
+                'total_value': float(total_value),
                 'entries': latest_entries,
                 'count': len(latest_entries)
             })
