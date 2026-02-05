@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import BankTransactions from './BankTransactions';
 import ClientsManagement from './ClientsManagement';
+import StockPortfolio from './StockPortfolio';
 import CustomAutocomplete from './components/CustomAutocomplete';
 import API_BASE from './config';
 
@@ -41,10 +42,10 @@ const TaskTracker = ({onLogout, authRole, authUser}) => {
     const isLimitedUser = authRole === 'limited';
     const isAdmin = authRole === 'admin';
 
-    const [appView, setAppView] = useState('tasks'); // 'tasks', 'transactions', or 'clients'
+    const [appView, setAppView] = useState('tasks'); // 'tasks', 'transactions', 'clients', or 'portfolio'
     useEffect(() => {
   const savedView = localStorage.getItem('lastActiveView');
-  if (savedView && (savedView === 'tasks' || savedView === 'transactions' || savedView === 'clients')) {
+  if (savedView && (savedView === 'tasks' || savedView === 'transactions' || savedView === 'clients' || savedView === 'portfolio')) {
     setAppView(savedView);
   }
 }, []);
@@ -1044,6 +1045,11 @@ useEffect(() => {
         return <ClientsManagement onBackToTasks={() => setAppView('tasks')}/>;
     }
 
+    // If viewing portfolio, show StockPortfolio component
+    if (appView === 'portfolio') {
+        return <StockPortfolio onBackToTasks={() => setAppView('tasks')} />;
+    }
+
     return (
         <div style={{
             minHeight: '100vh',
@@ -1848,6 +1854,14 @@ useEffect(() => {
                                 <Tag size={18}
                                      style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
                                 Clients
+                            </button>
+                        )}
+                        {/* Stock Portfolio - for all users */}
+                        {(isAdmin || isSharedUser || isLimitedUser) && (
+                            <button className="btn btn-yellow" onClick={() => setAppView('portfolio')} style={{background: '#FFD500', color: '#000', border: '4px solid #000'}}>
+                                <BarChart3 size={18}
+                                           style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
+                                Portfolio
                             </button>
                         )}
                         {/* Bulk Add - only for admin */}

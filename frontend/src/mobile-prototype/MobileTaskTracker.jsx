@@ -21,11 +21,18 @@ import {
     BarChart3,
     Settings,
     ArrowLeft,
-    Share2
+    Share2,
+    TrendingUp,
+    PieChart,
+    Banknote,
+    CreditCard,
+    MoreVertical,
+    Save,
+    FileDown
 } from 'lucide-react';
-import BankTransactions from '../BankTransactions';
 import CustomAutocomplete from '../components/CustomAutocomplete';
 import API_BASE from '../config';
+import { formatCurrency } from '../utils/formatCurrency';
 
 // Mobile Stats View Component
 const MobileStatsView = ({authUser, authRole, onBack}) => {
@@ -171,8 +178,134 @@ const MobileStatsView = ({authUser, authRole, onBack}) => {
 
 // Mobile Bank Transactions View Component
 const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
+    const [tabs, setTabs] = useState([]);
+    const [activeTabId, setActiveTabId] = useState(null);
+    const [transactions, setTransactions] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [showAddForm, setShowAddForm] = useState(false);
+    const [editingTransaction, setEditingTransaction] = useState(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [typeFilter, setTypeFilter] = useState('all');
+    const [stats, setStats] = useState(null);
+    const [newTransaction, setNewTransaction] = useState({
+        transaction_date: new Date().toISOString().split('T')[0],
+        description: '',
+        amount: '',
+        account_number: '',
+        transaction_type: 'credit'
+    });
+
+    useEffect(() => {
+        fetchTabs();
+    }, []);
+
+    useEffect(() => {
+        if (activeTabId !== null) {
+            fetchTransactions();
+            fetchStats();
+        }
+    }, [activeTabId]);
+
+    const fetchTabs = async () => {
+        try {
+            const response = await fetch(`${API_BASE}/transaction-tabs?username=${authUser}&role=${authRole}`);
+            const data = await response.json();
+            if (Array.isArray(data)) {
+                setTabs(data);
+                if (data.length > 0 && !activeTabId) {
+                    setActiveTabId(data[0].id);
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching tabs:', err);
+        }
+    };
+
+    const fetchTransactions = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch(`${API_BASE}/transactions?tab_id=${activeTabId}&username=${authUser}&role=${authRole}`);
+            const data = await response.json();
+            setTransactions(Array.isArray(data) ? data : []);
+        } catch (err) {
+            setError('Failed to load transactions');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchStats = async () => {
+        try {
+            const response = await fetch(`${API_BASE}/transactions/stats?tab_id=${activeTabId}&username=${authUser}&role=${authRole}`);
+            const data = await response.json();
+            setStats(data);
+        } catch (err) {
+            console.error('Error fetching stats:', err);
+        }
+    };
+
+    const handleSaveTransaction = async () => {
+        try {
+            setLoading(true);
+            const url = editingTransaction
+                ? `${API_BASE}/transactions/${editingTransaction.id}?username=${authUser}&role=${authRole}`
+                : `${API_BASE}/transactions?username=${authUser}&role=${authRole}`;
+            const method = editingTransaction ? 'PUT' : 'POST';
+            
+            const body = {
+                ...newTransaction,
+                tab_id: activeTabId,
+                amount: parseFloat(newTransaction.amount)
+            };
+
+            const response = await fetch(url, {
+                method,
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body)
+            });
+
+            if (response.ok) {
+                await fetchTransactions();
+                await fetchStats();
+                setShowAddForm(false);
+                setEditingTransaction(null);
+                setNewTransaction({
+                    transaction_date: new Date().toISOString().split('T')[0],
+                    description: '',
+                    amount: '',
+                    account_number: '',
+                    transaction_type: 'credit'
+                });
+            }
+        } catch (err) {
+            setError('Failed to save transaction');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteTransaction = async (id) => {
+        if (!window.confirm('Delete this transaction?')) return;
+        try {
+            await fetch(`${API_BASE}/transactions/${id}?username=${authUser}&role=${authRole}`, {
+                method: 'DELETE'
+            });
+            await fetchTransactions();
+            await fetchStats();
+        } catch (err) {
+            setError('Failed to delete transaction');
+        }
+    };
+
+    const filteredTransactions = transactions.filter(t => {
+        if (typeFilter !== 'all' && t.transaction_type !== typeFilter) return false;
+        if (searchTerm && !t.description.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+        return true;
+    });
+
     return (
-        <div style={{minHeight: '100vh', background: '#fff'}}>
+        <div style={{minHeight: '100vh', background: '#fff', fontFamily: FONT_STACK}}>
             {/* Header */}
             <div style={{
                 background: '#fff',
@@ -182,7 +315,7 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
                 top: 0,
                 zIndex: 100
             }}>
-                <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
+                <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px'}}>
                     <button onClick={onBack} style={{background: 'none', border: 'none', padding: 0}}>
                         <ArrowLeft size={24}/>
                     </button>
@@ -190,16 +323,1299 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
                         BANK TRANSACTIONS
                     </h1>
                 </div>
+
+                {/* Tabs */}
+                {tabs.length > 0 && (
+                    <div style={{display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px'}}>
+                        {tabs.map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTabId(tab.id)}
+                                style={{
+                                    padding: '8px 16px',
+                                    border: '3px solid #000',
+                                    background: activeTabId === tab.id ? THEME.primary : '#fff',
+                                    color: activeTabId === tab.id ? '#fff' : '#000',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem',
+                                    whiteSpace: 'nowrap',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                {tab.name}
+                            </button>
+                        ))}
+                    </div>
+                )}
             </div>
 
-            {/* Use Desktop Component */}
-            <div style={{overflowX: 'auto'}}>
-                <BankTransactions
-                    onBackToTasks={onBack}
-                    authUser={authUser}
-                    authRole={authRole}
+            {/* Stats Cards */}
+            {stats && stats.by_type && (
+                <div style={{padding: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+                    {stats.by_type.map(stat => (
+                        <div key={stat.transaction_type} style={{
+                            border: '3px solid #000',
+                            padding: '16px',
+                            background: '#fff',
+                            textAlign: 'center'
+                        }}>
+                            <div style={{fontSize: '1.5rem', fontWeight: 900, marginBottom: '4px'}}>
+                                {formatCurrency(stat.total_amount || 0)}
+                            </div>
+                            <div style={{fontSize: '0.75rem', color: THEME.muted, fontWeight: 700, textTransform: 'uppercase'}}>
+                                {stat.transaction_type === 'cash' ? '💵 Cash' : '💳 Credit'}
+                            </div>
+                            <div style={{fontSize: '0.7rem', color: THEME.muted, marginTop: '4px'}}>
+                                {stat.transaction_count} transactions
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Filters */}
+            <div style={{padding: '0 16px 16px 16px', display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
+                <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    style={{
+                        flex: 1,
+                        minWidth: '120px',
+                        padding: '10px',
+                        border: '3px solid #000',
+                        fontSize: '0.9rem'
+                    }}
                 />
+                <select
+                    value={typeFilter}
+                    onChange={(e) => setTypeFilter(e.target.value)}
+                    style={{
+                        padding: '10px',
+                        border: '3px solid #000',
+                        fontSize: '0.9rem',
+                        fontWeight: 700
+                    }}
+                >
+                    <option value="all">All Types</option>
+                    <option value="credit">Credit</option>
+                    <option value="cash">Cash</option>
+                </select>
             </div>
+
+            {/* Transactions List */}
+            <div style={{padding: '0 16px 16px 16px'}}>
+                {loading ? (
+                    <div style={{textAlign: 'center', padding: '40px'}}>Loading...</div>
+                ) : filteredTransactions.length === 0 ? (
+                    <div style={{textAlign: 'center', padding: '40px', color: THEME.muted}}>
+                        No transactions found
+                    </div>
+                ) : (
+                    filteredTransactions.map(transaction => (
+                        <div
+                            key={transaction.id}
+                            style={{
+                                border: '3px solid #000',
+                                padding: '16px',
+                                marginBottom: '12px',
+                                background: '#fff'
+                            }}
+                        >
+                            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '8px'}}>
+                                <div style={{flex: 1}}>
+                                    <div style={{fontSize: '1rem', fontWeight: 800, marginBottom: '4px'}}>
+                                        {transaction.description}
+                                    </div>
+                                    <div style={{fontSize: '0.8rem', color: THEME.muted, display: 'flex', gap: '12px', alignItems: 'center'}}>
+                                        <span>{new Date(transaction.transaction_date).toLocaleDateString('en-GB')}</span>
+                                        <span style={{
+                                            padding: '2px 8px',
+                                            border: '2px solid #000',
+                                            fontSize: '0.7rem',
+                                            fontWeight: 700,
+                                            textTransform: 'uppercase',
+                                            background: transaction.transaction_type === 'cash' ? THEME.secondary : THEME.primary,
+                                            color: '#000'
+                                        }}>
+                                            {transaction.transaction_type}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div style={{textAlign: 'right'}}>
+                                    <div style={{
+                                        fontSize: '1.3rem',
+                                        fontWeight: 900,
+                                        color: transaction.amount < 0 ? THEME.accent : THEME.text
+                                    }}>
+                                        {formatCurrency(transaction.amount)}
+                                    </div>
+                                </div>
+                            </div>
+                            <div style={{display: 'flex', gap: '8px', marginTop: '8px'}}>
+                                <button
+                                    onClick={() => {
+                                        setEditingTransaction(transaction);
+                                        setNewTransaction({
+                                            transaction_date: transaction.transaction_date.split('T')[0],
+                                            description: transaction.description,
+                                            amount: transaction.amount.toString(),
+                                            account_number: transaction.account_number || '',
+                                            transaction_type: transaction.transaction_type
+                                        });
+                                        setShowAddForm(true);
+                                    }}
+                                    style={{
+                                        flex: 1,
+                                        padding: '8px',
+                                        border: '2px solid #000',
+                                        background: THEME.primary,
+                                        color: '#fff',
+                                        fontWeight: 700,
+                                        fontSize: '0.8rem',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <Edit2 size={14} style={{display: 'inline', marginRight: '4px'}}/>
+                                    Edit
+                                </button>
+                                <button
+                                    onClick={() => handleDeleteTransaction(transaction.id)}
+                                    style={{
+                                        padding: '8px',
+                                        border: '2px solid #000',
+                                        background: THEME.accent,
+                                        color: '#fff',
+                                        fontWeight: 700,
+                                        fontSize: '0.8rem',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <Trash2 size={14}/>
+                                </button>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+
+            {/* Add Transaction Button */}
+            <button
+                onClick={() => {
+                    setEditingTransaction(null);
+                    setNewTransaction({
+                        transaction_date: new Date().toISOString().split('T')[0],
+                        description: '',
+                        amount: '',
+                        account_number: '',
+                        transaction_type: 'credit'
+                    });
+                    setShowAddForm(true);
+                }}
+                style={{
+                    position: 'fixed',
+                    bottom: '20px',
+                    right: '20px',
+                    width: '64px',
+                    height: '64px',
+                    borderRadius: '50%',
+                    background: THEME.primary,
+                    border: '3px solid #000',
+                    boxShadow: '4px 4px 0px #000',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    zIndex: 90
+                }}
+            >
+                <Plus size={32} color="#fff" strokeWidth={3}/>
+            </button>
+
+            {/* Add/Edit Form Modal */}
+            {showAddForm && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0,0,0,0.5)',
+                        zIndex: 200,
+                        display: 'flex',
+                        alignItems: 'flex-end'
+                    }}
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) {
+                            setShowAddForm(false);
+                            setEditingTransaction(null);
+                        }
+                    }}
+                >
+                    <div style={{
+                        width: '100%',
+                        maxHeight: '80vh',
+                        background: '#fff',
+                        borderRadius: '16px 16px 0 0',
+                        padding: '20px',
+                        overflowY: 'auto'
+                    }}>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+                            <h2 style={{fontSize: '1.3rem', fontWeight: 900, margin: 0, textTransform: 'uppercase'}}>
+                                {editingTransaction ? 'Edit Transaction' : 'New Transaction'}
+                            </h2>
+                            <button onClick={() => {
+                                setShowAddForm(false);
+                                setEditingTransaction(null);
+                            }} style={{background: 'none', border: 'none', padding: '8px'}}>
+                                <X size={28}/>
+                            </button>
+                        </div>
+
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+                            <div>
+                                <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
+                                    Date
+                                </label>
+                                <input
+                                    type="date"
+                                    value={newTransaction.transaction_date}
+                                    onChange={(e) => setNewTransaction({...newTransaction, transaction_date: e.target.value})}
+                                    style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
+                                />
+                            </div>
+                            <div>
+                                <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
+                                    Description
+                                </label>
+                                <input
+                                    type="text"
+                                    value={newTransaction.description}
+                                    onChange={(e) => setNewTransaction({...newTransaction, description: e.target.value})}
+                                    style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
+                                />
+                            </div>
+                            <div>
+                                <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
+                                    Amount
+                                </label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={newTransaction.amount}
+                                    onChange={(e) => setNewTransaction({...newTransaction, amount: e.target.value})}
+                                    style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
+                                />
+                            </div>
+                            <div>
+                                <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
+                                    Type
+                                </label>
+                                <select
+                                    value={newTransaction.transaction_type}
+                                    onChange={(e) => setNewTransaction({...newTransaction, transaction_type: e.target.value})}
+                                    style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
+                                >
+                                    <option value="credit">Credit</option>
+                                    <option value="cash">Cash</option>
+                                </select>
+                            </div>
+                            <div style={{display: 'flex', gap: '12px', marginTop: '8px'}}>
+                                <button
+                                    onClick={() => {
+                                        setShowAddForm(false);
+                                        setEditingTransaction(null);
+                                    }}
+                                    style={{
+                                        flex: 1,
+                                        padding: '14px',
+                                        border: '3px solid #000',
+                                        background: '#fff',
+                                        fontWeight: 700,
+                                        fontSize: '0.9rem',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSaveTransaction}
+                                    disabled={loading || !newTransaction.description || !newTransaction.amount}
+                                    style={{
+                                        flex: 1,
+                                        padding: '14px',
+                                        border: '3px solid #000',
+                                        background: THEME.primary,
+                                        color: '#fff',
+                                        fontWeight: 700,
+                                        fontSize: '0.9rem',
+                                        cursor: 'pointer',
+                                        opacity: (loading || !newTransaction.description || !newTransaction.amount) ? 0.5 : 1
+                                    }}
+                                >
+                                    {loading ? 'Saving...' : 'Save'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// Mobile Stock Portfolio View Component
+const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
+    const [tabs, setTabs] = useState([]);
+    const [activeTabId, setActiveTabId] = useState(null);
+    const [entries, setEntries] = useState([]);
+    const [summary, setSummary] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [showForm, setShowForm] = useState(false);
+    const [editingEntry, setEditingEntry] = useState(null);
+    const [stockNames, setStockNames] = useState([]);
+    const [stockPrices, setStockPrices] = useState({});
+    const [priceLoading, setPriceLoading] = useState(false);
+    const [formData, setFormData] = useState({
+        name: '',
+        ticker_symbol: '',
+        percentage: '',
+        value_ils: '',
+        base_price: '',
+        entry_date: new Date().toISOString().split('T')[0]
+    });
+
+    useEffect(() => {
+        fetchTabs();
+    }, []);
+
+    useEffect(() => {
+        if (activeTabId !== null) {
+            fetchEntries();
+            fetchSummary();
+            fetchStockNames();
+        }
+    }, [activeTabId]);
+
+    useEffect(() => {
+        if (activeTabId !== null && entries.length > 0) {
+            fetchStockPrices();
+            const interval = setInterval(fetchStockPrices, 30000); // Refresh every 30 seconds
+            return () => clearInterval(interval);
+        }
+    }, [activeTabId, entries]);
+
+    const fetchTabs = async () => {
+        try {
+            const response = await fetch(`${API_BASE}/portfolio-tabs?username=${authUser}&role=${authRole}`);
+            const data = await response.json();
+            if (Array.isArray(data)) {
+                setTabs(data);
+                if (data.length > 0 && !activeTabId) {
+                    setActiveTabId(data[0].id);
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching tabs:', err);
+        }
+    };
+
+    const fetchEntries = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch(`${API_BASE}/portfolio?tab_id=${activeTabId}&username=${authUser}&role=${authRole}`);
+            const data = await response.json();
+            setEntries(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Error fetching entries:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchSummary = async () => {
+        try {
+            const response = await fetch(`${API_BASE}/portfolio/summary?tab_id=${activeTabId}&username=${authUser}&role=${authRole}`);
+            const data = await response.json();
+            setSummary(data);
+        } catch (err) {
+            console.error('Error fetching summary:', err);
+        }
+    };
+
+    const fetchStockNames = async () => {
+        try {
+            const response = await fetch(`${API_BASE}/portfolio/names?tab_id=${activeTabId}&username=${authUser}&role=${authRole}`);
+            const data = await response.json();
+            setStockNames(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Error fetching stock names:', err);
+        }
+    };
+
+    const fetchStockPrices = async () => {
+        if (!activeTabId || entries.length === 0) return;
+        
+        try {
+            setPriceLoading(true);
+            // Get unique ticker symbols from entries
+            const tickers = [...new Set(entries
+                .map(entry => entry.ticker_symbol)
+                .filter(ticker => ticker && ticker.trim() !== ''))];
+            
+            if (tickers.length === 0) {
+                setPriceLoading(false);
+                return;
+            }
+
+            const response = await fetch(`${API_BASE}/portfolio/stock-prices`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({tickers})
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const priceMap = {};
+                if (data.prices) {
+                    data.prices.forEach(price => {
+                        if (price.ticker && !price.error) {
+                            priceMap[price.ticker] = price;
+                        }
+                    });
+                }
+                setStockPrices(priceMap);
+            }
+        } catch (err) {
+            console.error('Failed to fetch stock prices:', err);
+        } finally {
+            setPriceLoading(false);
+        }
+    };
+
+    const handleSaveEntry = async () => {
+        try {
+            setLoading(true);
+            const url = editingEntry
+                ? `${API_BASE}/portfolio/${editingEntry.id}?username=${authUser}&role=${authRole}`
+                : `${API_BASE}/portfolio?username=${authUser}&role=${authRole}`;
+            const method = editingEntry ? 'PUT' : 'POST';
+            
+            const body = {
+                ...formData,
+                tab_id: activeTabId,
+                percentage: parseFloat(formData.percentage) || 0,
+                value_ils: parseFloat(formData.value_ils) || 0,
+                base_price: parseFloat(formData.base_price) || 0,
+                username: authUser
+            };
+
+            const response = await fetch(url, {
+                method,
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body)
+            });
+
+            if (response.ok) {
+                await fetchEntries();
+                await fetchSummary();
+                setShowForm(false);
+                setEditingEntry(null);
+                setFormData({
+                    name: '',
+                    ticker_symbol: '',
+                    percentage: '',
+                    value_ils: '',
+                    base_price: '',
+                    entry_date: new Date().toISOString().split('T')[0]
+                });
+            }
+        } catch (err) {
+            console.error('Failed to save entry:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteEntry = async (id) => {
+        if (!window.confirm('Delete this entry?')) return;
+        try {
+            await fetch(`${API_BASE}/portfolio/${id}?username=${authUser}&role=${authRole}`, {
+                method: 'DELETE'
+            });
+            await fetchEntries();
+            await fetchSummary();
+        } catch (err) {
+            console.error('Failed to delete entry:', err);
+        }
+    };
+
+    // Group entries by stock name
+    const groupedEntries = entries.reduce((acc, entry) => {
+        if (!acc[entry.name]) {
+            acc[entry.name] = [];
+        }
+        acc[entry.name].push(entry);
+        return acc;
+    }, {});
+
+    return (
+        <div style={{minHeight: '100vh', background: '#fff', fontFamily: FONT_STACK}}>
+            {/* Header */}
+            <div style={{
+                background: '#fff',
+                borderBottom: '3px solid #000',
+                padding: '16px',
+                position: 'sticky',
+                top: 0,
+                zIndex: 100
+            }}>
+                <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px'}}>
+                    <button onClick={onBack} style={{background: 'none', border: 'none', padding: 0}}>
+                        <ArrowLeft size={24}/>
+                    </button>
+                    <h1 style={{fontSize: '1.75rem', fontWeight: 900, margin: 0, textTransform: 'uppercase'}}>
+                        STOCK PORTFOLIO
+                    </h1>
+                </div>
+
+                {/* Tabs */}
+                {tabs.length > 0 && (
+                    <div style={{display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px'}}>
+                        {tabs.map(tab => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTabId(tab.id)}
+                                style={{
+                                    padding: '8px 16px',
+                                    border: '3px solid #000',
+                                    background: activeTabId === tab.id ? THEME.primary : '#fff',
+                                    color: activeTabId === tab.id ? '#fff' : '#000',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem',
+                                    whiteSpace: 'nowrap',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                {tab.name}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Summary */}
+            {summary && (
+                <div style={{padding: '16px', borderBottom: '3px solid #000', background: '#f8f8f8'}}>
+                    <div style={{fontSize: '1.5rem', fontWeight: 900, marginBottom: '8px'}}>
+                        Total Value: {formatCurrency(summary.total_value || 0)}
+                    </div>
+                    <div style={{fontSize: '0.85rem', color: THEME.muted}}>
+                        {summary.latest_entries?.length || 0} stocks
+                    </div>
+                </div>
+            )}
+
+            {/* Entries List */}
+            <div style={{padding: '16px'}}>
+                {loading ? (
+                    <div style={{textAlign: 'center', padding: '40px'}}>Loading...</div>
+                ) : Object.keys(groupedEntries).length === 0 ? (
+                    <div style={{textAlign: 'center', padding: '40px', color: THEME.muted}}>
+                        No portfolio entries found
+                    </div>
+                ) : (
+                    Object.entries(groupedEntries).map(([stockName, stockEntries]) => {
+                        const tickerSymbol = stockEntries[0]?.ticker_symbol;
+                        const livePrice = tickerSymbol ? stockPrices[tickerSymbol] : null;
+                        
+                        return (
+                            <div
+                                key={stockName}
+                                style={{
+                                    border: '3px solid #000',
+                                    padding: '16px',
+                                    marginBottom: '16px',
+                                    background: '#fff'
+                                }}
+                            >
+                                <div style={{fontSize: '1.2rem', fontWeight: 900, marginBottom: '8px'}}>
+                                    {stockName}
+                                    {tickerSymbol && (
+                                        <span style={{fontSize: '0.8rem', color: THEME.muted, marginLeft: '8px'}}>
+                                            ({tickerSymbol})
+                                        </span>
+                                    )}
+                                </div>
+                                
+                                {/* Live Price Display */}
+                                {livePrice && livePrice.currentPrice && (
+                                    <div style={{
+                                        padding: '8px',
+                                        background: '#f8f8f8',
+                                        border: '2px solid #000',
+                                        marginBottom: '12px',
+                                        fontSize: '0.85rem'
+                                    }}>
+                                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                            <div>
+                                                <div style={{fontWeight: 700, fontSize: '0.9rem'}}>
+                                                    Live Price: {formatCurrency(livePrice.currentPrice)} {livePrice.currency || 'USD'}
+                                                </div>
+                                                {livePrice.change !== null && livePrice.change !== undefined && (
+                                                    <div style={{
+                                                        fontSize: '0.75rem',
+                                                        color: livePrice.change >= 0 ? THEME.success : THEME.accent,
+                                                        fontWeight: 700,
+                                                        marginTop: '2px'
+                                                    }}>
+                                                        {livePrice.change >= 0 ? '↑' : '↓'} {Math.abs(livePrice.change).toFixed(2)} 
+                                                        {livePrice.changePercent !== null && livePrice.changePercent !== undefined && 
+                                                            ` (${livePrice.changePercent >= 0 ? '+' : ''}${livePrice.changePercent.toFixed(2)}%)`
+                                                        }
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {priceLoading && (
+                                                <div style={{fontSize: '0.7rem', color: THEME.muted}}>Updating...</div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            {stockEntries.map(entry => (
+                                <div
+                                    key={entry.id}
+                                    style={{
+                                        border: '2px solid #000',
+                                        padding: '12px',
+                                        marginBottom: '8px',
+                                        background: '#f8f8f8'
+                                    }}
+                                >
+                                    <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '8px'}}>
+                                        <div style={{fontSize: '0.85rem', color: THEME.muted}}>
+                                            {new Date(entry.entry_date).toLocaleDateString('en-GB')}
+                                        </div>
+                                        <div style={{fontSize: '1.1rem', fontWeight: 900}}>
+                                            {formatCurrency(entry.value_ils)}
+                                        </div>
+                                    </div>
+                                    <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: THEME.muted}}>
+                                        <span>{entry.percentage}%</span>
+                                        <span>Base: {formatCurrency(entry.base_price)}</span>
+                                    </div>
+                                    <div style={{display: 'flex', gap: '8px', marginTop: '8px'}}>
+                                        <button
+                                            onClick={() => {
+                                                setEditingEntry(entry);
+                                                setFormData({
+                                                    name: entry.name,
+                                                    ticker_symbol: entry.ticker_symbol || '',
+                                                    percentage: entry.percentage?.toString() || '',
+                                                    value_ils: entry.value_ils?.toString() || '',
+                                                    base_price: entry.base_price?.toString() || '',
+                                                    entry_date: entry.entry_date.split('T')[0]
+                                                });
+                                                setShowForm(true);
+                                            }}
+                                            style={{
+                                                flex: 1,
+                                                padding: '6px',
+                                                border: '2px solid #000',
+                                                background: THEME.primary,
+                                                color: '#fff',
+                                                fontWeight: 700,
+                                                fontSize: '0.75rem',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteEntry(entry.id)}
+                                            style={{
+                                                padding: '6px',
+                                                border: '2px solid #000',
+                                                background: THEME.accent,
+                                                color: '#fff',
+                                                fontWeight: 700,
+                                                fontSize: '0.75rem',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        );
+                    })
+                )}
+            </div>
+
+            {/* Add Entry Button */}
+            <button
+                onClick={() => {
+                    setEditingEntry(null);
+                    setFormData({
+                        name: '',
+                        ticker_symbol: '',
+                        percentage: '',
+                        value_ils: '',
+                        base_price: '',
+                        entry_date: new Date().toISOString().split('T')[0]
+                    });
+                    setShowForm(true);
+                }}
+                style={{
+                    position: 'fixed',
+                    bottom: '20px',
+                    right: '20px',
+                    width: '64px',
+                    height: '64px',
+                    borderRadius: '50%',
+                    background: THEME.primary,
+                    border: '3px solid #000',
+                    boxShadow: '4px 4px 0px #000',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    zIndex: 90
+                }}
+            >
+                <Plus size={32} color="#fff" strokeWidth={3}/>
+            </button>
+
+            {/* Add/Edit Form Modal */}
+            {showForm && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0,0,0,0.5)',
+                        zIndex: 200,
+                        display: 'flex',
+                        alignItems: 'flex-end'
+                    }}
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) {
+                            setShowForm(false);
+                            setEditingEntry(null);
+                        }
+                    }}
+                >
+                    <div style={{
+                        width: '100%',
+                        maxHeight: '80vh',
+                        background: '#fff',
+                        borderRadius: '16px 16px 0 0',
+                        padding: '20px',
+                        overflowY: 'auto'
+                    }}>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+                            <h2 style={{fontSize: '1.3rem', fontWeight: 900, margin: 0, textTransform: 'uppercase'}}>
+                                {editingEntry ? 'Edit Entry' : 'New Entry'}
+                            </h2>
+                            <button onClick={() => {
+                                setShowForm(false);
+                                setEditingEntry(null);
+                            }} style={{background: 'none', border: 'none', padding: '8px'}}>
+                                <X size={28}/>
+                            </button>
+                        </div>
+
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+                            <div>
+                                <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
+                                    Stock Name
+                                </label>
+                                <CustomAutocomplete
+                                    value={formData.name}
+                                    onChange={(value) => setFormData({...formData, name: value})}
+                                    options={stockNames}
+                                    placeholder="Stock name..."
+                                />
+                            </div>
+                            <div>
+                                <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
+                                    Ticker Symbol
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.ticker_symbol}
+                                    onChange={(e) => setFormData({...formData, ticker_symbol: e.target.value})}
+                                    style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
+                                />
+                            </div>
+                            <div>
+                                <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
+                                    Value (ILS)
+                                </label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={formData.value_ils}
+                                    onChange={(e) => setFormData({...formData, value_ils: e.target.value})}
+                                    style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
+                                />
+                            </div>
+                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+                                <div>
+                                    <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
+                                        Percentage
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={formData.percentage}
+                                        onChange={(e) => setFormData({...formData, percentage: e.target.value})}
+                                        style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
+                                        Base Price
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={formData.base_price}
+                                        onChange={(e) => setFormData({...formData, base_price: e.target.value})}
+                                        style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
+                                    Date
+                                </label>
+                                <input
+                                    type="date"
+                                    value={formData.entry_date}
+                                    onChange={(e) => setFormData({...formData, entry_date: e.target.value})}
+                                    style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
+                                />
+                            </div>
+                            <div style={{display: 'flex', gap: '12px', marginTop: '8px'}}>
+                                <button
+                                    onClick={() => {
+                                        setShowForm(false);
+                                        setEditingEntry(null);
+                                    }}
+                                    style={{
+                                        flex: 1,
+                                        padding: '14px',
+                                        border: '3px solid #000',
+                                        background: '#fff',
+                                        fontWeight: 700,
+                                        fontSize: '0.9rem',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleSaveEntry}
+                                    disabled={loading || !formData.name || !formData.value_ils}
+                                    style={{
+                                        flex: 1,
+                                        padding: '14px',
+                                        border: '3px solid #000',
+                                        background: THEME.primary,
+                                        color: '#fff',
+                                        fontWeight: 700,
+                                        fontSize: '0.9rem',
+                                        cursor: 'pointer',
+                                        opacity: (loading || !formData.name || !formData.value_ils) ? 0.5 : 1
+                                    }}
+                                >
+                                    {loading ? 'Saving...' : 'Save'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// Mobile Clients Management View Component
+const MobileClientsView = ({authUser, authRole, onBack}) => {
+    const [clients, setClients] = useState([]);
+    const [selectedClient, setSelectedClient] = useState(null);
+    const [clientTasks, setClientTasks] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [showAddForm, setShowAddForm] = useState(false);
+    const [newClient, setNewClient] = useState({
+        name: '',
+        email: '',
+        phone: '',
+        notes: ''
+    });
+    const [createLoading, setCreateLoading] = useState(false);
+
+    useEffect(() => {
+        fetchClients();
+    }, []);
+
+    const fetchClients = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch(`${API_BASE}/clients/manage`);
+            const data = await response.json();
+            setClients(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Error fetching clients:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchClientTasks = async (clientName) => {
+        try {
+            const response = await fetch(`${API_BASE}/clients/${encodeURIComponent(clientName)}/tasks`);
+            const data = await response.json();
+            setClientTasks(Array.isArray(data) ? data : []);
+            setSelectedClient(clientName);
+        } catch (err) {
+            console.error('Error fetching client tasks:', err);
+        }
+    };
+
+    const handleCreateClient = async (e) => {
+        e.preventDefault();
+        if (!newClient.name?.trim()) return;
+
+        try {
+            setCreateLoading(true);
+            const response = await fetch(`${API_BASE}/clients`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    name: newClient.name.trim(),
+                    email: newClient.email?.trim() || '',
+                    phone: newClient.phone?.trim() || '',
+                    notes: newClient.notes?.trim() || '',
+                    owner: authUser
+                })
+            });
+
+            if (response.ok) {
+                setNewClient({name: '', email: '', phone: '', notes: ''});
+                setShowAddForm(false);
+                await fetchClients();
+            }
+        } catch (err) {
+            console.error('Failed to create client:', err);
+        } finally {
+            setCreateLoading(false);
+        }
+    };
+
+    const handleDeleteClient = async (clientName) => {
+        if (!window.confirm(`Delete all tasks for "${clientName}"?`)) return;
+        try {
+            await fetch(`${API_BASE}/clients/${encodeURIComponent(clientName)}`, {
+                method: 'DELETE'
+            });
+            setSelectedClient(null);
+            setClientTasks([]);
+            await fetchClients();
+        } catch (err) {
+            console.error('Failed to delete client:', err);
+        }
+    };
+
+    return (
+        <div style={{minHeight: '100vh', background: '#fff', fontFamily: FONT_STACK}}>
+            {/* Header */}
+            <div style={{
+                background: '#fff',
+                borderBottom: '3px solid #000',
+                padding: '16px',
+                position: 'sticky',
+                top: 0,
+                zIndex: 100
+            }}>
+                <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px'}}>
+                    <button onClick={onBack} style={{background: 'none', border: 'none', padding: 0}}>
+                        <ArrowLeft size={24}/>
+                    </button>
+                    <h1 style={{fontSize: '1.75rem', fontWeight: 900, margin: 0, textTransform: 'uppercase'}}>
+                        CLIENTS
+                    </h1>
+                </div>
+            </div>
+
+            {/* Clients List */}
+            <div style={{padding: '16px'}}>
+                {loading ? (
+                    <div style={{textAlign: 'center', padding: '40px'}}>Loading...</div>
+                ) : clients.length === 0 ? (
+                    <div style={{textAlign: 'center', padding: '40px', color: THEME.muted}}>
+                        No clients yet
+                    </div>
+                ) : (
+                    clients.map(client => (
+                        <div
+                            key={client.client}
+                            onClick={() => fetchClientTasks(client.client)}
+                            style={{
+                                border: '3px solid #000',
+                                padding: '16px',
+                                marginBottom: '12px',
+                                background: selectedClient === client.client ? '#f8f8f8' : '#fff',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <div style={{fontSize: '1.2rem', fontWeight: 900, marginBottom: '8px'}}>
+                                {client.client}
+                            </div>
+                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.85rem', color: THEME.muted}}>
+                                <div>
+                                    <div style={{fontWeight: 700}}>{(client.total_hours || 0).toFixed(1)}h</div>
+                                    <div style={{fontSize: '0.75rem'}}>Total Hours</div>
+                                </div>
+                                <div>
+                                    <div style={{fontWeight: 700}}>{client.task_count || 0}</div>
+                                    <div style={{fontSize: '0.75rem'}}>Tasks</div>
+                                </div>
+                            </div>
+                            <div style={{display: 'flex', gap: '8px', marginTop: '12px'}}>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteClient(client.client);
+                                    }}
+                                    style={{
+                                        flex: 1,
+                                        padding: '8px',
+                                        border: '2px solid #000',
+                                        background: THEME.accent,
+                                        color: '#fff',
+                                        fontWeight: 700,
+                                        fontSize: '0.8rem',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+
+            {/* Client Tasks */}
+            {selectedClient && clientTasks.length > 0 && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    maxHeight: '50vh',
+                    background: '#fff',
+                    borderTop: '3px solid #000',
+                    padding: '16px',
+                    overflowY: 'auto',
+                    zIndex: 100
+                }}>
+                    <div style={{fontSize: '1.1rem', fontWeight: 900, marginBottom: '12px'}}>
+                        Tasks for {selectedClient}
+                    </div>
+                    {clientTasks.map(task => (
+                        <div
+                            key={task.id}
+                            style={{
+                                border: '2px solid #000',
+                                padding: '12px',
+                                marginBottom: '8px',
+                                background: task.status === 'completed' ? '#f8f8f8' : '#fff'
+                            }}
+                        >
+                            <div style={{fontSize: '0.95rem', fontWeight: 800, marginBottom: '4px'}}>
+                                {task.title}
+                            </div>
+                            <div style={{fontSize: '0.8rem', color: THEME.muted}}>
+                                {new Date(task.task_date).toLocaleDateString('en-GB')}
+                                {task.duration && ` • ${task.duration}h`}
+                                {task.status === 'completed' && ' • ✓ Completed'}
+                            </div>
+                        </div>
+                    ))}
+                    <button
+                        onClick={() => setSelectedClient(null)}
+                        style={{
+                            width: '100%',
+                            padding: '12px',
+                            border: '3px solid #000',
+                            background: THEME.primary,
+                            color: '#fff',
+                            fontWeight: 700,
+                            fontSize: '0.9rem',
+                            cursor: 'pointer',
+                            marginTop: '12px'
+                        }}
+                    >
+                        Close
+                    </button>
+                </div>
+            )}
+
+            {/* Add Client Button */}
+            <button
+                onClick={() => setShowAddForm(true)}
+                style={{
+                    position: 'fixed',
+                    bottom: '20px',
+                    right: '20px',
+                    width: '64px',
+                    height: '64px',
+                    borderRadius: '50%',
+                    background: THEME.primary,
+                    border: '3px solid #000',
+                    boxShadow: '4px 4px 0px #000',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    zIndex: 90
+                }}
+            >
+                <Plus size={32} color="#fff" strokeWidth={3}/>
+            </button>
+
+            {/* Add Client Form Modal */}
+            {showAddForm && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0,0,0,0.5)',
+                        zIndex: 200,
+                        display: 'flex',
+                        alignItems: 'flex-end'
+                    }}
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) {
+                            setShowAddForm(false);
+                        }
+                    }}
+                >
+                    <div style={{
+                        width: '100%',
+                        maxHeight: '80vh',
+                        background: '#fff',
+                        borderRadius: '16px 16px 0 0',
+                        padding: '20px',
+                        overflowY: 'auto'
+                    }}>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+                            <h2 style={{fontSize: '1.3rem', fontWeight: 900, margin: 0, textTransform: 'uppercase'}}>
+                                New Client
+                            </h2>
+                            <button onClick={() => setShowAddForm(false)} style={{background: 'none', border: 'none', padding: '8px'}}>
+                                <X size={28}/>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleCreateClient}>
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+                                <div>
+                                    <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
+                                        Name *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={newClient.name}
+                                        onChange={(e) => setNewClient({...newClient, name: e.target.value})}
+                                        required
+                                        style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
+                                        Email
+                                    </label>
+                                    <input
+                                        type="email"
+                                        value={newClient.email}
+                                        onChange={(e) => setNewClient({...newClient, email: e.target.value})}
+                                        style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
+                                        Phone
+                                    </label>
+                                    <input
+                                        type="tel"
+                                        value={newClient.phone}
+                                        onChange={(e) => setNewClient({...newClient, phone: e.target.value})}
+                                        style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
+                                        Notes
+                                    </label>
+                                    <textarea
+                                        value={newClient.notes}
+                                        onChange={(e) => setNewClient({...newClient, notes: e.target.value})}
+                                        rows={3}
+                                        style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
+                                    />
+                                </div>
+                                <div style={{display: 'flex', gap: '12px', marginTop: '8px'}}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAddForm(false)}
+                                        style={{
+                                            flex: 1,
+                                            padding: '14px',
+                                            border: '3px solid #000',
+                                            background: '#fff',
+                                            fontWeight: 700,
+                                            fontSize: '0.9rem',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={createLoading || !newClient.name?.trim()}
+                                        style={{
+                                            flex: 1,
+                                            padding: '14px',
+                                            border: '3px solid #000',
+                                            background: THEME.primary,
+                                            color: '#fff',
+                                            fontWeight: 700,
+                                            fontSize: '0.9rem',
+                                            cursor: 'pointer',
+                                            opacity: (createLoading || !newClient.name?.trim()) ? 0.5 : 1
+                                        }}
+                                    >
+                                        {createLoading ? 'Creating...' : 'Create'}
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -233,7 +1649,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
     const [categories, setCategories] = useState([]);
     const [clients, setClients] = useState([]);
     const [allTags, setAllTags] = useState([]);
-    const [appView, setAppView] = useState('tasks'); // 'tasks', 'transactions', 'stats'
+    const [appView, setAppView] = useState('tasks'); // 'tasks', 'transactions', 'stats', 'portfolio', 'clients'
     const [filterMode, setFilterMode] = useState('all'); // all, active, done
     const [showFilterDrawer, setShowFilterDrawer] = useState(false);
     const [showTaskModal, setShowTaskModal] = useState(false);
@@ -909,6 +2325,22 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                 />
             )}
 
+            {appView === 'portfolio' && (
+                <MobileStockPortfolioView
+                    authUser={authUser}
+                    authRole={authRole}
+                    onBack={() => setAppView('tasks')}
+                />
+            )}
+
+            {appView === 'clients' && (
+                <MobileClientsView
+                    authUser={authUser}
+                    authRole={authRole}
+                    onBack={() => setAppView('tasks')}
+                />
+            )}
+
             {appView === 'tasks' && (<>
                 {/* Header with tri-color bar */}
                 <div style={{
@@ -1497,6 +2929,64 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                                 e.target.value = ''; // Reset input
                                             }}
                                         />
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Stock Portfolio - for ALL users */}
+                            {(isAdmin || isSharedUser || isLimitedUser) && (
+                                <div>
+                                    <h3 style={{
+                                        fontSize: '0.75rem',
+                                        fontWeight: 900,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '1px',
+                                        marginBottom: '12px',
+                                        fontFamily: FONT_STACK
+                                    }}>
+                                        Stock Portfolio
+                                    </h3>
+                                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                                        <button
+                                            className="mobile-btn"
+                                            onClick={() => {
+                                                setAppView('portfolio');
+                                                setShowMobileSidebar(false);
+                                            }}
+                                            style={{width: '100%', justifyContent: 'flex-start'}}
+                                        >
+                                            <TrendingUp size={16} style={{marginRight: '8px'}}/>
+                                            View Portfolio
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Clients Management - for ALL users */}
+                            {(isAdmin || isSharedUser || isLimitedUser) && (
+                                <div>
+                                    <h3 style={{
+                                        fontSize: '0.75rem',
+                                        fontWeight: 900,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '1px',
+                                        marginBottom: '12px',
+                                        fontFamily: FONT_STACK
+                                    }}>
+                                        Clients
+                                    </h3>
+                                    <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                                        <button
+                                            className="mobile-btn"
+                                            onClick={() => {
+                                                setAppView('clients');
+                                                setShowMobileSidebar(false);
+                                            }}
+                                            style={{width: '100%', justifyContent: 'flex-start'}}
+                                        >
+                                            <Users size={16} style={{marginRight: '8px'}}/>
+                                            Manage Clients
+                                        </button>
                                     </div>
                                 </div>
                             )}
