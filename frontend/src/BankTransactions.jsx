@@ -1778,7 +1778,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
                   >
                     <div style={{ fontSize: '0.95rem', marginBottom: '0.15rem' }}>{formatMonthYear(month.month_year)}</div>
                     <div style={{ fontSize: '0.8rem', opacity: 0.75 }}>
-                      {month.transaction_count} txns • {formatCurrency(month.total_amount)}
+                      {month.transaction_count} in total • {formatCurrency(month.total_amount)}
                     </div>
                   </button>
                   <button
