@@ -676,6 +676,8 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
     const [showForm, setShowForm] = useState(false);
     const [editingEntry, setEditingEntry] = useState(null);
     const [stockNames, setStockNames] = useState([]);
+    const [stockPrices, setStockPrices] = useState({});
+    const [priceLoading, setPriceLoading] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
         ticker_symbol: '',
@@ -696,6 +698,14 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
             fetchStockNames();
         }
     }, [activeTabId]);
+
+    useEffect(() => {
+        if (activeTabId !== null && entries.length > 0) {
+            fetchStockPrices();
+            const interval = setInterval(fetchStockPrices, 30000); // Refresh every 30 seconds
+            return () => clearInterval(interval);
+        }
+    }, [activeTabId, entries]);
 
     const fetchTabs = async () => {
         try {
@@ -742,6 +752,46 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
             setStockNames(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Error fetching stock names:', err);
+        }
+    };
+
+    const fetchStockPrices = async () => {
+        if (!activeTabId || entries.length === 0) return;
+        
+        try {
+            setPriceLoading(true);
+            // Get unique ticker symbols from entries
+            const tickers = [...new Set(entries
+                .map(entry => entry.ticker_symbol)
+                .filter(ticker => ticker && ticker.trim() !== ''))];
+            
+            if (tickers.length === 0) {
+                setPriceLoading(false);
+                return;
+            }
+
+            const response = await fetch(`${API_BASE}/portfolio/stock-prices`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({tickers})
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const priceMap = {};
+                if (data.prices) {
+                    data.prices.forEach(price => {
+                        if (price.ticker && !price.error) {
+                            priceMap[price.ticker] = price;
+                        }
+                    });
+                }
+                setStockPrices(priceMap);
+            }
+        } catch (err) {
+            console.error('Failed to fetch stock prices:', err);
+        } finally {
+            setPriceLoading(false);
         }
     };
 
@@ -877,24 +927,63 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                         No portfolio entries found
                     </div>
                 ) : (
-                    Object.entries(groupedEntries).map(([stockName, stockEntries]) => (
-                        <div
-                            key={stockName}
-                            style={{
-                                border: '3px solid #000',
-                                padding: '16px',
-                                marginBottom: '16px',
-                                background: '#fff'
-                            }}
-                        >
-                            <div style={{fontSize: '1.2rem', fontWeight: 900, marginBottom: '12px'}}>
-                                {stockName}
-                                {stockEntries[0]?.ticker_symbol && (
-                                    <span style={{fontSize: '0.8rem', color: THEME.muted, marginLeft: '8px'}}>
-                                        ({stockEntries[0].ticker_symbol})
-                                    </span>
+                    Object.entries(groupedEntries).map(([stockName, stockEntries]) => {
+                        const tickerSymbol = stockEntries[0]?.ticker_symbol;
+                        const livePrice = tickerSymbol ? stockPrices[tickerSymbol] : null;
+                        
+                        return (
+                            <div
+                                key={stockName}
+                                style={{
+                                    border: '3px solid #000',
+                                    padding: '16px',
+                                    marginBottom: '16px',
+                                    background: '#fff'
+                                }}
+                            >
+                                <div style={{fontSize: '1.2rem', fontWeight: 900, marginBottom: '8px'}}>
+                                    {stockName}
+                                    {tickerSymbol && (
+                                        <span style={{fontSize: '0.8rem', color: THEME.muted, marginLeft: '8px'}}>
+                                            ({tickerSymbol})
+                                        </span>
+                                    )}
+                                </div>
+                                
+                                {/* Live Price Display */}
+                                {livePrice && livePrice.currentPrice && (
+                                    <div style={{
+                                        padding: '8px',
+                                        background: '#f8f8f8',
+                                        border: '2px solid #000',
+                                        marginBottom: '12px',
+                                        fontSize: '0.85rem'
+                                    }}>
+                                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                            <div>
+                                                <div style={{fontWeight: 700, fontSize: '0.9rem'}}>
+                                                    Live Price: {formatCurrency(livePrice.currentPrice)} {livePrice.currency || 'USD'}
+                                                </div>
+                                                {livePrice.change !== null && livePrice.change !== undefined && (
+                                                    <div style={{
+                                                        fontSize: '0.75rem',
+                                                        color: livePrice.change >= 0 ? THEME.success : THEME.accent,
+                                                        fontWeight: 700,
+                                                        marginTop: '2px'
+                                                    }}>
+                                                        {livePrice.change >= 0 ? '↑' : '↓'} {Math.abs(livePrice.change).toFixed(2)} 
+                                                        {livePrice.changePercent !== null && livePrice.changePercent !== undefined && 
+                                                            ` (${livePrice.changePercent >= 0 ? '+' : ''}${livePrice.changePercent.toFixed(2)}%)`
+                                                        }
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {priceLoading && (
+                                                <div style={{fontSize: '0.7rem', color: THEME.muted}}>Updating...</div>
+                                            )}
+                                        </div>
+                                    </div>
                                 )}
-                            </div>
                             {stockEntries.map(entry => (
                                 <div
                                     key={entry.id}
@@ -962,7 +1051,8 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                                 </div>
                             ))}
                         </div>
-                    ))
+                        );
+                    })
                 )}
             </div>
 
