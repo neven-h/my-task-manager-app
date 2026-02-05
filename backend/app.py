@@ -32,6 +32,7 @@ import base64
 import pyotp
 import qrcode
 from io import BytesIO
+import yfinance as yf
 
 # Load environment variables
 load_dotenv()
@@ -1086,24 +1087,55 @@ def init_db():
                        """)
         print("Created password_reset_tokens table")
 
+        # Create portfolio_tabs table
+        cursor.execute("""
+                       CREATE TABLE IF NOT EXISTS portfolio_tabs
+                       (
+                           id INT AUTO_INCREMENT PRIMARY KEY,
+                           name VARCHAR(255) NOT NULL,
+                           owner VARCHAR(255) NOT NULL,
+                           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                           INDEX idx_owner (owner)
+                       )
+                       """)
+        print("Created portfolio_tabs table")
+
         # Create stock_portfolio table
         cursor.execute("""
                        CREATE TABLE IF NOT EXISTS stock_portfolio
                        (
                            id INT AUTO_INCREMENT PRIMARY KEY,
                            name VARCHAR(255) NOT NULL,
+                           ticker_symbol VARCHAR(20),
                            percentage DECIMAL(5,2),
                            value_ils DECIMAL(12,2) NOT NULL,
+                           base_price DECIMAL(12,2),
                            entry_date DATE NOT NULL,
+                           tab_id INT,
                            created_by VARCHAR(255),
                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                            INDEX idx_entry_date (entry_date),
                            INDEX idx_name (name),
-                           INDEX idx_created_by (created_by)
+                           INDEX idx_ticker_symbol (ticker_symbol),
+                           INDEX idx_created_by (created_by),
+                           INDEX idx_tab_id (tab_id),
+                           FOREIGN KEY (tab_id) REFERENCES portfolio_tabs(id) ON DELETE CASCADE
                        )
                        """)
         print("Created stock_portfolio table")
+        
+        # Add columns if they don't exist (for existing databases)
+        try:
+            cursor.execute("ALTER TABLE stock_portfolio ADD COLUMN tab_id INT")
+            cursor.execute("ALTER TABLE stock_portfolio ADD COLUMN base_price DECIMAL(12,2)")
+            cursor.execute("ALTER TABLE stock_portfolio ADD COLUMN ticker_symbol VARCHAR(20)")
+            cursor.execute("ALTER TABLE stock_portfolio ADD INDEX idx_tab_id (tab_id)")
+            cursor.execute("ALTER TABLE stock_portfolio ADD INDEX idx_ticker_symbol (ticker_symbol)")
+            cursor.execute("ALTER TABLE stock_portfolio ADD FOREIGN KEY (tab_id) REFERENCES portfolio_tabs(id) ON DELETE CASCADE")
+        except Exception as e:
+            # Columns might already exist, ignore error
+            pass
 
         connection.commit()
         print("Database initialized successfully")
@@ -2202,6 +2234,7 @@ def get_portfolio_entries():
     try:
         username = request.args.get('username')
         user_role = request.args.get('role')
+        tab_id = request.args.get('tab_id')
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         name = request.args.get('name')
@@ -2211,6 +2244,11 @@ def get_portfolio_entries():
 
             query = "SELECT * FROM stock_portfolio WHERE 1=1"
             params = []
+
+            # Tab filtering
+            if tab_id:
+                query += " AND tab_id = %s"
+                params.append(tab_id)
 
             # Role-based filtering
             if user_role == 'limited':
@@ -2248,6 +2286,8 @@ def get_portfolio_entries():
                     entry['percentage'] = float(entry['percentage'])
                 if entry.get('value_ils'):
                     entry['value_ils'] = float(entry['value_ils'])
+                if entry.get('base_price'):
+                    entry['base_price'] = float(entry['base_price'])
 
             return jsonify(entries)
 
@@ -2261,21 +2301,40 @@ def create_portfolio_entry():
     try:
         data = request.json
         username = data.get('username')
+        tab_id = data.get('tab_id')
+        stock_name = data.get('name')
+        base_price = data.get('base_price')
 
         with get_db_connection() as connection:
-            cursor = connection.cursor()
+            cursor = connection.cursor(dictionary=True)
+
+            # Check if this is the first entry for this stock in this tab
+            # If so, base_price should be set
+            if base_price is None:
+                check_query = """
+                    SELECT COUNT(*) as count FROM stock_portfolio 
+                    WHERE name = %s AND tab_id = %s
+                """
+                cursor.execute(check_query, (stock_name, tab_id))
+                result = cursor.fetchone()
+                is_first_entry = result['count'] == 0
+            else:
+                is_first_entry = False
 
             query = """
                 INSERT INTO stock_portfolio
-                (name, percentage, value_ils, entry_date, created_by)
-                VALUES (%s, %s, %s, %s, %s)
+                (name, ticker_symbol, percentage, value_ils, base_price, entry_date, tab_id, created_by)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """
 
             values = (
-                data.get('name'),
+                stock_name,
+                data.get('ticker_symbol'),
                 data.get('percentage'),
                 data.get('value_ils'),
+                base_price if base_price else (data.get('value_ils') if is_first_entry else None),
                 data.get('entry_date'),
+                tab_id,
                 username
             )
 
@@ -2297,25 +2356,42 @@ def update_portfolio_entry(entry_id):
     """Update an existing portfolio entry"""
     try:
         data = request.json
+        username = request.args.get('username') or data.get('username')
+        user_role = request.args.get('role') or data.get('role')
 
         with get_db_connection() as connection:
-            cursor = connection.cursor()
+            cursor = connection.cursor(dictionary=True)
 
-            query = """
+            # First verify ownership/authorization
+            check_query = "SELECT created_by FROM stock_portfolio WHERE id = %s"
+            cursor.execute(check_query, (entry_id,))
+            entry = cursor.fetchone()
+
+            if not entry:
+                return jsonify({'error': 'Portfolio entry not found'}), 404
+
+            # Authorization check: limited users can only modify their own entries
+            if user_role == 'limited' and entry['created_by'] != username:
+                return jsonify({'error': 'Unauthorized: You can only modify your own portfolio entries'}), 403
+
+            # Update the entry
+            update_query = """
                 UPDATE stock_portfolio
-                SET name = %s, percentage = %s, value_ils = %s, entry_date = %s
+                SET name = %s, ticker_symbol = %s, percentage = %s, value_ils = %s, base_price = %s, entry_date = %s
                 WHERE id = %s
             """
 
             values = (
                 data.get('name'),
+                data.get('ticker_symbol'),
                 data.get('percentage'),
                 data.get('value_ils'),
+                data.get('base_price'),
                 data.get('entry_date'),
                 entry_id
             )
 
-            cursor.execute(query, values)
+            cursor.execute(update_query, values)
             connection.commit()
 
             if cursor.rowcount == 0:
@@ -2331,9 +2407,25 @@ def update_portfolio_entry(entry_id):
 def delete_portfolio_entry(entry_id):
     """Delete a portfolio entry"""
     try:
-        with get_db_connection() as connection:
-            cursor = connection.cursor()
+        username = request.args.get('username')
+        user_role = request.args.get('role')
 
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # First verify ownership/authorization
+            check_query = "SELECT created_by FROM stock_portfolio WHERE id = %s"
+            cursor.execute(check_query, (entry_id,))
+            entry = cursor.fetchone()
+
+            if not entry:
+                return jsonify({'error': 'Portfolio entry not found'}), 404
+
+            # Authorization check: limited users can only delete their own entries
+            if user_role == 'limited' and entry['created_by'] != username:
+                return jsonify({'error': 'Unauthorized: You can only delete your own portfolio entries'}), 403
+
+            # Delete the entry
             cursor.execute("DELETE FROM stock_portfolio WHERE id = %s", (entry_id,))
             connection.commit()
 
@@ -2346,35 +2438,84 @@ def delete_portfolio_entry(entry_id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/portfolio/names', methods=['GET'])
+def get_portfolio_stock_names():
+    """Get all unique stock names for autocomplete"""
+    try:
+        username = request.args.get('username')
+        user_role = request.args.get('role')
+        tab_id = request.args.get('tab_id')
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            query = "SELECT DISTINCT name FROM stock_portfolio WHERE 1=1"
+            params = []
+
+            if tab_id:
+                query += " AND tab_id = %s"
+                params.append(tab_id)
+
+            if user_role == 'limited':
+                query += " AND created_by = %s"
+                params.append(username)
+
+            query += " ORDER BY name ASC"
+
+            cursor.execute(query, params)
+            stocks = cursor.fetchall()
+
+            return jsonify([stock['name'] for stock in stocks])
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/portfolio/summary', methods=['GET'])
 def get_portfolio_summary():
     """Get portfolio summary with total value and latest entries"""
     try:
         username = request.args.get('username')
         user_role = request.args.get('role')
+        tab_id = request.args.get('tab_id')
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
             # Get latest entry for each stock
-            query = """
-                SELECT name, percentage, value_ils, entry_date, created_by
+            # Build the subquery conditions to match the outer query filters
+            subquery_conditions = "sp2.name = sp1.name AND sp2.tab_id = sp1.tab_id"
+            params = []
+
+            if tab_id:
+                subquery_conditions += " AND sp2.tab_id = %s"
+                params.append(tab_id)
+
+            # Role-based filtering - apply to both outer query and subquery
+            if user_role == 'limited':
+                subquery_conditions += " AND sp2.created_by = %s"
+                params.append(username)
+
+            query = f"""
+                SELECT name, ticker_symbol, percentage, value_ils, base_price, entry_date, created_by
                 FROM stock_portfolio sp1
                 WHERE entry_date = (
                     SELECT MAX(entry_date)
                     FROM stock_portfolio sp2
-                    WHERE sp2.name = sp1.name
+                    WHERE {subquery_conditions}
                 )
             """
 
-            params = []
+            # Apply same filters to outer query
+            if tab_id:
+                query += " AND sp1.tab_id = %s"
+                params.append(tab_id)
 
-            # Role-based filtering
             if user_role == 'limited':
-                query += " AND created_by = %s"
+                query += " AND sp1.created_by = %s"
                 params.append(username)
 
-            query += " GROUP BY name ORDER BY value_ils DESC"
+            query += " GROUP BY name, tab_id ORDER BY value_ils DESC"
 
             cursor.execute(query, params)
             latest_entries = cursor.fetchall()
@@ -2390,6 +2531,8 @@ def get_portfolio_summary():
                     entry['percentage'] = float(entry['percentage'])
                 if entry.get('value_ils'):
                     entry['value_ils'] = float(entry['value_ils'])
+                if entry.get('base_price'):
+                    entry['base_price'] = float(entry['base_price'])
 
             return jsonify({
                 'total_value': total_value,
@@ -2399,6 +2542,106 @@ def get_portfolio_summary():
 
     except Error as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/portfolio/stock-price', methods=['GET'])
+def get_stock_price():
+    """Get live stock price from Yahoo Finance"""
+    try:
+        ticker_symbol = request.args.get('ticker')
+        if not ticker_symbol:
+            return jsonify({'error': 'Ticker symbol is required'}), 400
+
+        # Fetch stock data from Yahoo Finance
+        stock = yf.Ticker(ticker_symbol)
+        info = stock.info
+        
+        # Get current price and market data
+        current_price = info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose')
+        previous_close = info.get('previousClose')
+        change = info.get('regularMarketChange') or (current_price - previous_close if current_price and previous_close else None)
+        change_percent = info.get('regularMarketChangePercent') or ((change / previous_close * 100) if change and previous_close else None)
+        
+        # Get additional info
+        currency = info.get('currency', 'USD')
+        market_state = info.get('marketState', 'UNKNOWN')
+        exchange = info.get('exchange', '')
+        long_name = info.get('longName') or info.get('shortName', ticker_symbol)
+        
+        return jsonify({
+            'ticker': ticker_symbol,
+            'name': long_name,
+            'currentPrice': current_price,
+            'previousClose': previous_close,
+            'change': change,
+            'changePercent': change_percent,
+            'currency': currency,
+            'marketState': market_state,
+            'exchange': exchange,
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'Failed to fetch stock price: {str(e)}'}), 500
+
+
+@app.route('/api/portfolio/stock-prices', methods=['POST'])
+def get_multiple_stock_prices():
+    """Get live stock prices for multiple tickers from Yahoo Finance"""
+    try:
+        data = request.json
+        tickers = data.get('tickers', [])
+        
+        if not tickers or not isinstance(tickers, list):
+            return jsonify({'error': 'Tickers array is required'}), 400
+
+        if len(tickers) > 50:
+            return jsonify({'error': 'Maximum 50 tickers allowed per request'}), 400
+
+        results = []
+        for ticker in tickers:
+            try:
+                stock = yf.Ticker(ticker)
+                info = stock.info
+                
+                current_price = info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose')
+                previous_close = info.get('previousClose')
+                change = info.get('regularMarketChange') or (current_price - previous_close if current_price and previous_close else None)
+                change_percent = info.get('regularMarketChangePercent') or ((change / previous_close * 100) if change and previous_close else None)
+                
+                results.append({
+                    'ticker': ticker,
+                    'name': info.get('longName') or info.get('shortName', ticker),
+                    'currentPrice': current_price,
+                    'previousClose': previous_close,
+                    'change': change,
+                    'changePercent': change_percent,
+                    'currency': info.get('currency', 'USD'),
+                    'marketState': info.get('marketState', 'UNKNOWN'),
+                    'exchange': info.get('exchange', ''),
+                    'error': None
+                })
+            except Exception as e:
+                results.append({
+                    'ticker': ticker,
+                    'name': ticker,
+                    'currentPrice': None,
+                    'previousClose': None,
+                    'change': None,
+                    'changePercent': None,
+                    'currency': None,
+                    'marketState': None,
+                    'exchange': None,
+                    'error': str(e)
+                })
+
+        return jsonify({
+            'prices': results,
+            'timestamp': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        return jsonify({'error': f'Failed to fetch stock prices: {str(e)}'}), 500
 
 
 @app.route('/api/export/hours-report', methods=['GET'])
@@ -3554,6 +3797,161 @@ def adopt_orphaned_transactions(tab_id):
             adopted_count = cursor.rowcount
             connection.commit()
             return jsonify({'message': f'{adopted_count} transactions assigned to tab', 'count': adopted_count})
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ==================== PORTFOLIO TABS ENDPOINTS ====================
+
+@app.route('/api/portfolio-tabs', methods=['GET'])
+def get_portfolio_tabs():
+    """Get all portfolio tabs for the current user"""
+    try:
+        username = request.args.get('username')
+        user_role = request.args.get('role')
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            query = "SELECT * FROM portfolio_tabs WHERE 1=1"
+            params = []
+
+            if user_role == 'limited':
+                query += " AND owner = %s"
+                params.append(username)
+
+            query += " ORDER BY created_at ASC"
+            cursor.execute(query, params)
+            tabs = cursor.fetchall()
+
+            for tab in tabs:
+                if tab.get('created_at'):
+                    tab['created_at'] = tab['created_at'].isoformat()
+
+            return jsonify(tabs)
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/portfolio-tabs', methods=['POST'])
+def create_portfolio_tab():
+    """Create a new portfolio tab"""
+    try:
+        data = request.json
+        name = data.get('name', '').strip()
+        owner = data.get('username')
+
+        if not name:
+            return jsonify({'error': 'Tab name is required'}), 400
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            cursor.execute(
+                "INSERT INTO portfolio_tabs (name, owner) VALUES (%s, %s)",
+                (name, owner)
+            )
+            connection.commit()
+
+            tab_id = cursor.lastrowid
+            return jsonify({
+                'id': tab_id,
+                'name': name,
+                'owner': owner,
+                'message': 'Tab created successfully'
+            })
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/portfolio-tabs/<int:tab_id>', methods=['PUT'])
+def update_portfolio_tab(tab_id):
+    """Rename a portfolio tab"""
+    try:
+        data = request.json
+        name = data.get('name', '').strip()
+        username = request.args.get('username')
+        user_role = request.args.get('role')
+
+        if not name:
+            return jsonify({'error': 'Tab name is required'}), 400
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # First verify ownership/authorization
+            check_query = "SELECT owner FROM portfolio_tabs WHERE id = %s"
+            cursor.execute(check_query, (tab_id,))
+            tab = cursor.fetchone()
+
+            if not tab:
+                return jsonify({'error': 'Tab not found'}), 404
+
+            # Authorization check: limited users can only modify their own tabs
+            if user_role == 'limited' and tab['owner'] != username:
+                return jsonify({'error': 'Unauthorized: You can only modify your own portfolio tabs'}), 403
+
+            # Update the tab
+            cursor.execute(
+                "UPDATE portfolio_tabs SET name = %s WHERE id = %s",
+                (name, tab_id)
+            )
+            connection.commit()
+
+            if cursor.rowcount == 0:
+                return jsonify({'error': 'Tab not found'}), 404
+
+            return jsonify({'message': 'Tab updated successfully'})
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/portfolio-tabs/<int:tab_id>', methods=['DELETE'])
+def delete_portfolio_tab(tab_id):
+    """Delete a portfolio tab and its associated entries"""
+    try:
+        username = request.args.get('username')
+        user_role = request.args.get('role')
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # First verify ownership/authorization
+            check_query = "SELECT owner FROM portfolio_tabs WHERE id = %s"
+            cursor.execute(check_query, (tab_id,))
+            tab = cursor.fetchone()
+
+            if not tab:
+                return jsonify({'error': 'Tab not found'}), 404
+
+            # Authorization check: limited users can only delete their own tabs
+            if user_role == 'limited' and tab['owner'] != username:
+                return jsonify({'error': 'Unauthorized: You can only delete your own portfolio tabs'}), 403
+
+            # Delete associated portfolio entries first (CASCADE should handle this, but being explicit)
+            cursor.execute(
+                "DELETE FROM stock_portfolio WHERE tab_id = %s",
+                (tab_id,)
+            )
+            deleted_entries = cursor.rowcount
+
+            # Delete the tab
+            cursor.execute(
+                "DELETE FROM portfolio_tabs WHERE id = %s",
+                (tab_id,)
+            )
+            connection.commit()
+
+            if cursor.rowcount == 0:
+                return jsonify({'error': 'Tab not found'}), 404
+
+            return jsonify({
+                'message': f'Tab deleted with {deleted_entries} portfolio entries'
+            })
+
     except Error as e:
         return jsonify({'error': str(e)}), 500
 
