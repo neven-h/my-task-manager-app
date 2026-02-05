@@ -42,3 +42,5 @@ yarn-error.log*
 .vercel
 .env*.local
 Git_Railway_Vercel_Staging_to_Production_Checklist.pdf
+.env.staging
+.env.production
