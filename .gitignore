@@ -46,3 +46,6 @@ yarn-error.log*
 .env.staging
 Git_Railway_Vercel_Staging_to_Production_Checklist.pdf
 production_data.sql
+.idea/sqldialects.xml
+.idea/
+.idea/sqldialects.xml
