@@ -1142,49 +1142,80 @@ def init_db():
         print("Created watched_stocks table")
         
         # Add columns if they don't exist (for existing databases)
+        # Check and add tab_id
         try:
-            # Check and add tab_id
             cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND COLUMN_NAME = 'tab_id'")
             if cursor.fetchone()['count'] == 0:
                 cursor.execute("ALTER TABLE stock_portfolio ADD COLUMN tab_id INT")
-            
-            # Check and add base_price
+                connection.commit()
+                print("Added tab_id column to stock_portfolio")
+        except Exception as e:
+            print(f"Note: tab_id column check/add failed (may already exist): {e}")
+        
+        # Check and add base_price
+        try:
             cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND COLUMN_NAME = 'base_price'")
             if cursor.fetchone()['count'] == 0:
                 cursor.execute("ALTER TABLE stock_portfolio ADD COLUMN base_price DECIMAL(12,2)")
-            
-            # Check and add ticker_symbol
+                connection.commit()
+                print("Added base_price column to stock_portfolio")
+        except Exception as e:
+            print(f"Note: base_price column check/add failed (may already exist): {e}")
+        
+        # Check and add ticker_symbol
+        try:
             cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND COLUMN_NAME = 'ticker_symbol'")
             if cursor.fetchone()['count'] == 0:
                 cursor.execute("ALTER TABLE stock_portfolio ADD COLUMN ticker_symbol VARCHAR(20)")
-            
-            # Check and add currency
+                connection.commit()
+                print("Added ticker_symbol column to stock_portfolio")
+        except Exception as e:
+            print(f"Note: ticker_symbol column check/add failed (may already exist): {e}")
+        
+        # Check and add currency
+        try:
             cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND COLUMN_NAME = 'currency'")
             if cursor.fetchone()['count'] == 0:
                 cursor.execute("ALTER TABLE stock_portfolio ADD COLUMN currency VARCHAR(3) DEFAULT 'ILS'")
-            
-            # Check and add units
+                connection.commit()
+                print("Added currency column to stock_portfolio")
+        except Exception as e:
+            print(f"Note: currency column check/add failed (may already exist): {e}")
+        
+        # Check and add units
+        try:
             cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND COLUMN_NAME = 'units'")
             if cursor.fetchone()['count'] == 0:
                 cursor.execute("ALTER TABLE stock_portfolio ADD COLUMN units DECIMAL(12,4) DEFAULT 1")
-            
-            # Add indexes if they don't exist
-            try:
-                cursor.execute("ALTER TABLE stock_portfolio ADD INDEX idx_tab_id (tab_id)")
-            except:
-                pass
-            try:
-                cursor.execute("ALTER TABLE stock_portfolio ADD INDEX idx_ticker_symbol (ticker_symbol)")
-            except:
-                pass
-            try:
-                cursor.execute("ALTER TABLE stock_portfolio ADD FOREIGN KEY (tab_id) REFERENCES portfolio_tabs(id) ON DELETE CASCADE")
-            except:
-                pass
+                connection.commit()
+                print("Added units column to stock_portfolio")
         except Exception as e:
-            # Columns might already exist, ignore error
-            print(f"Note: Some columns may already exist: {e}")
-            pass
+            print(f"Note: units column check/add failed (may already exist): {e}")
+        
+        # Add indexes if they don't exist
+        try:
+            cursor.execute("SHOW INDEX FROM stock_portfolio WHERE Key_name = 'idx_tab_id'")
+            if cursor.fetchone() is None:
+                cursor.execute("ALTER TABLE stock_portfolio ADD INDEX idx_tab_id (tab_id)")
+                connection.commit()
+        except Exception as e:
+            print(f"Note: idx_tab_id index may already exist: {e}")
+        
+        try:
+            cursor.execute("SHOW INDEX FROM stock_portfolio WHERE Key_name = 'idx_ticker_symbol'")
+            if cursor.fetchone() is None:
+                cursor.execute("ALTER TABLE stock_portfolio ADD INDEX idx_ticker_symbol (ticker_symbol)")
+                connection.commit()
+        except Exception as e:
+            print(f"Note: idx_ticker_symbol index may already exist: {e}")
+        
+        try:
+            cursor.execute("SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND CONSTRAINT_TYPE = 'FOREIGN KEY' AND CONSTRAINT_NAME LIKE '%tab_id%'")
+            if cursor.fetchone() is None:
+                cursor.execute("ALTER TABLE stock_portfolio ADD FOREIGN KEY (tab_id) REFERENCES portfolio_tabs(id) ON DELETE CASCADE")
+                connection.commit()
+        except Exception as e:
+            print(f"Note: Foreign key constraint may already exist: {e}")
 
         connection.commit()
         print("Database initialized successfully")
@@ -2377,24 +2408,41 @@ def create_portfolio_entry():
             else:
                 is_first_entry = False
 
-            query = """
-                INSERT INTO stock_portfolio
-                (name, ticker_symbol, percentage, value_ils, base_price, entry_date, tab_id, created_by, currency, units)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """
-
-            values = (
+            # Check which columns exist before building INSERT query
+            cursor.execute("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio'")
+            existing_columns = {row['COLUMN_NAME'] for row in cursor.fetchall()}
+            
+            # Build INSERT query dynamically based on available columns
+            columns = ['name', 'percentage', 'value_ils', 'base_price', 'entry_date', 'tab_id', 'created_by']
+            values_list = [
                 stock_name,
-                data.get('ticker_symbol'),
                 data.get('percentage'),
                 data.get('value_ils'),
                 base_price if base_price else (data.get('value_ils') if is_first_entry else None),
                 data.get('entry_date'),
                 tab_id,
-                username,
-                data.get('currency', 'ILS'),
-                data.get('units', 1)
-            )
+                username
+            ]
+            
+            if 'ticker_symbol' in existing_columns:
+                columns.append('ticker_symbol')
+                values_list.append(data.get('ticker_symbol'))
+            
+            if 'currency' in existing_columns:
+                columns.append('currency')
+                values_list.append(data.get('currency', 'ILS'))
+            
+            if 'units' in existing_columns:
+                columns.append('units')
+                values_list.append(data.get('units', 1))
+            
+            query = f"""
+                INSERT INTO stock_portfolio
+                ({', '.join(columns)})
+                VALUES ({', '.join(['%s'] * len(columns))})
+            """
+            
+            values = tuple(values_list)
 
             cursor.execute(query, values)
             connection.commit()
@@ -2432,25 +2480,42 @@ def update_portfolio_entry(entry_id):
             if user_role == 'limited' and entry['created_by'] != username:
                 return jsonify({'error': 'Unauthorized: You can only modify your own portfolio entries'}), 403
 
-            # Update the entry
-            update_query = """
-                UPDATE stock_portfolio
-                SET name = %s, ticker_symbol = %s, percentage = %s, value_ils = %s, base_price = %s, entry_date = %s, currency = %s, units = %s
-                WHERE id = %s
-            """
-
-            values = (
+            # Check which columns exist before building UPDATE query
+            cursor.execute("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio'")
+            existing_columns = {row['COLUMN_NAME'] for row in cursor.fetchall()}
+            
+            # Build UPDATE query dynamically based on available columns
+            set_clauses = ['name = %s', 'percentage = %s', 'value_ils = %s', 'base_price = %s', 'entry_date = %s']
+            values_list = [
                 data.get('name'),
-                data.get('ticker_symbol'),
                 data.get('percentage'),
                 data.get('value_ils'),
                 data.get('base_price'),
-                data.get('entry_date'),
-                data.get('currency', 'ILS'),
-                data.get('units', 1),
-                entry_id
-            )
-
+                data.get('entry_date')
+            ]
+            
+            if 'ticker_symbol' in existing_columns:
+                set_clauses.append('ticker_symbol = %s')
+                values_list.append(data.get('ticker_symbol'))
+            
+            if 'currency' in existing_columns:
+                set_clauses.append('currency = %s')
+                values_list.append(data.get('currency', 'ILS'))
+            
+            if 'units' in existing_columns:
+                set_clauses.append('units = %s')
+                values_list.append(data.get('units', 1))
+            
+            values_list.append(entry_id)  # For WHERE clause
+            
+            update_query = f"""
+                UPDATE stock_portfolio
+                SET {', '.join(set_clauses)}
+                WHERE id = %s
+            """
+            
+            values = tuple(values_list)
+            
             cursor.execute(update_query, values)
             connection.commit()
 
@@ -5308,6 +5373,78 @@ try:
 except Exception as e:
     print(f"⚠ Warning: Database initialization failed: {e}")
     print("⚠ App will start but database operations will fail until MySQL is configured")
+
+
+@app.route('/api/admin/migrate-db', methods=['POST'])
+def migrate_database():
+    """Manual database migration endpoint to add missing columns"""
+    try:
+        # Simple auth check - in production, add proper authentication
+        auth_header = request.headers.get('Authorization')
+        if auth_header != f"Bearer {os.getenv('MIGRATION_SECRET', 'migration-secret-key')}":
+            return jsonify({'error': 'Unauthorized'}), 401
+        
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            migrations_applied = []
+            
+            # Check and add ticker_symbol
+            try:
+                cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND COLUMN_NAME = 'ticker_symbol'")
+                if cursor.fetchone()['count'] == 0:
+                    cursor.execute("ALTER TABLE stock_portfolio ADD COLUMN ticker_symbol VARCHAR(20)")
+                    connection.commit()
+                    migrations_applied.append('ticker_symbol')
+            except Exception as e:
+                return jsonify({'error': f'Failed to add ticker_symbol: {str(e)}'}), 500
+            
+            # Check and add currency
+            try:
+                cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND COLUMN_NAME = 'currency'")
+                if cursor.fetchone()['count'] == 0:
+                    cursor.execute("ALTER TABLE stock_portfolio ADD COLUMN currency VARCHAR(3) DEFAULT 'ILS'")
+                    connection.commit()
+                    migrations_applied.append('currency')
+            except Exception as e:
+                return jsonify({'error': f'Failed to add currency: {str(e)}'}), 500
+            
+            # Check and add units
+            try:
+                cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND COLUMN_NAME = 'units'")
+                if cursor.fetchone()['count'] == 0:
+                    cursor.execute("ALTER TABLE stock_portfolio ADD COLUMN units DECIMAL(12,4) DEFAULT 1")
+                    connection.commit()
+                    migrations_applied.append('units')
+            except Exception as e:
+                return jsonify({'error': f'Failed to add units: {str(e)}'}), 500
+            
+            # Ensure watched_stocks table exists
+            try:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS watched_stocks
+                    (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        username VARCHAR(255) NOT NULL,
+                        ticker_symbol VARCHAR(20) NOT NULL,
+                        stock_name VARCHAR(255),
+                        added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        UNIQUE KEY unique_user_ticker (username, ticker_symbol),
+                        INDEX idx_username (username),
+                        INDEX idx_ticker_symbol (ticker_symbol)
+                    )
+                """)
+                connection.commit()
+                migrations_applied.append('watched_stocks_table')
+            except Exception as e:
+                return jsonify({'error': f'Failed to create watched_stocks table: {str(e)}'}), 500
+            
+            return jsonify({
+                'message': 'Migration completed successfully',
+                'migrations_applied': migrations_applied
+            })
+            
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)
