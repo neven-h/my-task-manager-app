@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
-
-const API_BASE = import.meta.env.VITE_API_URL ||
-  (import.meta.env.PROD
-    ? 'https://api.drpitz.club/api'
-    : 'http://localhost:5001/api');
+import { ArrowLeft, Plus, Edit2, Trash2, TrendingUp, DollarSign } from 'lucide-react';
+import API_BASE from './config';
 
 const StockPortfolio = ({ onBackToTasks }) => {
   const [entries, setEntries] = useState([]);
@@ -22,6 +19,18 @@ const StockPortfolio = ({ onBackToTasks }) => {
 
   const authUser = localStorage.getItem('authUser');
   const authRole = localStorage.getItem('authRole');
+
+  // Color scheme - matching BankTransactions & TaskTracker theme
+  const colors = {
+    primary: '#0000FF',      // Blue
+    secondary: '#FFD500',    // Yellow
+    accent: '#FF0000',       // Red
+    success: '#00AA00',      // Green
+    background: '#fff',
+    text: '#000',
+    textLight: '#666',
+    border: '#000'
+  };
 
   // Fetch all entries
   const fetchEntries = async () => {
@@ -46,7 +55,6 @@ const StockPortfolio = ({ onBackToTasks }) => {
         `${API_BASE}/portfolio/summary?username=${authUser}&role=${authRole}`
       );
       const data = await response.json();
-      // Ensure total_value is always a valid number
       if (data && typeof data.total_value !== 'number') {
         data.total_value = 0;
       }
@@ -142,7 +150,6 @@ const StockPortfolio = ({ onBackToTasks }) => {
   };
 
   const formatCurrency = (amount) => {
-    // Handle invalid values
     const numAmount = typeof amount === 'number' && !isNaN(amount) ? amount : 0;
     return new Intl.NumberFormat('he-IL', {
       style: 'currency',
@@ -160,16 +167,48 @@ const StockPortfolio = ({ onBackToTasks }) => {
   }, {});
 
   return (
-    <div className="app-container">
-      <div className="header">
-        <div className="header-left">
-          <button className="btn btn-blue" onClick={onBackToTasks}>
-            ← Back to Tasks
+    <div style={{
+      minHeight: '100vh',
+      background: colors.background,
+      fontFamily: '"Inter", "Helvetica Neue", Calibri, sans-serif'
+    }}>
+      {/* Header */}
+      <header style={{
+        background: colors.background,
+        borderBottom: `4px solid ${colors.border}`,
+        padding: '1.5rem 2rem',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '1rem'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <button
+            onClick={onBackToTasks}
+            style={{
+              background: colors.primary,
+              border: `3px solid ${colors.border}`,
+              color: '#fff',
+              padding: '0.75rem 1.5rem',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              fontFamily: '"Inter", sans-serif',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}
+          >
+            <ArrowLeft size={20} /> Back
           </button>
-          <h1 style={{margin: 0}}>Stock Portfolio Tracker</h1>
+          <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: '800', letterSpacing: '-0.5px' }}>
+            📈 STOCK PORTFOLIO
+          </h1>
         </div>
         <button
-          className="btn btn-green"
           onClick={() => {
             setEditingEntry(null);
             setFormData({
@@ -180,133 +219,275 @@ const StockPortfolio = ({ onBackToTasks }) => {
             });
             setShowForm(true);
           }}
+          style={{
+            background: colors.secondary,
+            border: `3px solid ${colors.border}`,
+            color: colors.text,
+            padding: '0.75rem 1.5rem',
+            cursor: 'pointer',
+            fontWeight: 'bold',
+            fontSize: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            fontFamily: '"Inter", sans-serif',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}
         >
-          + Add Entry
+          <Plus size={20} /> Add Entry
         </button>
-      </div>
+      </header>
 
-      {error && (
-        <div className="alert alert-error" style={{margin: '20px 0'}}>
-          {error}
-          <button onClick={() => setError('')}>✕</button>
-        </div>
-      )}
-
-      {/* Summary Section */}
-      {summary && (
-        <div className="portfolio-summary" style={{
-          background: '#FFD500',
-          border: '4px solid #000',
-          padding: '20px',
-          marginBottom: '30px'
-        }}>
-          <h2 style={{margin: '0 0 15px 0'}}>Portfolio Summary</h2>
-          <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px'}}>
-            <div>
-              <div style={{fontSize: '14px', fontWeight: 600}}>Total Value</div>
-              <div style={{fontSize: '28px', fontWeight: 900}}>
-                {formatCurrency(summary.total_value)}
-              </div>
-            </div>
-            <div>
-              <div style={{fontSize: '14px', fontWeight: 600}}>Total Stocks</div>
-              <div style={{fontSize: '28px', fontWeight: 900}}>
-                {summary.count}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Entries List */}
-      <div className="portfolio-entries">
-        {loading && <div>Loading...</div>}
-
-        {!loading && Object.keys(groupedEntries).length === 0 && (
-          <div style={{textAlign: 'center', padding: '40px', color: '#666'}}>
-            No portfolio entries yet. Click "Add Entry" to start tracking!
+      {/* Content */}
+      <div style={{ padding: '2rem' }}>
+        {/* Error Alert */}
+        {error && (
+          <div style={{
+            background: colors.accent,
+            color: '#fff',
+            padding: '1rem',
+            marginBottom: '1.5rem',
+            border: `3px solid ${colors.border}`,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <span style={{ fontWeight: 'bold' }}>{error}</span>
+            <button
+              onClick={() => setError('')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#fff',
+                cursor: 'pointer',
+                fontSize: '1.25rem',
+                fontWeight: 'bold'
+              }}
+            >
+              ✕
+            </button>
           </div>
         )}
 
+        {/* Summary Section */}
+        {summary && (
+          <div style={{
+            background: colors.secondary,
+            border: `4px solid ${colors.border}`,
+            padding: '2rem',
+            marginBottom: '2rem'
+          }}>
+            <h2 style={{
+              margin: '0 0 1.5rem 0',
+              fontSize: '1.5rem',
+              fontWeight: '800',
+              textTransform: 'uppercase',
+              letterSpacing: '1px'
+            }}>
+              Portfolio Summary
+            </h2>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '2rem'
+            }}>
+              <div>
+                <div style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
+                  Total Value
+                </div>
+                <div style={{ fontSize: '2.5rem', fontWeight: '900', letterSpacing: '-1px' }}>
+                  {formatCurrency(summary.total_value)}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
+                  Total Stocks
+                </div>
+                <div style={{ fontSize: '2.5rem', fontWeight: '900', letterSpacing: '-1px' }}>
+                  {summary.count}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <div style={{ textAlign: 'center', padding: '3rem', color: colors.textLight, fontSize: '1.125rem' }}>
+            Loading...
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && Object.keys(groupedEntries).length === 0 && (
+          <div style={{
+            textAlign: 'center',
+            padding: '4rem 2rem',
+            background: '#f8f8f8',
+            border: `3px solid ${colors.border}`
+          }}>
+            <TrendingUp size={64} style={{ color: colors.textLight, marginBottom: '1rem' }} />
+            <p style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '0.5rem' }}>
+              No portfolio entries yet
+            </p>
+            <p style={{ color: colors.textLight }}>
+              Click "Add Entry" to start tracking your investments!
+            </p>
+          </div>
+        )}
+
+        {/* Entries List */}
         {Object.entries(groupedEntries).map(([stockName, stockEntries]) => (
-          <div key={stockName} className="stock-group" style={{
-            border: '4px solid #000',
-            marginBottom: '20px',
+          <div key={stockName} style={{
+            border: `4px solid ${colors.border}`,
+            marginBottom: '2rem',
             background: '#fff'
           }}>
             <div style={{
-              background: '#0000FF',
+              background: colors.primary,
               color: '#fff',
-              padding: '15px',
-              fontWeight: 900,
-              fontSize: '18px',
-              borderBottom: '4px solid #000'
+              padding: '1rem 1.5rem',
+              fontWeight: '900',
+              fontSize: '1.25rem',
+              borderBottom: `4px solid ${colors.border}`,
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
             }}>
               {stockName}
             </div>
 
-            <div className="entries-table">
-              <table style={{width: '100%', borderCollapse: 'collapse'}}>
-                <thead>
-                  <tr style={{background: '#f5f5f5', borderBottom: '2px solid #000'}}>
-                    <th style={{padding: '12px', textAlign: 'left', fontWeight: 700}}>Date</th>
-                    <th style={{padding: '12px', textAlign: 'right', fontWeight: 700}}>Value (ILS)</th>
-                    <th style={{padding: '12px', textAlign: 'right', fontWeight: 700}}>Percentage</th>
-                    <th style={{padding: '12px', textAlign: 'center', fontWeight: 700}}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stockEntries
-                    .sort((a, b) => new Date(b.entry_date) - new Date(a.entry_date))
-                    .map(entry => (
-                      <tr key={entry.id} style={{borderBottom: '1px solid #ddd'}}>
-                        <td style={{padding: '12px'}}>
-                          {new Date(entry.entry_date).toLocaleDateString('en-GB')}
-                        </td>
-                        <td style={{padding: '12px', textAlign: 'right', fontWeight: 600}}>
-                          {formatCurrency(entry.value_ils)}
-                        </td>
-                        <td style={{padding: '12px', textAlign: 'right'}}>
-                          {entry.percentage ? `${entry.percentage}%` : '-'}
-                        </td>
-                        <td style={{padding: '12px', textAlign: 'center'}}>
-                          <button
-                            className="btn btn-sm btn-blue"
-                            onClick={() => handleEdit(entry)}
-                            style={{marginRight: '5px', fontSize: '12px', padding: '5px 10px'}}
-                          >
-                            Edit
-                          </button>
-                          <button
-                            className="btn btn-sm btn-red"
-                            onClick={() => handleDelete(entry.id)}
-                            style={{fontSize: '12px', padding: '5px 10px'}}
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#f8f8f8', borderBottom: `3px solid ${colors.border}` }}>
+                  <th style={{ padding: '1rem', textAlign: 'left', fontWeight: '700', textTransform: 'uppercase', fontSize: '0.875rem' }}>Date</th>
+                  <th style={{ padding: '1rem', textAlign: 'right', fontWeight: '700', textTransform: 'uppercase', fontSize: '0.875rem' }}>Value (ILS)</th>
+                  <th style={{ padding: '1rem', textAlign: 'right', fontWeight: '700', textTransform: 'uppercase', fontSize: '0.875rem' }}>Percentage</th>
+                  <th style={{ padding: '1rem', textAlign: 'center', fontWeight: '700', textTransform: 'uppercase', fontSize: '0.875rem' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stockEntries
+                  .sort((a, b) => new Date(b.entry_date) - new Date(a.entry_date))
+                  .map(entry => (
+                    <tr key={entry.id} style={{ borderBottom: `2px solid #e0e0e0` }}>
+                      <td style={{ padding: '1rem' }}>
+                        {new Date(entry.entry_date).toLocaleDateString('en-GB')}
+                      </td>
+                      <td style={{ padding: '1rem', textAlign: 'right', fontWeight: '600', fontSize: '1.125rem' }}>
+                        {formatCurrency(entry.value_ils)}
+                      </td>
+                      <td style={{ padding: '1rem', textAlign: 'right' }}>
+                        {entry.percentage ? `${entry.percentage}%` : '-'}
+                      </td>
+                      <td style={{ padding: '1rem', textAlign: 'center' }}>
+                        <button
+                          onClick={() => handleEdit(entry)}
+                          style={{
+                            background: colors.primary,
+                            border: `2px solid ${colors.border}`,
+                            color: '#fff',
+                            padding: '0.5rem 1rem',
+                            cursor: 'pointer',
+                            fontWeight: 'bold',
+                            fontSize: '0.875rem',
+                            marginRight: '0.5rem',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.25rem'
+                          }}
+                        >
+                          <Edit2 size={14} /> Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(entry.id)}
+                          style={{
+                            background: colors.accent,
+                            border: `2px solid ${colors.border}`,
+                            color: '#fff',
+                            padding: '0.5rem 1rem',
+                            cursor: 'pointer',
+                            fontWeight: 'bold',
+                            fontSize: '0.875rem',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.25rem'
+                          }}
+                        >
+                          <Trash2 size={14} /> Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
           </div>
         ))}
       </div>
 
       {/* Add/Edit Form Modal */}
       {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{editingEntry ? 'Edit Entry' : 'Add Portfolio Entry'}</h2>
-              <button className="modal-close" onClick={() => setShowForm(false)}>✕</button>
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '1rem'
+        }} onClick={() => setShowForm(false)}>
+          <div style={{
+            background: '#fff',
+            border: `4px solid ${colors.border}`,
+            maxWidth: '500px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflow: 'auto'
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{
+              background: colors.primary,
+              color: '#fff',
+              padding: '1.5rem',
+              borderBottom: `4px solid ${colors.border}`,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <h2 style={{ margin: 0, fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                {editingEntry ? 'Edit Entry' : 'Add Portfolio Entry'}
+              </h2>
+              <button
+                onClick={() => setShowForm(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontSize: '1.5rem',
+                  fontWeight: 'bold'
+                }}
+              >
+                ✕
+              </button>
             </div>
 
-            <div className="modal-body">
+            <div style={{ padding: '2rem' }}>
               <form onSubmit={handleSubmit}>
-                <div className="form-group">
-                  <label>Stock/Asset Name *</label>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '0.5rem',
+                    fontWeight: '700',
+                    textTransform: 'uppercase',
+                    fontSize: '0.875rem',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Stock/Asset Name *
+                  </label>
                   <input
                     type="text"
                     name="name"
@@ -314,12 +495,28 @@ const StockPortfolio = ({ onBackToTasks }) => {
                     onChange={handleInputChange}
                     required
                     placeholder="e.g., Apple, Bitcoin, Real Estate"
-                    className="form-control"
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: `3px solid ${colors.border}`,
+                      fontSize: '1rem',
+                      fontFamily: '"Inter", sans-serif',
+                      boxSizing: 'border-box'
+                    }}
                   />
                 </div>
 
-                <div className="form-group">
-                  <label>Value (ILS) *</label>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '0.5rem',
+                    fontWeight: '700',
+                    textTransform: 'uppercase',
+                    fontSize: '0.875rem',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Value (ILS) *
+                  </label>
                   <input
                     type="number"
                     name="value_ils"
@@ -329,12 +526,28 @@ const StockPortfolio = ({ onBackToTasks }) => {
                     step="0.01"
                     min="0"
                     placeholder="0.00"
-                    className="form-control"
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: `3px solid ${colors.border}`,
+                      fontSize: '1rem',
+                      fontFamily: '"Inter", sans-serif',
+                      boxSizing: 'border-box'
+                    }}
                   />
                 </div>
 
-                <div className="form-group">
-                  <label>Percentage of Portfolio</label>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '0.5rem',
+                    fontWeight: '700',
+                    textTransform: 'uppercase',
+                    fontSize: '0.875rem',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Percentage of Portfolio
+                  </label>
                   <input
                     type="number"
                     name="percentage"
@@ -344,33 +557,83 @@ const StockPortfolio = ({ onBackToTasks }) => {
                     min="0"
                     max="100"
                     placeholder="Optional"
-                    className="form-control"
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: `3px solid ${colors.border}`,
+                      fontSize: '1rem',
+                      fontFamily: '"Inter", sans-serif',
+                      boxSizing: 'border-box'
+                    }}
                   />
-                  <small style={{color: '#666', fontSize: '12px'}}>
-                    Optional: What percentage of your total portfolio does this represent?
+                  <small style={{ color: colors.textLight, fontSize: '0.875rem', marginTop: '0.25rem', display: 'block' }}>
+                    Optional: What percentage of your total portfolio?
                   </small>
                 </div>
 
-                <div className="form-group">
-                  <label>Date *</label>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '0.5rem',
+                    fontWeight: '700',
+                    textTransform: 'uppercase',
+                    fontSize: '0.875rem',
+                    letterSpacing: '0.5px'
+                  }}>
+                    Date *
+                  </label>
                   <input
                     type="date"
                     name="entry_date"
                     value={formData.entry_date}
                     onChange={handleInputChange}
                     required
-                    className="form-control"
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: `3px solid ${colors.border}`,
+                      fontSize: '1rem',
+                      fontFamily: '"Inter", sans-serif',
+                      boxSizing: 'border-box'
+                    }}
                   />
                 </div>
 
-                <div className="form-actions" style={{display: 'flex', gap: '10px', marginTop: '20px'}}>
-                  <button type="submit" className="btn btn-green" disabled={loading}>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    style={{
+                      flex: 1,
+                      background: colors.success,
+                      border: `3px solid ${colors.border}`,
+                      color: '#fff',
+                      padding: '1rem',
+                      cursor: loading ? 'not-allowed' : 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '1rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      opacity: loading ? 0.6 : 1
+                    }}
+                  >
                     {loading ? 'Saving...' : editingEntry ? 'Update Entry' : 'Add Entry'}
                   </button>
                   <button
                     type="button"
-                    className="btn btn-red"
                     onClick={() => setShowForm(false)}
+                    style={{
+                      flex: 1,
+                      background: colors.accent,
+                      border: `3px solid ${colors.border}`,
+                      color: '#fff',
+                      padding: '1rem',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      fontSize: '1rem',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}
                   >
                     Cancel
                   </button>
