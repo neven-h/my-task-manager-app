@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ArrowLeft, Plus, Edit2, Trash2, X, TrendingUp, PieChart, Calendar, AlertCircle, CheckCircle, Users, Save, MoreVertical, TrendingDown } from 'lucide-react';
 import API_BASE from './config';
-import { formatCurrency } from './utils/formatCurrency';
+import { formatCurrency, formatCurrencyWithCode } from './utils/formatCurrency';
 import CustomAutocomplete from './components/CustomAutocomplete';
 
 const StockPortfolio = ({ onBackToTasks }) => {
@@ -1354,7 +1354,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                               marginBottom: '0.5rem',
                               color: colors.text
                             }}>
-                              {formatCurrency(price.currentPrice)} {price.currency || 'USD'}
+                              {formatCurrencyWithCode(price.currentPrice, price.currency || 'USD')}
                             </div>
                             {price.change !== null && price.change !== undefined && (
                               <div style={{
@@ -1483,6 +1483,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                       const livePriceValue = livePrice?.currentPrice;
                       const liveChange = livePrice?.change;
                       const liveChangePercent = livePrice?.changePercent;
+                      const liveCurrency = livePrice?.currency || 'ILS';
                       const isLivePositive = liveChange !== null && liveChange >= 0;
                       
                       return (
@@ -1508,7 +1509,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                             {livePriceValue !== null && livePriceValue !== undefined ? (
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
                                 <div style={{ color: colors.text }}>
-                                  {formatCurrency(livePriceValue)}
+                                  {formatCurrencyWithCode(livePriceValue, liveCurrency)}
                                 </div>
                                 {liveChange !== null && liveChange !== undefined && (
                                   <div style={{
