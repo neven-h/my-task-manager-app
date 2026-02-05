@@ -1125,16 +1125,55 @@ def init_db():
                        """)
         print("Created stock_portfolio table")
         
+        # Create watched_stocks table for Yahoo Finance watchlist
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS watched_stocks
+            (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(255) NOT NULL,
+                ticker_symbol VARCHAR(20) NOT NULL,
+                stock_name VARCHAR(255),
+                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_user_ticker (username, ticker_symbol),
+                INDEX idx_username (username),
+                INDEX idx_ticker_symbol (ticker_symbol)
+            )
+        """)
+        print("Created watched_stocks table")
+        
         # Add columns if they don't exist (for existing databases)
         try:
-            cursor.execute("ALTER TABLE stock_portfolio ADD COLUMN tab_id INT")
-            cursor.execute("ALTER TABLE stock_portfolio ADD COLUMN base_price DECIMAL(12,2)")
-            cursor.execute("ALTER TABLE stock_portfolio ADD COLUMN ticker_symbol VARCHAR(20)")
-            cursor.execute("ALTER TABLE stock_portfolio ADD INDEX idx_tab_id (tab_id)")
-            cursor.execute("ALTER TABLE stock_portfolio ADD INDEX idx_ticker_symbol (ticker_symbol)")
-            cursor.execute("ALTER TABLE stock_portfolio ADD FOREIGN KEY (tab_id) REFERENCES portfolio_tabs(id) ON DELETE CASCADE")
+            # Check and add tab_id
+            cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND COLUMN_NAME = 'tab_id'")
+            if cursor.fetchone()['count'] == 0:
+                cursor.execute("ALTER TABLE stock_portfolio ADD COLUMN tab_id INT")
+            
+            # Check and add base_price
+            cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND COLUMN_NAME = 'base_price'")
+            if cursor.fetchone()['count'] == 0:
+                cursor.execute("ALTER TABLE stock_portfolio ADD COLUMN base_price DECIMAL(12,2)")
+            
+            # Check and add ticker_symbol
+            cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND COLUMN_NAME = 'ticker_symbol'")
+            if cursor.fetchone()['count'] == 0:
+                cursor.execute("ALTER TABLE stock_portfolio ADD COLUMN ticker_symbol VARCHAR(20)")
+            
+            # Add indexes if they don't exist
+            try:
+                cursor.execute("ALTER TABLE stock_portfolio ADD INDEX idx_tab_id (tab_id)")
+            except:
+                pass
+            try:
+                cursor.execute("ALTER TABLE stock_portfolio ADD INDEX idx_ticker_symbol (ticker_symbol)")
+            except:
+                pass
+            try:
+                cursor.execute("ALTER TABLE stock_portfolio ADD FOREIGN KEY (tab_id) REFERENCES portfolio_tabs(id) ON DELETE CASCADE")
+            except:
+                pass
         except Exception as e:
             # Columns might already exist, ignore error
+            print(f"Note: Some columns may already exist: {e}")
             pass
 
         connection.commit()
@@ -2242,7 +2281,14 @@ def get_portfolio_entries():
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
-            query = "SELECT * FROM stock_portfolio WHERE 1=1"
+            # Check if ticker_symbol column exists
+            cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND COLUMN_NAME = 'ticker_symbol'")
+            has_ticker_symbol = cursor.fetchone()['count'] > 0
+            
+            if has_ticker_symbol:
+                query = "SELECT * FROM stock_portfolio WHERE 1=1"
+            else:
+                query = "SELECT id, name, NULL as ticker_symbol, percentage, value_ils, base_price, entry_date, tab_id, created_by, created_at, updated_at FROM stock_portfolio WHERE 1=1"
             params = []
 
             # Tab filtering
@@ -2496,15 +2542,30 @@ def get_portfolio_summary():
                 subquery_conditions += " AND sp2.created_by = %s"
                 params.append(username)
 
-            query = f"""
-                SELECT name, ticker_symbol, percentage, value_ils, base_price, entry_date, created_by
-                FROM stock_portfolio sp1
-                WHERE entry_date = (
-                    SELECT MAX(entry_date)
-                    FROM stock_portfolio sp2
-                    WHERE {subquery_conditions}
-                )
-            """
+            # Check if ticker_symbol column exists
+            cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND COLUMN_NAME = 'ticker_symbol'")
+            has_ticker_symbol = cursor.fetchone()['count'] > 0
+            
+            if has_ticker_symbol:
+                query = f"""
+                    SELECT name, ticker_symbol, percentage, value_ils, base_price, entry_date, created_by
+                    FROM stock_portfolio sp1
+                    WHERE entry_date = (
+                        SELECT MAX(entry_date)
+                        FROM stock_portfolio sp2
+                        WHERE {subquery_conditions}
+                    )
+                """
+            else:
+                query = f"""
+                    SELECT name, NULL as ticker_symbol, percentage, value_ils, base_price, entry_date, created_by
+                    FROM stock_portfolio sp1
+                    WHERE entry_date = (
+                        SELECT MAX(entry_date)
+                        FROM stock_portfolio sp2
+                        WHERE {subquery_conditions}
+                    )
+                """
 
             # Apply same filters to outer query
             if tab_id:
@@ -2642,6 +2703,237 @@ def get_multiple_stock_prices():
 
     except Exception as e:
         return jsonify({'error': f'Failed to fetch stock prices: {str(e)}'}), 500
+
+
+@app.route('/api/portfolio/search-stocks', methods=['GET'])
+def search_stocks():
+    """Search for stocks by ticker symbol or name using Yahoo Finance"""
+    try:
+        query = request.args.get('q', '').strip().upper()
+        if not query:
+            return jsonify({'error': 'Search query is required'}), 400
+        
+        if len(query) < 1:
+            return jsonify({'error': 'Search query must be at least 1 character'}), 400
+        
+        # Try to fetch stock info directly
+        try:
+            stock = yf.Ticker(query)
+            info = stock.info
+            
+            # Check if stock exists (has valid info)
+            if info and info.get('symbol'):
+                return jsonify({
+                    'results': [{
+                        'ticker': info.get('symbol', query),
+                        'name': info.get('longName') or info.get('shortName', query),
+                        'exchange': info.get('exchange', ''),
+                        'currency': info.get('currency', 'USD')
+                    }]
+                })
+        except:
+            pass
+        
+        # If direct lookup fails, try searching
+        # Note: yfinance doesn't have a built-in search, so we'll try common patterns
+        # For a more robust search, you'd need to use Yahoo Finance's search API or another service
+        return jsonify({
+            'results': [],
+            'message': 'No stocks found. Try entering a valid ticker symbol (e.g., AAPL, TSLA, MSFT)'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to search stocks: {str(e)}'}), 500
+
+
+@app.route('/api/portfolio/watchlist', methods=['GET'])
+def get_watchlist():
+    """Get user's watchlist"""
+    try:
+        username = request.args.get('username')
+        user_role = request.args.get('role')
+        
+        if not username:
+            return jsonify({'error': 'Username is required'}), 400
+        
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            
+            query = "SELECT * FROM watched_stocks WHERE username = %s ORDER BY added_at DESC"
+            cursor.execute(query, (username,))
+            watchlist = cursor.fetchall()
+            
+            # Serialize dates
+            for item in watchlist:
+                if item.get('added_at'):
+                    item['added_at'] = item['added_at'].isoformat()
+            
+            return jsonify(watchlist)
+            
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/portfolio/watchlist', methods=['POST'])
+def add_to_watchlist():
+    """Add a stock to user's watchlist"""
+    try:
+        data = request.json
+        username = data.get('username')
+        ticker_symbol = data.get('ticker_symbol', '').strip().upper()
+        stock_name = data.get('stock_name', '')
+        
+        if not username:
+            return jsonify({'error': 'Username is required'}), 400
+        if not ticker_symbol:
+            return jsonify({'error': 'Ticker symbol is required'}), 400
+        
+        # Verify stock exists by fetching its info
+        try:
+            stock = yf.Ticker(ticker_symbol)
+            info = stock.info
+            if not info or not info.get('symbol'):
+                return jsonify({'error': 'Invalid ticker symbol'}), 400
+            
+            # Use the fetched name if not provided
+            if not stock_name:
+                stock_name = info.get('longName') or info.get('shortName', ticker_symbol)
+        except Exception as e:
+            return jsonify({'error': f'Failed to verify stock: {str(e)}'}), 400
+        
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            
+            # Check if already in watchlist
+            check_query = "SELECT id FROM watched_stocks WHERE username = %s AND ticker_symbol = %s"
+            cursor.execute(check_query, (username, ticker_symbol))
+            existing = cursor.fetchone()
+            
+            if existing:
+                return jsonify({'error': 'Stock already in watchlist'}), 400
+            
+            # Add to watchlist
+            insert_query = """
+                INSERT INTO watched_stocks (username, ticker_symbol, stock_name)
+                VALUES (%s, %s, %s)
+            """
+            cursor.execute(insert_query, (username, ticker_symbol, stock_name))
+            connection.commit()
+            
+            return jsonify({
+                'id': cursor.lastrowid,
+                'message': 'Stock added to watchlist successfully'
+            }), 201
+            
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/portfolio/watchlist/<int:watchlist_id>', methods=['DELETE'])
+def remove_from_watchlist(watchlist_id):
+    """Remove a stock from user's watchlist"""
+    try:
+        username = request.args.get('username')
+        user_role = request.args.get('role')
+        
+        if not username:
+            return jsonify({'error': 'Username is required'}), 400
+        
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            
+            # Verify ownership
+            check_query = "SELECT username FROM watched_stocks WHERE id = %s"
+            cursor.execute(check_query, (watchlist_id,))
+            item = cursor.fetchone()
+            
+            if not item:
+                return jsonify({'error': 'Watchlist item not found'}), 404
+            
+            # Authorization check: limited users can only remove their own items
+            if user_role == 'limited' and item['username'] != username:
+                return jsonify({'error': 'Unauthorized: You can only remove your own watchlist items'}), 403
+            
+            # Delete the item
+            cursor.execute("DELETE FROM watched_stocks WHERE id = %s", (watchlist_id,))
+            connection.commit()
+            
+            if cursor.rowcount == 0:
+                return jsonify({'error': 'Watchlist item not found'}), 404
+            
+            return jsonify({'message': 'Stock removed from watchlist successfully'})
+            
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/portfolio/watchlist/prices', methods=['GET'])
+def get_watchlist_prices():
+    """Get live prices for all stocks in user's watchlist"""
+    try:
+        username = request.args.get('username')
+        
+        if not username:
+            return jsonify({'error': 'Username is required'}), 400
+        
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            
+            # Get watchlist
+            query = "SELECT ticker_symbol FROM watched_stocks WHERE username = %s"
+            cursor.execute(query, (username,))
+            watchlist = cursor.fetchall()
+            
+            tickers = [item['ticker_symbol'] for item in watchlist]
+            
+            if not tickers:
+                return jsonify({'prices': []})
+            
+            # Fetch prices for all tickers
+            results = []
+            for ticker in tickers:
+                try:
+                    stock = yf.Ticker(ticker)
+                    info = stock.info
+                    
+                    current_price = info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose')
+                    previous_close = info.get('previousClose')
+                    change = info.get('regularMarketChange') or (current_price - previous_close if current_price and previous_close else None)
+                    change_percent = info.get('regularMarketChangePercent') or ((change / previous_close * 100) if change and previous_close else None)
+                    
+                    results.append({
+                        'ticker': ticker,
+                        'name': info.get('longName') or info.get('shortName', ticker),
+                        'currentPrice': current_price,
+                        'previousClose': previous_close,
+                        'change': change,
+                        'changePercent': change_percent,
+                        'currency': info.get('currency', 'USD'),
+                        'marketState': info.get('marketState', 'UNKNOWN'),
+                        'exchange': info.get('exchange', ''),
+                        'error': None
+                    })
+                except Exception as e:
+                    results.append({
+                        'ticker': ticker,
+                        'name': ticker,
+                        'currentPrice': None,
+                        'previousClose': None,
+                        'change': None,
+                        'changePercent': None,
+                        'currency': None,
+                        'marketState': None,
+                        'exchange': None,
+                        'error': str(e)
+                    })
+            
+            return jsonify({
+                'prices': results,
+                'timestamp': datetime.now().isoformat()
+            })
+            
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/export/hours-report', methods=['GET'])
