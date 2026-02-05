@@ -45,3 +45,4 @@ yarn-error.log*
 # Local env / deployment notes
 .env.staging
 Git_Railway_Vercel_Staging_to_Production_Checklist.pdf
+production_data.sql
