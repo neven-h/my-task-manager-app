@@ -31,7 +31,8 @@ const StockPortfolio = ({ onBackToTasks }) => {
     percentage: '',
     value_ils: '',
     base_price: '',
-    entry_date: new Date().toISOString().split('T')[0]
+    entry_date: new Date().toISOString().split('T')[0],
+    currency: 'ILS'
   });
 
   // Live stock prices state
@@ -323,7 +324,8 @@ const StockPortfolio = ({ onBackToTasks }) => {
         percentage: '',
         value_ils: '',
         base_price: '',
-        entry_date: new Date().toISOString().split('T')[0]
+        entry_date: new Date().toISOString().split('T')[0],
+        currency: 'ILS'
       });
 
       await fetchEntries(activeTabId);
@@ -345,7 +347,8 @@ const StockPortfolio = ({ onBackToTasks }) => {
       percentage: entry.percentage || '',
       value_ils: entry.value_ils,
       base_price: entry.base_price || '',
-      entry_date: entry.entry_date
+      entry_date: entry.entry_date,
+      currency: entry.currency || 'ILS'
     });
     setShowForm(true);
   };
@@ -744,10 +747,12 @@ const StockPortfolio = ({ onBackToTasks }) => {
               setIsNewStock(false);
               setFormData({
                 name: '',
+                ticker_symbol: '',
                 percentage: '',
                 value_ils: '',
                 base_price: '',
-                entry_date: new Date().toISOString().split('T')[0]
+                entry_date: new Date().toISOString().split('T')[0],
+                currency: 'ILS'
               });
               setShowForm(true);
             }}
@@ -1544,7 +1549,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                             fontSize: '0.95rem',
                             color: colors.text
                           }}>
-                            {formatCurrency(stock.latestEntry.value_ils)}
+                            {formatCurrencyWithCode(stock.latestEntry.value_ils, stock.latestEntry.currency || 'ILS')}
                           </td>
                           <td style={{
                             padding: '0.75rem 1rem',
@@ -1552,7 +1557,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                             fontSize: '0.9rem',
                             color: colors.textLight
                           }}>
-                            {stock.basePrice ? formatCurrency(stock.basePrice) : '-'}
+                            {stock.basePrice ? formatCurrencyWithCode(stock.basePrice, stock.latestEntry.currency || 'ILS') : '-'}
                           </td>
                           <td style={{
                             padding: '0.75rem 1rem',
@@ -1709,7 +1714,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                           fontSize: '0.95rem',
                           color: colors.text
                         }}>
-                          {formatCurrency(entry.value_ils)}
+                          {formatCurrencyWithCode(entry.value_ils, entry.currency || 'ILS')}
                         </td>
                         <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.9rem' }}>
                           {change ? (
@@ -1722,7 +1727,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                                 gap: '0.25rem'
                               }}>
                                 {change.valueChange >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                                {formatCurrency(Math.abs(change.valueChange))}
+                                {formatCurrencyWithCode(Math.abs(change.valueChange), entry.currency || 'ILS')}
                               </span>
                               <span style={{
                                 fontSize: '0.8rem',
@@ -1742,7 +1747,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                                 gap: '0.25rem'
                               }}>
                                 {baseGrowth >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                                {formatCurrency(Math.abs(entry.value_ils - (stockSummary?.basePrice || 0)))}
+                                {formatCurrencyWithCode(Math.abs(entry.value_ils - (stockSummary?.basePrice || 0)), entry.currency || 'ILS')}
                               </span>
                               <span style={{
                                 fontSize: '0.8rem',
@@ -1947,7 +1952,44 @@ const StockPortfolio = ({ onBackToTasks }) => {
 
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '1.05rem', color: colors.text }}>
-                  💰 Current Value (ILS) *
+                  💱 Currency *
+                </label>
+                <select
+                  name="currency"
+                  value={formData.currency}
+                  onChange={handleInputChange}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '1rem',
+                    border: `3px solid ${colors.border}`,
+                    fontSize: '1.05rem',
+                    fontFamily: '"Inter", sans-serif',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                    background: '#fff',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="ILS">₪ ILS (Israeli Shekel)</option>
+                  <option value="USD">$ USD (US Dollar)</option>
+                  <option value="EUR">€ EUR (Euro)</option>
+                  <option value="GBP">£ GBP (British Pound)</option>
+                  <option value="JPY">¥ JPY (Japanese Yen)</option>
+                  <option value="CNY">¥ CNY (Chinese Yuan)</option>
+                  <option value="CAD">$ CAD (Canadian Dollar)</option>
+                  <option value="AUD">$ AUD (Australian Dollar)</option>
+                  <option value="CHF">CHF (Swiss Franc)</option>
+                  <option value="NZD">$ NZD (New Zealand Dollar)</option>
+                </select>
+                <small style={{ color: colors.textLight, fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
+                  Select the currency for this stock entry
+                </small>
+              </div>
+
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '1.05rem', color: colors.text }}>
+                  💰 Current Value *
                 </label>
                 <input
                   type="number"
@@ -1968,6 +2010,9 @@ const StockPortfolio = ({ onBackToTasks }) => {
                     outline: 'none'
                   }}
                 />
+                <small style={{ color: colors.textLight, fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
+                  Enter the current value in {formData.currency || 'ILS'}
+                </small>
               </div>
 
               <div style={{ marginBottom: '1.5rem' }}>
