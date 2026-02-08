@@ -2970,17 +2970,19 @@ def get_portfolio_summary():
             cursor.execute(query, all_params)
             latest_entries = cursor.fetchall()
 
-            # Calculate total value
-            total_value = sum(float(entry['value_ils']) for entry in latest_entries)
-
-            # Serialize
+            # Serialize and calculate total value
+            total_value = 0.0
             for entry in latest_entries:
                 if entry.get('entry_date'):
                     entry['entry_date'] = entry['entry_date'].isoformat()
                 if entry.get('percentage'):
                     entry['percentage'] = float(entry['percentage'])
                 if entry.get('value_ils'):
-                    entry['value_ils'] = float(entry['value_ils'])
+                    value = float(entry['value_ils'])
+                    entry['value_ils'] = value
+                    total_value += value
+                else:
+                    entry['value_ils'] = 0.0
                 if entry.get('base_price'):
                     entry['base_price'] = float(entry['base_price'])
 
@@ -2991,7 +2993,13 @@ def get_portfolio_summary():
             })
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        print(f"Database error in get_portfolio_summary: {e}")
+        return jsonify({'error': f'Database error: {str(e)}'}), 500
+    except Exception as e:
+        print(f"Unexpected error in get_portfolio_summary: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Failed to load summary: {str(e)}'}), 500
 
 
 @app.route('/api/portfolio/stock-price', methods=['GET'])
