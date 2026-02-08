@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { ArrowLeft, Plus, Edit2, Trash2, X, TrendingUp, PieChart, Calendar, AlertCircle, CheckCircle, Users, Save, MoreVertical, TrendingDown, Upload, RefreshCw, DollarSign, Briefcase } from 'lucide-react';
+import { ArrowLeft, Plus, Edit2, Trash2, X, TrendingUp, PieChart, Calendar, AlertCircle, CheckCircle, Users, Save, MoreVertical, TrendingDown, Upload, RefreshCw, DollarSign, Briefcase, Copy } from 'lucide-react';
 import API_BASE from './config';
 import { formatCurrencyWithCode } from './utils/formatCurrency';
 import CustomAutocomplete from './components/CustomAutocomplete';
@@ -53,6 +53,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const searchTimeoutRef = useRef(null);
+  const [summaryDisplayCurrency, setSummaryDisplayCurrency] = useState('ILS');
 
   // Yahoo Finance Portfolio state
   const [yahooHoldings, setYahooHoldings] = useState([]);
@@ -529,6 +530,24 @@ const StockPortfolio = ({ onBackToTasks }) => {
     };
     setFormData(editFormData);
     setInitialFormData({ ...editFormData }); // Track initial state for edits too
+    setShowForm(true);
+  };
+
+  const handleDuplicate = (entry) => {
+    setError(null);
+    setEditingEntry(null); // Not editing — creating a new entry
+    setIsNewStock(false);
+    setFormData({
+      name: entry.name,
+      ticker_symbol: entry.ticker_symbol || '',
+      percentage: entry.percentage ?? '',
+      value_ils: entry.value_ils ?? '',
+      base_price: entry.base_price != null && entry.base_price !== '' ? entry.base_price : '',
+      entry_date: new Date().toISOString().split('T')[0],
+      currency: entry.currency || 'USD',
+      units: entry.units != null && entry.units !== '' ? String(entry.units) : '1'
+    });
+    setInitialFormData(null);
     setShowForm(true);
   };
 
@@ -1417,10 +1436,36 @@ const StockPortfolio = ({ onBackToTasks }) => {
                 fontWeight: '800',
                 color: colors.primary
               }}>
-                {formatCurrencyWithCode(summary.total_value_ils ?? summary.total_value ?? 0, 'ILS')}
+                {summaryDisplayCurrency === 'ILS'
+                  ? formatCurrencyWithCode(summary.total_value_ils ?? summary.total_value ?? 0, 'ILS')
+                  : formatCurrencyWithCode(
+                      summary.exchange_rates && summary.exchange_rates.USD && summary.total_value_ils
+                        ? summary.total_value_ils / summary.exchange_rates.USD
+                        : summary.total_value ?? 0,
+                      'USD'
+                    )
+                }
               </div>
-              <div style={{ color: colors.textLight, textTransform: 'uppercase', fontSize: '0.95rem', fontWeight: '700', marginTop: '0.25rem' }}>
-                💰 Total value (ILS)
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
+                <span style={{ color: colors.textLight, textTransform: 'uppercase', fontSize: '0.95rem', fontWeight: '700' }}>
+                  Total value
+                </span>
+                <button
+                  onClick={() => setSummaryDisplayCurrency(prev => prev === 'ILS' ? 'USD' : 'ILS')}
+                  style={{
+                    padding: '0.2rem 0.5rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    background: colors.primary,
+                    color: '#fff',
+                    border: `2px solid ${colors.border}`,
+                    cursor: 'pointer',
+                    fontFamily: '"Inter", sans-serif',
+                    textTransform: 'uppercase'
+                  }}
+                >
+                  {summaryDisplayCurrency === 'ILS' ? '₪ ILS' : '$ USD'}
+                </button>
               </div>
               {summary.exchange_rates && summary.exchange_rates.USD && (
                 <div style={{ color: colors.textLight, fontSize: '0.8rem', marginTop: '0.25rem' }}>
@@ -2595,6 +2640,24 @@ const StockPortfolio = ({ onBackToTasks }) => {
                             }}
                           >
                             <Edit2 size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDuplicate(entry)}
+                            title="Duplicate entry"
+                            style={{
+                              padding: '0.4rem 0.6rem',
+                              background: colors.success || '#28a745',
+                              color: '#fff',
+                              border: `2px solid ${colors.border}`,
+                              cursor: 'pointer',
+                              marginRight: '0.4rem',
+                              fontFamily: '"Inter", sans-serif',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem'
+                            }}
+                          >
+                            <Copy size={14} />
                           </button>
                           <button
                             onClick={() => handleDelete(entry.id)}
