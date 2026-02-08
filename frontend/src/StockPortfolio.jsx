@@ -1413,11 +1413,16 @@ const StockPortfolio = ({ onBackToTasks }) => {
                 fontWeight: '800',
                 color: colors.primary
               }}>
-                {formatCurrencyWithCode(summary.total_value || 0, 'ILS')}
+                {formatCurrencyWithCode(summary.total_value_ils ?? summary.total_value ?? 0, 'ILS')}
               </div>
               <div style={{ color: colors.textLight, textTransform: 'uppercase', fontSize: '0.95rem', fontWeight: '700', marginTop: '0.25rem' }}>
                 💰 Total value (ILS)
               </div>
+              {summary.exchange_rates && summary.exchange_rates.USD && (
+                <div style={{ color: colors.textLight, fontSize: '0.8rem', marginTop: '0.25rem' }}>
+                  USD/ILS: {summary.exchange_rates.USD.toFixed(2)}
+                </div>
+              )}
             </div>
             <div className="stats-card" style={{
               background: colors.card,

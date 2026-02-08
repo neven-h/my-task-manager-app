@@ -1077,8 +1077,13 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
             {summary && (
                 <div style={{padding: '16px', borderBottom: '3px solid #000', background: '#f8f8f8'}}>
                     <div style={{fontSize: '1.5rem', fontWeight: 900, marginBottom: '8px'}}>
-                        Total Value: {formatCurrency(summary.total_value || 0)}
+                        Total Value: {formatCurrencyWithCode(summary.total_value_ils ?? summary.total_value ?? 0, 'ILS')}
                     </div>
+                    {summary.exchange_rates && summary.exchange_rates.USD && (
+                        <div style={{fontSize: '0.8rem', color: THEME.muted, marginBottom: '4px'}}>
+                            USD/ILS: {summary.exchange_rates.USD.toFixed(2)}
+                        </div>
+                    )}
                     <div style={{fontSize: '0.85rem', color: THEME.muted}}>
                         {summary.latest_entries?.length || 0} stocks
                     </div>
