@@ -272,12 +272,8 @@ useEffect(() => {
             params.append('username', authUser);
             params.append('role', authRole);
 
-            console.log('Fetching tasks with:', {username: authUser, role: authRole});
-
             const response = await fetch(`${API_BASE}/tasks?${params}`);
             let data = await response.json();
-
-            console.log('Received tasks:', data.length, 'tasks');
 
             // Client-side filtering by tags
             if (filters.tags.length > 0) {
