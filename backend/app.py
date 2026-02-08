@@ -81,35 +81,23 @@ def _set_cached_stock_info(ticker_symbol, data):
 # Separate cache for exchange rates (longer TTL since rates change less frequently)
 _exchange_rate_cache = {}
 EXCHANGE_RATE_CACHE_TTL = 600  # 10 minutes
+_exchange_rate_fetching = set()  # Track which rates are currently being fetched
 
 
-def _get_exchange_rate(from_currency, to_currency='ILS'):
-    """
-    Fetch exchange rate with caching. Returns rate as float or None.
-    Uses Yahoo Finance ticker format: USDILS=X
-    Uses a background thread with timeout to prevent blocking.
-    """
-    if from_currency == to_currency:
-        return 1.0
-
+def _fetch_exchange_rate_background(from_currency, to_currency):
+    """Background thread to fetch and cache exchange rate. Never blocks requests."""
     cache_key = f"{from_currency}{to_currency}"
-    # Check cache first
-    with _cache_lock:
-        cached = _exchange_rate_cache.get(cache_key)
-        if cached and (time.time() - cached['timestamp']) < EXCHANGE_RATE_CACHE_TTL:
-            return cached['rate']
-
     ticker = f"{from_currency}{to_currency}=X"
-    result = [None]  # Use list to allow mutation from thread
 
-    def _fetch_rate():
-        """Fetch rate in a thread so we can timeout."""
+    try:
         # Strategy 1: Try fast_info
         try:
             fi = yf.Ticker(ticker).fast_info
             rate = getattr(fi, 'last_price', None) or getattr(fi, 'previous_close', None)
             if rate and float(rate) > 0:
-                result[0] = float(rate)
+                with _cache_lock:
+                    _exchange_rate_cache[cache_key] = {'rate': float(rate), 'timestamp': time.time()}
+                print(f"Exchange rate cached: {cache_key} = {float(rate)}")
                 return
         except Exception as e:
             print(f"Exchange rate fast_info failed for {ticker}: {e}")
@@ -120,29 +108,50 @@ def _get_exchange_rate(from_currency, to_currency='ILS'):
             if hist is not None and not hist.empty:
                 rate = float(hist.iloc[-1]['Close'])
                 if rate > 0:
-                    result[0] = rate
+                    with _cache_lock:
+                        _exchange_rate_cache[cache_key] = {'rate': rate, 'timestamp': time.time()}
+                    print(f"Exchange rate cached (history): {cache_key} = {rate}")
                     return
         except Exception as e:
             print(f"Exchange rate history failed for {ticker}: {e}")
-
-    # Run fetch in thread with 5-second timeout
-    fetch_thread = threading.Thread(target=_fetch_rate, daemon=True)
-    fetch_thread.start()
-    fetch_thread.join(timeout=5)  # Wait max 5 seconds
-
-    if result[0] is not None:
+    finally:
+        # Remove from fetching set so it can be retried later
         with _cache_lock:
-            _exchange_rate_cache[cache_key] = {'rate': result[0], 'timestamp': time.time()}
-        return result[0]
+            _exchange_rate_fetching.discard(cache_key)
 
-    # Timeout or failed - return stale cache if available
+
+def _get_exchange_rate(from_currency, to_currency='ILS'):
+    """
+    Get exchange rate from cache. NEVER blocks the request.
+    If not cached, triggers a background fetch and returns None.
+    The rate will be available on the next request.
+    """
+    if from_currency == to_currency:
+        return 1.0
+
+    cache_key = f"{from_currency}{to_currency}"
+
+    # Check cache (fresh or stale)
     with _cache_lock:
-        stale = _exchange_rate_cache.get(cache_key)
-        if stale:
-            print(f"Returning stale exchange rate for {cache_key}: {stale['rate']}")
-            return stale['rate']
+        cached = _exchange_rate_cache.get(cache_key)
+        if cached:
+            is_fresh = (time.time() - cached['timestamp']) < EXCHANGE_RATE_CACHE_TTL
+            if not is_fresh and cache_key not in _exchange_rate_fetching:
+                # Stale cache - trigger background refresh
+                _exchange_rate_fetching.add(cache_key)
+                t = threading.Thread(target=_fetch_exchange_rate_background, args=(from_currency, to_currency), daemon=True)
+                t.start()
+            # Return cached rate (fresh or stale) immediately
+            return cached['rate']
 
-    return None  # Could not fetch rate
+    # No cache at all - trigger background fetch, return None for now
+    with _cache_lock:
+        if cache_key not in _exchange_rate_fetching:
+            _exchange_rate_fetching.add(cache_key)
+            t = threading.Thread(target=_fetch_exchange_rate_background, args=(from_currency, to_currency), daemon=True)
+            t.start()
+
+    return None  # Not yet available, will be cached for next request
 
 
 # ==================== STOCK INFO HELPERS ====================
