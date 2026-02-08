@@ -33,9 +33,149 @@ import pyotp
 import qrcode
 from io import BytesIO
 import yfinance as yf
+import json
+import threading
+import urllib.request
+import urllib.parse
 
 # Load environment variables
 load_dotenv()
+
+# ==================== YAHOO FINANCE CACHE & HELPERS ====================
+
+# In-memory cache for stock data to reduce API calls and improve reliability
+_stock_cache = {}
+_cache_lock = threading.Lock()
+CACHE_TTL_SECONDS = 120  # Cache stock info for 2 minutes
+
+
+def _get_cached_stock_info(ticker_symbol):
+    """Get cached stock info or return None if expired/missing."""
+    with _cache_lock:
+        cached = _stock_cache.get(ticker_symbol)
+        if cached and (time.time() - cached['timestamp']) < CACHE_TTL_SECONDS:
+            return cached['data']
+    return None
+
+
+def _set_cached_stock_info(ticker_symbol, data):
+    """Store stock info in cache."""
+    with _cache_lock:
+        _stock_cache[ticker_symbol] = {
+            'data': data,
+            'timestamp': time.time()
+        }
+
+
+def _fetch_stock_info_robust(ticker_symbol):
+    """
+    Fetch stock info with multiple fallback strategies.
+    Returns a dict with price data or raises an exception.
+    """
+    # Check cache first
+    cached = _get_cached_stock_info(ticker_symbol)
+    if cached:
+        return cached
+
+    stock = yf.Ticker(ticker_symbol)
+    info = {}
+
+    # Strategy 1: Try .info (the standard approach)
+    try:
+        raw_info = stock.info
+        if raw_info and isinstance(raw_info, dict) and raw_info.get('symbol'):
+            info = raw_info
+    except Exception:
+        pass
+
+    # Strategy 2: If .info failed or returned no price, try fast_info
+    if not info.get('currentPrice') and not info.get('regularMarketPrice'):
+        try:
+            fi = stock.fast_info
+            if fi:
+                info['currentPrice'] = getattr(fi, 'last_price', None)
+                info['previousClose'] = getattr(fi, 'previous_close', None)
+                info['regularMarketPrice'] = getattr(fi, 'last_price', None)
+                info['currency'] = getattr(fi, 'currency', info.get('currency', 'USD'))
+                info['exchange'] = getattr(fi, 'exchange', info.get('exchange', ''))
+                info['marketState'] = info.get('marketState', 'UNKNOWN')
+                if not info.get('symbol'):
+                    info['symbol'] = ticker_symbol
+        except Exception:
+            pass
+
+    # Strategy 3: If still no price, try history() for the last trading day
+    if not info.get('currentPrice') and not info.get('regularMarketPrice'):
+        try:
+            hist = stock.history(period='5d')
+            if hist is not None and not hist.empty:
+                last_row = hist.iloc[-1]
+                info['currentPrice'] = float(last_row['Close'])
+                info['previousClose'] = float(hist.iloc[-2]['Close']) if len(hist) > 1 else None
+                if not info.get('symbol'):
+                    info['symbol'] = ticker_symbol
+                info['marketState'] = info.get('marketState', 'CLOSED')
+                info['currency'] = info.get('currency', 'USD')
+                info['exchange'] = info.get('exchange', '')
+        except Exception:
+            pass
+
+    if not info or (not info.get('currentPrice') and not info.get('regularMarketPrice') and not info.get('previousClose')):
+        raise ValueError(f'Unable to fetch data for ticker: {ticker_symbol}')
+
+    # Compute derived fields
+    current_price = info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose')
+    previous_close = info.get('previousClose')
+    change = info.get('regularMarketChange')
+    if change is None and current_price and previous_close:
+        change = current_price - previous_close
+    change_percent = info.get('regularMarketChangePercent')
+    if change_percent is None and change is not None and previous_close and previous_close != 0:
+        change_percent = (change / previous_close) * 100
+
+    result = {
+        'symbol': info.get('symbol', ticker_symbol),
+        'longName': info.get('longName') or info.get('shortName', ticker_symbol),
+        'shortName': info.get('shortName', ticker_symbol),
+        'currentPrice': current_price,
+        'previousClose': previous_close,
+        'change': change,
+        'changePercent': change_percent,
+        'currency': info.get('currency', 'USD'),
+        'marketState': info.get('marketState', 'UNKNOWN'),
+        'exchange': info.get('exchange', ''),
+    }
+
+    _set_cached_stock_info(ticker_symbol, result)
+    return result
+
+
+def _yahoo_search_tickers(query):
+    """
+    Search for tickers using Yahoo Finance's search/autocomplete API.
+    Returns a list of matching results.
+    """
+    results = []
+    try:
+        url = f"https://query2.finance.yahoo.com/v1/finance/search?q={urllib.parse.quote(query)}&quotesCount=8&newsCount=0&listsCount=0&enableFuzzyQuery=false"
+        req = urllib.request.Request(url, headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        })
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode())
+            quotes = data.get('quotes', [])
+            for q in quotes:
+                if q.get('quoteType') in ('EQUITY', 'ETF', 'MUTUALFUND', 'INDEX', 'CRYPTOCURRENCY'):
+                    results.append({
+                        'ticker': q.get('symbol', ''),
+                        'name': q.get('longname') or q.get('shortname', q.get('symbol', '')),
+                        'exchange': q.get('exchange', ''),
+                        'currency': q.get('currency', 'USD'),
+                        'quoteType': q.get('quoteType', ''),
+                    })
+    except Exception as e:
+        print(f"Yahoo search API error: {e}")
+    return results
 
 app = Flask(__name__)
 
@@ -1140,7 +1280,27 @@ def init_db():
             )
         """)
         print("Created watched_stocks table")
-        
+
+        # Create yahoo_portfolio table for imported Yahoo Finance holdings
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS yahoo_portfolio
+            (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(255) NOT NULL,
+                ticker_symbol VARCHAR(20) NOT NULL,
+                stock_name VARCHAR(255),
+                quantity DECIMAL(14,4) DEFAULT 0,
+                avg_cost_basis DECIMAL(14,4) DEFAULT 0,
+                currency VARCHAR(10) DEFAULT 'USD',
+                notes TEXT,
+                imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_user_yahoo_ticker (username, ticker_symbol),
+                INDEX idx_username (username)
+            )
+        """)
+        print("Created yahoo_portfolio table")
+
         # Add columns if they don't exist (for existing databases)
         # Check and add tab_id
         try:
@@ -2692,32 +2852,19 @@ def get_stock_price():
         if not ticker_symbol:
             return jsonify({'error': 'Ticker symbol is required'}), 400
 
-        # Fetch stock data from Yahoo Finance
-        stock = yf.Ticker(ticker_symbol)
-        info = stock.info
-        
-        # Get current price and market data
-        current_price = info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose')
-        previous_close = info.get('previousClose')
-        change = info.get('regularMarketChange') or (current_price - previous_close if current_price and previous_close else None)
-        change_percent = info.get('regularMarketChangePercent') or ((change / previous_close * 100) if change and previous_close else None)
-        
-        # Get additional info
-        currency = info.get('currency', 'USD')
-        market_state = info.get('marketState', 'UNKNOWN')
-        exchange = info.get('exchange', '')
-        long_name = info.get('longName') or info.get('shortName', ticker_symbol)
-        
+        ticker_symbol = ticker_symbol.strip().upper()
+        info = _fetch_stock_info_robust(ticker_symbol)
+
         return jsonify({
             'ticker': ticker_symbol,
-            'name': long_name,
-            'currentPrice': current_price,
-            'previousClose': previous_close,
-            'change': change,
-            'changePercent': change_percent,
-            'currency': currency,
-            'marketState': market_state,
-            'exchange': exchange,
+            'name': info.get('longName', ticker_symbol),
+            'currentPrice': info.get('currentPrice'),
+            'previousClose': info.get('previousClose'),
+            'change': info.get('change'),
+            'changePercent': info.get('changePercent'),
+            'currency': info.get('currency', 'USD'),
+            'marketState': info.get('marketState', 'UNKNOWN'),
+            'exchange': info.get('exchange', ''),
             'timestamp': datetime.now().isoformat()
         })
 
@@ -2731,7 +2878,7 @@ def get_multiple_stock_prices():
     try:
         data = request.json
         tickers = data.get('tickers', [])
-        
+
         if not tickers or not isinstance(tickers, list):
             return jsonify({'error': 'Tickers array is required'}), 400
 
@@ -2741,21 +2888,14 @@ def get_multiple_stock_prices():
         results = []
         for ticker in tickers:
             try:
-                stock = yf.Ticker(ticker)
-                info = stock.info
-                
-                current_price = info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose')
-                previous_close = info.get('previousClose')
-                change = info.get('regularMarketChange') or (current_price - previous_close if current_price and previous_close else None)
-                change_percent = info.get('regularMarketChangePercent') or ((change / previous_close * 100) if change and previous_close else None)
-                
+                info = _fetch_stock_info_robust(ticker.strip().upper())
                 results.append({
                     'ticker': ticker,
-                    'name': info.get('longName') or info.get('shortName', ticker),
-                    'currentPrice': current_price,
-                    'previousClose': previous_close,
-                    'change': change,
-                    'changePercent': change_percent,
+                    'name': info.get('longName', ticker),
+                    'currentPrice': info.get('currentPrice'),
+                    'previousClose': info.get('previousClose'),
+                    'change': info.get('change'),
+                    'changePercent': info.get('changePercent'),
                     'currency': info.get('currency', 'USD'),
                     'marketState': info.get('marketState', 'UNKNOWN'),
                     'exchange': info.get('exchange', ''),
@@ -2788,39 +2928,40 @@ def get_multiple_stock_prices():
 def search_stocks():
     """Search for stocks by ticker symbol or name using Yahoo Finance"""
     try:
-        query = request.args.get('q', '').strip().upper()
+        query = request.args.get('q', '').strip()
         if not query:
             return jsonify({'error': 'Search query is required'}), 400
-        
+
         if len(query) < 1:
             return jsonify({'error': 'Search query must be at least 1 character'}), 400
-        
-        # Try to fetch stock info directly
+
+        # Use Yahoo Finance search API for comprehensive results
+        search_results = _yahoo_search_tickers(query)
+
+        if search_results:
+            return jsonify({'results': search_results})
+
+        # Fallback: try direct ticker lookup if search API failed
         try:
-            stock = yf.Ticker(query)
-            info = stock.info
-            
-            # Check if stock exists (has valid info)
+            info = _fetch_stock_info_robust(query.upper())
             if info and info.get('symbol'):
                 return jsonify({
                     'results': [{
-                        'ticker': info.get('symbol', query),
-                        'name': info.get('longName') or info.get('shortName', query),
+                        'ticker': info.get('symbol', query.upper()),
+                        'name': info.get('longName', query.upper()),
                         'exchange': info.get('exchange', ''),
-                        'currency': info.get('currency', 'USD')
+                        'currency': info.get('currency', 'USD'),
+                        'quoteType': 'EQUITY',
                     }]
                 })
-        except:
+        except Exception:
             pass
-        
-        # If direct lookup fails, try searching
-        # Note: yfinance doesn't have a built-in search, so we'll try common patterns
-        # For a more robust search, you'd need to use Yahoo Finance's search API or another service
+
         return jsonify({
             'results': [],
             'message': 'No stocks found. Try entering a valid ticker symbol (e.g., AAPL, TSLA, MSFT)'
         })
-        
+
     except Exception as e:
         return jsonify({'error': f'Failed to search stocks: {str(e)}'}), 500
 
@@ -2861,36 +3002,35 @@ def add_to_watchlist():
         username = data.get('username')
         ticker_symbol = data.get('ticker_symbol', '').strip().upper()
         stock_name = data.get('stock_name', '')
-        
+
         if not username:
             return jsonify({'error': 'Username is required'}), 400
         if not ticker_symbol:
             return jsonify({'error': 'Ticker symbol is required'}), 400
-        
-        # Verify stock exists by fetching its info
+
+        # Verify stock exists using robust fetching
         try:
-            stock = yf.Ticker(ticker_symbol)
-            info = stock.info
+            info = _fetch_stock_info_robust(ticker_symbol)
             if not info or not info.get('symbol'):
                 return jsonify({'error': 'Invalid ticker symbol'}), 400
-            
+
             # Use the fetched name if not provided
             if not stock_name:
-                stock_name = info.get('longName') or info.get('shortName', ticker_symbol)
+                stock_name = info.get('longName', ticker_symbol)
         except Exception as e:
             return jsonify({'error': f'Failed to verify stock: {str(e)}'}), 400
-        
+
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
-            
+
             # Check if already in watchlist
             check_query = "SELECT id FROM watched_stocks WHERE username = %s AND ticker_symbol = %s"
             cursor.execute(check_query, (username, ticker_symbol))
             existing = cursor.fetchone()
-            
+
             if existing:
                 return jsonify({'error': 'Stock already in watchlist'}), 400
-            
+
             # Add to watchlist
             insert_query = """
                 INSERT INTO watched_stocks (username, ticker_symbol, stock_name)
@@ -2898,12 +3038,12 @@ def add_to_watchlist():
             """
             cursor.execute(insert_query, (username, ticker_symbol, stock_name))
             connection.commit()
-            
+
             return jsonify({
                 'id': cursor.lastrowid,
                 'message': 'Stock added to watchlist successfully'
             }), 201
-            
+
     except Error as e:
         return jsonify({'error': str(e)}), 500
 
@@ -2951,42 +3091,35 @@ def get_watchlist_prices():
     """Get live prices for all stocks in user's watchlist"""
     try:
         username = request.args.get('username')
-        
+
         if not username:
             return jsonify({'error': 'Username is required'}), 400
-        
+
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
-            
+
             # Get watchlist
             query = "SELECT ticker_symbol FROM watched_stocks WHERE username = %s"
             cursor.execute(query, (username,))
             watchlist = cursor.fetchall()
-            
+
             tickers = [item['ticker_symbol'] for item in watchlist]
-            
+
             if not tickers:
                 return jsonify({'prices': []})
-            
-            # Fetch prices for all tickers
+
+            # Fetch prices for all tickers using robust method
             results = []
             for ticker in tickers:
                 try:
-                    stock = yf.Ticker(ticker)
-                    info = stock.info
-                    
-                    current_price = info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose')
-                    previous_close = info.get('previousClose')
-                    change = info.get('regularMarketChange') or (current_price - previous_close if current_price and previous_close else None)
-                    change_percent = info.get('regularMarketChangePercent') or ((change / previous_close * 100) if change and previous_close else None)
-                    
+                    info = _fetch_stock_info_robust(ticker)
                     results.append({
                         'ticker': ticker,
-                        'name': info.get('longName') or info.get('shortName', ticker),
-                        'currentPrice': current_price,
-                        'previousClose': previous_close,
-                        'change': change,
-                        'changePercent': change_percent,
+                        'name': info.get('longName', ticker),
+                        'currentPrice': info.get('currentPrice'),
+                        'previousClose': info.get('previousClose'),
+                        'change': info.get('change'),
+                        'changePercent': info.get('changePercent'),
                         'currency': info.get('currency', 'USD'),
                         'marketState': info.get('marketState', 'UNKNOWN'),
                         'exchange': info.get('exchange', ''),
@@ -3005,12 +3138,398 @@ def get_watchlist_prices():
                         'exchange': None,
                         'error': str(e)
                     })
-            
+
             return jsonify({
                 'prices': results,
                 'timestamp': datetime.now().isoformat()
             })
-            
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ==================== YAHOO FINANCE PORTFOLIO IMPORT ====================
+
+@app.route('/api/portfolio/yahoo-import', methods=['POST'])
+def import_yahoo_portfolio():
+    """Import portfolio from Yahoo Finance CSV export.
+    Accepts a CSV file with columns: Symbol, Current Price, Date, Time, Change, Open, High, Low, Volume, Trade Date
+    OR the Holdings format: Symbol, Quantity, Price Paid, etc.
+    Also accepts JSON body with manual ticker list.
+    """
+    try:
+        username = request.form.get('username') or (request.json or {}).get('username')
+        if not username:
+            return jsonify({'error': 'Username is required'}), 400
+
+        imported = []
+        errors = []
+
+        # Handle CSV file upload
+        if 'file' in request.files:
+            file = request.files['file']
+            if not file.filename:
+                return jsonify({'error': 'No file selected'}), 400
+
+            if not file.filename.lower().endswith('.csv'):
+                return jsonify({'error': 'Only CSV files are supported'}), 400
+
+            try:
+                raw_data = file.read()
+                detected = chardet.detect(raw_data)
+                encoding = detected.get('encoding', 'utf-8')
+                content = raw_data.decode(encoding)
+
+                reader = csv.DictReader(io.StringIO(content))
+                rows = list(reader)
+
+                if not rows:
+                    return jsonify({'error': 'CSV file is empty'}), 400
+
+                headers_lower = [h.lower().strip() for h in (rows[0].keys() if rows else [])]
+
+                for row in rows:
+                    # Normalize keys to lowercase
+                    row_lower = {k.lower().strip(): v.strip() if v else '' for k, v in row.items()}
+
+                    ticker = row_lower.get('symbol', '').upper().strip()
+                    if not ticker or ticker in ('', 'SYMBOL', '-'):
+                        continue
+
+                    quantity = 0
+                    for qty_key in ['quantity', 'shares', 'qty', 'units', 'amount']:
+                        if qty_key in row_lower and row_lower[qty_key]:
+                            try:
+                                quantity = float(row_lower[qty_key].replace(',', ''))
+                                break
+                            except ValueError:
+                                pass
+
+                    cost_basis = 0
+                    for cost_key in ['price paid', 'cost basis', 'avg cost', 'purchase price', 'cost', 'price']:
+                        if cost_key in row_lower and row_lower[cost_key]:
+                            try:
+                                cost_basis = float(row_lower[cost_key].replace(',', '').replace('$', ''))
+                                break
+                            except ValueError:
+                                pass
+
+                    currency = row_lower.get('currency', 'USD').upper() or 'USD'
+
+                    # Validate ticker
+                    stock_name = ticker
+                    try:
+                        info = _fetch_stock_info_robust(ticker)
+                        stock_name = info.get('longName', ticker)
+                        if not currency or currency == 'USD':
+                            currency = info.get('currency', 'USD')
+                    except Exception:
+                        pass
+
+                    imported.append({
+                        'ticker': ticker,
+                        'name': stock_name,
+                        'quantity': quantity,
+                        'cost_basis': cost_basis,
+                        'currency': currency,
+                    })
+
+            except Exception as e:
+                return jsonify({'error': f'Failed to parse CSV: {str(e)}'}), 400
+
+        # Handle JSON body with manual ticker list
+        elif request.is_json:
+            data = request.json
+            tickers = data.get('tickers', [])
+            holdings = data.get('holdings', [])
+
+            if holdings:
+                for h in holdings:
+                    ticker = h.get('ticker', '').strip().upper()
+                    if not ticker:
+                        continue
+                    stock_name = h.get('name', ticker)
+                    try:
+                        info = _fetch_stock_info_robust(ticker)
+                        stock_name = info.get('longName', ticker)
+                    except Exception:
+                        pass
+                    imported.append({
+                        'ticker': ticker,
+                        'name': stock_name,
+                        'quantity': float(h.get('quantity', 0)),
+                        'cost_basis': float(h.get('cost_basis', 0)),
+                        'currency': h.get('currency', 'USD'),
+                    })
+            elif tickers:
+                for ticker in tickers:
+                    ticker = ticker.strip().upper()
+                    if not ticker:
+                        continue
+                    stock_name = ticker
+                    try:
+                        info = _fetch_stock_info_robust(ticker)
+                        stock_name = info.get('longName', ticker)
+                    except Exception:
+                        pass
+                    imported.append({
+                        'ticker': ticker,
+                        'name': stock_name,
+                        'quantity': 0,
+                        'cost_basis': 0,
+                        'currency': 'USD',
+                    })
+        else:
+            return jsonify({'error': 'CSV file or JSON data is required'}), 400
+
+        if not imported:
+            return jsonify({'error': 'No valid stocks found in the import data'}), 400
+
+        # Save to database
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # Ensure table exists
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS yahoo_portfolio
+                (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    username VARCHAR(255) NOT NULL,
+                    ticker_symbol VARCHAR(20) NOT NULL,
+                    stock_name VARCHAR(255),
+                    quantity DECIMAL(14,4) DEFAULT 0,
+                    avg_cost_basis DECIMAL(14,4) DEFAULT 0,
+                    currency VARCHAR(10) DEFAULT 'USD',
+                    notes TEXT,
+                    imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY unique_user_yahoo_ticker (username, ticker_symbol),
+                    INDEX idx_username (username)
+                )
+            """)
+
+            saved_count = 0
+            for item in imported:
+                try:
+                    cursor.execute("""
+                        INSERT INTO yahoo_portfolio (username, ticker_symbol, stock_name, quantity, avg_cost_basis, currency)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        ON DUPLICATE KEY UPDATE
+                            stock_name = VALUES(stock_name),
+                            quantity = VALUES(quantity),
+                            avg_cost_basis = VALUES(avg_cost_basis),
+                            currency = VALUES(currency),
+                            updated_at = CURRENT_TIMESTAMP
+                    """, (username, item['ticker'], item['name'], item['quantity'], item['cost_basis'], item['currency']))
+                    saved_count += 1
+                except Exception as e:
+                    errors.append(f"{item['ticker']}: {str(e)}")
+
+            connection.commit()
+
+        return jsonify({
+            'message': f'Successfully imported {saved_count} holdings',
+            'imported': imported,
+            'errors': errors,
+            'count': saved_count
+        }), 201
+
+    except Exception as e:
+        return jsonify({'error': f'Import failed: {str(e)}'}), 500
+
+
+@app.route('/api/portfolio/yahoo-holdings', methods=['GET'])
+def get_yahoo_holdings():
+    """Get user's imported Yahoo Finance portfolio holdings with live prices."""
+    try:
+        username = request.args.get('username')
+        if not username:
+            return jsonify({'error': 'Username is required'}), 400
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # Ensure table exists
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS yahoo_portfolio
+                (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    username VARCHAR(255) NOT NULL,
+                    ticker_symbol VARCHAR(20) NOT NULL,
+                    stock_name VARCHAR(255),
+                    quantity DECIMAL(14,4) DEFAULT 0,
+                    avg_cost_basis DECIMAL(14,4) DEFAULT 0,
+                    currency VARCHAR(10) DEFAULT 'USD',
+                    notes TEXT,
+                    imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY unique_user_yahoo_ticker (username, ticker_symbol),
+                    INDEX idx_username (username)
+                )
+            """)
+
+            cursor.execute("SELECT * FROM yahoo_portfolio WHERE username = %s ORDER BY ticker_symbol ASC", (username,))
+            holdings = cursor.fetchall()
+
+            # Serialize decimals and dates
+            for h in holdings:
+                for k in ('quantity', 'avg_cost_basis'):
+                    if h.get(k) is not None:
+                        h[k] = float(h[k])
+                for k in ('imported_at', 'updated_at'):
+                    if h.get(k):
+                        h[k] = h[k].isoformat()
+
+            # Fetch live prices for all holdings
+            enriched = []
+            total_portfolio_value = 0
+            total_cost_basis = 0
+            total_gain_loss = 0
+
+            for h in holdings:
+                ticker = h['ticker_symbol']
+                entry = {
+                    'id': h['id'],
+                    'ticker': ticker,
+                    'name': h['stock_name'],
+                    'quantity': h['quantity'],
+                    'avgCostBasis': h['avg_cost_basis'],
+                    'currency': h['currency'],
+                    'notes': h.get('notes'),
+                    'importedAt': h.get('imported_at'),
+                    'updatedAt': h.get('updated_at'),
+                }
+                try:
+                    info = _fetch_stock_info_robust(ticker)
+                    current_price = info.get('currentPrice', 0) or 0
+                    entry['currentPrice'] = current_price
+                    entry['previousClose'] = info.get('previousClose')
+                    entry['change'] = info.get('change')
+                    entry['changePercent'] = info.get('changePercent')
+                    entry['marketState'] = info.get('marketState', 'UNKNOWN')
+                    entry['exchange'] = info.get('exchange', '')
+
+                    # Calculate position value and gain/loss
+                    qty = h['quantity'] or 0
+                    cost = h['avg_cost_basis'] or 0
+                    position_value = current_price * qty
+                    position_cost = cost * qty
+                    gain_loss = position_value - position_cost if cost > 0 and qty > 0 else 0
+                    gain_loss_pct = ((current_price - cost) / cost * 100) if cost > 0 else 0
+
+                    entry['positionValue'] = round(position_value, 2)
+                    entry['positionCost'] = round(position_cost, 2)
+                    entry['gainLoss'] = round(gain_loss, 2)
+                    entry['gainLossPct'] = round(gain_loss_pct, 2)
+
+                    total_portfolio_value += position_value
+                    total_cost_basis += position_cost
+                    total_gain_loss += gain_loss
+                except Exception as e:
+                    entry['currentPrice'] = None
+                    entry['error'] = str(e)
+
+                enriched.append(entry)
+
+            return jsonify({
+                'holdings': enriched,
+                'summary': {
+                    'totalValue': round(total_portfolio_value, 2),
+                    'totalCost': round(total_cost_basis, 2),
+                    'totalGainLoss': round(total_gain_loss, 2),
+                    'totalGainLossPct': round((total_gain_loss / total_cost_basis * 100) if total_cost_basis > 0 else 0, 2),
+                    'holdingsCount': len(enriched),
+                },
+                'timestamp': datetime.now().isoformat()
+            })
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/portfolio/yahoo-holdings/<int:holding_id>', methods=['PUT'])
+def update_yahoo_holding(holding_id):
+    """Update a Yahoo Finance portfolio holding (quantity, cost basis, notes)."""
+    try:
+        data = request.json
+        username = data.get('username')
+        if not username:
+            return jsonify({'error': 'Username is required'}), 400
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # Verify ownership
+            cursor.execute("SELECT * FROM yahoo_portfolio WHERE id = %s AND username = %s", (holding_id, username))
+            existing = cursor.fetchone()
+            if not existing:
+                return jsonify({'error': 'Holding not found'}), 404
+
+            updates = []
+            params = []
+            if 'quantity' in data:
+                updates.append('quantity = %s')
+                params.append(float(data['quantity']))
+            if 'avg_cost_basis' in data:
+                updates.append('avg_cost_basis = %s')
+                params.append(float(data['avg_cost_basis']))
+            if 'notes' in data:
+                updates.append('notes = %s')
+                params.append(data['notes'])
+
+            if not updates:
+                return jsonify({'error': 'No fields to update'}), 400
+
+            params.append(holding_id)
+            cursor.execute(f"UPDATE yahoo_portfolio SET {', '.join(updates)} WHERE id = %s", params)
+            connection.commit()
+
+            return jsonify({'message': 'Holding updated successfully'})
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/portfolio/yahoo-holdings/<int:holding_id>', methods=['DELETE'])
+def delete_yahoo_holding(holding_id):
+    """Remove a holding from Yahoo Finance portfolio."""
+    try:
+        username = request.args.get('username')
+        if not username:
+            return jsonify({'error': 'Username is required'}), 400
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            cursor.execute("SELECT * FROM yahoo_portfolio WHERE id = %s AND username = %s", (holding_id, username))
+            if not cursor.fetchone():
+                return jsonify({'error': 'Holding not found'}), 404
+
+            cursor.execute("DELETE FROM yahoo_portfolio WHERE id = %s", (holding_id,))
+            connection.commit()
+
+            return jsonify({'message': 'Holding removed successfully'})
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/portfolio/yahoo-holdings/clear', methods=['DELETE'])
+def clear_yahoo_holdings():
+    """Clear all Yahoo Finance portfolio holdings for a user."""
+    try:
+        username = request.args.get('username')
+        if not username:
+            return jsonify({'error': 'Username is required'}), 400
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute("DELETE FROM yahoo_portfolio WHERE username = %s", (username,))
+            connection.commit()
+            deleted = cursor.rowcount
+
+            return jsonify({'message': f'Cleared {deleted} holdings', 'deleted': deleted})
+
     except Error as e:
         return jsonify({'error': str(e)}), 500
 
@@ -5437,7 +5956,31 @@ def migrate_database():
                 migrations_applied.append('watched_stocks_table')
             except Exception as e:
                 return jsonify({'error': f'Failed to create watched_stocks table: {str(e)}'}), 500
-            
+
+            # Ensure yahoo_portfolio table exists
+            try:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS yahoo_portfolio
+                    (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        username VARCHAR(255) NOT NULL,
+                        ticker_symbol VARCHAR(20) NOT NULL,
+                        stock_name VARCHAR(255),
+                        quantity DECIMAL(14,4) DEFAULT 0,
+                        avg_cost_basis DECIMAL(14,4) DEFAULT 0,
+                        currency VARCHAR(10) DEFAULT 'USD',
+                        notes TEXT,
+                        imported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        UNIQUE KEY unique_user_yahoo_ticker (username, ticker_symbol),
+                        INDEX idx_username (username)
+                    )
+                """)
+                connection.commit()
+                migrations_applied.append('yahoo_portfolio_table')
+            except Exception as e:
+                return jsonify({'error': f'Failed to create yahoo_portfolio table: {str(e)}'}), 500
+
             return jsonify({
                 'message': 'Migration completed successfully',
                 'migrations_applied': migrations_applied
