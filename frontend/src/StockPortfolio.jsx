@@ -296,21 +296,41 @@ const StockPortfolio = ({ onBackToTasks }) => {
       setLoading(true);
       setError(null);
       setSuccess(null);
-      
+
+      const valueIls = formData.value_ils !== '' && formData.value_ils != null
+        ? parseFloat(formData.value_ils)
+        : (editingEntry ? editingEntry.value_ils : 0);
+      const percentage = formData.percentage !== '' && formData.percentage != null
+        ? parseFloat(formData.percentage)
+        : 0;
+      const basePrice = formData.base_price !== '' && formData.base_price != null
+        ? parseFloat(formData.base_price)
+        : null;
+      const entryDate = (formData.entry_date && typeof formData.entry_date === 'string')
+        ? formData.entry_date.split('T')[0]
+        : formData.entry_date;
+
       const url = editingEntry
-        ? `${API_BASE}/portfolio/${editingEntry.id}`
+        ? `${API_BASE}/portfolio/${editingEntry.id}?username=${encodeURIComponent(authUser || '')}&role=${encodeURIComponent(authRole || '')}`
         : `${API_BASE}/portfolio`;
 
       const method = editingEntry ? 'PUT' : 'POST';
 
       const payload = {
-        ...formData,
+        name: formData.name,
+        ticker_symbol: formData.ticker_symbol || null,
+        percentage,
+        value_ils: valueIls,
+        base_price: basePrice,
+        entry_date: entryDate,
         username: authUser,
-        tab_id: activeTabId
+        tab_id: activeTabId,
+        currency: formData.currency || 'ILS',
+        units: formData.units != null && formData.units !== '' ? parseFloat(formData.units) : 1
       };
 
       // If it's a new stock and base_price is not set, use value_ils as base_price
-      if (!editingEntry && isNewStock && !payload.base_price && payload.value_ils) {
+      if (!editingEntry && isNewStock && payload.base_price == null && payload.value_ils) {
         payload.base_price = payload.value_ils;
       }
 
@@ -351,17 +371,21 @@ const StockPortfolio = ({ onBackToTasks }) => {
   };
 
   const handleEdit = (entry) => {
+    setError(null);
     setEditingEntry(entry);
     setIsNewStock(false);
+    const entryDate = entry.entry_date && typeof entry.entry_date === 'string'
+      ? entry.entry_date.split('T')[0]
+      : entry.entry_date;
     setFormData({
       name: entry.name,
       ticker_symbol: entry.ticker_symbol || '',
-      percentage: entry.percentage || '',
-      value_ils: entry.value_ils,
-      base_price: entry.base_price || '',
-      entry_date: entry.entry_date,
+      percentage: entry.percentage ?? '',
+      value_ils: entry.value_ils ?? '',
+      base_price: entry.base_price != null && entry.base_price !== '' ? entry.base_price : '',
+      entry_date: entryDate ?? new Date().toISOString().split('T')[0],
       currency: entry.currency || 'ILS',
-      units: entry.units || 1
+      units: entry.units != null ? entry.units : 1
     });
     setShowForm(true);
   };
@@ -2095,10 +2119,12 @@ const StockPortfolio = ({ onBackToTasks }) => {
                 </thead>
                 <tbody>
                   {getStockSummary
-                    .sort((a, b) => b.latestEntry.value_ils - a.latestEntry.value_ils)
+                    .sort((a, b) => (b.latestEntry.value_ils || 0) - (a.latestEntry.value_ils || 0))
                     .map(stock => {
-                      const growth = calculateGrowth(stock.latestEntry.value_ils, stock.basePrice);
-                      const growthValue = stock.basePrice ? stock.latestEntry.value_ils - stock.basePrice : null;
+                      const entryCurrency = stock.latestEntry.currency || 'ILS';
+                      const entryValue = stock.latestEntry.value_ils;
+                      const growth = calculateGrowth(entryValue, stock.basePrice);
+                      const growthValue = stock.basePrice != null ? entryValue - stock.basePrice : null;
                       const isPositive = growth !== null && growth >= 0;
                       
                       const livePrice = stock.tickerSymbol ? stockPrices[stock.tickerSymbol] : null;
@@ -2166,7 +2192,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                             fontSize: '0.95rem',
                             color: colors.text
                           }}>
-                            {formatCurrencyWithCode(stock.latestEntry.value_ils, stock.latestEntry.currency || 'ILS')}
+                            {formatCurrencyWithCode(entryValue, entryCurrency)}
                           </td>
                           <td style={{
                             padding: '0.75rem 1rem',
@@ -2174,7 +2200,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                             fontSize: '0.9rem',
                             color: colors.textLight
                           }}>
-                            {stock.basePrice ? Number(stock.basePrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
+                            {stock.basePrice != null ? formatCurrencyWithCode(stock.basePrice, entryCurrency) : '-'}
                           </td>
                           <td style={{
                             padding: '0.75rem 1rem',
@@ -2192,7 +2218,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                             {growthValue !== null ? (
                               <>
                                 {isPositive ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                                {formatCurrency(Math.abs(growthValue))}
+                                {formatCurrencyWithCode(Math.abs(growthValue), entryCurrency)}
                               </>
                             ) : '-'}
                           </td>
@@ -2466,7 +2492,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 1000
-        }} onClick={() => setShowForm(false)}>
+        }} onClick={() => { setShowForm(false); setError(null); setEditingEntry(null); }}>
           <div style={{
             background: colors.card,
             padding: '2.5rem',
@@ -2490,7 +2516,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                 {editingEntry ? '✏️ Edit Entry' : '➕ Add Portfolio Entry'}
               </h2>
               <button
-                onClick={() => setShowForm(false)}
+                onClick={() => { setShowForm(false); setError(null); setEditingEntry(null); }}
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -2505,6 +2531,26 @@ const StockPortfolio = ({ onBackToTasks }) => {
                 <X size={24} />
               </button>
             </div>
+
+            {error && (
+              <div style={{
+                background: colors.accent,
+                color: '#fff',
+                padding: '0.75rem 1rem',
+                marginBottom: '1rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.95rem',
+                border: `2px solid ${colors.border}`
+              }}>
+                <AlertCircle size={18} />
+                {error}
+                <button type="button" onClick={() => setError(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#fff', padding: '0.25rem' }}>
+                  <X size={18} />
+                </button>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit}>
               <div style={{ marginBottom: '1.5rem' }}>
