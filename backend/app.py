@@ -2689,16 +2689,18 @@ def update_portfolio_entry(entry_id):
             
             if 'units' in existing_columns:
                 set_clauses.append('units = %s')
-                units_val = data.get('units', 1)
+                units_val = data.get('units')
+                # Handle None, empty string, or missing value
                 if units_val is None or units_val == '':
-                    units_val = 1
+                    units_val = 1.0
                 else:
                     try:
                         units_val = float(units_val)
-                        if units_val <= 0:
-                            units_val = 1
+                        # Ensure positive value
+                        if units_val <= 0 or not isinstance(units_val, (int, float)):
+                            units_val = 1.0
                     except (TypeError, ValueError):
-                        units_val = 1
+                        units_val = 1.0
                 values_list.append(units_val)
             
             values_list.append(entry_id)  # For WHERE clause

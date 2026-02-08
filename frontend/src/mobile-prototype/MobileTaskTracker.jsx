@@ -821,6 +821,16 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                 : `${API_BASE}/portfolio?username=${authUser}&role=${authRole}`;
             const method = editingEntry ? 'PUT' : 'POST';
             
+            // Parse units - ensure it's always a valid positive number
+            const unitsValue = formData.units;
+            let units = 1;
+            if (unitsValue != null && unitsValue !== '') {
+                const parsed = typeof unitsValue === 'number' ? unitsValue : parseFloat(String(unitsValue));
+                if (!isNaN(parsed) && parsed > 0 && isFinite(parsed)) {
+                    units = parsed;
+                }
+            }
+
             const body = {
                 ...formData,
                 tab_id: activeTabId,
@@ -829,7 +839,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                 base_price: (formData.base_price !== '' && formData.base_price != null) ? parseFloat(formData.base_price) : null,
                 username: authUser,
                 currency: formData.currency || 'USD',
-                units: (formData.units != null && formData.units !== '') ? (typeof formData.units === 'number' ? formData.units : parseFloat(formData.units) || 1) : 1
+                units: units
             };
 
             const response = await fetch(url, {
