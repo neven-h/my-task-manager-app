@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ArrowLeft, Plus, Edit2, Trash2, X, TrendingUp, PieChart, Calendar, AlertCircle, CheckCircle, Users, Save, MoreVertical, TrendingDown } from 'lucide-react';
 import API_BASE from './config';
-import { formatCurrency, formatCurrencyWithCode } from './utils/formatCurrency';
+import { formatCurrencyWithCode } from './utils/formatCurrency';
 import CustomAutocomplete from './components/CustomAutocomplete';
 
 const StockPortfolio = ({ onBackToTasks }) => {
@@ -335,7 +335,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
         throw new Error(errorData.error || 'Failed to save entry');
       }
 
-      setSuccess(editingEntry ? 'Portfolio entry updated successfully' : 'Portfolio entry added successfully');
+      // Close modal and clear form immediately so the window closes right away
       setShowForm(false);
       setEditingEntry(null);
       setIsNewStock(false);
@@ -349,6 +349,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
         currency: 'ILS',
         units: 1
       });
+      setSuccess(editingEntry ? 'Portfolio entry updated successfully' : 'Portfolio entry added successfully');
 
       await fetchEntries(activeTabId);
       await fetchSummary(activeTabId);
@@ -1127,10 +1128,10 @@ const StockPortfolio = ({ onBackToTasks }) => {
                 fontWeight: '800',
                 color: colors.primary
               }}>
-                {formatCurrency(summary.total_value || 0)}
+                {formatCurrencyWithCode(summary.total_value || 0, 'ILS')}
               </div>
               <div style={{ color: colors.textLight, textTransform: 'uppercase', fontSize: '0.95rem', fontWeight: '700', marginTop: '0.25rem' }}>
-                💰 Total Value
+                💰 Total value (ILS)
               </div>
             </div>
             <div className="stats-card" style={{
