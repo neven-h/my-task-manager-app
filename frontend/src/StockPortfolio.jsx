@@ -447,6 +447,9 @@ const StockPortfolio = ({ onBackToTasks }) => {
       }
       // Ensure units is always a number, never undefined or null
       units = Number.isInteger(units) && units > 0 ? units : 1;
+      
+      // Debug: Log units value being sent
+      console.log(`Saving entry - units value: ${units} (from formData.units: ${formData.units}, editingEntry: ${editingEntry?.id})`);
 
       const payload = {
         name: formData.name,
