@@ -76,6 +76,67 @@ def _set_cached_stock_info(ticker_symbol, data):
         }
 
 
+# ==================== EXCHANGE RATE CACHE & HELPERS ====================
+
+# Separate cache for exchange rates (longer TTL since rates change less frequently)
+_exchange_rate_cache = {}
+EXCHANGE_RATE_CACHE_TTL = 600  # 10 minutes
+
+
+def _get_exchange_rate(from_currency, to_currency='ILS'):
+    """
+    Fetch exchange rate with caching. Returns rate as float or None.
+    Uses Yahoo Finance ticker format: USDILS=X
+    """
+    if from_currency == to_currency:
+        return 1.0
+
+    cache_key = f"{from_currency}{to_currency}"
+    # Check cache first
+    with _cache_lock:
+        cached = _exchange_rate_cache.get(cache_key)
+        if cached and (time.time() - cached['timestamp']) < EXCHANGE_RATE_CACHE_TTL:
+            return cached['rate']
+
+    ticker = f"{from_currency}{to_currency}=X"
+
+    # Strategy 1: Try fast_info
+    try:
+        fi = yf.Ticker(ticker).fast_info
+        rate = getattr(fi, 'last_price', None) or getattr(fi, 'previous_close', None)
+        if rate and float(rate) > 0:
+            rate = float(rate)
+            with _cache_lock:
+                _exchange_rate_cache[cache_key] = {'rate': rate, 'timestamp': time.time()}
+            return rate
+    except Exception as e:
+        print(f"Exchange rate fast_info failed for {ticker}: {e}")
+
+    # Strategy 2: Try history
+    try:
+        hist = yf.Ticker(ticker).history(period='5d')
+        if hist is not None and not hist.empty:
+            rate = float(hist.iloc[-1]['Close'])
+            if rate > 0:
+                with _cache_lock:
+                    _exchange_rate_cache[cache_key] = {'rate': rate, 'timestamp': time.time()}
+                return rate
+    except Exception as e:
+        print(f"Exchange rate history failed for {ticker}: {e}")
+
+    # Strategy 3: Return stale cache if available (better than nothing)
+    with _cache_lock:
+        stale = _exchange_rate_cache.get(cache_key)
+        if stale:
+            print(f"Returning stale exchange rate for {cache_key}: {stale['rate']}")
+            return stale['rate']
+
+    return None  # Could not fetch rate
+
+
+# ==================== STOCK INFO HELPERS ====================
+
+
 def _fetch_stock_info_robust(ticker_symbol):
     """
     Fetch stock info with multiple fallback strategies.
@@ -2936,9 +2997,14 @@ def get_portfolio_summary():
             # Combine all params: subquery params first, then outer query params
             all_params = subquery_params + outer_params
             
+            # Check if currency column exists
+            cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND COLUMN_NAME = 'currency'")
+            has_currency = cursor.fetchone()['count'] > 0
+            currency_col = ", sp1.currency" if has_currency else ""
+
             if has_ticker_symbol:
                 query = f"""
-                    SELECT sp1.name, sp1.ticker_symbol, sp1.percentage, sp1.value_ils, sp1.base_price, sp1.entry_date, sp1.created_by
+                    SELECT sp1.name, sp1.ticker_symbol, sp1.percentage, sp1.value_ils, sp1.base_price, sp1.entry_date, sp1.created_by{currency_col}
                     FROM stock_portfolio sp1
                     INNER JOIN (
                         SELECT name, tab_id, MAX(entry_date) as max_date
@@ -2953,7 +3019,7 @@ def get_portfolio_summary():
                 """
             else:
                 query = f"""
-                    SELECT sp1.name, NULL as ticker_symbol, sp1.percentage, sp1.value_ils, sp1.base_price, sp1.entry_date, sp1.created_by
+                    SELECT sp1.name, NULL as ticker_symbol, sp1.percentage, sp1.value_ils, sp1.base_price, sp1.entry_date, sp1.created_by{currency_col}
                     FROM stock_portfolio sp1
                     INNER JOIN (
                         SELECT name, tab_id, MAX(entry_date) as max_date
@@ -2970,8 +3036,26 @@ def get_portfolio_summary():
             cursor.execute(query, all_params)
             latest_entries = cursor.fetchall()
 
-            # Serialize and calculate total value
-            total_value = 0.0
+            # Fetch exchange rates for non-ILS currencies
+            # Collect unique currencies that need conversion
+            currencies_needed = set()
+            for entry in latest_entries:
+                currency = entry.get('currency', 'ILS')
+                if currency and currency.upper() != 'ILS':
+                    currencies_needed.add(currency.upper())
+
+            # Fetch exchange rates (cached, only fetches once per currency)
+            exchange_rates = {'ILS': 1.0}
+            for curr in currencies_needed:
+                rate = _get_exchange_rate(curr, 'ILS')
+                if rate is not None:
+                    exchange_rates[curr] = rate
+                else:
+                    print(f"Warning: Could not fetch exchange rate for {curr}/ILS")
+
+            # Serialize and calculate total value in ILS
+            total_value_ils = 0.0
+            total_value_raw = 0.0
             for entry in latest_entries:
                 if entry.get('entry_date'):
                     entry['entry_date'] = entry['entry_date'].isoformat()
@@ -2985,16 +3069,30 @@ def get_portfolio_summary():
                 else:
                     entry['percentage'] = 0.0
                 
-                # Safely convert value_ils and calculate total
+                # Safely convert value_ils
                 if entry.get('value_ils') is not None:
                     try:
                         value = float(entry['value_ils'])
                         entry['value_ils'] = value
-                        total_value += value
                     except (TypeError, ValueError):
+                        value = 0.0
                         entry['value_ils'] = 0.0
                 else:
+                    value = 0.0
                     entry['value_ils'] = 0.0
+
+                # Convert to ILS for the total
+                currency = (entry.get('currency') or 'ILS').upper()
+                rate = exchange_rates.get(currency)
+                if rate is not None:
+                    value_in_ils = value * rate
+                else:
+                    # No rate available - use raw value as fallback
+                    value_in_ils = value
+
+                entry['value_ils_converted'] = round(value_in_ils, 2)
+                total_value_ils += value_in_ils
+                total_value_raw += value
                 
                 # Safely convert base_price
                 if entry.get('base_price') is not None:
@@ -3006,7 +3104,9 @@ def get_portfolio_summary():
                     entry['base_price'] = None
 
             return jsonify({
-                'total_value': total_value,
+                'total_value': total_value_raw,
+                'total_value_ils': round(total_value_ils, 2),
+                'exchange_rates': exchange_rates,
                 'entries': latest_entries,
                 'count': len(latest_entries)
             })
