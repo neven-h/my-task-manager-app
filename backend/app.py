@@ -2851,40 +2851,22 @@ def update_portfolio_entry(entry_id):
                 values_list.append(data.get('currency', 'USD'))
             
             if 'units' in existing_columns:
-                set_clauses.append('units = %s')
                 units_val = data.get('units')
-                # Always update units if provided in request, otherwise keep existing value
-                if units_val is None or units_val == '':
-                    # If units is not provided, get current value from database (don't change it)
-                    cursor.execute("SELECT units FROM stock_portfolio WHERE id = %s", (entry_id,))
-                    current_entry = cursor.fetchone()
-                    units_val = current_entry.get('units', 1) if current_entry else 1
-                else:
+                # Parse units: convert to int, default to 1
+                parsed_units = None
+                if units_val is not None and units_val != '' and units_val != 0:
                     try:
-                        # Convert to integer - round/floor any decimal values
-                        # Handle both string and numeric inputs
-                        if isinstance(units_val, str):
-                            units_val = units_val.strip()
-                            if units_val == '':
-                                # Get current value from database
-                                cursor.execute("SELECT units FROM stock_portfolio WHERE id = %s", (entry_id,))
-                                current_entry = cursor.fetchone()
-                                units_val = current_entry.get('units', 1) if current_entry else 1
-                            else:
-                                units_val = int(round(float(units_val)))
-                        else:
-                            units_val = int(round(float(units_val)))
-                        # Ensure positive value
-                        if units_val <= 0:
-                            units_val = 1
-                    except (TypeError, ValueError) as e:
-                        print(f"Error parsing units value '{units_val}': {e}")
-                        # Get current value from database as fallback
-                        cursor.execute("SELECT units FROM stock_portfolio WHERE id = %s", (entry_id,))
-                        current_entry = cursor.fetchone()
-                        units_val = current_entry.get('units', 1) if current_entry else 1
-                print(f"Updating entry {entry_id} with units value: {units_val} (from request: {data.get('units')})")
-                values_list.append(units_val)
+                        parsed_units = int(round(float(str(units_val).strip())))
+                        if parsed_units <= 0:
+                            parsed_units = 1
+                    except (TypeError, ValueError):
+                        parsed_units = None
+
+                if parsed_units is not None:
+                    set_clauses.append('units = %s')
+                    values_list.append(parsed_units)
+                # else: don't include units in UPDATE at all - keeps existing value
+                print(f"PUT /portfolio/{entry_id}: units from request={repr(data.get('units'))}, parsed={parsed_units}")
             
             values_list.append(entry_id)  # For WHERE clause
             
