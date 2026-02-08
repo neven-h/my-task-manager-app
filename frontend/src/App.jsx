@@ -58,11 +58,18 @@ const App = () => {
             localStorage.removeItem('authRole');
           }
         } catch (error) {
-          console.error('Token validation failed:', error);
-          // If it's a timeout or network error, clear auth and continue
+          // Handle timeout gracefully - this is expected when backend is unresponsive
           if (error.name === 'AbortError') {
-            console.warn('Token validation timed out - clearing session');
+            // Timeout occurred - backend is likely down or slow
+            // Silently clear session and let user login again
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('authUser');
+            localStorage.removeItem('authRole');
+            return; // Exit early, don't log as error
           }
+          
+          // Log other errors (network errors, etc.)
+          console.error('Token validation failed:', error);
           localStorage.removeItem('authToken');
           localStorage.removeItem('authUser');
           localStorage.removeItem('authRole');
