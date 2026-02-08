@@ -83,21 +83,36 @@ def _fetch_stock_info_robust(ticker_symbol):
     # Strategy 1: Try .info (the standard approach)
     try:
         raw_info = stock.info
-        if raw_info and isinstance(raw_info, dict) and raw_info.get('symbol'):
+        if raw_info and isinstance(raw_info, dict) and len(raw_info) > 1:
             info = raw_info
     except Exception:
         pass
 
+    # Helper: extract any usable price from info dict
+    def _extract_price(d):
+        for key in ('currentPrice', 'regularMarketPrice', 'previousClose',
+                     'regularMarketOpen', 'navPrice', 'ask', 'bid',
+                     'regularMarketPreviousClose', 'open', 'dayHigh', 'dayLow'):
+            val = d.get(key)
+            if val is not None and val != 0:
+                return val
+        return None
+
     # Strategy 2: If .info failed or returned no price, try fast_info
-    if not info.get('currentPrice') and not info.get('regularMarketPrice'):
+    if _extract_price(info) is None:
         try:
             fi = stock.fast_info
             if fi:
-                info['currentPrice'] = getattr(fi, 'last_price', None)
-                info['previousClose'] = getattr(fi, 'previous_close', None)
-                info['regularMarketPrice'] = getattr(fi, 'last_price', None)
-                info['currency'] = getattr(fi, 'currency', info.get('currency', 'USD'))
-                info['exchange'] = getattr(fi, 'exchange', info.get('exchange', ''))
+                last_price = getattr(fi, 'last_price', None)
+                prev_close = getattr(fi, 'previous_close', None)
+                market_price = getattr(fi, 'regular_market_price', None) or getattr(fi, 'regularMarketPrice', None)
+                price = last_price or market_price or prev_close
+                if price:
+                    info['currentPrice'] = price
+                    info['previousClose'] = prev_close or info.get('previousClose')
+                    info['regularMarketPrice'] = price
+                info['currency'] = getattr(fi, 'currency', None) or info.get('currency', 'USD')
+                info['exchange'] = getattr(fi, 'exchange', None) or info.get('exchange', '')
                 info['marketState'] = info.get('marketState', 'UNKNOWN')
                 if not info.get('symbol'):
                     info['symbol'] = ticker_symbol
@@ -105,7 +120,7 @@ def _fetch_stock_info_robust(ticker_symbol):
             pass
 
     # Strategy 3: If still no price, try history() for the last trading day
-    if not info.get('currentPrice') and not info.get('regularMarketPrice'):
+    if _extract_price(info) is None:
         try:
             hist = stock.history(period='5d')
             if hist is not None and not hist.empty:
@@ -120,12 +135,18 @@ def _fetch_stock_info_robust(ticker_symbol):
         except Exception:
             pass
 
-    if not info or (not info.get('currentPrice') and not info.get('regularMarketPrice') and not info.get('previousClose')):
+    # Final price extraction from all possible keys
+    current_price = _extract_price(info)
+
+    if not info or current_price is None:
         raise ValueError(f'Unable to fetch data for ticker: {ticker_symbol}')
 
+    # Normalize: ensure currentPrice is set
+    if not info.get('currentPrice'):
+        info['currentPrice'] = current_price
+
     # Compute derived fields
-    current_price = info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose')
-    previous_close = info.get('previousClose')
+    previous_close = info.get('previousClose') or info.get('regularMarketPreviousClose')
     change = info.get('regularMarketChange')
     if change is None and current_price and previous_close:
         change = current_price - previous_close
@@ -3023,17 +3044,28 @@ def add_to_watchlist():
         if not ticker_symbol:
             return jsonify({'error': 'Ticker symbol is required'}), 400
 
-        # Verify stock exists using robust fetching
+        # Verify stock exists - try robust fetch first, fall back to search API
         try:
             info = _fetch_stock_info_robust(ticker_symbol)
-            if not info or not info.get('symbol'):
-                return jsonify({'error': 'Invalid ticker symbol'}), 400
-
-            # Use the fetched name if not provided
             if not stock_name:
                 stock_name = info.get('longName', ticker_symbol)
-        except Exception as e:
-            return jsonify({'error': f'Failed to verify stock: {str(e)}'}), 400
+        except Exception:
+            # Robust fetch failed - try Yahoo search API as fallback validation
+            search_results = _yahoo_search_tickers(ticker_symbol)
+            found = next((r for r in search_results if r['ticker'].upper() == ticker_symbol), None)
+            if found:
+                if not stock_name:
+                    stock_name = found.get('name', ticker_symbol)
+            else:
+                # Last resort: try yfinance .info directly for just symbol validation
+                try:
+                    raw_info = yf.Ticker(ticker_symbol).info
+                    if not raw_info or (isinstance(raw_info, dict) and len(raw_info) <= 1):
+                        return jsonify({'error': f'Invalid ticker symbol: {ticker_symbol}'}), 400
+                    if not stock_name:
+                        stock_name = raw_info.get('longName') or raw_info.get('shortName', ticker_symbol)
+                except Exception as e2:
+                    return jsonify({'error': f'Failed to verify stock: {str(e2)}'}), 400
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
