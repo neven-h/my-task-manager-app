@@ -2975,16 +2975,35 @@ def get_portfolio_summary():
             for entry in latest_entries:
                 if entry.get('entry_date'):
                     entry['entry_date'] = entry['entry_date'].isoformat()
-                if entry.get('percentage'):
-                    entry['percentage'] = float(entry['percentage'])
-                if entry.get('value_ils'):
-                    value = float(entry['value_ils'])
-                    entry['value_ils'] = value
-                    total_value += value
+                
+                # Safely convert percentage
+                if entry.get('percentage') is not None:
+                    try:
+                        entry['percentage'] = float(entry['percentage'])
+                    except (TypeError, ValueError):
+                        entry['percentage'] = 0.0
+                else:
+                    entry['percentage'] = 0.0
+                
+                # Safely convert value_ils and calculate total
+                if entry.get('value_ils') is not None:
+                    try:
+                        value = float(entry['value_ils'])
+                        entry['value_ils'] = value
+                        total_value += value
+                    except (TypeError, ValueError):
+                        entry['value_ils'] = 0.0
                 else:
                     entry['value_ils'] = 0.0
-                if entry.get('base_price'):
-                    entry['base_price'] = float(entry['base_price'])
+                
+                # Safely convert base_price
+                if entry.get('base_price') is not None:
+                    try:
+                        entry['base_price'] = float(entry['base_price'])
+                    except (TypeError, ValueError):
+                        entry['base_price'] = None
+                else:
+                    entry['base_price'] = None
 
             return jsonify({
                 'total_value': total_value,
