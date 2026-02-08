@@ -18,6 +18,7 @@ import {
     Upload,
     RefreshCw,
     Copy,
+    AlertCircle,
     BarChart3,
     Settings,
     ArrowLeft,
@@ -668,6 +669,8 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
 };
 
 // Mobile Stock Portfolio View Component
+const PORTFOLIO_DRAFT_STORAGE_KEY = 'mobile_portfolio_entry_draft';
+
 const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
     const [tabs, setTabs] = useState([]);
     const [activeTabId, setActiveTabId] = useState(null);
@@ -679,6 +682,8 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
     const [stockNames, setStockNames] = useState([]);
     const [stockPrices, setStockPrices] = useState({});
     const [priceLoading, setPriceLoading] = useState(false);
+    const [showDraftDialog, setShowDraftDialog] = useState(false);
+    const [initialFormData, setInitialFormData] = useState(null);
     const [formData, setFormData] = useState({
         name: '',
         ticker_symbol: '',
@@ -830,6 +835,105 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
         }
     };
 
+    // Draft management functions
+    const getEmptyFormData = () => ({
+        name: '',
+        ticker_symbol: '',
+        percentage: '',
+        value_ils: '',
+        base_price: '',
+        entry_date: new Date().toISOString().split('T')[0],
+        currency: 'USD',
+        units: 1
+    });
+
+    const isFormDirty = () => {
+        if (!showForm || editingEntry) return false; // Don't check for edits, only new entries
+        if (!initialFormData) return false;
+        
+        // Check if any field has changed from initial state
+        return (
+            formData.name !== initialFormData.name ||
+            formData.ticker_symbol !== initialFormData.ticker_symbol ||
+            formData.percentage !== initialFormData.percentage ||
+            formData.value_ils !== initialFormData.value_ils ||
+            formData.base_price !== initialFormData.base_price ||
+            formData.entry_date !== initialFormData.entry_date ||
+            formData.currency !== initialFormData.currency ||
+            formData.units !== initialFormData.units
+        );
+    };
+
+    const hasFormData = () => {
+        // Check if form has any meaningful data
+        return !!(
+            formData.name?.trim() ||
+            formData.ticker_symbol?.trim() ||
+            formData.percentage ||
+            formData.value_ils ||
+            formData.base_price ||
+            formData.currency !== 'USD' ||
+            formData.units !== 1
+        );
+    };
+
+    const saveDraft = () => {
+        if (!editingEntry && hasFormData()) {
+            localStorage.setItem(PORTFOLIO_DRAFT_STORAGE_KEY, JSON.stringify({
+                ...formData,
+                tab_id: activeTabId
+            }));
+        }
+    };
+
+    const loadDraft = () => {
+        try {
+            const draft = localStorage.getItem(PORTFOLIO_DRAFT_STORAGE_KEY);
+            if (draft) {
+                const draftData = JSON.parse(draft);
+                // Only load if it's for the current tab or no tab was saved
+                if (!draftData.tab_id || draftData.tab_id === activeTabId) {
+                    return draftData;
+                }
+            }
+        } catch (e) {
+            console.error('Error loading draft:', e);
+        }
+        return null;
+    };
+
+    const clearDraft = () => {
+        localStorage.removeItem(PORTFOLIO_DRAFT_STORAGE_KEY);
+    };
+
+    const handleCloseForm = (forceClose = false) => {
+        if (forceClose || !isFormDirty()) {
+            // Clear draft if closing without saving
+            if (!editingEntry) {
+                clearDraft();
+            }
+            setShowForm(false);
+            setEditingEntry(null);
+            setInitialFormData(null);
+            setFormData(getEmptyFormData());
+        } else {
+            // Show draft dialog
+            setShowDraftDialog(true);
+        }
+    };
+
+    const handleSaveDraft = () => {
+        saveDraft();
+        handleCloseForm(true);
+        setShowDraftDialog(false);
+    };
+
+    const handleDismissDraft = () => {
+        clearDraft();
+        handleCloseForm(true);
+        setShowDraftDialog(false);
+    };
+
     const handleSaveEntry = async () => {
         try {
             setLoading(true);
@@ -850,6 +954,8 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                     }
                 }
             }
+            // Ensure units is always a number, never undefined or null
+            units = Number.isInteger(units) && units > 0 ? units : 1;
 
             const body = {
                 ...formData,
@@ -859,7 +965,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                 base_price: (formData.base_price !== '' && formData.base_price != null) ? parseFloat(formData.base_price) : null,
                 username: authUser,
                 currency: formData.currency || 'USD',
-                units: units
+                units: units  // Always a positive integer
             };
 
             const response = await fetch(url, {
@@ -869,20 +975,13 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
             });
 
             if (response.ok) {
+                // Clear draft on successful save
+                if (!editingEntry) {
+                    clearDraft();
+                }
                 await fetchEntries();
                 await fetchSummary();
-                setShowForm(false);
-                setEditingEntry(null);
-                setFormData({
-                    name: '',
-                    ticker_symbol: '',
-                    percentage: '',
-                    value_ils: '',
-                    base_price: '',
-                    entry_date: new Date().toISOString().split('T')[0],
-                    currency: 'USD',
-                    units: 1
-                });
+                handleCloseForm(true); // Force close after successful save
             }
         } catch (err) {
             console.error('Failed to save entry:', err);
@@ -1101,7 +1200,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                                         <button
                                             onClick={() => {
                                                 setEditingEntry(entry);
-                                                setFormData({
+                                                const editFormData = {
                                                     name: entry.name,
                                                     ticker_symbol: entry.ticker_symbol || '',
                                                     percentage: entry.percentage?.toString() || '',
@@ -1110,7 +1209,9 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                                                     entry_date: entry.entry_date.split('T')[0],
                                                     currency: entry.currency || 'USD',
                                                     units: entry.units != null ? entry.units : 1
-                                                });
+                                                };
+                                                setFormData(editFormData);
+                                                setInitialFormData({ ...editFormData }); // Track initial state for edits too
                                                 setShowForm(true);
                                             }}
                                             style={{
@@ -1154,16 +1255,14 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
             <button
                 onClick={() => {
                     setEditingEntry(null);
-                    setFormData({
-                        name: '',
-                        ticker_symbol: '',
-                        percentage: '',
-                        value_ils: '',
-                        base_price: '',
-                        entry_date: new Date().toISOString().split('T')[0],
-                        currency: 'USD',
-                        units: 1
-                    });
+                    
+                    // Try to load draft, otherwise use empty form
+                    const draft = loadDraft();
+                    const emptyForm = getEmptyFormData();
+                    const initialForm = draft || emptyForm;
+                    
+                    setFormData(initialForm);
+                    setInitialFormData({ ...initialForm }); // Track initial state
                     setShowForm(true);
                 }}
                 style={{
@@ -1204,8 +1303,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                     }}
                     onClick={(e) => {
                         if (e.target === e.currentTarget) {
-                            setShowForm(false);
-                            setEditingEntry(null);
+                            handleCloseForm();
                         }
                     }}
                     onTouchMove={(e) => {
@@ -1249,10 +1347,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                             <h2 style={{fontSize: '1.3rem', fontWeight: 900, margin: 0, textTransform: 'uppercase'}}>
                                 {editingEntry ? 'Edit Entry' : 'New Entry'}
                             </h2>
-                            <button onClick={() => {
-                                setShowForm(false);
-                                setEditingEntry(null);
-                            }} style={{background: 'none', border: 'none', padding: '8px', flexShrink: 0}}>
+                            <button onClick={() => handleCloseForm()} style={{background: 'none', border: 'none', padding: '8px', flexShrink: 0}}>
                                 <X size={28}/>
                             </button>
                         </div>
@@ -1372,10 +1467,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                                 paddingBottom: 'max(8px, env(safe-area-inset-bottom))'
                             }}>
                                 <button
-                                    onClick={() => {
-                                        setShowForm(false);
-                                        setEditingEntry(null);
-                                    }}
+                                    onClick={() => handleCloseForm()}
                                     style={{
                                         flex: 1,
                                         padding: '14px',
@@ -1408,6 +1500,98 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                                     {loading ? 'Saving...' : 'Save'}
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Draft Confirmation Dialog */}
+            {showDraftDialog && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0, 0, 0, 0.85)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 2000,
+                        padding: '20px'
+                    }}
+                    onClick={() => setShowDraftDialog(false)}
+                >
+                    <div
+                        style={{
+                            background: '#fff',
+                            padding: '24px',
+                            width: '100%',
+                            maxWidth: '400px',
+                            border: '3px solid #000',
+                            boxShadow: '4px 4px 0px #000'
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            marginBottom: '16px'
+                        }}>
+                            <AlertCircle size={28} color={THEME.accent} style={{ marginRight: '12px' }} />
+                            <h2 style={{
+                                margin: 0,
+                                fontWeight: 800,
+                                fontSize: '1.3rem',
+                                color: '#000'
+                            }}>
+                                Unsaved Changes
+                            </h2>
+                        </div>
+                        <p style={{
+                            margin: '0 0 24px 0',
+                            fontSize: '0.95rem',
+                            lineHeight: '1.5',
+                            color: THEME.muted
+                        }}>
+                            You have unsaved changes. Would you like to save this entry as a draft or dismiss it?
+                        </p>
+                        <div style={{
+                            display: 'flex',
+                            gap: '12px',
+                            flexDirection: 'column'
+                        }}>
+                            <button
+                                onClick={handleDismissDraft}
+                                style={{
+                                    padding: '14px',
+                                    background: '#fff',
+                                    border: '3px solid #000',
+                                    cursor: 'pointer',
+                                    fontWeight: 700,
+                                    fontSize: '0.9rem',
+                                    color: '#000',
+                                    touchAction: 'manipulation'
+                                }}
+                            >
+                                Dismiss
+                            </button>
+                            <button
+                                onClick={handleSaveDraft}
+                                style={{
+                                    padding: '14px',
+                                    background: THEME.secondary,
+                                    border: '3px solid #000',
+                                    cursor: 'pointer',
+                                    fontWeight: 700,
+                                    fontSize: '0.9rem',
+                                    color: '#000',
+                                    touchAction: 'manipulation'
+                                }}
+                            >
+                                Save as Draft
+                            </button>
                         </div>
                     </div>
                 </div>

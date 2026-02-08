@@ -2720,12 +2720,20 @@ def update_portfolio_entry(entry_id):
                 set_clauses.append('units = %s')
                 units_val = data.get('units')
                 # Handle None, empty string, or missing value
-                if units_val is None or units_val == '':
+                if units_val is None or units_val == '' or units_val == 0:
                     units_val = 1
                 else:
                     try:
                         # Convert to integer - round/floor any decimal values
-                        units_val = int(round(float(units_val)))
+                        # Handle both string and numeric inputs
+                        if isinstance(units_val, str):
+                            units_val = units_val.strip()
+                            if units_val == '':
+                                units_val = 1
+                            else:
+                                units_val = int(round(float(units_val)))
+                        else:
+                            units_val = int(round(float(units_val)))
                         # Ensure positive value
                         if units_val <= 0:
                             units_val = 1
