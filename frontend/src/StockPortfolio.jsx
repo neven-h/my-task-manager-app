@@ -1482,7 +1482,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                 </thead>
                 <tbody>
                   {getStockSummary
-                    .sort((a, b) => (b.latestEntry.value_usd || 0) - (a.latestEntry.value_usd || 0))
+                    .sort((a, b) => (b.latestEntry.value_ils || 0) - (a.latestEntry.value_ils || 0))
                     .map(stock => {
                       const entryCurrency = stock.latestEntry.currency || 'ILS';
                       const entryValue = stock.latestEntry.value_ils;
