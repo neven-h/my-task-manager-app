@@ -55,7 +55,7 @@ else:
 # In-memory cache for stock data to reduce API calls and improve reliability
 _stock_cache = {}
 _cache_lock = threading.Lock()
-CACHE_TTL_SECONDS = 120  # Cache stock info for 2 minutes
+CACHE_TTL_SECONDS = 300  # Cache stock info for 5 minutes to reduce API calls and prevent rate limiting
 
 
 def _get_cached_stock_info(ticker_symbol):
@@ -80,6 +80,7 @@ def _fetch_stock_info_robust(ticker_symbol):
     """
     Fetch stock info with multiple fallback strategies.
     Returns a dict with price data or raises an exception.
+    Handles rate limiting gracefully by returning cached data when available.
     """
     # Check cache first
     cached = _get_cached_stock_info(ticker_symbol)
@@ -88,13 +89,23 @@ def _fetch_stock_info_robust(ticker_symbol):
 
     stock = yf.Ticker(ticker_symbol)
     info = {}
+    rate_limited = False
 
     # Strategy 1: Try .info (the standard approach)
     try:
         raw_info = stock.info
         if raw_info and isinstance(raw_info, dict) and len(raw_info) > 1:
             info = raw_info
-    except Exception:
+    except Exception as e:
+        error_str = str(e).lower()
+        # Check for rate limiting indicators
+        if '429' in error_str or 'too many requests' in error_str or 'rate limit' in error_str:
+            rate_limited = True
+            print(f"Rate limited by Yahoo Finance for {ticker_symbol}: {e}")
+        elif 'expecting value' in error_str or 'json' in error_str:
+            # JSON parsing error often indicates rate limit response (HTML instead of JSON)
+            rate_limited = True
+            print(f"Yahoo Finance API error (likely rate limit) for {ticker_symbol}: {e}")
         pass
 
     # Helper: extract any usable price from info dict
@@ -125,7 +136,11 @@ def _fetch_stock_info_robust(ticker_symbol):
                 info['marketState'] = info.get('marketState', 'UNKNOWN')
                 if not info.get('symbol'):
                     info['symbol'] = ticker_symbol
-        except Exception:
+        except Exception as e:
+            error_str = str(e).lower()
+            if '429' in error_str or 'too many requests' in error_str or 'rate limit' in error_str:
+                rate_limited = True
+                print(f"Rate limited by Yahoo Finance (fast_info) for {ticker_symbol}: {e}")
             pass
 
     # Strategy 3: If still no price, try history() for the last trading day
@@ -141,14 +156,26 @@ def _fetch_stock_info_robust(ticker_symbol):
                 info['marketState'] = info.get('marketState', 'CLOSED')
                 info['currency'] = info.get('currency', 'USD')
                 info['exchange'] = info.get('exchange', '')
-        except Exception:
+        except Exception as e:
+            error_str = str(e).lower()
+            if '429' in error_str or 'too many requests' in error_str or 'rate limit' in error_str:
+                rate_limited = True
+                print(f"Rate limited by Yahoo Finance (history) for {ticker_symbol}: {e}")
             pass
 
     # Final price extraction from all possible keys
     current_price = _extract_price(info)
 
+    # If rate limited and no fresh data, try to return stale cache (better than nothing)
+    if rate_limited and (not info or current_price is None):
+        with _cache_lock:
+            stale_cached = _stock_cache.get(ticker_symbol)
+            if stale_cached:
+                print(f"Rate limited - returning stale cached data for {ticker_symbol}")
+                return stale_cached['data']
+
     if not info or current_price is None:
-        raise ValueError(f'Unable to fetch data for ticker: {ticker_symbol}')
+        raise ValueError(f'Unable to fetch data for ticker: {ticker_symbol} (Rate limited: {rate_limited})')
 
     # Normalize: ensure currentPrice is set
     if not info.get('currentPrice'):
@@ -184,6 +211,7 @@ def _yahoo_search_tickers(query):
     """
     Search for tickers using Yahoo Finance's search/autocomplete API.
     Returns a list of matching results.
+    Handles rate limiting gracefully.
     """
     results = []
     try:
@@ -192,6 +220,10 @@ def _yahoo_search_tickers(query):
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         })
         with urllib.request.urlopen(req, timeout=10) as resp:
+            if resp.status == 429:
+                print(f"Yahoo Finance search API rate limited for query: {query}")
+                return results  # Return empty results instead of crashing
+            
             data = json.loads(resp.read().decode())
             quotes = data.get('quotes', [])
             for q in quotes:
@@ -203,8 +235,20 @@ def _yahoo_search_tickers(query):
                         'currency': q.get('currency', 'USD'),
                         'quoteType': q.get('quoteType', ''),
                     })
+    except urllib.error.HTTPError as e:
+        if e.code == 429:
+            print(f"Yahoo Finance search API rate limited (HTTP 429) for query: {query}")
+        else:
+            print(f"Yahoo search API HTTP error: {e}")
+    except json.JSONDecodeError as e:
+        # Often indicates rate limit response (HTML instead of JSON)
+        print(f"Yahoo search API JSON decode error (likely rate limit) for query: {query}: {e}")
     except Exception as e:
-        print(f"Yahoo search API error: {e}")
+        error_str = str(e).lower()
+        if '429' in error_str or 'too many requests' in error_str:
+            print(f"Yahoo Finance search API rate limited for query: {query}")
+        else:
+            print(f"Yahoo search API error: {e}")
     return results
 
 app = Flask(__name__)
@@ -2963,7 +3007,22 @@ def get_stock_price():
             'timestamp': datetime.now().isoformat()
         })
 
+    except ValueError as e:
+        error_msg = str(e)
+        # Check if it's a rate limit error
+        if 'rate limit' in error_msg.lower() or 'rate limited' in error_msg.lower():
+            return jsonify({
+                'error': 'Yahoo Finance API rate limit exceeded. Please try again in a few minutes.',
+                'rateLimited': True
+            }), 429
+        return jsonify({'error': error_msg}), 400
     except Exception as e:
+        error_str = str(e).lower()
+        if '429' in error_str or 'too many requests' in error_str or 'rate limit' in error_str:
+            return jsonify({
+                'error': 'Yahoo Finance API rate limit exceeded. Please try again in a few minutes.',
+                'rateLimited': True
+            }), 429
         return jsonify({'error': f'Failed to fetch stock price: {str(e)}'}), 500
 
 
@@ -2996,7 +3055,9 @@ def get_multiple_stock_prices():
                     'exchange': info.get('exchange', ''),
                     'error': None
                 })
-            except Exception as e:
+            except ValueError as e:
+                error_msg = str(e)
+                is_rate_limit = 'rate limit' in error_msg.lower() or 'rate limited' in error_msg.lower()
                 results.append({
                     'ticker': ticker,
                     'name': ticker,
@@ -3007,7 +3068,24 @@ def get_multiple_stock_prices():
                     'currency': None,
                     'marketState': None,
                     'exchange': None,
-                    'error': str(e)
+                    'error': 'Rate limit exceeded' if is_rate_limit else error_msg,
+                    'rateLimited': is_rate_limit
+                })
+            except Exception as e:
+                error_str = str(e).lower()
+                is_rate_limit = '429' in error_str or 'too many requests' in error_str or 'rate limit' in error_str
+                results.append({
+                    'ticker': ticker,
+                    'name': ticker,
+                    'currentPrice': None,
+                    'previousClose': None,
+                    'change': None,
+                    'changePercent': None,
+                    'currency': None,
+                    'marketState': None,
+                    'exchange': None,
+                    'error': 'Rate limit exceeded' if is_rate_limit else str(e),
+                    'rateLimited': is_rate_limit
                 })
 
         return jsonify({
@@ -3531,9 +3609,18 @@ def get_yahoo_holdings():
                     total_portfolio_value += position_value
                     total_cost_basis += position_cost
                     total_gain_loss += gain_loss
-                except Exception as e:
+                except ValueError as e:
+                    error_msg = str(e)
+                    is_rate_limit = 'rate limit' in error_msg.lower() or 'rate limited' in error_msg.lower()
                     entry['currentPrice'] = None
-                    entry['error'] = str(e)
+                    entry['error'] = 'Rate limit exceeded' if is_rate_limit else error_msg
+                    entry['rateLimited'] = is_rate_limit
+                except Exception as e:
+                    error_str = str(e).lower()
+                    is_rate_limit = '429' in error_str or 'too many requests' in error_str or 'rate limit' in error_str
+                    entry['currentPrice'] = None
+                    entry['error'] = 'Rate limit exceeded' if is_rate_limit else str(e)
+                    entry['rateLimited'] = is_rate_limit
 
                 enriched.append(entry)
 
