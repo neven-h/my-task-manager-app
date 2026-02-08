@@ -2702,14 +2702,13 @@ def get_portfolio_entries():
                     entry['created_at'] = entry['created_at'].isoformat()
                 if entry.get('updated_at'):
                     entry['updated_at'] = entry['updated_at'].isoformat()
-                if entry.get('percentage'):
+                if entry.get('percentage') is not None:
                     entry['percentage'] = float(entry['percentage'])
-                if entry.get('value_ils'):
+                if entry.get('value_ils') is not None:
                     entry['value_ils'] = float(entry['value_ils'])
-                if entry.get('base_price'):
+                if entry.get('base_price') is not None:
                     entry['base_price'] = float(entry['base_price'])
-                if entry.get('units'):
-                    # Ensure units is returned as integer
+                if entry.get('units') is not None:
                     entry['units'] = int(round(float(entry['units'])))
 
             return jsonify(entries)
@@ -2866,21 +2865,16 @@ def update_portfolio_entry(entry_id):
             
             if 'units' in existing_columns:
                 units_val = data.get('units')
-                # Parse units: convert to int, default to 1
-                parsed_units = None
-                if units_val is not None and units_val != '' and units_val != 0:
+                parsed_units = 1
+                if units_val is not None and units_val != '':
                     try:
-                        parsed_units = int(round(float(str(units_val).strip())))
-                        if parsed_units <= 0:
-                            parsed_units = 1
+                        parsed = int(round(float(str(units_val).strip())))
+                        if parsed > 0:
+                            parsed_units = parsed
                     except (TypeError, ValueError):
-                        parsed_units = None
-
-                if parsed_units is not None:
-                    set_clauses.append('units = %s')
-                    values_list.append(parsed_units)
-                # else: don't include units in UPDATE at all - keeps existing value
-                print(f"PUT /portfolio/{entry_id}: units from request={repr(data.get('units'))}, parsed={parsed_units}")
+                        pass
+                set_clauses.append('units = %s')
+                values_list.append(parsed_units)
             
             values_list.append(entry_id)  # For WHERE clause
             
