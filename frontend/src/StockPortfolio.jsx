@@ -33,7 +33,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
     base_price: '',
     entry_date: new Date().toISOString().split('T')[0],
     currency: 'USD',
-    units: 1
+    units: '1'
   });
 
   // Live stock prices state
@@ -325,13 +325,17 @@ const StockPortfolio = ({ onBackToTasks }) => {
 
       const method = editingEntry ? 'PUT' : 'POST';
 
-      // Parse units - ensure it's always a valid positive number
+      // Parse units - ensure it's always a valid positive integer
       const unitsValue = formData.units;
       let units = 1;
       if (unitsValue != null && unitsValue !== '') {
-        const parsed = typeof unitsValue === 'number' ? unitsValue : parseFloat(String(unitsValue));
-        if (!isNaN(parsed) && parsed > 0 && isFinite(parsed)) {
-          units = parsed;
+        // Convert to string first, then parse to integer
+        const strValue = String(unitsValue).trim();
+        if (strValue !== '') {
+          const numValue = parseInt(strValue, 10);
+          if (!isNaN(numValue) && numValue > 0 && isFinite(numValue)) {
+            units = numValue;
+          }
         }
       }
 
@@ -376,7 +380,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
         base_price: '',
         entry_date: new Date().toISOString().split('T')[0],
         currency: 'USD',
-        units: 1
+        units: '1'
       });
       setSuccess(editingEntry ? 'Portfolio entry updated successfully' : 'Portfolio entry added successfully');
 
@@ -405,7 +409,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
       base_price: entry.base_price != null && entry.base_price !== '' ? entry.base_price : '',
       entry_date: entryDate ?? new Date().toISOString().split('T')[0],
       currency: entry.currency || 'USD',
-      units: entry.units != null ? entry.units : 1
+      units: entry.units != null && entry.units !== '' ? String(entry.units) : '1'
     });
     setShowForm(true);
   };
@@ -2682,11 +2686,11 @@ const StockPortfolio = ({ onBackToTasks }) => {
                 <input
                   type="number"
                   name="units"
-                  value={formData.units}
+                  value={formData.units != null ? String(formData.units) : '1'}
                   onChange={handleInputChange}
                   required
-                  step="0.0001"
-                  min="0.0001"
+                  step="1"
+                  min="1"
                   placeholder="1"
                   style={{
                     width: '100%',
