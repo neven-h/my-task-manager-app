@@ -23,6 +23,7 @@ import {
     ArrowLeft,
     Share2,
     TrendingUp,
+    TrendingDown,
     PieChart,
     Banknote,
     CreditCard,
@@ -32,7 +33,7 @@ import {
 } from 'lucide-react';
 import CustomAutocomplete from '../components/CustomAutocomplete';
 import API_BASE from '../config';
-import { formatCurrency } from '../utils/formatCurrency';
+import { formatCurrency, formatCurrencyWithCode } from '../utils/formatCurrency';
 
 // Mobile Stats View Component
 const MobileStatsView = ({authUser, authRole, onBack}) => {
@@ -684,7 +685,9 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
         percentage: '',
         value_ils: '',
         base_price: '',
-        entry_date: new Date().toISOString().split('T')[0]
+        entry_date: new Date().toISOString().split('T')[0],
+        currency: 'ILS',
+        units: 1
     });
 
     useEffect(() => {
@@ -713,8 +716,23 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
             const data = await response.json();
             if (Array.isArray(data)) {
                 setTabs(data);
-                if (data.length > 0 && !activeTabId) {
-                    setActiveTabId(data[0].id);
+                if (data.length > 0) {
+                    setActiveTabId(prev => (prev !== null ? prev : data[0].id));
+                } else {
+                    // Create default tab so new entries always have a tab
+                    const createRes = await fetch(`${API_BASE}/portfolio-tabs`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ name: 'Default', username: authUser })
+                    });
+                    if (createRes.ok) {
+                        const newTab = await createRes.json();
+                        const id = newTab.id ?? newTab.tab_id;
+                        if (id) {
+                            setTabs([{ id, name: 'Default' }]);
+                            setActiveTabId(id);
+                        }
+                    }
                 }
             }
         } catch (err) {
@@ -808,8 +826,10 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                 tab_id: activeTabId,
                 percentage: parseFloat(formData.percentage) || 0,
                 value_ils: parseFloat(formData.value_ils) || 0,
-                base_price: parseFloat(formData.base_price) || 0,
-                username: authUser
+                base_price: (formData.base_price !== '' && formData.base_price != null) ? parseFloat(formData.base_price) : null,
+                username: authUser,
+                currency: formData.currency || 'ILS',
+                units: parseFloat(formData.units) || 1
             };
 
             const response = await fetch(url, {
@@ -829,7 +849,9 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                     percentage: '',
                     value_ils: '',
                     base_price: '',
-                    entry_date: new Date().toISOString().split('T')[0]
+                    entry_date: new Date().toISOString().split('T')[0],
+                    currency: 'ILS',
+                    units: 1
                 });
             }
         } catch (err) {
@@ -860,6 +882,22 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
         acc[entry.name].push(entry);
         return acc;
     }, {});
+
+    // Helper: current price per unit (live or from stored value), total value, and growth
+    const getEntryValues = (entry, livePrice) => {
+        const units = entry.units ?? 1;
+        const currency = entry.currency || 'ILS';
+        const currentPricePerUnit = livePrice?.currentPrice ?? (entry.value_ils / units);
+        const totalValue = units * currentPricePerUnit;
+        const basePrice = entry.base_price != null && entry.base_price !== '' ? parseFloat(entry.base_price) : null;
+        const growthAmount = basePrice != null && basePrice !== 0
+            ? currentPricePerUnit - basePrice
+            : null;
+        const growthPercent = basePrice != null && basePrice !== 0
+            ? ((currentPricePerUnit - basePrice) / basePrice) * 100
+            : null;
+        return { units, currency, currentPricePerUnit, totalValue, growthAmount, growthPercent };
+    };
 
     return (
         <div style={{minHeight: '100vh', background: '#fff', fontFamily: FONT_STACK}}>
@@ -984,7 +1022,9 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                                         </div>
                                     </div>
                                 )}
-                            {stockEntries.map(entry => (
+                            {stockEntries.map(entry => {
+                                const { units, currency, totalValue, growthAmount, growthPercent } = getEntryValues(entry, livePrice);
+                                return (
                                 <div
                                     key={entry.id}
                                     style={{
@@ -999,13 +1039,34 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                                             {new Date(entry.entry_date).toLocaleDateString('en-GB')}
                                         </div>
                                         <div style={{fontSize: '1.1rem', fontWeight: 900}}>
-                                            {formatCurrency(entry.value_ils)}
+                                            {formatCurrencyWithCode(entry.value_ils, currency)}
                                         </div>
                                     </div>
                                     <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: THEME.muted}}>
+                                        <span>Quantity: {(units).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 4 })}</span>
                                         <span>{entry.percentage}%</span>
-                                        <span>Base: {formatCurrency(entry.base_price)}</span>
                                     </div>
+                                    <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '4px'}}>
+                                        <span>Total value: {formatCurrencyWithCode(totalValue, currency)}</span>
+                                    </div>
+                                    {entry.base_price != null && entry.base_price !== '' && (
+                                        <div style={{fontSize: '0.8rem', marginBottom: '4px'}}>
+                                            Base: {formatCurrencyWithCode(parseFloat(entry.base_price), currency)}
+                                        </div>
+                                    )}
+                                    {(growthAmount != null && growthPercent != null) ? (
+                                        <div style={{
+                                            fontSize: '0.8rem',
+                                            fontWeight: 700,
+                                            color: growthAmount >= 0 ? THEME.success : THEME.accent,
+                                            marginBottom: '8px'
+                                        }}>
+                                            {growthAmount >= 0 ? <TrendingUp size={14} style={{verticalAlign: 'middle', marginRight: '4px'}} /> : <TrendingDown size={14} style={{verticalAlign: 'middle', marginRight: '4px'}} />}
+                                            {formatCurrencyWithCode(Math.abs(growthAmount), currency)} ({growthPercent >= 0 ? '+' : ''}{growthPercent.toFixed(2)}%)
+                                        </div>
+                                    ) : (
+                                        <div style={{fontSize: '0.8rem', color: THEME.muted, marginBottom: '8px'}}>Growth: —</div>
+                                    )}
                                     <div style={{display: 'flex', gap: '8px', marginTop: '8px'}}>
                                         <button
                                             onClick={() => {
@@ -1015,8 +1076,10 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                                                     ticker_symbol: entry.ticker_symbol || '',
                                                     percentage: entry.percentage?.toString() || '',
                                                     value_ils: entry.value_ils?.toString() || '',
-                                                    base_price: entry.base_price?.toString() || '',
-                                                    entry_date: entry.entry_date.split('T')[0]
+                                                    base_price: entry.base_price != null && entry.base_price !== '' ? String(entry.base_price) : '',
+                                                    entry_date: entry.entry_date.split('T')[0],
+                                                    currency: entry.currency || 'ILS',
+                                                    units: entry.units != null ? entry.units : 1
                                                 });
                                                 setShowForm(true);
                                             }}
@@ -1049,7 +1112,8 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                                         </button>
                                     </div>
                                 </div>
-                            ))}
+                                );
+                            })}
                         </div>
                         );
                     })
@@ -1066,7 +1130,9 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                         percentage: '',
                         value_ils: '',
                         base_price: '',
-                        entry_date: new Date().toISOString().split('T')[0]
+                        entry_date: new Date().toISOString().split('T')[0],
+                        currency: 'ILS',
+                        units: 1
                     });
                     setShowForm(true);
                 }}
@@ -1156,7 +1222,38 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                             </div>
                             <div>
                                 <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
-                                    Value (ILS)
+                                    Currency
+                                </label>
+                                <select
+                                    value={formData.currency}
+                                    onChange={(e) => setFormData({...formData, currency: e.target.value})}
+                                    style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
+                                >
+                                    <option value="ILS">ILS (Israeli Shekel)</option>
+                                    <option value="USD">USD</option>
+                                    <option value="EUR">EUR</option>
+                                    <option value="GBP">GBP</option>
+                                    <option value="JPY">JPY</option>
+                                    <option value="CAD">CAD</option>
+                                    <option value="AUD">AUD</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
+                                    Quantity (units)
+                                </label>
+                                <input
+                                    type="number"
+                                    step="0.0001"
+                                    min="0.0001"
+                                    value={formData.units}
+                                    onChange={(e) => setFormData({...formData, units: e.target.value})}
+                                    style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
+                                />
+                            </div>
+                            <div>
+                                <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
+                                    Value
                                 </label>
                                 <input
                                     type="number"
@@ -1181,13 +1278,14 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                                 </div>
                                 <div>
                                     <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
-                                        Base Price
+                                        Base Price (optional)
                                     </label>
                                     <input
                                         type="number"
                                         step="0.01"
                                         value={formData.base_price}
                                         onChange={(e) => setFormData({...formData, base_price: e.target.value})}
+                                        placeholder="Optional"
                                         style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
                                     />
                                 </div>

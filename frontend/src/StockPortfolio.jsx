@@ -1482,10 +1482,12 @@ const StockPortfolio = ({ onBackToTasks }) => {
                 </thead>
                 <tbody>
                   {getStockSummary
-                    .sort((a, b) => b.latestEntry.value_ils - a.latestEntry.value_ils)
+                    .sort((a, b) => (b.latestEntry.value_usd || 0) - (a.latestEntry.value_usd || 0))
                     .map(stock => {
-                      const growth = calculateGrowth(stock.latestEntry.value_ils, stock.basePrice);
-                      const growthValue = stock.basePrice ? stock.latestEntry.value_ils - stock.basePrice : null;
+                      const entryCurrency = stock.latestEntry.currency || 'ILS';
+                      const entryValue = stock.latestEntry.value_ils;
+                      const growth = calculateGrowth(entryValue, stock.basePrice);
+                      const growthValue = stock.basePrice != null ? entryValue - stock.basePrice : null;
                       const isPositive = growth !== null && growth >= 0;
                       
                       const livePrice = stock.tickerSymbol ? stockPrices[stock.tickerSymbol] : null;
@@ -1553,7 +1555,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                             fontSize: '0.95rem',
                             color: colors.text
                           }}>
-                            {formatCurrencyWithCode(stock.latestEntry.value_ils, stock.latestEntry.currency || 'ILS')}
+                            {formatCurrencyWithCode(entryValue, entryCurrency)}
                           </td>
                           <td style={{
                             padding: '0.75rem 1rem',
@@ -1561,7 +1563,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                             fontSize: '0.9rem',
                             color: colors.textLight
                           }}>
-                            {stock.basePrice ? Number(stock.basePrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-'}
+                            {stock.basePrice != null ? formatCurrencyWithCode(stock.basePrice, entryCurrency) : '-'}
                           </td>
                           <td style={{
                             padding: '0.75rem 1rem',
@@ -1579,7 +1581,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                             {growthValue !== null ? (
                               <>
                                 {isPositive ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                                {formatCurrency(Math.abs(growthValue))}
+                                {formatCurrencyWithCode(Math.abs(growthValue), entryCurrency)}
                               </>
                             ) : '-'}
                           </td>

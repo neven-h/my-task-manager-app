@@ -2329,7 +2329,7 @@ def get_portfolio_entries():
             if has_ticker_symbol:
                 query = "SELECT * FROM stock_portfolio WHERE 1=1"
             else:
-                query = "SELECT id, name, NULL as ticker_symbol, percentage, value_ils, base_price, entry_date, tab_id, created_by, created_at, updated_at FROM stock_portfolio WHERE 1=1"
+                query = "SELECT id, name, NULL as ticker_symbol, percentage, value_ils, base_price, entry_date, tab_id, created_by, created_at, updated_at, currency FROM stock_portfolio WHERE 1=1"
             params = []
 
             # Tab filtering
