@@ -325,6 +325,16 @@ const StockPortfolio = ({ onBackToTasks }) => {
 
       const method = editingEntry ? 'PUT' : 'POST';
 
+      // Parse units - ensure it's always a valid positive number
+      const unitsValue = formData.units;
+      let units = 1;
+      if (unitsValue != null && unitsValue !== '') {
+        const parsed = typeof unitsValue === 'number' ? unitsValue : parseFloat(String(unitsValue));
+        if (!isNaN(parsed) && parsed > 0 && isFinite(parsed)) {
+          units = parsed;
+        }
+      }
+
       const payload = {
         name: formData.name,
         ticker_symbol: formData.ticker_symbol || null,
@@ -335,7 +345,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
         username: authUser,
         tab_id: activeTabId,
         currency: formData.currency || 'USD',
-        units: (formData.units != null && formData.units !== '') ? (typeof formData.units === 'number' ? formData.units : parseFloat(formData.units) || 1) : 1
+        units: units
       };
 
       // If it's a new stock and base_price is not set, use value_ils as base_price
