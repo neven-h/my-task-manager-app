@@ -686,7 +686,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
         value_ils: '',
         base_price: '',
         entry_date: new Date().toISOString().split('T')[0],
-        currency: 'ILS',
+        currency: 'USD',
         units: 1
     });
 
@@ -828,8 +828,8 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                 value_ils: parseFloat(formData.value_ils) || 0,
                 base_price: (formData.base_price !== '' && formData.base_price != null) ? parseFloat(formData.base_price) : null,
                 username: authUser,
-                currency: formData.currency || 'ILS',
-                units: parseFloat(formData.units) || 1
+                currency: formData.currency || 'USD',
+                units: (formData.units != null && formData.units !== '') ? (typeof formData.units === 'number' ? formData.units : parseFloat(formData.units) || 1) : 1
             };
 
             const response = await fetch(url, {
@@ -850,7 +850,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                     value_ils: '',
                     base_price: '',
                     entry_date: new Date().toISOString().split('T')[0],
-                    currency: 'ILS',
+                    currency: 'USD',
                     units: 1
                 });
             }
@@ -1078,7 +1078,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                                                     value_ils: entry.value_ils?.toString() || '',
                                                     base_price: entry.base_price != null && entry.base_price !== '' ? String(entry.base_price) : '',
                                                     entry_date: entry.entry_date.split('T')[0],
-                                                    currency: entry.currency || 'ILS',
+                                                    currency: entry.currency || 'USD',
                                                     units: entry.units != null ? entry.units : 1
                                                 });
                                                 setShowForm(true);
@@ -1131,7 +1131,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                         value_ils: '',
                         base_price: '',
                         entry_date: new Date().toISOString().split('T')[0],
-                        currency: 'ILS',
+                        currency: 'USD',
                         units: 1
                     });
                     setShowForm(true);
@@ -1229,13 +1229,9 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                                     onChange={(e) => setFormData({...formData, currency: e.target.value})}
                                     style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
                                 >
-                                    <option value="ILS">ILS (Israeli Shekel)</option>
                                     <option value="USD">USD</option>
+                                    <option value="ILS">ILS (Israeli Shekel)</option>
                                     <option value="EUR">EUR</option>
-                                    <option value="GBP">GBP</option>
-                                    <option value="JPY">JPY</option>
-                                    <option value="CAD">CAD</option>
-                                    <option value="AUD">AUD</option>
                                 </select>
                             </div>
                             <div>

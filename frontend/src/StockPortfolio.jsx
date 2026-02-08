@@ -32,7 +32,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
     value_ils: '',
     base_price: '',
     entry_date: new Date().toISOString().split('T')[0],
-    currency: 'ILS',
+    currency: 'USD',
     units: 1
   });
 
@@ -297,6 +297,14 @@ const StockPortfolio = ({ onBackToTasks }) => {
       setError(null);
       setSuccess(null);
 
+      if (editingEntry) {
+        const id = Number(editingEntry.id);
+        if (Number.isNaN(id) || id < 1) {
+          setError('Invalid entry: cannot update. Please close and try again.');
+          return;
+        }
+      }
+
       const valueIls = formData.value_ils !== '' && formData.value_ils != null
         ? parseFloat(formData.value_ils)
         : (editingEntry ? editingEntry.value_ils : 0);
@@ -310,8 +318,9 @@ const StockPortfolio = ({ onBackToTasks }) => {
         ? formData.entry_date.split('T')[0]
         : formData.entry_date;
 
+      const entryId = editingEntry ? Number(editingEntry.id) : null;
       const url = editingEntry
-        ? `${API_BASE}/portfolio/${editingEntry.id}?username=${encodeURIComponent(authUser || '')}&role=${encodeURIComponent(authRole || '')}`
+        ? `${API_BASE}/portfolio/${entryId}?username=${encodeURIComponent(authUser || '')}&role=${encodeURIComponent(authRole || '')}`
         : `${API_BASE}/portfolio`;
 
       const method = editingEntry ? 'PUT' : 'POST';
@@ -325,8 +334,8 @@ const StockPortfolio = ({ onBackToTasks }) => {
         entry_date: entryDate,
         username: authUser,
         tab_id: activeTabId,
-        currency: formData.currency || 'ILS',
-        units: formData.units != null && formData.units !== '' ? parseFloat(formData.units) : 1
+        currency: formData.currency || 'USD',
+        units: (formData.units != null && formData.units !== '') ? (typeof formData.units === 'number' ? formData.units : parseFloat(formData.units) || 1) : 1
       };
 
       // If it's a new stock and base_price is not set, use value_ils as base_price
@@ -356,7 +365,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
         value_ils: '',
         base_price: '',
         entry_date: new Date().toISOString().split('T')[0],
-        currency: 'ILS',
+        currency: 'USD',
         units: 1
       });
       setSuccess(editingEntry ? 'Portfolio entry updated successfully' : 'Portfolio entry added successfully');
@@ -385,7 +394,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
       value_ils: entry.value_ils ?? '',
       base_price: entry.base_price != null && entry.base_price !== '' ? entry.base_price : '',
       entry_date: entryDate ?? new Date().toISOString().split('T')[0],
-      currency: entry.currency || 'ILS',
+      currency: entry.currency || 'USD',
       units: entry.units != null ? entry.units : 1
     });
     setShowForm(true);
@@ -2122,7 +2131,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                   {getStockSummary
                     .sort((a, b) => (b.latestEntry.value_ils || 0) - (a.latestEntry.value_ils || 0))
                     .map(stock => {
-                      const entryCurrency = stock.latestEntry.currency || 'ILS';
+                      const entryCurrency = stock.latestEntry.currency || 'USD';
                       const entryValue = stock.latestEntry.value_ils;
                       const growth = calculateGrowth(entryValue, stock.basePrice);
                       const growthValue = stock.basePrice != null ? entryValue - stock.basePrice : null;
@@ -2370,7 +2379,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                           fontSize: '0.95rem',
                           color: colors.text
                         }}>
-                          {formatCurrencyWithCode(entry.value_ils, entry.currency || 'ILS')}
+                          {formatCurrencyWithCode(entry.value_ils, entry.currency || 'USD')}
                         </td>
                         <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.9rem' }}>
                           {change ? (
@@ -2383,7 +2392,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                                 gap: '0.25rem'
                               }}>
                                 {change.valueChange >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                                {formatCurrencyWithCode(Math.abs(change.valueChange), entry.currency || 'ILS')}
+                                {formatCurrencyWithCode(Math.abs(change.valueChange), entry.currency || 'USD')}
                               </span>
                               <span style={{
                                 fontSize: '0.8rem',
@@ -2403,7 +2412,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                                 gap: '0.25rem'
                               }}>
                                 {baseGrowth >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                                {formatCurrencyWithCode(Math.abs(entry.value_ils - (stockSummary?.basePrice || 0)), entry.currency || 'ILS')}
+                                {formatCurrencyWithCode(Math.abs(entry.value_ils - (stockSummary?.basePrice || 0)), entry.currency || 'USD')}
                               </span>
                               <span style={{
                                 fontSize: '0.8rem',
@@ -2621,7 +2630,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                     }}
                   />
                   <small style={{ color: colors.textLight, fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                    This is the initial purchase price for tracking growth (in {formData.currency || 'ILS'})
+                    This is the initial purchase price for tracking growth (in {formData.currency || 'USD'})
                   </small>
                 </div>
               )}
@@ -2647,16 +2656,9 @@ const StockPortfolio = ({ onBackToTasks }) => {
                     cursor: 'pointer'
                   }}
                 >
-                  <option value="ILS">₪ ILS (Israeli Shekel)</option>
                   <option value="USD">$ USD (US Dollar)</option>
+                  <option value="ILS">₪ ILS (Israeli Shekel)</option>
                   <option value="EUR">€ EUR (Euro)</option>
-                  <option value="GBP">£ GBP (British Pound)</option>
-                  <option value="JPY">¥ JPY (Japanese Yen)</option>
-                  <option value="CNY">¥ CNY (Chinese Yuan)</option>
-                  <option value="CAD">$ CAD (Canadian Dollar)</option>
-                  <option value="AUD">$ AUD (Australian Dollar)</option>
-                  <option value="CHF">CHF (Swiss Franc)</option>
-                  <option value="NZD">$ NZD (New Zealand Dollar)</option>
                 </select>
                 <small style={{ color: colors.textLight, fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
                   Select the currency for this stock entry

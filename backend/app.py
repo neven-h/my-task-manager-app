@@ -2590,11 +2590,21 @@ def create_portfolio_entry():
             
             if 'currency' in existing_columns:
                 columns.append('currency')
-                values_list.append(data.get('currency', 'ILS'))
+                values_list.append(data.get('currency', 'USD'))
             
             if 'units' in existing_columns:
                 columns.append('units')
-                values_list.append(data.get('units', 1))
+                units_val = data.get('units', 1)
+                if units_val is None or units_val == '':
+                    units_val = 1
+                else:
+                    try:
+                        units_val = float(units_val)
+                        if units_val <= 0:
+                            units_val = 1
+                    except (TypeError, ValueError):
+                        units_val = 1
+                values_list.append(units_val)
             
             query = f"""
                 INSERT INTO stock_portfolio
@@ -2675,11 +2685,21 @@ def update_portfolio_entry(entry_id):
             
             if 'currency' in existing_columns:
                 set_clauses.append('currency = %s')
-                values_list.append(data.get('currency', 'ILS'))
+                values_list.append(data.get('currency', 'USD'))
             
             if 'units' in existing_columns:
                 set_clauses.append('units = %s')
-                values_list.append(data.get('units', 1))
+                units_val = data.get('units', 1)
+                if units_val is None or units_val == '':
+                    units_val = 1
+                else:
+                    try:
+                        units_val = float(units_val)
+                        if units_val <= 0:
+                            units_val = 1
+                    except (TypeError, ValueError):
+                        units_val = 1
+                values_list.append(units_val)
             
             values_list.append(entry_id)  # For WHERE clause
             
@@ -2694,9 +2714,7 @@ def update_portfolio_entry(entry_id):
             cursor.execute(update_query, values)
             connection.commit()
 
-            if cursor.rowcount == 0:
-                return jsonify({'error': 'Portfolio entry not found'}), 404
-
+            # Entry was already found by SELECT; 0 rowcount can occur if values unchanged
             return jsonify({'message': 'Portfolio entry updated successfully'})
 
     except Error as e:

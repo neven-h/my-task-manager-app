@@ -17,7 +17,7 @@ export const formatCurrency = (amount) => {
  * @param {string} currencyCode - The currency code (e.g., 'USD', 'EUR', 'ILS')
  * @returns {string} Formatted currency string
  */
-export const formatCurrencyWithCode = (amount, currencyCode = 'ILS') => {
+export const formatCurrencyWithCode = (amount, currencyCode = 'USD') => {
   if (!amount && amount !== 0) return '-';
   
   // Map currency codes to appropriate locales
