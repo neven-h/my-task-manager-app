@@ -33,6 +33,7 @@ import pyotp
 import qrcode
 from io import BytesIO
 import yfinance as yf
+from yfinance.exceptions import YFRateLimitError
 import json
 import threading
 import urllib.request
@@ -99,6 +100,8 @@ def _fetch_exchange_rate_background(from_currency, to_currency):
                     _exchange_rate_cache[cache_key] = {'rate': float(rate), 'timestamp': time.time()}
                 print(f"Exchange rate cached: {cache_key} = {float(rate)}")
                 return
+        except YFRateLimitError as e:
+            print(f"Exchange rate fast_info rate limited for {ticker}: {e}")
         except Exception as e:
             print(f"Exchange rate fast_info failed for {ticker}: {e}")
 
@@ -112,6 +115,8 @@ def _fetch_exchange_rate_background(from_currency, to_currency):
                         _exchange_rate_cache[cache_key] = {'rate': rate, 'timestamp': time.time()}
                     print(f"Exchange rate cached (history): {cache_key} = {rate}")
                     return
+        except YFRateLimitError as e:
+            print(f"Exchange rate history rate limited for {ticker}: {e}")
         except Exception as e:
             print(f"Exchange rate history failed for {ticker}: {e}")
     finally:
@@ -177,6 +182,9 @@ def _fetch_stock_info_robust(ticker_symbol):
         raw_info = stock.info
         if raw_info and isinstance(raw_info, dict) and len(raw_info) > 1:
             info = raw_info
+    except YFRateLimitError as e:
+        rate_limited = True
+        print(f"Rate limited by Yahoo Finance for {ticker_symbol}: {e}")
     except Exception as e:
         error_str = str(e).lower()
         # Check for rate limiting indicators
@@ -217,6 +225,9 @@ def _fetch_stock_info_robust(ticker_symbol):
                 info['marketState'] = info.get('marketState', 'UNKNOWN')
                 if not info.get('symbol'):
                     info['symbol'] = ticker_symbol
+        except YFRateLimitError as e:
+            rate_limited = True
+            print(f"Rate limited by Yahoo Finance (fast_info) for {ticker_symbol}: {e}")
         except Exception as e:
             error_str = str(e).lower()
             if '429' in error_str or 'too many requests' in error_str or 'rate limit' in error_str:
@@ -237,6 +248,9 @@ def _fetch_stock_info_robust(ticker_symbol):
                 info['marketState'] = info.get('marketState', 'CLOSED')
                 info['currency'] = info.get('currency', 'USD')
                 info['exchange'] = info.get('exchange', '')
+        except YFRateLimitError as e:
+            rate_limited = True
+            print(f"Rate limited by Yahoo Finance (history) for {ticker_symbol}: {e}")
         except Exception as e:
             error_str = str(e).lower()
             if '429' in error_str or 'too many requests' in error_str or 'rate limit' in error_str:
@@ -3147,6 +3161,11 @@ def get_stock_price():
             'timestamp': datetime.now().isoformat()
         })
 
+    except YFRateLimitError:
+        return jsonify({
+            'error': 'Yahoo Finance API rate limit exceeded. Please try again in a few minutes.',
+            'rateLimited': True
+        }), 429
     except ValueError as e:
         error_msg = str(e)
         # Check if it's a rate limit error
