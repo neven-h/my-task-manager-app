@@ -2510,7 +2510,11 @@ def get_portfolio_entries():
             if has_ticker_symbol:
                 query = "SELECT * FROM stock_portfolio WHERE 1=1"
             else:
-                query = "SELECT id, name, NULL as ticker_symbol, percentage, value_ils, base_price, entry_date, tab_id, created_by, created_at, updated_at, currency FROM stock_portfolio WHERE 1=1"
+                # Check if units column exists
+                cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND COLUMN_NAME = 'units'")
+                has_units = cursor.fetchone()['count'] > 0
+                units_col = ", units" if has_units else ""
+                query = f"SELECT id, name, NULL as ticker_symbol, percentage, value_ils, base_price, entry_date, tab_id, created_by, created_at, updated_at, currency{units_col} FROM stock_portfolio WHERE 1=1"
             params = []
 
             # Tab filtering
@@ -2556,6 +2560,9 @@ def get_portfolio_entries():
                     entry['value_ils'] = float(entry['value_ils'])
                 if entry.get('base_price'):
                     entry['base_price'] = float(entry['base_price'])
+                if entry.get('units'):
+                    # Ensure units is returned as integer
+                    entry['units'] = int(round(float(entry['units'])))
 
             return jsonify(entries)
 
@@ -2620,7 +2627,8 @@ def create_portfolio_entry():
                     units_val = 1
                 else:
                     try:
-                        units_val = float(units_val)
+                        # Convert to integer - round/floor any decimal values
+                        units_val = int(round(float(units_val)))
                         if units_val <= 0:
                             units_val = 1
                     except (TypeError, ValueError):
@@ -2713,15 +2721,16 @@ def update_portfolio_entry(entry_id):
                 units_val = data.get('units')
                 # Handle None, empty string, or missing value
                 if units_val is None or units_val == '':
-                    units_val = 1.0
+                    units_val = 1
                 else:
                     try:
-                        units_val = float(units_val)
+                        # Convert to integer - round/floor any decimal values
+                        units_val = int(round(float(units_val)))
                         # Ensure positive value
-                        if units_val <= 0 or not isinstance(units_val, (int, float)):
-                            units_val = 1.0
+                        if units_val <= 0:
+                            units_val = 1
                     except (TypeError, ValueError):
-                        units_val = 1.0
+                        units_val = 1
                 values_list.append(units_val)
             
             values_list.append(entry_id)  # For WHERE clause
