@@ -37,9 +37,16 @@ const App = () => {
 
       if (token && user) {
         try {
+          // Add timeout to prevent hanging
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
           const response = await fetch(`${API_BASE}/tasks?limit=1`, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { 'Authorization': `Bearer ${token}` },
+            signal: controller.signal
           });
+
+          clearTimeout(timeoutId);
 
           if (response.ok) {
             setAuthToken(token);
@@ -52,6 +59,10 @@ const App = () => {
           }
         } catch (error) {
           console.error('Token validation failed:', error);
+          // If it's a timeout or network error, clear auth and continue
+          if (error.name === 'AbortError') {
+            console.warn('Token validation timed out - clearing session');
+          }
           localStorage.removeItem('authToken');
           localStorage.removeItem('authUser');
           localStorage.removeItem('authRole');

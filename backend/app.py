@@ -39,7 +39,16 @@ import urllib.request
 import urllib.parse
 
 # Load environment variables
-load_dotenv()
+# On Railway/production: Environment variables are already set, load_dotenv() won't override them
+# On local/PyCharm: Try to load from project root (.env) first, then current directory
+# This ensures it works when running from PyCharm or different directories
+env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+if os.path.exists(env_path):
+    # Only load .env file if it exists (local development)
+    load_dotenv(env_path, override=False)  # override=False ensures Railway env vars take precedence
+else:
+    # Fallback to current directory (won't override existing env vars)
+    load_dotenv(override=False)
 
 # ==================== YAHOO FINANCE CACHE & HELPERS ====================
 
@@ -2841,56 +2850,69 @@ def get_portfolio_summary():
             cursor = connection.cursor(dictionary=True)
 
             # Get latest entry for each stock
-            # Build the subquery conditions to match the outer query filters
-            subquery_conditions = "sp2.name = sp1.name AND sp2.tab_id = sp1.tab_id"
-            params = []
+            # Build query parameters - need separate params for subquery and outer query
+            subquery_params = []
+            outer_params = []
+            subquery_where = "1=1"
 
+            # Build subquery WHERE clause and params
             if tab_id:
-                subquery_conditions += " AND sp2.tab_id = %s"
-                params.append(tab_id)
+                subquery_where += " AND tab_id = %s"
+                subquery_params.append(tab_id)
 
-            # Role-based filtering - apply to both outer query and subquery
             if user_role == 'limited':
-                subquery_conditions += " AND sp2.created_by = %s"
-                params.append(username)
+                subquery_where += " AND created_by = %s"
+                subquery_params.append(username)
+
+            # Build outer query WHERE clause and params (same filters)
+            outer_where = ""
+            if tab_id:
+                outer_where += " AND sp1.tab_id = %s"
+                outer_params.append(tab_id)
+
+            if user_role == 'limited':
+                outer_where += " AND sp1.created_by = %s"
+                outer_params.append(username)
 
             # Check if ticker_symbol column exists
             cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND COLUMN_NAME = 'ticker_symbol'")
             has_ticker_symbol = cursor.fetchone()['count'] > 0
             
+            # Combine all params: subquery params first, then outer query params
+            all_params = subquery_params + outer_params
+            
             if has_ticker_symbol:
                 query = f"""
-                    SELECT name, ticker_symbol, percentage, value_ils, base_price, entry_date, created_by
+                    SELECT sp1.name, sp1.ticker_symbol, sp1.percentage, sp1.value_ils, sp1.base_price, sp1.entry_date, sp1.created_by
                     FROM stock_portfolio sp1
-                    WHERE entry_date = (
-                        SELECT MAX(entry_date)
-                        FROM stock_portfolio sp2
-                        WHERE {subquery_conditions}
-                    )
+                    INNER JOIN (
+                        SELECT name, tab_id, MAX(entry_date) as max_date
+                        FROM stock_portfolio
+                        WHERE {subquery_where}
+                        GROUP BY name, tab_id
+                    ) latest ON sp1.name = latest.name 
+                        AND sp1.tab_id = latest.tab_id 
+                        AND sp1.entry_date = latest.max_date
+                    WHERE 1=1 {outer_where}
+                    ORDER BY sp1.value_ils DESC
                 """
             else:
                 query = f"""
-                    SELECT name, NULL as ticker_symbol, percentage, value_ils, base_price, entry_date, created_by
+                    SELECT sp1.name, NULL as ticker_symbol, sp1.percentage, sp1.value_ils, sp1.base_price, sp1.entry_date, sp1.created_by
                     FROM stock_portfolio sp1
-                    WHERE entry_date = (
-                        SELECT MAX(entry_date)
-                        FROM stock_portfolio sp2
-                        WHERE {subquery_conditions}
-                    )
+                    INNER JOIN (
+                        SELECT name, tab_id, MAX(entry_date) as max_date
+                        FROM stock_portfolio
+                        WHERE {subquery_where}
+                        GROUP BY name, tab_id
+                    ) latest ON sp1.name = latest.name 
+                        AND sp1.tab_id = latest.tab_id 
+                        AND sp1.entry_date = latest.max_date
+                    WHERE 1=1 {outer_where}
+                    ORDER BY sp1.value_ils DESC
                 """
 
-            # Apply same filters to outer query
-            if tab_id:
-                query += " AND sp1.tab_id = %s"
-                params.append(tab_id)
-
-            if user_role == 'limited':
-                query += " AND sp1.created_by = %s"
-                params.append(username)
-
-            query += " GROUP BY name, tab_id ORDER BY value_ils DESC"
-
-            cursor.execute(query, params)
+            cursor.execute(query, all_params)
             latest_entries = cursor.fetchall()
 
             # Calculate total value
