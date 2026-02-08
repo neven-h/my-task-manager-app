@@ -690,6 +690,23 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
         units: 1
     });
 
+    // Prevent body scroll when form is open
+    useEffect(() => {
+        if (showForm) {
+            const originalOverflow = window.getComputedStyle(document.body).overflow;
+            const originalPosition = window.getComputedStyle(document.body).position;
+            const originalWidth = window.getComputedStyle(document.body).width;
+            document.body.style.overflow = 'hidden';
+            document.body.style.position = 'fixed';
+            document.body.style.width = '100%';
+            return () => {
+                document.body.style.overflow = originalOverflow;
+                document.body.style.position = originalPosition;
+                document.body.style.width = originalWidth;
+            };
+        }
+    }, [showForm]);
+
     useEffect(() => {
         fetchTabs();
     }, []);
@@ -1178,7 +1195,9 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                         background: 'rgba(0,0,0,0.5)',
                         zIndex: 200,
                         display: 'flex',
-                        alignItems: 'flex-end'
+                        alignItems: 'flex-end',
+                        touchAction: 'none',
+                        overscrollBehavior: 'contain'
                     }}
                     onClick={(e) => {
                         if (e.target === e.currentTarget) {
@@ -1186,28 +1205,62 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                             setEditingEntry(null);
                         }
                     }}
+                    onTouchMove={(e) => {
+                        // Prevent background scroll when touching overlay
+                        if (e.target === e.currentTarget) {
+                            e.preventDefault();
+                        }
+                    }}
                 >
-                    <div style={{
-                        width: '100%',
-                        maxHeight: '80vh',
-                        background: '#fff',
-                        borderRadius: '16px 16px 0 0',
-                        padding: '20px',
-                        overflowY: 'auto'
-                    }}>
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+                    <div 
+                        style={{
+                            width: '100%',
+                            maxHeight: '90vh',
+                            background: '#fff',
+                            borderRadius: '16px 16px 0 0',
+                            padding: '20px',
+                            paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
+                            overflowY: 'auto',
+                            overflowX: 'hidden',
+                            WebkitOverflowScrolling: 'touch',
+                            overscrollBehavior: 'contain',
+                            touchAction: 'pan-y',
+                            display: 'flex',
+                            flexDirection: 'column'
+                        }}
+                        onTouchStart={(e) => e.stopPropagation()}
+                        onTouchMove={(e) => e.stopPropagation()}
+                    >
+                        <div style={{
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center', 
+                            marginBottom: '20px',
+                            flexShrink: 0,
+                            position: 'sticky',
+                            top: 0,
+                            background: '#fff',
+                            zIndex: 1,
+                            paddingBottom: '8px'
+                        }}>
                             <h2 style={{fontSize: '1.3rem', fontWeight: 900, margin: 0, textTransform: 'uppercase'}}>
                                 {editingEntry ? 'Edit Entry' : 'New Entry'}
                             </h2>
                             <button onClick={() => {
                                 setShowForm(false);
                                 setEditingEntry(null);
-                            }} style={{background: 'none', border: 'none', padding: '8px'}}>
+                            }} style={{background: 'none', border: 'none', padding: '8px', flexShrink: 0}}>
                                 <X size={28}/>
                             </button>
                         </div>
 
-                        <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+                        <div style={{
+                            display: 'flex', 
+                            flexDirection: 'column', 
+                            gap: '16px',
+                            flex: 1,
+                            minHeight: 0
+                        }}>
                             <div>
                                 <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
                                     Stock Name
@@ -1307,7 +1360,14 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                                     style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
                                 />
                             </div>
-                            <div style={{display: 'flex', gap: '12px', marginTop: '8px'}}>
+                            <div style={{
+                                display: 'flex', 
+                                gap: '12px', 
+                                marginTop: '8px',
+                                flexShrink: 0,
+                                paddingTop: '8px',
+                                paddingBottom: 'max(8px, env(safe-area-inset-bottom))'
+                            }}>
                                 <button
                                     onClick={() => {
                                         setShowForm(false);
@@ -1320,7 +1380,8 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                                         background: '#fff',
                                         fontWeight: 700,
                                         fontSize: '0.9rem',
-                                        cursor: 'pointer'
+                                        cursor: 'pointer',
+                                        touchAction: 'manipulation'
                                     }}
                                 >
                                     Cancel
@@ -1337,7 +1398,8 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                                         fontWeight: 700,
                                         fontSize: '0.9rem',
                                         cursor: 'pointer',
-                                        opacity: (loading || !formData.name || !formData.value_ils) ? 0.5 : 1
+                                        opacity: (loading || !formData.name || !formData.value_ils) ? 0.5 : 1,
+                                        touchAction: 'manipulation'
                                     }}
                                 >
                                     {loading ? 'Saving...' : 'Save'}
