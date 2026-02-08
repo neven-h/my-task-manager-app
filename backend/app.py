@@ -2772,9 +2772,12 @@ def update_portfolio_entry(entry_id):
             if 'units' in existing_columns:
                 set_clauses.append('units = %s')
                 units_val = data.get('units')
-                # Handle None, empty string, or missing value
-                if units_val is None or units_val == '' or units_val == 0:
-                    units_val = 1
+                # Always update units if provided in request, otherwise keep existing value
+                if units_val is None or units_val == '':
+                    # If units is not provided, get current value from database (don't change it)
+                    cursor.execute("SELECT units FROM stock_portfolio WHERE id = %s", (entry_id,))
+                    current_entry = cursor.fetchone()
+                    units_val = current_entry.get('units', 1) if current_entry else 1
                 else:
                     try:
                         # Convert to integer - round/floor any decimal values
@@ -2782,7 +2785,10 @@ def update_portfolio_entry(entry_id):
                         if isinstance(units_val, str):
                             units_val = units_val.strip()
                             if units_val == '':
-                                units_val = 1
+                                # Get current value from database
+                                cursor.execute("SELECT units FROM stock_portfolio WHERE id = %s", (entry_id,))
+                                current_entry = cursor.fetchone()
+                                units_val = current_entry.get('units', 1) if current_entry else 1
                             else:
                                 units_val = int(round(float(units_val)))
                         else:
@@ -2790,8 +2796,13 @@ def update_portfolio_entry(entry_id):
                         # Ensure positive value
                         if units_val <= 0:
                             units_val = 1
-                    except (TypeError, ValueError):
-                        units_val = 1
+                    except (TypeError, ValueError) as e:
+                        print(f"Error parsing units value '{units_val}': {e}")
+                        # Get current value from database as fallback
+                        cursor.execute("SELECT units FROM stock_portfolio WHERE id = %s", (entry_id,))
+                        current_entry = cursor.fetchone()
+                        units_val = current_entry.get('units', 1) if current_entry else 1
+                print(f"Updating entry {entry_id} with units value: {units_val} (from request: {data.get('units')})")
                 values_list.append(units_val)
             
             values_list.append(entry_id)  # For WHERE clause
