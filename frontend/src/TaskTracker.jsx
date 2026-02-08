@@ -1814,7 +1814,7 @@ useEffect(() => {
                     gap: '16px',
                     flexWrap: 'nowrap'
                 }}>
-                    <div style={{flex: '0 0 auto', minWidth: 0, maxWidth: '300px'}}>
+                    <div style={{flex: '0 0 auto', minWidth: '180px', maxWidth: '300px'}}>
                         <h1 style={{
                             fontFamily: '"Inter", sans-serif',
                             fontSize: 'clamp(1.5rem, 5vw, 3rem)',
@@ -1822,9 +1822,7 @@ useEffect(() => {
                             margin: '0 0 4px 0',
                             letterSpacing: '-1px',
                             textTransform: 'uppercase',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
+                            whiteSpace: 'nowrap'
                         }}>
                             Task Tracker
                         </h1>
@@ -1862,14 +1860,13 @@ useEffect(() => {
                     {/* Desktop Header Buttons */}
                     <div className="desktop-header-buttons"
                          style={{
-                             display: 'flex', 
-                             gap: '12px', 
-                             flexWrap: 'nowrap', 
+                             display: 'flex',
+                             gap: '12px',
+                             flexWrap: 'nowrap',
                              alignItems: 'center',
                              flex: '1 1 auto',
                              justifyContent: 'flex-end',
-                             minWidth: 0,
-                             overflow: 'visible'
+                             minWidth: 0
                          }}>
                         {/* Toggle Sidebar Button */}
                         <button
