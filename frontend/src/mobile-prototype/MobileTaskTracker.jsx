@@ -838,13 +838,16 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                 : `${API_BASE}/portfolio?username=${authUser}&role=${authRole}`;
             const method = editingEntry ? 'PUT' : 'POST';
             
-            // Parse units - ensure it's always a valid positive number
+            // Parse units - ensure it's always a valid positive integer
             const unitsValue = formData.units;
             let units = 1;
             if (unitsValue != null && unitsValue !== '') {
-                const parsed = typeof unitsValue === 'number' ? unitsValue : parseFloat(String(unitsValue));
-                if (!isNaN(parsed) && parsed > 0 && isFinite(parsed)) {
-                    units = parsed;
+                const strValue = String(unitsValue).trim();
+                if (strValue !== '') {
+                    const numValue = parseInt(strValue, 10);
+                    if (!isNaN(numValue) && numValue > 0 && isFinite(numValue)) {
+                        units = numValue;
+                    }
                 }
             }
 
@@ -1303,8 +1306,8 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                                 </label>
                                 <input
                                     type="number"
-                                    step="0.0001"
-                                    min="0.0001"
+                                    step="1"
+                                    min="1"
                                     value={formData.units}
                                     onChange={(e) => setFormData({...formData, units: e.target.value})}
                                     style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
