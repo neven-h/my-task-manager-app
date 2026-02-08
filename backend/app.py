@@ -87,6 +87,7 @@ def _get_exchange_rate(from_currency, to_currency='ILS'):
     """
     Fetch exchange rate with caching. Returns rate as float or None.
     Uses Yahoo Finance ticker format: USDILS=X
+    Uses a background thread with timeout to prevent blocking.
     """
     if from_currency == to_currency:
         return 1.0
@@ -99,32 +100,42 @@ def _get_exchange_rate(from_currency, to_currency='ILS'):
             return cached['rate']
 
     ticker = f"{from_currency}{to_currency}=X"
+    result = [None]  # Use list to allow mutation from thread
 
-    # Strategy 1: Try fast_info
-    try:
-        fi = yf.Ticker(ticker).fast_info
-        rate = getattr(fi, 'last_price', None) or getattr(fi, 'previous_close', None)
-        if rate and float(rate) > 0:
-            rate = float(rate)
-            with _cache_lock:
-                _exchange_rate_cache[cache_key] = {'rate': rate, 'timestamp': time.time()}
-            return rate
-    except Exception as e:
-        print(f"Exchange rate fast_info failed for {ticker}: {e}")
+    def _fetch_rate():
+        """Fetch rate in a thread so we can timeout."""
+        # Strategy 1: Try fast_info
+        try:
+            fi = yf.Ticker(ticker).fast_info
+            rate = getattr(fi, 'last_price', None) or getattr(fi, 'previous_close', None)
+            if rate and float(rate) > 0:
+                result[0] = float(rate)
+                return
+        except Exception as e:
+            print(f"Exchange rate fast_info failed for {ticker}: {e}")
 
-    # Strategy 2: Try history
-    try:
-        hist = yf.Ticker(ticker).history(period='5d')
-        if hist is not None and not hist.empty:
-            rate = float(hist.iloc[-1]['Close'])
-            if rate > 0:
-                with _cache_lock:
-                    _exchange_rate_cache[cache_key] = {'rate': rate, 'timestamp': time.time()}
-                return rate
-    except Exception as e:
-        print(f"Exchange rate history failed for {ticker}: {e}")
+        # Strategy 2: Try history
+        try:
+            hist = yf.Ticker(ticker).history(period='5d')
+            if hist is not None and not hist.empty:
+                rate = float(hist.iloc[-1]['Close'])
+                if rate > 0:
+                    result[0] = rate
+                    return
+        except Exception as e:
+            print(f"Exchange rate history failed for {ticker}: {e}")
 
-    # Strategy 3: Return stale cache if available (better than nothing)
+    # Run fetch in thread with 5-second timeout
+    fetch_thread = threading.Thread(target=_fetch_rate, daemon=True)
+    fetch_thread.start()
+    fetch_thread.join(timeout=5)  # Wait max 5 seconds
+
+    if result[0] is not None:
+        with _cache_lock:
+            _exchange_rate_cache[cache_key] = {'rate': result[0], 'timestamp': time.time()}
+        return result[0]
+
+    # Timeout or failed - return stale cache if available
     with _cache_lock:
         stale = _exchange_rate_cache.get(cache_key)
         if stale:

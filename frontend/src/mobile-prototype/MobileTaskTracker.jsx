@@ -979,9 +979,12 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                 if (!editingEntry) {
                     clearDraft();
                 }
-                await fetchEntries();
-                await fetchSummary();
-                handleCloseForm(true); // Force close after successful save
+                handleCloseForm(true); // Force close immediately
+                setLoading(false); // Stop loading so UI is responsive
+                // Refresh data in background (don't block UI)
+                fetchEntries();
+                fetchSummary();
+                return; // Skip finally's setLoading
             }
         } catch (err) {
             console.error('Failed to save entry:', err);

@@ -483,6 +483,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
       }
 
       // Close modal and clear form immediately so the window closes right away
+      const wasEditing = !!editingEntry;
       handleCloseForm(true); // Force close after successful save
       setFormData({
         name: '',
@@ -494,11 +495,14 @@ const StockPortfolio = ({ onBackToTasks }) => {
         currency: 'USD',
         units: '1'
       });
-      setSuccess(editingEntry ? 'Portfolio entry updated successfully' : 'Portfolio entry added successfully');
+      setLoading(false); // Stop loading immediately so UI is responsive
+      setSuccess(wasEditing ? 'Portfolio entry updated successfully' : 'Portfolio entry added successfully');
 
-      await fetchEntries(activeTabId);
-      await fetchSummary(activeTabId);
-      await fetchStockNames(activeTabId);
+      // Refresh data in background (don't block UI)
+      fetchEntries(activeTabId);
+      fetchSummary(activeTabId);
+      fetchStockNames(activeTabId);
+      return; // Skip the finally block's setLoading since we already did it
     } catch (err) {
       setError(err.message);
     } finally {
