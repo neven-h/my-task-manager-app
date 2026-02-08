@@ -2125,11 +2125,9 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
     const fetchTasks = async () => {
         try {
             setLoading(true);
-            console.log('Mobile: Fetching tasks with:', {username: authUser, role: authRole});
             const response = await fetch(`${API_BASE}/tasks?username=${authUser}&role=${authRole}`);
             if (!response.ok) throw new Error(`Tasks fetch failed: ${response.status}`);
             const data = await response.json();
-            console.log('Mobile: Received tasks:', (data || []).length, 'tasks');
             const sorted = (data || []).sort((a, b) => {
                 if (a.status === 'uncompleted' && b.status === 'completed') return -1;
                 if (a.status === 'completed' && b.status === 'uncompleted') return 1;
