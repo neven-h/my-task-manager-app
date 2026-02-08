@@ -1106,6 +1106,10 @@ useEffect(() => {
           transition: all 0.15s ease;
           cursor: pointer;
           border: 3px solid #000;
+          white-space: nowrap;
+          overflow: visible;
+          text-overflow: clip;
+          min-width: fit-content;
           font-family: 'Inter', sans-serif;
           font-weight: 700;
           text-transform: uppercase;
@@ -1114,6 +1118,19 @@ useEffect(() => {
           padding: 14px 28px;
           background: #fff;
           color: #000;
+          flex-shrink: 0;
+        }
+        
+        .desktop-header-buttons {
+          overflow-x: auto;
+          overflow-y: visible;
+          -webkit-overflow-scrolling: touch;
+          scrollbar-width: none; /* Firefox */
+          -ms-overflow-style: none; /* IE/Edge */
+        }
+        
+        .desktop-header-buttons::-webkit-scrollbar {
+          display: none; /* Chrome/Safari */
         }
         
         .btn:hover:not(:disabled) {
@@ -1738,6 +1755,26 @@ useEffect(() => {
           .mobile-sidebar-close {
             display: none !important;
           }
+          
+          /* Ensure header buttons don't wrap on desktop */
+          .desktop-header-buttons {
+            flex-wrap: nowrap !important;
+            overflow-x: auto;
+            overflow-y: visible;
+          }
+          
+          header {
+            overflow-x: visible;
+            overflow-y: visible;
+          }
+        }
+        
+        /* For very wide screens, allow wrapping if needed */
+        @media (min-width: 1600px) {
+          .desktop-header-buttons {
+            flex-wrap: wrap;
+            justify-content: flex-end;
+          }
         }
         
         /* Custom autocomplete styling */
@@ -1777,16 +1814,21 @@ useEffect(() => {
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    padding: '0 16px'
+                    padding: '0 16px',
+                    gap: '16px',
+                    flexWrap: 'nowrap'
                 }}>
-                    <div style={{flex: 1, minWidth: 0}}>
+                    <div style={{flex: '0 0 auto', minWidth: 0, maxWidth: '300px'}}>
                         <h1 style={{
                             fontFamily: '"Inter", sans-serif',
                             fontSize: 'clamp(1.5rem, 5vw, 3rem)',
                             fontWeight: 900,
                             margin: '0 0 4px 0',
                             letterSpacing: '-1px',
-                            textTransform: 'uppercase'
+                            textTransform: 'uppercase',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
                         }}>
                             Task Tracker
                         </h1>
@@ -1805,7 +1847,7 @@ useEffect(() => {
                     <button
                         className="btn btn-white mobile-filter-btn"
                         onClick={() => setShowMobileSidebar(true)}
-                        style={{padding: '10px', minWidth: 'auto', marginRight: '12px'}}
+                        style={{padding: '10px', minWidth: 'auto', marginRight: '12px', flexShrink: 0}}
                         title="Search & Filter"
                     >
                         <Filter size={24}/>
@@ -1815,7 +1857,7 @@ useEffect(() => {
                     <button
                         className="mobile-menu-btn btn btn-white"
                         onClick={() => setShowMobileMenu(!showMobileMenu)}
-                        style={{padding: '10px', minWidth: 'auto'}}
+                        style={{padding: '10px', minWidth: 'auto', flexShrink: 0}}
                         title="Menu"
                     >
                         <Menu size={24}/>
@@ -1823,7 +1865,16 @@ useEffect(() => {
 
                     {/* Desktop Header Buttons */}
                     <div className="desktop-header-buttons"
-                         style={{display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center'}}>
+                         style={{
+                             display: 'flex', 
+                             gap: '12px', 
+                             flexWrap: 'nowrap', 
+                             alignItems: 'center',
+                             flex: '1 1 auto',
+                             justifyContent: 'flex-end',
+                             minWidth: 0,
+                             overflow: 'visible'
+                         }}>
                         {/* Toggle Sidebar Button */}
                         <button
                             className="btn btn-white"
@@ -1842,7 +1893,7 @@ useEffect(() => {
                         )}
                         {/* Bank Transactions - for admin, shared, AND limited users */}
                         {(isAdmin || isSharedUser || isLimitedUser) && (
-                            <button className="btn btn-blue" onClick={() => setAppView('transactions')}>
+                            <button className="btn btn-blue" onClick={() => setAppView('transactions')} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
                                 <DollarSign size={18}
                                             style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
                                 Bank Transactions
@@ -1850,7 +1901,7 @@ useEffect(() => {
                         )}
                         {/* Clients - for admin and limited users (not shared) */}
                         {!isSharedUser && (
-                            <button className="btn btn-green" onClick={() => setAppView('clients')}>
+                            <button className="btn btn-green" onClick={() => setAppView('clients')} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
                                 <Tag size={18}
                                      style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
                                 Clients
@@ -1858,7 +1909,7 @@ useEffect(() => {
                         )}
                         {/* Stock Portfolio - for all users */}
                         {(isAdmin || isSharedUser || isLimitedUser) && (
-                            <button className="btn btn-yellow" onClick={() => setAppView('portfolio')} style={{background: '#FFD500', color: '#000', border: '4px solid #000'}}>
+                            <button className="btn btn-yellow" onClick={() => setAppView('portfolio')} style={{background: '#FFD500', color: '#000', border: '4px solid #000', whiteSpace: 'nowrap', flexShrink: 0}}>
                                 <BarChart3 size={18}
                                            style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
                                 Portfolio
@@ -1866,7 +1917,7 @@ useEffect(() => {
                         )}
                         {/* Bulk Add - only for admin */}
                         {isAdmin && (
-                            <button className="btn btn-white" onClick={() => setShowBulkInput(true)} disabled={loading}>
+                            <button className="btn btn-white" onClick={() => setShowBulkInput(true)} disabled={loading} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
                                 <Plus size={18}
                                       style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
                                 Bulk Add
@@ -1874,14 +1925,14 @@ useEffect(() => {
                         )}
                         {/* New Task - only for admin */}
                         {isAdmin && (
-                            <button className="btn btn-red" onClick={openNewTaskForm} disabled={loading}>
+                            <button className="btn btn-red" onClick={openNewTaskForm} disabled={loading} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
                                 <Plus size={18}
                                       style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
                                 New Task
                             </button>
                         )}
                         {/* Stats button - for everyone (filtered by backend) */}
-                        <button className="btn btn-yellow" onClick={() => setView(view === 'list' ? 'stats' : 'list')}>
+                        <button className="btn btn-yellow" onClick={() => setView(view === 'list' ? 'stats' : 'list')} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
                             {view === 'list' ? (
                                 <><BarChart3 size={18} style={{
                                     display: 'inline',
@@ -1892,13 +1943,13 @@ useEffect(() => {
                                 <>Tasks</>
                             )}
                         </button>
-                        <button className="btn btn-white" onClick={() => navigate('/settings')}>
+                        <button className="btn btn-white" onClick={() => navigate('/settings')} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
                             <Settings size={18}
                                     style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
                             Settings
                         </button>
                         {onLogout && (
-                            <button className="btn btn-white" onClick={onLogout}>
+                            <button className="btn btn-white" onClick={onLogout} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
                                 <LogOut size={18}
                                         style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
                                 Logout

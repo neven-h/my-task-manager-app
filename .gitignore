@@ -51,3 +51,15 @@ production_data.sql
 .idea/sqldialects.xml
 .idea/
 production_data.sql
+
+# Documentation/guide files (local only, don't commit)
+*_GUIDE.md
+*_FIX.md
+*_SETUP.md
+*_DIAGNOSIS.md
+PRODUCTION_*.md
+DATA_*.md
+WEBSITE_*.md
+PYCHARM_*.md
+RAILWAY_*.md
+FIX_*.md
