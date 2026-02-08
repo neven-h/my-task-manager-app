@@ -2485,13 +2485,28 @@ def update_portfolio_entry(entry_id):
             existing_columns = {row['COLUMN_NAME'] for row in cursor.fetchall()}
             
             # Build UPDATE query dynamically based on available columns
+            base_price_val = data.get('base_price')
+            if base_price_val == '' or (isinstance(base_price_val, str) and base_price_val.strip() == ''):
+                base_price_val = None
+            elif base_price_val is not None and base_price_val != '':
+                try:
+                    base_price_val = float(base_price_val)
+                except (TypeError, ValueError):
+                    base_price_val = None
+            entry_date_val = data.get('entry_date')
+            if isinstance(entry_date_val, str) and 'T' in entry_date_val:
+                entry_date_val = entry_date_val.split('T')[0] if entry_date_val else None
+            def _to_float(v, default=0):
+                if v is None or v == '': return default
+                try: return float(v)
+                except (TypeError, ValueError): return default
             set_clauses = ['name = %s', 'percentage = %s', 'value_ils = %s', 'base_price = %s', 'entry_date = %s']
             values_list = [
                 data.get('name'),
-                data.get('percentage'),
-                data.get('value_ils'),
-                data.get('base_price'),
-                data.get('entry_date')
+                _to_float(data.get('percentage')),
+                _to_float(data.get('value_ils')),
+                base_price_val,
+                entry_date_val
             ]
             
             if 'ticker_symbol' in existing_columns:
