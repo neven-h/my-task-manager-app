@@ -47,7 +47,21 @@ const MobileStatsView = ({authUser, authRole, onBack}) => {
                 const response = await fetch(`${API_BASE}/stats?username=${authUser}&role=${authRole}`);
                 if (!response.ok) throw new Error(`Stats fetch failed: ${response.status}`);
                 const data = await response.json();
-                setStats(data);
+                const overall = data.overall || {};
+                const totalTasks = overall.total_tasks || 0;
+                const completedTasks = overall.completed_tasks || 0;
+                const uncompletedTasks = overall.uncompleted_tasks || 0;
+                const totalDuration = overall.total_duration || 0;
+                setStats({
+                    total_tasks: totalTasks,
+                    done_count: completedTasks,
+                    active_count: uncompletedTasks,
+                    completion_rate: totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0,
+                    total_hours: totalDuration,
+                    by_category: data.by_category || [],
+                    by_client: data.by_client || [],
+                    monthly: data.monthly || []
+                });
             } catch (err) {
                 console.error('Error fetching stats:', err);
             } finally {
