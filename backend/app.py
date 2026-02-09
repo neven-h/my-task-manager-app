@@ -832,7 +832,7 @@ def init_db():
         db_name = sanitize_db_name(temp_config.pop('database'))
 
         connection = mysql.connector.connect(**temp_config)
-        cursor = connection.cursor()
+        cursor = connection.cursor(dictionary=True)
 
         # Create database if not exists
         cursor.execute(f"CREATE DATABASE IF NOT EXISTS `{db_name}`")
@@ -1421,6 +1421,8 @@ def init_db():
                            base_price DECIMAL(12,2),
                            entry_date DATE NOT NULL,
                            tab_id INT,
+                           currency VARCHAR(3) DEFAULT 'ILS',
+                           units DECIMAL(12,4) DEFAULT 1,
                            created_by VARCHAR(255),
                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
