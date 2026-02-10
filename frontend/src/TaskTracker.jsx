@@ -1487,7 +1487,7 @@ useEffect(() => {
           /* Modal improvements */
           .modal-overlay {
             padding: 0;
-            align-items: flex-end;
+            align-items: flex-start;
             background: rgba(0, 0, 0, 0.5) !important;
             backdrop-filter: blur(4px);
           }
@@ -1495,11 +1495,12 @@ useEffect(() => {
           .modal-content {
             width: 100vw !important;
             max-width: 100vw !important;
-            max-height: 90vh;
+            height: 100%;
+            max-height: 100vh;
+            max-height: 100dvh;
             border-width: 0 !important;
-            border-radius: 24px 24px 0 0 !important;
-            border-bottom: none;
-            box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15) !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -1510,7 +1511,7 @@ useEffect(() => {
             /* Use same yellow color as desktop */
             background: #FFD500 !important;
             color: #000 !important;
-            border-radius: 24px 24px 0 0 !important;
+            border-radius: 0 !important;
             flex-shrink: 0;
           }
 
@@ -1521,6 +1522,7 @@ useEffect(() => {
 
           .modal-body {
             padding: 20px !important;
+            padding-bottom: 80px !important;
             background: white;
             overflow-y: auto;
             overflow-x: hidden;
@@ -2133,8 +2135,8 @@ useEffect(() => {
                 </>
             )}
 
-            {/* Mobile Bottom Tab Bar */}
-            <div className="mobile-bottom-tabs">
+            {/* Mobile Bottom Tab Bar - hidden when modals are open */}
+            <div className="mobile-bottom-tabs" style={showForm || showBulkInput || showShareModal ? {display: 'none'} : {}}>
                 <button
                     className={appView === 'tasks' ? 'active-tab' : ''}
                     onClick={() => setAppView('tasks')}
