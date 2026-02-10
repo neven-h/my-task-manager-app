@@ -92,7 +92,7 @@ def get_portfolio_entries():
                 if entry.get('base_price') is not None:
                     entry['base_price'] = float(entry['base_price'])
                 if entry.get('units') is not None:
-                    entry['units'] = int(round(float(entry['units'])))
+                    entry['units'] = float(entry['units'])
 
             return jsonify(entries)
 
@@ -152,17 +152,16 @@ def create_portfolio_entry():
             
             if 'units' in existing_columns:
                 columns.append('units')
-                units_val = data.get('units', 1)
+                units_val = data.get('units')
                 if units_val is None or units_val == '':
-                    units_val = 1
+                    units_val = None
                 else:
                     try:
-                        # Convert to integer - round/floor any decimal values
-                        units_val = int(round(float(units_val)))
+                        units_val = float(units_val)
                         if units_val <= 0:
-                            units_val = 1
+                            units_val = None
                     except (TypeError, ValueError):
-                        units_val = 1
+                        units_val = None
                 values_list.append(units_val)
             
             query = f"""
@@ -248,10 +247,10 @@ def update_portfolio_entry(entry_id):
             
             if 'units' in existing_columns:
                 units_val = data.get('units')
-                parsed_units = 1
+                parsed_units = None
                 if units_val is not None and units_val != '':
                     try:
-                        parsed = int(round(float(str(units_val).strip())))
+                        parsed = float(str(units_val).strip())
                         if parsed > 0:
                             parsed_units = parsed
                     except (TypeError, ValueError):
