@@ -2092,7 +2092,7 @@ useEffect(() => {
             )}
 
             {/* Mobile Bottom Tab Bar - hidden when modals are open */}
-            <div className="mobile-bottom-tabs" style={showForm || showBulkInput || showShareModal ? {display: 'none'} : {}}
+            <div className="mobile-bottom-tabs" style={showForm || showBulkInput || showShareModal ? {display: 'none'} : {}}>
                 <button
                     className={appView === 'tasks' ? 'active-tab' : ''}
                     onClick={() => setAppView('tasks')}
