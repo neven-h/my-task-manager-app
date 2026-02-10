@@ -1810,16 +1810,15 @@ const StockPortfolio = ({ onBackToTasks }) => {
 
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '1.05rem', color: colors.text }}>
-                  📦 Number of Units/Shares *
+                  📦 Number of Units/Shares
                 </label>
                 <input
                   type="number"
                   name="units"
                   value={formData.units != null ? String(formData.units) : ''}
                   onChange={handleInputChange}
-                  required
-                  step="1"
-                  min="1"
+                  step="any"
+                  min="0"
                   placeholder="1"
                   style={{
                     width: '100%',

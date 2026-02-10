@@ -746,8 +746,8 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                                 </label>
                                 <input
                                     type="number"
-                                    step="1"
-                                    min="1"
+                                    step="any"
+                                    min="0"
                                     value={formData.units}
                                     onChange={(e) => setFormData({...formData, units: e.target.value})}
                                     style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
