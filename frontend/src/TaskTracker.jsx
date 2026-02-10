@@ -2,7 +2,8 @@ import React, {useState, useEffect, useRef, useMemo, useCallback} from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Plus, X, BarChart3,
-    Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut, Menu, Filter, Copy, Settings, Share2
+    Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut, Menu, Filter, Copy, Settings, Share2,
+    CheckSquare, TrendingUp, Users
 } from 'lucide-react';
 import BankTransactions from './BankTransactions';
 import ClientsManagement from './ClientsManagement';
@@ -1293,7 +1294,8 @@ useEffect(() => {
 
         /* Default: Hide mobile buttons on desktop */
         .mobile-menu-btn,
-        .mobile-filter-btn {
+        .mobile-filter-btn,
+        .mobile-bottom-tabs {
           display: none !important;
         }
 
@@ -1686,6 +1688,62 @@ useEffect(() => {
             box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
           }
 
+          /* Bottom tab bar for mobile navigation */
+          .mobile-bottom-tabs {
+            display: flex !important;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border-top: 2px solid #e2e8f0;
+            z-index: 200;
+            padding: 0;
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+            box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
+          }
+
+          .mobile-bottom-tabs button {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            padding: 8px 4px 10px;
+            border: none;
+            background: transparent;
+            color: #94a3b8;
+            font-size: 0.65rem;
+            font-weight: 600;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            position: relative;
+          }
+
+          .mobile-bottom-tabs button.active-tab {
+            color: #667eea;
+          }
+
+          .mobile-bottom-tabs button.active-tab::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 20%;
+            right: 20%;
+            height: 3px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 0 0 3px 3px;
+          }
+
+          /* Add bottom padding to main content so tab bar doesn't overlap */
+          .main-area {
+            padding-bottom: 80px !important;
+          }
+
           /* Color bar - make it more vibrant */
           .color-bar {
             height: 6px !important;
@@ -2037,22 +2095,6 @@ useEffect(() => {
                                 Bulk Add
                             </button>
                         )}
-                        <button className="btn btn-blue" onClick={() => {
-                            setAppView('transactions');
-                            setShowMobileMenu(false);
-                        }} style={{width: '100%'}}>
-                            <DollarSign size={18} style={{marginRight: '8px'}}/>
-                            Bank Transactions
-                        </button>
-                        {!isSharedUser && (
-                            <button className="btn btn-green" onClick={() => {
-                                setAppView('clients');
-                                setShowMobileMenu(false);
-                            }} style={{width: '100%'}}>
-                                <Tag size={18} style={{marginRight: '8px'}}/>
-                                Clients
-                            </button>
-                        )}
                         <button className="btn btn-yellow" onClick={() => {
                             setView(view === 'list' ? 'stats' : 'list');
                             setShowMobileMenu(false);
@@ -2090,6 +2132,44 @@ useEffect(() => {
                     </div>
                 </>
             )}
+
+            {/* Mobile Bottom Tab Bar */}
+            <div className="mobile-bottom-tabs">
+                <button
+                    className={appView === 'tasks' ? 'active-tab' : ''}
+                    onClick={() => setAppView('tasks')}
+                >
+                    <CheckSquare size={20}/>
+                    <span>Tasks</span>
+                </button>
+                {(isAdmin || isSharedUser || isLimitedUser) && (
+                    <button
+                        className={appView === 'transactions' ? 'active-tab' : ''}
+                        onClick={() => setAppView('transactions')}
+                    >
+                        <DollarSign size={20}/>
+                        <span>Bank</span>
+                    </button>
+                )}
+                {!isSharedUser && (
+                    <button
+                        className={appView === 'clients' ? 'active-tab' : ''}
+                        onClick={() => setAppView('clients')}
+                    >
+                        <Users size={20}/>
+                        <span>Clients</span>
+                    </button>
+                )}
+                {(isAdmin || isSharedUser || isLimitedUser) && (
+                    <button
+                        className={appView === 'portfolio' ? 'active-tab' : ''}
+                        onClick={() => setAppView('portfolio')}
+                    >
+                        <TrendingUp size={20}/>
+                        <span>Portfolio</span>
+                    </button>
+                )}
+            </div>
 
             {/* Error Banner */}
             {error && (
@@ -3235,7 +3315,7 @@ useEffect(() => {
                                     placeholder="Simple tasks:&#10;Task 1&#10;Task 2&#10;&#10;Numbered tasks (multi-line):&#10;1. This is a long task&#10;that spans multiple lines&#10;2. Another task"
                                     value={bulkTasksText}
                                     onChange={(e) => setBulkTasksText(e.target.value)}
-                                    style={{fontFamily: 'monospace', fontSize: '0.95rem'}}
+                                    style={{fontFamily: "'Inter', sans-serif", fontSize: '0.95rem'}}
                                 />
                                 <p style={{fontSize: '0.85rem', color: '#666', marginTop: '8px'}}>
                                     {parseBulkTasks(bulkTasksText).length} task(s) to create
