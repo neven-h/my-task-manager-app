@@ -404,9 +404,9 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
 
       setSuccess(data.message);
       setUploadedData(null);
-      await fetchSavedMonths();
-      await fetchTransactionStats();
-      await fetchAllTransactions();
+      await fetchSavedMonths(activeTabId);
+      await fetchTransactionStats(activeTabId);
+      await fetchAllTransactions(activeTabId);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -441,13 +441,13 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
         transaction_type: 'credit'
       });
       
-      await fetchSavedMonths();
+      await fetchSavedMonths(activeTabId);
       await fetchAllDescriptions();
-      await fetchTransactionStats();
+      await fetchTransactionStats(activeTabId);
       if (selectedMonth === 'all') {
-        await fetchAllTransactions();
+        await fetchAllTransactions(activeTabId);
       } else if (selectedMonth) {
-        await fetchMonthTransactions(selectedMonth);
+        await fetchMonthTransactions(selectedMonth, activeTabId);
       }
     } catch (err) {
       setError(err.message);
@@ -476,12 +476,12 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
       setEditingTransaction(null);
       
       if (selectedMonth === 'all') {
-        await fetchAllTransactions();
+        await fetchAllTransactions(activeTabId);
       } else {
-        await fetchMonthTransactions(selectedMonth);
+        await fetchMonthTransactions(selectedMonth, activeTabId);
       }
       await fetchAllDescriptions();
-      await fetchTransactionStats();
+      await fetchTransactionStats(activeTabId);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -507,12 +507,12 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
       setSuccess('Transaction deleted successfully');
       
       if (selectedMonth === 'all') {
-        await fetchAllTransactions();
+        await fetchAllTransactions(activeTabId);
       } else {
-        await fetchMonthTransactions(selectedMonth);
+        await fetchMonthTransactions(selectedMonth, activeTabId);
       }
-      await fetchSavedMonths();
-      await fetchTransactionStats();
+      await fetchSavedMonths(activeTabId);
+      await fetchTransactionStats(activeTabId);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -539,8 +539,8 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
         setSelectedMonth(null);
         setMonthTransactions([]);
       }
-      await fetchSavedMonths();
-      await fetchTransactionStats();
+      await fetchSavedMonths(activeTabId);
+      await fetchTransactionStats(activeTabId);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -1295,7 +1295,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
                   {stat.transaction_type === 'cash' ? '💵 Cash Total' : '💳 Credit Total'}
                 </div>
                 <div style={{ color: colors.textLight, fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                  {stat.transaction_count} transactions
+                  {stat.transaction_count} txns
                 </div>
               </div>
             ))}
@@ -1315,7 +1315,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
                 📊 Grand Total
               </div>
               <div style={{ color: colors.textLight, fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                {transactionStats.by_type.reduce((sum, s) => sum + (s.transaction_count || 0), 0)} transactions
+                {transactionStats.by_type.reduce((sum, s) => sum + (s.transaction_count || 0), 0)} txns
               </div>
             </div>
           </div>
