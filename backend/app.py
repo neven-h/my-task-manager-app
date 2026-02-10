@@ -2384,6 +2384,92 @@ def duplicate_task(task_id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/tasks/<int:task_id>/share', methods=['POST'])
+def share_task(task_id):
+    """Share a task via email"""
+    try:
+        data = request.json
+        email = data.get('email', '').strip().lower()
+
+        if not email:
+            return jsonify({'error': 'Email is required'}), 400
+
+        # Validate email format
+        email_regex = r'^[^\s@]+@[^\s@]+\.[^\s@]+$'
+        if not re.match(email_regex, email):
+            return jsonify({'error': 'Invalid email address'}), 400
+
+        # Get the task
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM tasks WHERE id = %s", (task_id,))
+            task = cursor.fetchone()
+
+            if not task:
+                return jsonify({'error': 'Task not found'}), 404
+
+            # Check if email is configured
+            email_configured = bool(app.config.get('MAIL_USERNAME') and app.config.get('MAIL_PASSWORD'))
+
+            if not email_configured:
+                if DEBUG:
+                    return jsonify({
+                        'success': True,
+                        'message': f'Email not configured (debug mode). Task "{task["title"]}" would be shared with {email}'
+                    })
+                else:
+                    return jsonify({'error': 'Email service is not configured. Please contact administrator.'}), 503
+
+            # Build task details for email
+            task_date = task['task_date'].strftime('%B %d, %Y') if task.get('task_date') else 'Not set'
+            status = task.get('status', 'pending').capitalize()
+            category = task.get('category', 'None')
+            description = task.get('description', 'No description')
+            notes = task.get('notes', '')
+
+            # Send email
+            try:
+                msg = Message(
+                    subject=f"Task Shared: {task['title']}",
+                    recipients=[email],
+                    body=f"""A task has been shared with you from Task Tracker.
+
+Task: {task['title']}
+Status: {status}
+Category: {category}
+Date: {task_date}
+
+Description:
+{description}
+
+{('Notes: ' + notes) if notes else ''}
+
+View your tasks at {FRONTEND_URL}
+
+Best regards,
+Task Tracker Team"""
+                )
+                mail.send(msg)
+
+                return jsonify({
+                    'success': True,
+                    'message': f'Task shared successfully with {email}'
+                })
+            except Exception as mail_error:
+                print(f"Email sending failed: {mail_error}")
+                if DEBUG:
+                    return jsonify({
+                        'success': True,
+                        'message': f'Email service error (debug mode). Task "{task["title"]}" would be shared with {email}'
+                    })
+                else:
+                    return jsonify({'error': 'Failed to send email. Please try again later.'}), 503
+
+    except Exception as e:
+        print(f"Share task error: {e}")
+        return jsonify({'error': 'Failed to share task'}), 500
+
+
 # noinspection DuplicatedCode
 @app.route('/api/drafts', methods=['GET'])
 def get_drafts():

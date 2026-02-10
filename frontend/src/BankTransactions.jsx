@@ -230,13 +230,14 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
       setActiveTabId(tabIdToUse);
       localStorage.setItem('activeTabId', String(tabIdToUse));
 
-      await fetchSavedMonths(tabIdToUse);
+      const fetchedMonths = await fetchSavedMonths(tabIdToUse);
       await fetchAllDescriptions();
       await fetchTransactionStats(tabIdToUse);
 
-      // Restore last selected month from localStorage
+      // Restore last selected month from localStorage, but validate it exists for this tab
       const savedMonth = localStorage.getItem('selectedMonth');
-      if (savedMonth && savedMonth !== 'all') {
+      const monthList = fetchedMonths || savedMonths || [];
+      if (savedMonth && savedMonth !== 'all' && monthList.includes(savedMonth)) {
         await fetchMonthTransactions(savedMonth, tabIdToUse);
       } else {
         await fetchAllTransactions(tabIdToUse);
@@ -275,8 +276,10 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
       const response = await fetch(`${API_BASE}/transactions/months?username=${authUser}&role=${authRole}${tabParam}`);
       const data = await response.json();
       setSavedMonths(data);
+      return Array.isArray(data) ? data : [];
     } catch (err) {
       console.error('Error fetching months:', err);
+      return [];
     }
   };
 
@@ -287,12 +290,17 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
       const tabParam = tid ? `&tab_id=${tid}` : '';
       const response = await fetch(`${API_BASE}/transactions/all?username=${authUser}&role=${authRole}${tabParam}`);
       const data = await response.json();
+      if (!response.ok || !Array.isArray(data)) {
+        throw new Error(data?.error || 'Failed to fetch transactions');
+      }
       setMonthTransactions(data);
       setSelectedMonth('all');
       setVisibleTransactions(50);
       localStorage.setItem('selectedMonth', 'all');
     } catch (err) {
-      setError('Failed to fetch transactions');
+      setError(err.message || 'Failed to fetch transactions');
+      setSelectedMonth('all');
+      setMonthTransactions([]);
     } finally {
       setLoading(false);
     }
@@ -305,12 +313,22 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
       const tabParam = tid ? `&tab_id=${tid}` : '';
       const response = await fetch(`${API_BASE}/transactions/${monthYear}?username=${authUser}&role=${authRole}${tabParam}`);
       const data = await response.json();
+      if (!response.ok || !Array.isArray(data)) {
+        throw new Error(data?.error || 'Failed to fetch month transactions');
+      }
       setMonthTransactions(data);
       setSelectedMonth(monthYear);
       setVisibleTransactions(50);
       localStorage.setItem('selectedMonth', monthYear);
     } catch (err) {
-      setError('Failed to fetch transactions');
+      setError(err.message || 'Failed to fetch transactions');
+      // Fallback: show all transactions so the UI doesn't go blank
+      try {
+        await fetchAllTransactions(tabId);
+      } catch {
+        setSelectedMonth('all');
+        setMonthTransactions([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -636,6 +654,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
   };
 
   const getFilteredTransactions = () => {
+    if (!Array.isArray(monthTransactions)) return [];
     return monthTransactions.filter(t => {
       if (typeFilter !== 'all' && t.transaction_type !== typeFilter) return false;
       if (searchTerm && !t.description?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
