@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Upload, Trash2, RefreshCw, TrendingUp, TrendingDown, X, AlertCircle } from 'lucide-react';
+import { Upload, Trash2, RefreshCw, TrendingUp, TrendingDown, X, AlertCircle, Briefcase } from 'lucide-react';
 import API_BASE from '../../config';
 import { formatCurrencyWithCode } from '../../utils/formatCurrency';
 
