@@ -1503,7 +1503,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
                             color: colors.textLight,
                             fontWeight: '600'
                           }}>
-                            {percentage.toFixed(1)}% • {data.count} txn{data.count > 1 ? 's' : ''}
+                            {percentage.toFixed(1)}% • {data.count} transaction{data.count > 1 ? 's' : ''}
                           </div>
                         </div>
                       </div>

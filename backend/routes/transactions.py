@@ -1240,7 +1240,7 @@ def get_transaction_stats():
 
             # Require tab_id for strict tab separation
             if not tab_id:
-                return jsonify({'by_type': [], 'monthly': []})
+                return jsonify({'by_type': [], 'monthly_by_type': []})
 
             # Build filters
             filters = ["tab_id = %s"]
@@ -1258,52 +1258,79 @@ def get_transaction_stats():
 
             where_clause = " AND ".join(filters) if filters else "1=1"
 
-            # Overall stats by type
+            # Fetch individual rows — amount is encrypted, so we must decrypt in Python
             cursor.execute(f"""
-                SELECT 
+                SELECT
                     transaction_type,
-                    COUNT(*) as transaction_count,
-                    SUM(amount) as total_amount,
-                    AVG(amount) as avg_amount,
-                    MIN(transaction_date) as first_date,
-                    MAX(transaction_date) as last_date
+                    amount,
+                    transaction_date,
+                    month_year
                 FROM bank_transactions
                 WHERE {where_clause}
-                GROUP BY transaction_type
             """, params)
 
-            by_type = cursor.fetchall()
+            rows = cursor.fetchall()
 
-            # Convert Decimal to float
-            for item in by_type:
-                if item['total_amount']:
-                    item['total_amount'] = float(item['total_amount'])
-                if item['avg_amount']:
-                    item['avg_amount'] = float(item['avg_amount'])
-                if item['first_date']:
-                    item['first_date'] = item['first_date'].isoformat()
-                if item['last_date']:
-                    item['last_date'] = item['last_date'].isoformat()
+            # Aggregate by type in Python after decrypting amounts
+            type_stats = {}
+            for row in rows:
+                t = row['transaction_type'] or 'unknown'
+                if t not in type_stats:
+                    type_stats[t] = {
+                        'transaction_type': t,
+                        'transaction_count': 0,
+                        'total_amount': 0.0,
+                        'avg_amount': 0.0,
+                        'first_date': row['transaction_date'],
+                        'last_date': row['transaction_date']
+                    }
+                type_stats[t]['transaction_count'] += 1
+                try:
+                    decrypted = decrypt_field(row['amount'])
+                    amt = float(decrypted) if decrypted else 0.0
+                except (ValueError, TypeError):
+                    amt = 0.0
+                type_stats[t]['total_amount'] += amt
+                if row['transaction_date']:
+                    if not type_stats[t]['first_date'] or row['transaction_date'] < type_stats[t]['first_date']:
+                        type_stats[t]['first_date'] = row['transaction_date']
+                    if not type_stats[t]['last_date'] or row['transaction_date'] > type_stats[t]['last_date']:
+                        type_stats[t]['last_date'] = row['transaction_date']
 
-            # Monthly breakdown by type
-            cursor.execute(f"""
-                SELECT 
-                    month_year,
-                    transaction_type,
-                    COUNT(*) as transaction_count,
-                    SUM(amount) as total_amount
-                FROM bank_transactions
-                WHERE {where_clause}
-                GROUP BY month_year, transaction_type
-                ORDER BY month_year DESC, transaction_type
-            """, params)
+            by_type = []
+            for stat in type_stats.values():
+                if stat['transaction_count'] > 0:
+                    stat['avg_amount'] = stat['total_amount'] / stat['transaction_count']
+                if stat['first_date']:
+                    stat['first_date'] = stat['first_date'].isoformat()
+                if stat['last_date']:
+                    stat['last_date'] = stat['last_date'].isoformat()
+                by_type.append(stat)
 
-            monthly_by_type = cursor.fetchall()
+            # Aggregate monthly breakdown by type in Python
+            monthly_stats = {}
+            for row in rows:
+                key = (row['month_year'], row['transaction_type'] or 'unknown')
+                if key not in monthly_stats:
+                    monthly_stats[key] = {
+                        'month_year': row['month_year'],
+                        'transaction_type': key[1],
+                        'transaction_count': 0,
+                        'total_amount': 0.0
+                    }
+                monthly_stats[key]['transaction_count'] += 1
+                try:
+                    decrypted = decrypt_field(row['amount'])
+                    amt = float(decrypted) if decrypted else 0.0
+                except (ValueError, TypeError):
+                    amt = 0.0
+                monthly_stats[key]['total_amount'] += amt
 
-            # Convert Decimal to float
-            for item in monthly_by_type:
-                if item['total_amount']:
-                    item['total_amount'] = float(item['total_amount'])
+            monthly_by_type = sorted(
+                monthly_stats.values(),
+                key=lambda x: (x['month_year'], x['transaction_type']),
+                reverse=True
+            )
 
             return jsonify({
                 'by_type': by_type,
