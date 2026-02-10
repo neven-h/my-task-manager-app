@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { TrendingUp, TrendingDown, Plus, Trash2, RefreshCw, X } from 'lucide-react';
 import API_BASE from '../../config';
 import { formatCurrencyWithCode } from '../../utils/formatCurrency';
@@ -13,6 +13,7 @@ const WatchlistSection = ({ colors, authUser, authRole }) => {
     const [searching, setSearching] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
+    const searchTimeoutRef = useRef(null);
 
   // ==================== WATCHLIST FUNCTIONS ====================
 
