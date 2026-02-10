@@ -42,7 +42,7 @@ const ResetPasswordPage = () => {
       const response = await fetch(`${API_BASE}/auth/verify-token?token=${token}`);
       const data = await response.json();
 
-      if (response.ok) {
+      if (response.ok && data.valid) {
         setTokenValid(true);
         setUsername(data.username);
       } else {
@@ -86,7 +86,7 @@ const ResetPasswordPage = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           token,
-          new_password: formData.password
+          password: formData.password
         })
       });
 
