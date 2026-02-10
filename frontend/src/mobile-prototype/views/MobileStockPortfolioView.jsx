@@ -34,7 +34,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
         base_price: '',
         entry_date: new Date().toISOString().split('T')[0],
         currency: 'USD',
-        units: 1
+        units: ''
     });
 
     // Prevent body scroll when form is open
@@ -186,7 +186,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
         base_price: '',
         entry_date: new Date().toISOString().split('T')[0],
         currency: 'USD',
-        units: 1
+        units: ''
     });
 
     const isFormDirty = () => {
@@ -215,7 +215,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
             formData.value_ils ||
             formData.base_price ||
             formData.currency !== 'USD' ||
-            formData.units !== 1
+            formData.units !== ''
         );
     };
 
@@ -284,20 +284,15 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                 : `${API_BASE}/portfolio?username=${authUser}&role=${authRole}`;
             const method = editingEntry ? 'PUT' : 'POST';
             
-            // Parse units - ensure it's always a valid positive integer
+            // Parse units - allow decimal values, null if empty
             const unitsValue = formData.units;
-            let units = 1;
-            if (unitsValue != null && unitsValue !== '') {
-                const strValue = String(unitsValue).trim();
-                if (strValue !== '') {
-                    const numValue = parseInt(strValue, 10);
-                    if (!isNaN(numValue) && numValue > 0 && isFinite(numValue)) {
-                        units = numValue;
-                    }
+            let units = null;
+            if (unitsValue != null && String(unitsValue).trim() !== '') {
+                const numValue = parseFloat(String(unitsValue).trim());
+                if (!isNaN(numValue) && numValue > 0 && isFinite(numValue)) {
+                    units = numValue;
                 }
             }
-            // Ensure units is always a number, never undefined or null
-            units = Number.isInteger(units) && units > 0 ? units : 1;
 
             const body = {
                 ...formData,
@@ -558,7 +553,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                                                     base_price: entry.base_price != null && entry.base_price !== '' ? String(entry.base_price) : '',
                                                     entry_date: entry.entry_date.split('T')[0],
                                                     currency: entry.currency || 'USD',
-                                                    units: entry.units != null ? entry.units : 1
+                                                    units: entry.units != null && entry.units !== '' ? String(entry.units) : ''
                                                 };
                                                 setFormData(editFormData);
                                                 setInitialFormData({ ...editFormData }); // Track initial state for edits too
