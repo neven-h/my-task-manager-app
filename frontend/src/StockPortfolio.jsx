@@ -39,7 +39,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
     base_price: '',
     entry_date: new Date().toISOString().split('T')[0],
     currency: 'USD',
-    units: '1'
+    units: ''
   });
 
   // Live stock prices state
@@ -285,7 +285,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
     base_price: '',
     entry_date: new Date().toISOString().split('T')[0],
     currency: 'USD',
-    units: '1'
+    units: ''
   });
 
   const isFormDirty = () => {
@@ -314,7 +314,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
       formData.value_ils ||
       formData.base_price ||
       formData.currency !== 'USD' ||
-      formData.units !== '1'
+      formData.units !== ''
     );
   };
 
@@ -415,21 +415,15 @@ const StockPortfolio = ({ onBackToTasks }) => {
 
       const method = editingEntry ? 'PUT' : 'POST';
 
-      // Parse units - ensure it's always a valid positive integer
+      // Parse units - allow decimal values, null if empty
       const unitsValue = formData.units;
-      let units = 1;
-      if (unitsValue != null && unitsValue !== '') {
-        // Convert to string first, then parse to integer
-        const strValue = String(unitsValue).trim();
-        if (strValue !== '') {
-          const numValue = parseInt(strValue, 10);
-          if (!isNaN(numValue) && numValue > 0 && isFinite(numValue)) {
-            units = numValue;
-          }
+      let units = null;
+      if (unitsValue != null && String(unitsValue).trim() !== '') {
+        const numValue = parseFloat(String(unitsValue).trim());
+        if (!isNaN(numValue) && numValue > 0 && isFinite(numValue)) {
+          units = numValue;
         }
       }
-      // Ensure units is always a number, never undefined or null
-      units = Number.isInteger(units) && units > 0 ? units : 1;
 
       const payload = {
         name: formData.name,
@@ -441,7 +435,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
         username: authUser,
         tab_id: activeTabId,
         currency: formData.currency || 'USD',
-        units: units  // Always a positive integer
+        units: units
       };
 
       // If it's a new stock and base_price is not set, use value_ils as base_price
@@ -476,7 +470,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
         base_price: '',
         entry_date: new Date().toISOString().split('T')[0],
         currency: 'USD',
-        units: '1'
+        units: ''
       });
       setLoading(false); // Stop loading immediately so UI is responsive
       setSuccess(wasEditing ? 'Portfolio entry updated successfully' : 'Portfolio entry added successfully');
@@ -508,7 +502,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
       base_price: entry.base_price != null && entry.base_price !== '' ? entry.base_price : '',
       entry_date: entryDate ?? new Date().toISOString().split('T')[0],
       currency: entry.currency || 'USD',
-      units: entry.units != null && entry.units !== '' ? String(entry.units) : '1'
+      units: entry.units != null && entry.units !== '' ? String(entry.units) : ''
     };
     setFormData(editFormData);
     setInitialFormData({ ...editFormData }); // Track initial state for edits too
@@ -527,7 +521,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
       base_price: entry.base_price != null && entry.base_price !== '' ? entry.base_price : '',
       entry_date: new Date().toISOString().split('T')[0],
       currency: entry.currency || 'USD',
-      units: entry.units != null && entry.units !== '' ? String(entry.units) : '1'
+      units: entry.units != null && entry.units !== '' ? String(entry.units) : ''
     });
     setInitialFormData(null);
     setShowForm(true);
@@ -1821,7 +1815,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                 <input
                   type="number"
                   name="units"
-                  value={formData.units != null ? String(formData.units) : '1'}
+                  value={formData.units != null ? String(formData.units) : ''}
                   onChange={handleInputChange}
                   required
                   step="1"
@@ -1838,7 +1832,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                   }}
                 />
                 <small style={{ color: colors.textLight, fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                  Enter the number of shares/units (default: 1)
+                  Enter the number of shares/units (optional)
                 </small>
               </div>
 
