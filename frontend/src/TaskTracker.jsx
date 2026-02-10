@@ -1110,7 +1110,8 @@ useEffect(() => {
                              alignItems: 'center',
                              flex: '1 1 auto',
                              justifyContent: 'flex-end',
-                             minWidth: 0
+                             minWidth: 0,
+                             overflowX: 'auto'
                          }}>
                         {/* Toggle Sidebar Button */}
                         <button
