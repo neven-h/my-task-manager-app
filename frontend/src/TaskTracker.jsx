@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     Plus, X, BarChart3,
     Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut, Menu, Filter, Copy, Settings, Share2,
-    CheckSquare, TrendingUp, Users
+    CheckSquare, TrendingUp, Users, Paperclip, Image
 } from 'lucide-react';
 import BankTransactions from './BankTransactions';
 import ClientsManagement from './ClientsManagement';
@@ -84,8 +84,12 @@ useEffect(() => {
         status: 'uncompleted',
         tags: [],
         notes: '',
-        shared: false
+        shared: false,
+        attachments: [],
+        newAttachments: [],
+        removedAttachmentIds: []
     });
+    const fileInputRef = useRef(null);
 
     const [tagInput, setTagInput] = useState('');
     const formChangeTimeoutRef = useRef(null);
@@ -288,14 +292,16 @@ useEffect(() => {
 
     const saveDraft = () => {
         if (!editingTask) {
-            localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(formData));
+            const toSave = { ...formData, newAttachments: [], attachments: [], removedAttachmentIds: [] };
+            localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(toSave));
         }
     };
 
     const loadDraft = () => {
         const draft = localStorage.getItem(DRAFT_STORAGE_KEY);
         if (draft) {
-            return JSON.parse(draft);
+            const parsed = JSON.parse(draft);
+            return { ...parsed, attachments: [], newAttachments: [], removedAttachmentIds: [] };
         }
         return null;
     };
@@ -334,19 +340,39 @@ useEffect(() => {
                 : `${API_BASE}/tasks`;
 
             const method = editingTask ? 'PUT' : 'POST';
+            const { attachments, newAttachments, removedAttachmentIds, ...payload } = formData;
+            const body = { ...payload, username: authUser, role: authRole };
 
             const response = await fetch(url, {
                 method,
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    ...formData,
-                    username: authUser,
-                    role: authRole
-                })
+                body: JSON.stringify(body)
             });
 
             if (!response.ok) {
-                console.error('Failed to save task');
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.error || 'Failed to save task');
+            }
+
+            const data = await response.json().catch(() => ({}));
+            const taskId = editingTask ? editingTask.id : data.id;
+
+            if (taskId) {
+                for (const { file } of (newAttachments || [])) {
+                    const fd = new FormData();
+                    fd.append('file', file);
+                    const upRes = await fetch(`${API_BASE}/tasks/${taskId}/attachments`, {
+                        method: 'POST',
+                        body: fd
+                    });
+                    if (!upRes.ok) {
+                        const upErr = await upRes.json().catch(() => ({}));
+                        throw new Error(upErr.error || 'Failed to upload attachment');
+                    }
+                }
+                for (const attId of (removedAttachmentIds || [])) {
+                    await fetch(`${API_BASE}/tasks/${taskId}/attachments/${attId}`, { method: 'DELETE' });
+                }
             }
 
             await fetchTasks();
@@ -478,7 +504,10 @@ useEffect(() => {
             duration: task.duration || '',
             status: task.status,
             tags: task.tags || [],
-            notes: task.notes || ''
+            notes: task.notes || '',
+            attachments: task.attachments || [],
+            newAttachments: [],
+            removedAttachmentIds: []
         });
         setShowForm(true);
     };
@@ -509,7 +538,10 @@ useEffect(() => {
             status: 'uncompleted',
             tags: [],
             notes: '',
-            shared: false
+            shared: false,
+            attachments: [],
+            newAttachments: [],
+            removedAttachmentIds: []
         });
         setTagInput('');
     };
@@ -522,6 +554,8 @@ useEffect(() => {
     };
 
     const hasUnsavedChanges = () => {
+        const attachmentChanged = (formData.newAttachments && formData.newAttachments.length > 0) ||
+            (formData.removedAttachmentIds && formData.removedAttachmentIds.length > 0);
         if (editingTask) {
             // Check if editing task has unsaved changes
             return (
@@ -535,11 +569,12 @@ useEffect(() => {
                 formData.status !== editingTask.status ||
                 JSON.stringify(formData.tags) !== JSON.stringify(editingTask.tags || []) ||
                 formData.notes !== (editingTask.notes || '') ||
-                formData.shared !== (editingTask.shared || false)
+                formData.shared !== (editingTask.shared || false) ||
+                attachmentChanged
             );
         } else {
             // Check if new task has any data
-            return !!(formData.title || formData.description);
+            return !!(formData.title || formData.description || (formData.newAttachments && formData.newAttachments.length > 0));
         }
     };
 
@@ -572,6 +607,48 @@ useEffect(() => {
 
     const removeTag = (tagToRemove) => {
         setFormData({...formData, tags: formData.tags.filter(t => t !== tagToRemove)});
+    };
+
+    const addAttachment = (file) => {
+        if (!file) return;
+        const name = file.name || `image-${Date.now()}.png`;
+        setFormData({
+            ...formData,
+            newAttachments: [...(formData.newAttachments || []), { file, name }]
+        });
+    };
+
+    const handleFileInputChange = (e) => {
+        const file = e.target.files?.[0];
+        if (file) addAttachment(file);
+        e.target.value = '';
+    };
+
+    const removeNewAttachment = (index) => {
+        setFormData({
+            ...formData,
+            newAttachments: formData.newAttachments.filter((_, i) => i !== index)
+        });
+    };
+
+    const removeExistingAttachment = (att) => {
+        setFormData({
+            ...formData,
+            removedAttachmentIds: [...(formData.removedAttachmentIds || []), att.id]
+        });
+    };
+
+    const handlePasteImage = (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        for (const item of items) {
+            if (item.type.startsWith('image/')) {
+                e.preventDefault();
+                const file = item.getAsFile();
+                if (file) addAttachment(file);
+                break;
+            }
+        }
     };
 
     const toggleCategory = (categoryId) => {
@@ -1008,6 +1085,39 @@ useEffect(() => {
                     color: '#000'
                 }}>
                     <strong>Notes:</strong> {task.notes}
+                </div>
+            )}
+
+            {task.attachments && task.attachments.length > 0 && (
+                <div className="task-card-attachments" style={{
+                    marginTop: '16px',
+                    padding: '12px',
+                    background: '#f8fafc',
+                    border: '2px solid #000',
+                    fontSize: '0.9rem'
+                }}>
+                    <strong style={{ display: 'block', marginBottom: '8px' }}>Attachments</strong>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
+                        {task.attachments.map(att => {
+                            const baseOrigin = API_BASE.replace(/\/api\/?$/, '');
+                            const fullUrl = (att.url?.startsWith('/') ? baseOrigin + att.url : `${API_BASE}/${att.url || ''}`);
+                            const isImage = (att.content_type || '').startsWith('image/');
+                            return (
+                                <div key={att.id} className="task-card-attachment-item">
+                                    {isImage ? (
+                                        <a href={fullUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '4px', textDecoration: 'none', color: '#000' }}>
+                                            <img src={fullUrl} alt={att.filename} style={{ width: 64, height: 64, objectFit: 'cover', border: '2px solid #000' }} />
+                                            <span style={{ fontSize: '0.75rem', maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.filename}</span>
+                                        </a>
+                                    ) : (
+                                        <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="task-card-attachment-link">
+                                            {att.filename}
+                                        </a>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             )}
         </div>
@@ -2322,6 +2432,74 @@ useEffect(() => {
                                         onChange={(e) => setFormData({...formData, notes: e.target.value})}
                                         enterKeyHint="done"
                                     />
+                                </div>
+
+                                <div className="task-attachments-form" onPaste={handlePasteImage}>
+                                    <label style={{
+                                        display: 'block',
+                                        marginBottom: '8px',
+                                        fontWeight: 700,
+                                        fontSize: '0.85rem',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}>Attachments</label>
+                                    <p style={{ fontSize: '0.8rem', color: '#666', marginBottom: '10px' }}>
+                                        Attach a file or paste an image (Ctrl+V / Cmd+V)
+                                    </p>
+                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                                        <button
+                                            type="button"
+                                            className="btn btn-white"
+                                            style={{ padding: '10px 16px' }}
+                                            onClick={() => fileInputRef.current?.click()}
+                                        >
+                                            <Paperclip size={16} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                                            Attach file
+                                        </button>
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
+                                            onChange={handleFileInputChange}
+                                            style={{ display: 'none' }}
+                                        />
+                                    </div>
+                                    {(formData.attachments || []).filter(a => !(formData.removedAttachmentIds || []).includes(a.id)).length > 0 && (
+                                        <div className="task-attachments-list" style={{ marginBottom: '10px' }}>
+                                            {(formData.attachments || []).filter(a => !(formData.removedAttachmentIds || []).includes(a.id)).map(att => {
+                                                const baseOrigin = API_BASE.replace(/\/api\/?$/, '');
+                                                const fullUrl = (att.url?.startsWith('/') ? baseOrigin + att.url : `${API_BASE}/${att.url || ''}`);
+                                                const isImage = (att.content_type || '').startsWith('image/');
+                                                return (
+                                                    <div key={att.id} className="task-attachment-chip">
+                                                        {isImage ? (
+                                                            <a href={fullUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                                <img src={fullUrl} alt="" style={{ width: 32, height: 32, objectFit: 'cover', border: '2px solid #000' }}/>
+                                                                <span>{att.filename}</span>
+                                                            </a>
+                                                        ) : (
+                                                            <a href={fullUrl} target="_blank" rel="noopener noreferrer">{att.filename}</a>
+                                                        )}
+                                                        <button type="button" onClick={() => removeExistingAttachment(att)} className="task-attachment-remove" aria-label="Remove">
+                                                            <X size={14}/>
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                    {(formData.newAttachments || []).length > 0 && (
+                                        <div className="task-attachments-list" style={{ marginBottom: '10px' }}>
+                                            {(formData.newAttachments || []).map((na, idx) => (
+                                                <div key={`new-${idx}`} className="task-attachment-chip task-attachment-chip-new">
+                                                    <span>{na.name}</span>
+                                                    <button type="button" onClick={() => removeNewAttachment(idx)} className="task-attachment-remove" aria-label="Remove">
+                                                        <X size={14}/>
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
