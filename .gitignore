@@ -29,17 +29,19 @@ yarn-error.log*
 .vscode/
 .vercel
 
-# Secrets
-.env
-.env.local
-.env.production
-.env.staging
-.env*.local
-!.env.example
+# Secrets and env files (all of them)
+.env*
 
 # Claude AI config
 .claude-code-config.json
 .clauderc
+
+# Sensitive backend routes (auth, admin)
+backend/routes/admin.py
+backend/routes/auth.py
+
+# Static assets that shouldn't be in repo
+frontend/public/background.jpg
 
 # SQL dumps and data files (keep out of repo)
 *.sql
