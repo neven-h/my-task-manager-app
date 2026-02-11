@@ -1235,11 +1235,14 @@ def get_transaction_stats():
         user_role = request.args.get('role')
         tab_id = request.args.get('tab_id')
 
+        print(f"[STATS DEBUG] tab_id={tab_id}, username={username}, role={user_role}")
+
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
             # Require tab_id for strict tab separation
-            if not tab_id:
+            if not tab_id or tab_id == 'null' or tab_id == 'undefined':
+                print(f"[STATS DEBUG] Invalid tab_id, returning empty stats")
                 return jsonify({'by_type': [], 'monthly_by_type': []})
 
             # Build filters
@@ -1270,6 +1273,18 @@ def get_transaction_stats():
             """, params)
 
             rows = cursor.fetchall()
+            print(f"[STATS DEBUG] Found {len(rows)} transactions for tab_id={tab_id}")
+
+            # Debug: Show sample of what we found
+            if len(rows) > 0:
+                print(f"[STATS DEBUG] Sample transaction: type={rows[0].get('transaction_type')}, date={rows[0].get('transaction_date')}")
+            else:
+                # Check if transactions exist without tab_id match
+                cursor.execute("SELECT COUNT(*) as count FROM bank_transactions WHERE tab_id IS NULL")
+                null_count = cursor.fetchone()
+                cursor.execute("SELECT COUNT(*) as count FROM bank_transactions")
+                total_count = cursor.fetchone()
+                print(f"[STATS DEBUG] Total transactions in DB: {total_count['count']}, NULL tab_id: {null_count['count']}")
 
             # Aggregate by type in Python after decrypting amounts
             type_stats = {}

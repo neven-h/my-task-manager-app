@@ -196,11 +196,23 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
     try {
       const tid = tabId !== undefined ? tabId : activeTabId;
       const tabParam = tid ? `&tab_id=${tid}` : '';
-      const response = await fetch(`${API_BASE}/transactions/stats?username=${authUser}&role=${authRole}${tabParam}`);
+      const url = `${API_BASE}/transactions/stats?username=${authUser}&role=${authRole}${tabParam}`;
+      console.log('[BankTransactions] Fetching stats from:', url, 'tabId:', tid);
+      const response = await fetch(url);
       const data = await response.json();
+      console.log('[BankTransactions] Stats response:', data);
+
+      if (!data.by_type || data.by_type.length === 0) {
+        console.warn('[BankTransactions] WARNING: No stats returned for tab', tid);
+        console.warn('[BankTransactions] This might mean:',
+          '\n  1. No transactions exist for this tab',
+          '\n  2. Transactions exist but have different tab_id',
+          '\n  3. Backend filtering is incorrect');
+      }
+
       setTransactionStats(data);
     } catch (err) {
-      console.error('Error fetching stats:', err);
+      console.error('[BankTransactions] Error fetching stats:', err);
     }
   };
 
@@ -1023,7 +1035,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
       {activeTabId && (
       <div className="bank-main" style={{ maxWidth: '1500px', margin: '0 auto', padding: '2rem' }}>
         {/* Stats Cards */}
-        {transactionStats && transactionStats.by_type && (
+        {transactionStats && transactionStats.by_type && transactionStats.by_type.length > 0 && (
           <div className="stats-grid" style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
@@ -1077,6 +1089,21 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
                 {transactionStats.by_type.reduce((sum, s) => sum + (s.transaction_count || 0), 0)} txns
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Debug message when stats are empty */}
+        {transactionStats && (!transactionStats.by_type || transactionStats.by_type.length === 0) && (
+          <div style={{
+            background: '#fff3cd',
+            border: `2px solid ${colors.border}`,
+            padding: '1.5rem',
+            marginBottom: '2rem',
+            textAlign: 'center'
+          }}>
+            <p style={{ margin: 0, fontSize: '1rem', color: colors.text }}>
+              ℹ️ No transaction statistics available for this tab. Add transactions to see stats.
+            </p>
           </div>
         )}
 

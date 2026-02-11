@@ -1056,9 +1056,10 @@ useEffect(() => {
                     alignItems: 'center',
                     padding: '0 16px',
                     gap: '16px',
-                    flexWrap: 'nowrap'
+                    flexWrap: 'nowrap',
+                    minWidth: 0
                 }}>
-                    <div style={{flex: '0 1 auto', minWidth: 0}}>
+                    <div style={{ flexShrink: 0, minWidth: '200px' }}>
                         <h1 style={{
                             fontFamily: '"Inter", sans-serif',
                             fontSize: 'clamp(1.5rem, 5vw, 3rem)',
@@ -1066,9 +1067,7 @@ useEffect(() => {
                             margin: '0 0 4px 0',
                             letterSpacing: '-1px',
                             textTransform: 'uppercase',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis'
+                            whiteSpace: 'nowrap'
                         }}>
                             Task Tracker
                         </h1>
@@ -1103,7 +1102,7 @@ useEffect(() => {
                         <Menu size={24}/>
                     </button>
 
-                    {/* Desktop Header Buttons */}
+                    {/* Desktop Header Buttons - scrolls when space is tight so title stays visible */}
                     <div className="desktop-header-buttons"
                          style={{
                              display: 'flex',
@@ -1113,7 +1112,8 @@ useEffect(() => {
                              flex: '1 1 auto',
                              justifyContent: 'flex-end',
                              minWidth: 0,
-                             overflowX: 'auto'
+                             overflowX: 'auto',
+                             paddingBottom: '2px'
                          }}>
                         {/* Toggle Sidebar Button */}
                         <button
