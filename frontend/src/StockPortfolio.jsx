@@ -356,12 +356,15 @@ const StockPortfolio = ({ onBackToTasks }) => {
       // Parse units - allow decimal values, null if empty
       let units = null;
       const unitsStr = String(formData.units ?? '').trim();
+      console.log('DEBUG: formData.units =', formData.units, 'unitsStr =', unitsStr);
       if (unitsStr !== '') {
         const numValue = parseFloat(unitsStr);
+        console.log('DEBUG: parsed numValue =', numValue, 'isNaN =', isNaN(numValue), 'isFinite =', isFinite(numValue), 'numValue > 0 =', numValue > 0);
         if (!isNaN(numValue) && numValue > 0 && isFinite(numValue)) {
           units = numValue;
         }
       }
+      console.log('DEBUG: final units value =', units);
 
       const payload = {
         name: formData.name,
@@ -375,6 +378,8 @@ const StockPortfolio = ({ onBackToTasks }) => {
         currency: formData.currency || 'USD',
         units: units
       };
+      
+      console.log('DEBUG: payload being sent =', JSON.stringify(payload, null, 2));
 
       // If it's a new stock and base_price is not set, use value_ils as base_price
       if (!editingEntry && isNewStock && payload.base_price == null && payload.value_ils) {
