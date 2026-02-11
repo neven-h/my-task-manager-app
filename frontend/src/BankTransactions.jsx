@@ -1066,7 +1066,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
                   {stat.transaction_type === 'cash' ? '💵 Cash Total' : '💳 Credit Total'}
                 </div>
                 <div style={{ color: colors.textLight, fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                  {stat.transaction_count} txns
+                  {stat.transaction_count} Transactions
                 </div>
               </div>
             ))}
@@ -1086,7 +1086,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
                 📊 Grand Total
               </div>
               <div style={{ color: colors.textLight, fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                {transactionStats.by_type.reduce((sum, s) => sum + (s.transaction_count || 0), 0)} txns
+                {transactionStats.by_type.reduce((sum, s) => sum + (s.transaction_count || 0), 0)} Transactions
               </div>
             </div>
           </div>
