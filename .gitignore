@@ -24,45 +24,35 @@ yarn-error.log*
 
 # OS / IDE
 .DS_Store
+**/.DS_Store
 .idea/
 .vscode/
+.vercel
 
 # Secrets
 .env
 .env.local
 .env.production
+.env.staging
+.env*.local
 !.env.example
 
-# macOS
-.DS_Store
-**/.DS_Store
+# Claude AI config
+.claude-code-config.json
+.clauderc
 
-# JetBrains
-.idea/
-.vercel
-.env*.local
+# SQL dumps and data files (keep out of repo)
+*.sql
+*.tsv
+
+# Shell scripts (local dev/deploy helpers)
+*.sh
+
+# Root-level stale lock file
+/package-lock.json
 
 # Local env / deployment notes
-.env.staging
 Git_Railway_Vercel_Staging_to_Production_Checklist.pdf
-production_data.sql
-.idea/sqldialects.xml
-.idea/
-.idea/sqldialects.xml
-.idea/
-production_data.sql
-
-# Documentation/guide files (local only, don't commit)
-*_GUIDE.md
-*_FIX.md
-*_SETUP.md
-*_DIAGNOSIS.md
-PRODUCTION_*.md
-DATA_*.md
-WEBSITE_*.md
-PYCHARM_*.md
-RAILWAY_*.md
-FIX_*.md
 
 # Local editor workspace
 My Task Manager App.code-workspace
@@ -70,19 +60,6 @@ My Task Manager App.code-workspace
 # Local notes folder
 MD files/
 
-
 # Ignore all Markdown files except README.md
 *.md
 !README.md
-
-
-# Local notes folder
-MD files/
-
-# Local editor workspace
-My Task Manager App.code-workspace
-
-# Ignore all Markdown files except README.md
-*.md
-!README.md
-
