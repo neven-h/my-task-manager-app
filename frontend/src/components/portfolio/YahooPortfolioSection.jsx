@@ -388,11 +388,11 @@ const YahooPortfolioSection = ({ colors, authUser, authRole }) => {
                       Total Value
                     </div>
                     <div style={{ fontSize: '1.4rem', fontWeight: 900, color: colors.text }}>
-                      {formatCurrencyWithCode(yahooSummary.totalValue || 0, yahooHoldings[0]?.currency || 'USD')}
+                      {formatCurrencyWithCode(yahooSummary.totalValue || 0, 'USD')}
                     </div>
-                    {yahooHoldings.some(h => h.currency !== yahooHoldings[0]?.currency) && (
+                    {yahooHoldings.some(h => h.currency !== 'USD') && (
                       <div style={{ fontSize: '0.7rem', color: colors.textLight, marginTop: '0.25rem' }}>
-                        (Mixed currencies)
+                        (USD Summary)
                       </div>
                     )}
                   </div>
@@ -406,7 +406,7 @@ const YahooPortfolioSection = ({ colors, authUser, authRole }) => {
                       Total Cost
                     </div>
                     <div style={{ fontSize: '1.4rem', fontWeight: 900, color: colors.text }}>
-                      {formatCurrencyWithCode(yahooSummary.totalCost || 0, yahooHoldings[0]?.currency || 'USD')}
+                      {formatCurrencyWithCode(yahooSummary.totalCost || 0, 'USD')}
                     </div>
                   </div>
                   <div style={{
@@ -423,7 +423,7 @@ const YahooPortfolioSection = ({ colors, authUser, authRole }) => {
                       fontWeight: 900,
                       color: yahooSummary.totalGainLoss >= 0 ? colors.success : colors.accent
                     }}>
-                      {yahooSummary.totalGainLoss >= 0 ? '+' : ''}{formatCurrencyWithCode(Math.abs(yahooSummary.totalGainLoss || 0), yahooHoldings[0]?.currency || 'USD')}
+                      {yahooSummary.totalGainLoss >= 0 ? '+' : ''}{formatCurrencyWithCode(Math.abs(yahooSummary.totalGainLoss || 0), 'USD')}
                     </div>
                     <div style={{
                       fontSize: '0.85rem',

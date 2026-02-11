@@ -356,12 +356,16 @@ const StockPortfolio = ({ onBackToTasks }) => {
       // Parse units - allow decimal values, null if empty
       const unitsValue = formData.units;
       let units = null;
+      console.log('[StockPortfolio] DEBUG units - formData.units:', unitsValue, 'type:', typeof unitsValue);
       if (unitsValue != null && String(unitsValue).trim() !== '') {
         const numValue = parseFloat(String(unitsValue).trim());
+        console.log('[StockPortfolio] DEBUG units - parsed numValue:', numValue);
         if (!isNaN(numValue) && numValue > 0 && isFinite(numValue)) {
           units = numValue;
+          console.log('[StockPortfolio] DEBUG units - final units:', units);
         }
       }
+      console.log('[StockPortfolio] DEBUG units - sending to backend:', units);
 
       const payload = {
         name: formData.name,
