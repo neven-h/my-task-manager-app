@@ -1046,10 +1046,12 @@ useEffect(() => {
                 padding: '16px',
                 position: 'sticky',
                 top: 0,
-                zIndex: 100
+                zIndex: 100,
+                overflow: 'visible'
             }}>
                 <div style={{
                     maxWidth: '1600px',
+                    width: '100%',
                     margin: '0 auto',
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -1057,7 +1059,8 @@ useEffect(() => {
                     padding: '0 16px',
                     gap: '16px',
                     flexWrap: 'nowrap',
-                    minWidth: 0
+                    minWidth: 0,
+                    overflow: 'visible'
                 }}>
                     <div style={{ flexShrink: 0, minWidth: '200px' }}>
                         <h1 style={{
@@ -1113,7 +1116,9 @@ useEffect(() => {
                              justifyContent: 'flex-end',
                              minWidth: 0,
                              overflowX: 'auto',
-                             paddingBottom: '2px'
+                             overflowY: 'visible',
+                             paddingBottom: '2px',
+                             paddingRight: '16px'
                          }}>
                         {/* Toggle Sidebar Button */}
                         <button
