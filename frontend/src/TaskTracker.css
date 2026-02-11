@@ -65,12 +65,26 @@
           overflow-x: auto;
           overflow-y: visible;
           -webkit-overflow-scrolling: touch;
-          scrollbar-width: none; /* Firefox */
-          -ms-overflow-style: none; /* IE/Edge */
+          scrollbar-width: thin; /* Firefox */
+          scrollbar-color: #ccc #f0f0f0; /* Firefox */
         }
         
         .desktop-header-buttons::-webkit-scrollbar {
-          display: none; /* Chrome/Safari */
+          height: 8px; /* Chrome/Safari */
+        }
+        
+        .desktop-header-buttons::-webkit-scrollbar-track {
+          background: #f0f0f0;
+          border-radius: 4px;
+        }
+        
+        .desktop-header-buttons::-webkit-scrollbar-thumb {
+          background: #ccc;
+          border-radius: 4px;
+        }
+        
+        .desktop-header-buttons::-webkit-scrollbar-thumb:hover {
+          background: #999;
         }
         
         .btn:hover:not(:disabled) {
@@ -768,11 +782,12 @@
           }
         }
         
-        /* For very wide screens, allow wrapping if needed */
-        @media (min-width: 1600px) {
+        /* For wider screens, allow wrapping to show all buttons */
+        @media (min-width: 1200px) {
           .desktop-header-buttons {
             flex-wrap: wrap;
             justify-content: flex-end;
+            overflow-x: visible;
           }
         }
         
