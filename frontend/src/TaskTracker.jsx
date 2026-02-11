@@ -1249,64 +1249,64 @@ useEffect(() => {
                         {/* Bank Transactions - for admin, shared, AND limited users */}
                         {(isAdmin || isSharedUser || isLimitedUser) && (
                             <button className="btn btn-blue" onClick={() => setAppView('transactions')} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
-                                <DollarSign size={18}
-                                            style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
+                                <DollarSign size={16}
+                                            style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>
                                 Bank Transactions
                             </button>
                         )}
                         {/* Clients - for admin and limited users (not shared) */}
                         {!isSharedUser && (
                             <button className="btn btn-green" onClick={() => setAppView('clients')} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
-                                <Tag size={18}
-                                     style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
+                                <Tag size={16}
+                                     style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>
                                 Clients
                             </button>
                         )}
                         {/* Stock Portfolio - for all users */}
                         {(isAdmin || isSharedUser || isLimitedUser) && (
-                            <button className="btn btn-yellow" onClick={() => setAppView('portfolio')} style={{background: '#FFD500', color: '#000', border: '4px solid #000', whiteSpace: 'nowrap', flexShrink: 0}}>
-                                <BarChart3 size={18}
-                                           style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
+                            <button className="btn btn-yellow" onClick={() => setAppView('portfolio')} style={{background: '#FFD500', color: '#000', border: '2px solid #000', whiteSpace: 'nowrap', flexShrink: 0}}>
+                                <BarChart3 size={16}
+                                           style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>
                                 Portfolio
                             </button>
                         )}
                         {/* Bulk Add - only for admin */}
                         {isAdmin && (
                             <button className="btn btn-white" onClick={() => setShowBulkInput(true)} disabled={loading} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
-                                <Plus size={18}
-                                      style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
+                                <Plus size={16}
+                                      style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>
                                 Bulk Add
                             </button>
                         )}
                         {/* New Task - only for admin */}
                         {isAdmin && (
                             <button className="btn btn-red" onClick={openNewTaskForm} disabled={loading} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
-                                <Plus size={18}
-                                      style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
+                                <Plus size={16}
+                                      style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>
                                 New Task
                             </button>
                         )}
                         {/* Stats button - for everyone (filtered by backend) */}
                         <button className="btn btn-yellow" onClick={() => setView(view === 'list' ? 'stats' : 'list')} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
                             {view === 'list' ? (
-                                <><BarChart3 size={18} style={{
+                                <><BarChart3 size={16} style={{
                                     display: 'inline',
                                     verticalAlign: 'middle',
-                                    marginRight: '8px'
+                                    marginRight: '4px'
                                 }}/>Stats</>
                             ) : (
                                 <>Tasks</>
                             )}
                         </button>
                         <button className="btn btn-white" onClick={() => navigate('/settings')} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
-                            <Settings size={18}
-                                    style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
+                            <Settings size={16}
+                                    style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>
                             Settings
                         </button>
                         {onLogout && (
                             <button className="btn btn-white" onClick={onLogout} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
-                                <LogOut size={18}
-                                        style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
+                                <LogOut size={16}
+                                        style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>
                                 Logout
                             </button>
                         )}
