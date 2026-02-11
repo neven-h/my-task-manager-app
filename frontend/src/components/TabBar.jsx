@@ -75,7 +75,9 @@ export default function TabBar({
   const handleRenameTab = async (tabId) => {
     if (!editingTabName.trim()) return;
     try {
-      const response = await fetch(`${apiBase}/${tabEndpoint}/${tabId}`, {
+      const qs = new URLSearchParams({ username: authUser || '', role: authRole || '' }).toString();
+      const url = `${apiBase}/${tabEndpoint}/${tabId}${qs ? `?${qs}` : ''}`;
+      const response = await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: editingTabName.trim() })
@@ -99,7 +101,9 @@ export default function TabBar({
       : `Delete "${tab?.name}" and all its data?`;
     if (!window.confirm(message)) return;
     try {
-      const response = await fetch(`${apiBase}/${tabEndpoint}/${tabId}`, {
+      const qs = new URLSearchParams({ username: authUser || '', role: authRole || '' }).toString();
+      const url = `${apiBase}/${tabEndpoint}/${tabId}${qs ? `?${qs}` : ''}`;
+      const response = await fetch(url, {
         method: 'DELETE'
       });
       if (response.ok) {
