@@ -19,11 +19,7 @@ auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/api/health', methods=['GET'])
 def health_check():
-    """Health check endpoint that reports app and database status.
-    
-    Always returns 200 to allow app startup even when database is temporarily unavailable.
-    Frontend/operations should check the 'status' field to see actual health.
-    """
+    """Health check endpoint that reports app and database status."""
     db_ok = False
     db_error = None
     try:
@@ -37,8 +33,7 @@ def health_check():
         db_error = str(e)
 
     status = "healthy" if db_ok else "degraded"
-    # Always return 200 to pass Railway healthcheck even in degraded state
-    code = 200
+    code = 200 if db_ok else 503
     result = {"status": status, "database": "connected" if db_ok else "unavailable"}
     if db_error:
         result["database_error"] = db_error

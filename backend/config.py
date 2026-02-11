@@ -541,7 +541,8 @@ DB_CONFIG = {
     'database': os.getenv('DB_NAME', 'task_tracker'),
     'port': int(os.getenv('DB_PORT', 3306)),
     'charset': 'utf8mb4',
-    'collation': 'utf8mb4_unicode_ci'
+    'collation': 'utf8mb4_unicode_ci',
+    'connection_timeout': 10  # Timeout after 10 seconds to prevent startup hangs
 }
 
 # PERFORMANCE OPTIMIZATION: Connection pooling
@@ -832,6 +833,9 @@ def init_db():
         # Connect without database to create it
         temp_config = DB_CONFIG.copy()
         db_name = sanitize_db_name(temp_config.pop('database'))
+        
+        # Add connection timeout to fail fast if DB is unavailable (Railway startup)
+        temp_config['connection_timeout'] = 5  # 5 seconds max
 
         connection = mysql.connector.connect(**temp_config)
         cursor = connection.cursor(dictionary=True)
