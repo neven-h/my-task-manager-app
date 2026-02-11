@@ -1262,7 +1262,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                           fontSize: '0.95rem',
                           color: colors.text
                         }}>
-                          {(entry.units || 1).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 4 })}
+                          {(entry.units ?? 1).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 4 })}
                         </td>
                         <td style={{
                           padding: '0.75rem 1rem',
