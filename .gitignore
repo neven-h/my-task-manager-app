@@ -63,3 +63,7 @@ WEBSITE_*.md
 PYCHARM_*.md
 RAILWAY_*.md
 FIX_*.md
+
+# Local-only files
+MD files/
+My Task Manager App.code-workspace
