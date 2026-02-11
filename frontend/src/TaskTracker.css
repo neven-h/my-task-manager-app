@@ -70,6 +70,14 @@
           /* Prevent clipping: ensure content can scroll into view */
           min-height: 1px;
         }
+
+        /* Compact header buttons so all fit in one row (including Bank Transactions) */
+        .desktop-header-buttons .btn {
+          padding: 10px 14px;
+          font-size: 0.78rem;
+          border-width: 2px;
+          letter-spacing: 0.2px;
+        }
         
         .desktop-header-buttons::-webkit-scrollbar {
           height: 8px; /* Chrome/Safari */
@@ -784,13 +792,13 @@
           }
         }
         
-        /* From 992px up, allow wrapping so all buttons are visible (no cropping) */
+        /* From 992px up: keep buttons in one row; compact styles above make them fit */
         @media (min-width: 992px) {
           .desktop-header-buttons {
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
             justify-content: flex-end;
-            overflow-x: visible;
-            padding-right: 0;
+            overflow-x: auto;
+            padding-right: 16px;
           }
         }
         
