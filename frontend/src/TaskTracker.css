@@ -811,3 +811,64 @@
           box-shadow: 4px 4px 0px #000, 0 0 0 3px #FFD500 inset !important;
           background-color: #fffef0;
         }
+
+        /* Task attachments in form */
+        .task-attachments-form {
+          padding: 12px;
+          background: #f8fafc;
+          border: 2px solid #000;
+        }
+
+        .task-attachments-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .task-attachment-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 10px;
+          background: #fff;
+          border: 2px solid #000;
+          font-size: 0.85rem;
+        }
+
+        .task-attachment-chip a {
+          color: #0000FF;
+          text-decoration: underline;
+        }
+
+        .task-attachment-chip-new {
+          background: #e8f4fd;
+        }
+
+        .task-attachment-remove {
+          background: none;
+          border: none;
+          cursor: pointer;
+          padding: 2px;
+          display: flex;
+          align-items: center;
+          color: #000;
+          margin-left: 4px;
+        }
+
+        .task-attachment-remove:hover {
+          color: #FF0000;
+        }
+
+        .task-card-attachment-item {
+          flex-shrink: 0;
+        }
+
+        .task-card-attachment-link {
+          color: #0000FF;
+          text-decoration: underline;
+          font-size: 0.85rem;
+        }
+
+        .task-card-attachment-link:hover {
+          text-decoration: none;
+        }
