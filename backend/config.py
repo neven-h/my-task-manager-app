@@ -613,43 +613,45 @@ _USERS_CACHE = None
 def _get_hardcoded_users():
     """Load hardcoded users with bcrypt-hashed passwords from environment variables.
     
+    Safe to commit: no credentials in code; only reads from env (USER_PITZ_PASSWORD).
+    If USER_PITZ_PASSWORD is not set, returns empty dict so the app still starts;
+    login then uses only database users (recommended for production).
+    
     PERFORMANCE OPTIMIZATION: Password hashes are cached to avoid the expensive
-    bcrypt.gensalt() operation on every function call. bcrypt is intentionally slow
-    (for security), so caching the results significantly improves startup time.
+    bcrypt.gensalt() operation on every function call.
     
     Returns:
         dict: Dictionary of users with their password hashes and roles.
-              Returns empty dict in CI environment or if initialization fails.
+              Empty if CI, or if USER_PITZ_PASSWORD is unset (DB-only auth).
     """
     global _USERS_CACHE
-    
-    # Return cached users if already computed
+
     if _USERS_CACHE is not None:
         return _USERS_CACHE
-    
-    # In CI environment, return empty dict (users come from database)
+
     if IS_CI:
         _USERS_CACHE = {}
         return _USERS_CACHE
 
-    required_passwords = ['USER_PITZ_PASSWORD']
-    if not all(os.getenv(var) for var in required_passwords):
-        raise ValueError(f"{' and '.join(required_passwords)} must be set")
+    password = os.getenv('USER_PITZ_PASSWORD')
+    if not password:
+        # Optional fallback: app can run with database users only (e.g. after removing hardcoded creds from repo)
+        print("USER_PITZ_PASSWORD not set; hardcoded fallback user disabled. Use database users only.")
+        _USERS_CACHE = {}
+        return _USERS_CACHE
 
     try:
-        # Compute hashes once and cache them
         users = {
             'pitz': {
-                'password_hash': bcrypt.hashpw(os.getenv('USER_PITZ_PASSWORD').encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
+                'password_hash': bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
                 'role': 'admin'
             }
         }
-        # Only set cache after successful computation
         _USERS_CACHE = users
         return _USERS_CACHE
     except Exception as e:
-        print(f"Error computing password hashes: {e}")
-        raise
+        print(f"Error computing password hashes for fallback user: {e}")
+        raise  # Fail loudly when admin set USER_PITZ_PASSWORD but bcrypt failed
 
 
 USERS = _get_hardcoded_users()
