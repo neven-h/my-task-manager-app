@@ -1058,7 +1058,7 @@ useEffect(() => {
                     gap: '16px',
                     flexWrap: 'nowrap'
                 }}>
-                    <div style={{flex: '0 0 auto', minWidth: '180px', maxWidth: '300px'}}>
+                    <div style={{flex: '0 1 auto', minWidth: 0}}>
                         <h1 style={{
                             fontFamily: '"Inter", sans-serif',
                             fontSize: 'clamp(1.5rem, 5vw, 3rem)',
@@ -1066,7 +1066,9 @@ useEffect(() => {
                             margin: '0 0 4px 0',
                             letterSpacing: '-1px',
                             textTransform: 'uppercase',
-                            whiteSpace: 'nowrap'
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
                         }}>
                             Task Tracker
                         </h1>
