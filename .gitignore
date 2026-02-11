@@ -43,6 +43,17 @@ backend/routes/auth.py
 # Static assets that shouldn't be in repo
 frontend/public/background.jpg
 
+# Sensitive standalone auth server
+files/auth_server.py
+files/index.html
+
+# Backup and one-off files
+backend/app_original.py
+backend/restore_task.py
+backend/import_transactions.py
+frontend/src/BankTransactions_backup.jsx
+frontend/fix3-autocomplete-style.css
+
 # SQL dumps and data files (keep out of repo)
 *.sql
 *.tsv
