@@ -541,8 +541,7 @@ DB_CONFIG = {
     'database': os.getenv('DB_NAME', 'task_tracker'),
     'port': int(os.getenv('DB_PORT', 3306)),
     'charset': 'utf8mb4',
-    'collation': 'utf8mb4_unicode_ci',
-    'connection_timeout': 10  # Timeout after 10 seconds to prevent startup hangs
+    'collation': 'utf8mb4_unicode_ci'
 }
 
 # PERFORMANCE OPTIMIZATION: Connection pooling
@@ -614,45 +613,50 @@ _USERS_CACHE = None
 def _get_hardcoded_users():
     """Load hardcoded users with bcrypt-hashed passwords from environment variables.
     
-    Safe to commit: no credentials in code; only reads from env (USER_PITZ_PASSWORD).
-    If USER_PITZ_PASSWORD is not set, returns empty dict so the app still starts;
-    login then uses only database users (recommended for production).
-    
     PERFORMANCE OPTIMIZATION: Password hashes are cached to avoid the expensive
-    bcrypt.gensalt() operation on every function call.
+    bcrypt.gensalt() operation on every function call. bcrypt is intentionally slow
+    (for security), so caching the results significantly improves startup time.
     
     Returns:
         dict: Dictionary of users with their password hashes and roles.
-              Empty if CI, or if USER_PITZ_PASSWORD is unset (DB-only auth).
+              Returns empty dict in CI environment only.
+              
+    Raises:
+        ValueError: If USER_PITZ_PASSWORD is not set in non-CI environment.
+        Exception: If bcrypt hashing fails. Fails loudly when admin set 
+                   USER_PITZ_PASSWORD but bcrypt failed.
     """
     global _USERS_CACHE
-
+    
+    # Return cached users if already computed
     if _USERS_CACHE is not None:
         return _USERS_CACHE
-
+    
+    # In CI environment, return empty dict (users come from database)
     if IS_CI:
         _USERS_CACHE = {}
         return _USERS_CACHE
 
-    password = os.getenv('USER_PITZ_PASSWORD')
-    if not password:
-        # Optional fallback: app can run with database users only (e.g. after removing hardcoded creds from repo)
-        print("USER_PITZ_PASSWORD not set; hardcoded fallback user disabled. Use database users only.")
-        _USERS_CACHE = {}
-        return _USERS_CACHE
+    required_passwords = ['USER_PITZ_PASSWORD']
+    if not all(os.getenv(var) for var in required_passwords):
+        raise ValueError(f"{' and '.join(required_passwords)} must be set")
 
     try:
+        # Compute hashes once and cache them
         users = {
             'pitz': {
-                'password_hash': bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
+                'password_hash': bcrypt.hashpw(os.getenv('USER_PITZ_PASSWORD').encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
                 'role': 'admin'
             }
         }
+        # Only set cache after successful computation
         _USERS_CACHE = users
         return _USERS_CACHE
     except Exception as e:
-        print(f"Error computing password hashes for fallback user: {e}")
-        raise  # Fail loudly when admin set USER_PITZ_PASSWORD but bcrypt failed
+        # Fail loudly when admin set USER_PITZ_PASSWORD but bcrypt failed
+        # This prevents the app from starting without the configured fallback user
+        print(f"Error computing password hashes: {e}")
+        raise
 
 
 USERS = _get_hardcoded_users()
@@ -833,9 +837,6 @@ def init_db():
         # Connect without database to create it
         temp_config = DB_CONFIG.copy()
         db_name = sanitize_db_name(temp_config.pop('database'))
-        
-        # Add connection timeout to fail fast if DB is unavailable (Railway startup)
-        temp_config['connection_timeout'] = 5  # 5 seconds max
 
         connection = mysql.connector.connect(**temp_config)
         cursor = connection.cursor(dictionary=True)
