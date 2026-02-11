@@ -388,8 +388,13 @@ const YahooPortfolioSection = ({ colors, authUser, authRole }) => {
                       Total Value
                     </div>
                     <div style={{ fontSize: '1.4rem', fontWeight: 900, color: colors.text }}>
-                      ${yahooSummary.totalValue?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {formatCurrencyWithCode(yahooSummary.totalValue || 0, yahooHoldings[0]?.currency || 'USD')}
                     </div>
+                    {yahooHoldings.some(h => h.currency !== yahooHoldings[0]?.currency) && (
+                      <div style={{ fontSize: '0.7rem', color: colors.textLight, marginTop: '0.25rem' }}>
+                        (Mixed currencies)
+                      </div>
+                    )}
                   </div>
                   <div style={{
                     padding: '1rem',
@@ -401,7 +406,7 @@ const YahooPortfolioSection = ({ colors, authUser, authRole }) => {
                       Total Cost
                     </div>
                     <div style={{ fontSize: '1.4rem', fontWeight: 900, color: colors.text }}>
-                      ${yahooSummary.totalCost?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {formatCurrencyWithCode(yahooSummary.totalCost || 0, yahooHoldings[0]?.currency || 'USD')}
                     </div>
                   </div>
                   <div style={{
@@ -418,7 +423,7 @@ const YahooPortfolioSection = ({ colors, authUser, authRole }) => {
                       fontWeight: 900,
                       color: yahooSummary.totalGainLoss >= 0 ? colors.success : colors.accent
                     }}>
-                      {yahooSummary.totalGainLoss >= 0 ? '+' : ''}${yahooSummary.totalGainLoss?.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {yahooSummary.totalGainLoss >= 0 ? '+' : ''}{formatCurrencyWithCode(Math.abs(yahooSummary.totalGainLoss || 0), yahooHoldings[0]?.currency || 'USD')}
                     </div>
                     <div style={{
                       fontSize: '0.85rem',
@@ -512,11 +517,11 @@ const YahooPortfolioSection = ({ colors, authUser, authRole }) => {
                                   {holding.quantity > 0 ? holding.quantity.toLocaleString('en-US', { maximumFractionDigits: 4 }) : '-'}
                                 </td>
                                 <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontSize: '0.9rem' }}>
-                                  {holding.avgCostBasis > 0 ? `$${holding.avgCostBasis.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
+                                  {holding.avgCostBasis > 0 ? formatCurrencyWithCode(holding.avgCostBasis, holding.currency || 'USD') : '-'}
                                 </td>
                                 <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontSize: '0.9rem', fontWeight: 700 }}>
                                   {holding.currentPrice != null
-                                    ? `$${Number(holding.currentPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                    ? formatCurrencyWithCode(Number(holding.currentPrice), holding.currency || 'USD')
                                     : holding.error ? 'N/A' : '...'}
                                 </td>
                                 <td style={{
@@ -532,7 +537,7 @@ const YahooPortfolioSection = ({ colors, authUser, authRole }) => {
                                 </td>
                                 <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontSize: '0.9rem', fontWeight: 700 }}>
                                   {holding.positionValue != null && holding.positionValue > 0
-                                    ? `$${holding.positionValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                    ? formatCurrencyWithCode(holding.positionValue, holding.currency || 'USD')
                                     : '-'}
                                 </td>
                                 <td style={{
@@ -544,7 +549,7 @@ const YahooPortfolioSection = ({ colors, authUser, authRole }) => {
                                 }}>
                                   {holding.gainLoss != null && holding.positionCost > 0 ? (
                                     <div>
-                                      <div>{isPositive ? '+' : ''}${holding.gainLoss.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                      <div>{isPositive ? '+' : ''}{formatCurrencyWithCode(Math.abs(holding.gainLoss), holding.currency || 'USD')}</div>
                                       <div style={{ fontSize: '0.75rem' }}>
                                         ({isPositive ? '+' : ''}{holding.gainLossPct?.toFixed(2)}%)
                                       </div>
