@@ -1228,6 +1228,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                   <tr style={{ background: '#f8f8f8', borderBottom: `2px solid ${colors.border}` }}>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>📅 Date</th>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>📦 Units</th>
+                    <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>🏷️ Base Price</th>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>💰 Value</th>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>📈 Change</th>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>📊 Percentage</th>
@@ -1258,6 +1259,18 @@ const StockPortfolio = ({ onBackToTasks }) => {
                           color: colors.text
                         }}>
                           {(entry.units || 1).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 4 })}
+                        </td>
+                        <td style={{
+                          padding: '0.75rem 1rem',
+                          textAlign: 'right',
+                          fontWeight: '700',
+                          fontFamily: 'Consolas, "Courier New", monospace',
+                          fontVariantNumeric: 'tabular-nums',
+                          fontSize: '0.95rem',
+                          color: colors.textLight,
+                          fontStyle: 'italic'
+                        }}>
+                          {entry.base_price != null ? formatCurrencyWithCode(entry.base_price, entry.currency || 'USD') : '—'}
                         </td>
                         <td style={{
                           padding: '0.75rem 1rem',
