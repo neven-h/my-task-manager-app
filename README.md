@@ -66,7 +66,7 @@ For the frontend, either:
 
 ## Environment Variables
 
-See `.env.example` for all configuration options.
+**Backend (required for app to start):** `SECRET_KEY`, `JWT_SECRET_KEY`, `DATA_ENCRYPTION_KEY` — set these in Railway (or your host) so the app can start. DB vars and `FRONTEND_URL` as in step 4 above. Optional: `USER_PITZ_PASSWORD` for a single fallback admin user; if unset, only database users can log in (recommended for production).
 
 ## Troubleshooting
 
