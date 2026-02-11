@@ -67,3 +67,7 @@ FIX_*.md
 # Local-only files
 MD files/
 My Task Manager App.code-workspace
+
+# Ignore markdown except README
+*.md
+!README.md
