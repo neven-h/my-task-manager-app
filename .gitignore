@@ -36,8 +36,6 @@ yarn-error.log*
 .claude-code-config.json
 .clauderc
 
-# Static assets that shouldn't be in repo
-frontend/public/background.jpg
 
 # Sensitive standalone auth server (hardcoded credentials - NOT the route files)
 files/auth_server.py
