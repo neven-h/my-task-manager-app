@@ -63,3 +63,26 @@ WEBSITE_*.md
 PYCHARM_*.md
 RAILWAY_*.md
 FIX_*.md
+
+# Local editor workspace
+My Task Manager App.code-workspace
+
+# Local notes folder
+MD files/
+
+
+# Ignore all Markdown files except README.md
+*.md
+!README.md
+
+
+# Local notes folder
+MD files/
+
+# Local editor workspace
+My Task Manager App.code-workspace
+
+# Ignore all Markdown files except README.md
+*.md
+!README.md
+
