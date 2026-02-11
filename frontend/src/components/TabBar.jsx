@@ -53,16 +53,21 @@ export default function TabBar({
 
   const fetchTabs = async () => {
     try {
-      const response = await fetch(`${apiBase}/${tabEndpoint}?username=${authUser}&role=${authRole}`);
+      const url = `${apiBase}/${tabEndpoint}?username=${authUser}&role=${authRole}`;
+      console.log('[TabBar] Fetching tabs from:', url);
+      const response = await fetch(url);
+      console.log('[TabBar] Fetch response status:', response.status);
       const data = await response.json();
+      console.log('[TabBar] Fetched tabs:', data);
       if (Array.isArray(data)) {
         onTabsChanged(data);
         return data;
       }
+      console.warn('[TabBar] Response is not an array:', data);
       onTabsChanged([]);
       return [];
     } catch (err) {
-      console.error('Error fetching tabs:', err);
+      console.error('[TabBar] Error fetching tabs:', err);
       onTabsChanged([]);
       return [];
     }
@@ -71,22 +76,28 @@ export default function TabBar({
   const handleCreateTab = async () => {
     if (!newTabName.trim()) return;
     try {
-      const response = await fetch(`${apiBase}/${tabEndpoint}`, {
+      const url = `${apiBase}/${tabEndpoint}`;
+      const payload = { name: newTabName.trim(), username: authUser };
+      console.log('[TabBar] Creating tab at:', url, 'with payload:', payload);
+      const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newTabName.trim(), username: authUser })
+        body: JSON.stringify(payload)
       });
+      console.log('[TabBar] Create response status:', response.status);
       const data = await response.json();
+      console.log('[TabBar] Create response data:', data);
       if (response.ok) {
         setNewTabName('');
         setShowNewTabInput(false);
         const updatedTabs = await fetchTabs();
         onTabCreated(data.id, updatedTabs);
       } else {
+        console.error('[TabBar] Create tab failed:', data.error);
         onError(data.error || 'Failed to create tab');
       }
     } catch (err) {
-      console.error('Create tab error:', err);
+      console.error('[TabBar] Create tab error:', err);
       onError('Failed to create tab - server may be unavailable');
     }
   };
@@ -94,17 +105,26 @@ export default function TabBar({
   const handleRenameTab = async (tabId) => {
     if (!editingTabName.trim()) return;
     try {
-      const response = await fetch(`${apiBase}/${tabEndpoint}/${tabId}`, {
+      const url = `${apiBase}/${tabEndpoint}/${tabId}`;
+      const payload = { name: editingTabName.trim() };
+      console.log('[TabBar] Renaming tab at:', url, 'with payload:', payload);
+      const response = await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: editingTabName.trim() })
+        body: JSON.stringify(payload)
       });
+      console.log('[TabBar] Rename response status:', response.status);
       if (response.ok) {
         setEditingTab(null);
         setEditingTabName('');
         await fetchTabs();
+      } else {
+        const data = await response.json();
+        console.error('[TabBar] Rename tab failed:', data.error);
+        onError(data.error || 'Failed to rename tab');
       }
     } catch (err) {
+      console.error('[TabBar] Rename tab error:', err);
       onError('Failed to rename tab');
     }
   };
@@ -116,15 +136,23 @@ export default function TabBar({
       : `Delete "${tab?.name}" and all its data?`;
     if (!window.confirm(message)) return;
     try {
-      const response = await fetch(`${apiBase}/${tabEndpoint}/${tabId}`, {
+      const url = `${apiBase}/${tabEndpoint}/${tabId}`;
+      console.log('[TabBar] Deleting tab at:', url);
+      const response = await fetch(url, {
         method: 'DELETE'
       });
+      console.log('[TabBar] Delete response status:', response.status);
       if (response.ok) {
         const updatedTabs = await fetchTabs();
         setTabMenuOpen(null);
         onTabDeleted(tabId, updatedTabs);
+      } else {
+        const data = await response.json();
+        console.error('[TabBar] Delete tab failed:', data.error);
+        onError(data.error || 'Failed to delete tab');
       }
     } catch (err) {
+      console.error('[TabBar] Delete tab error:', err);
       onError('Failed to delete tab');
     }
   };
