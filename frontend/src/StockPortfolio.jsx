@@ -201,6 +201,12 @@ const StockPortfolio = ({ onBackToTasks }) => {
     }));
   };
 
+  // Dedicated handler for the units field to ensure it always updates
+  const handleUnitsChange = (e) => {
+    const val = e.target.value;
+    setFormData(prev => ({ ...prev, units: val }));
+  };
+
   const handleStockNameChange = (value) => {
     // Case-insensitive check to match CustomAutocomplete filtering behavior
     const isExistingStock = stockNames.some(
@@ -354,18 +360,14 @@ const StockPortfolio = ({ onBackToTasks }) => {
       const method = editingEntry ? 'PUT' : 'POST';
 
       // Parse units - allow decimal values, null if empty
-      const unitsValue = formData.units;
       let units = null;
-      console.log('[StockPortfolio] DEBUG units - formData.units:', unitsValue, 'type:', typeof unitsValue);
-      if (unitsValue != null && String(unitsValue).trim() !== '') {
-        const numValue = parseFloat(String(unitsValue).trim());
-        console.log('[StockPortfolio] DEBUG units - parsed numValue:', numValue);
+      const unitsStr = String(formData.units ?? '').trim();
+      if (unitsStr !== '') {
+        const numValue = parseFloat(unitsStr);
         if (!isNaN(numValue) && numValue > 0 && isFinite(numValue)) {
           units = numValue;
-          console.log('[StockPortfolio] DEBUG units - final units:', units);
         }
       }
-      console.log('[StockPortfolio] DEBUG units - sending to backend:', units);
 
       const payload = {
         name: formData.name,
@@ -1595,13 +1597,12 @@ const StockPortfolio = ({ onBackToTasks }) => {
                   📦 Number of Units/Shares
                 </label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   name="units"
-                  value={formData.units != null ? String(formData.units) : ''}
-                  onChange={handleInputChange}
-                  step="any"
-                  min="0"
-                  placeholder="1"
+                  value={formData.units}
+                  onChange={handleUnitsChange}
+                  placeholder="e.g. 1, 2.5, 100"
                   style={{
                     width: '100%',
                     padding: '1rem',

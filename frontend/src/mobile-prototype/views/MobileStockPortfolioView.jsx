@@ -745,11 +745,11 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                                     Quantity (units)
                                 </label>
                                 <input
-                                    type="number"
-                                    step="any"
-                                    min="0"
+                                    type="text"
+                                    inputMode="decimal"
                                     value={formData.units}
                                     onChange={(e) => setFormData({...formData, units: e.target.value})}
+                                    placeholder="e.g. 1, 2.5, 100"
                                     style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
                                 />
                             </div>

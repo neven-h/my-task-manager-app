@@ -153,21 +153,15 @@ def create_portfolio_entry():
             if 'units' in existing_columns:
                 columns.append('units')
                 units_val = data.get('units')
-                print(f"[PORTFOLIO DEBUG] units_val from request: {units_val}, type: {type(units_val)}")
                 if units_val is None or units_val == '':
                     units_val = None
-                    print(f"[PORTFOLIO DEBUG] units_val is None or empty, setting to None")
                 else:
                     try:
                         units_val = float(units_val)
-                        print(f"[PORTFOLIO DEBUG] parsed units_val to float: {units_val}")
                         if units_val <= 0:
                             units_val = None
-                            print(f"[PORTFOLIO DEBUG] units_val <= 0, setting to None")
-                    except (TypeError, ValueError) as e:
-                        print(f"[PORTFOLIO DEBUG] failed to parse units_val: {e}")
+                    except (TypeError, ValueError):
                         units_val = None
-                print(f"[PORTFOLIO DEBUG] final units_val to be saved: {units_val}")
                 values_list.append(units_val)
             
             query = f"""
@@ -254,19 +248,14 @@ def update_portfolio_entry(entry_id):
             if 'units' in existing_columns:
                 units_val = data.get('units')
                 parsed_units = None
-                print(f"[PORTFOLIO DEBUG UPDATE] units_val from request: {units_val}, type: {type(units_val)}")
                 if units_val is not None and units_val != '':
                     try:
                         parsed = float(str(units_val).strip())
-                        print(f"[PORTFOLIO DEBUG UPDATE] parsed units to float: {parsed}")
                         if parsed > 0:
                             parsed_units = parsed
-                            print(f"[PORTFOLIO DEBUG UPDATE] parsed_units set to: {parsed_units}")
-                    except (TypeError, ValueError) as e:
-                        print(f"[PORTFOLIO DEBUG UPDATE] failed to parse units: {e}")
+                    except (TypeError, ValueError):
                         pass
                 set_clauses.append('units = %s')
-                print(f"[PORTFOLIO DEBUG UPDATE] final parsed_units to be saved: {parsed_units}")
                 values_list.append(parsed_units)
             
             values_list.append(entry_id)  # For WHERE clause
