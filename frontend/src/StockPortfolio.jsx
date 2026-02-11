@@ -1531,35 +1531,33 @@ const StockPortfolio = ({ onBackToTasks }) => {
                 </small>
               </div>
 
-              {isNewStock && !editingEntry && (
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '1.05rem', color: colors.text }}>
-                    💵 Base Price *
-                  </label>
-                  <input
-                    type="number"
-                    name="base_price"
-                    value={formData.base_price}
-                    onChange={handleInputChange}
-                    required={isNewStock}
-                    step="0.01"
-                    min="0"
-                    placeholder="Enter initial purchase price"
-                    style={{
-                      width: '100%',
-                      padding: '1rem',
-                      border: `3px solid ${colors.border}`,
-                      fontSize: '1.05rem',
-                      fontFamily: '"Inter", sans-serif',
-                      boxSizing: 'border-box',
-                      outline: 'none'
-                    }}
-                  />
-                  <small style={{ color: colors.textLight, fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                    This is the initial purchase price for tracking growth (in {formData.currency || 'USD'})
-                  </small>
-                </div>
-              )}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '1.05rem', color: colors.text }}>
+                  💵 Base Price {isNewStock && !editingEntry ? '*' : '(Optional)'}
+                </label>
+                <input
+                  type="number"
+                  name="base_price"
+                  value={formData.base_price}
+                  onChange={handleInputChange}
+                  required={isNewStock && !editingEntry}
+                  step="0.01"
+                  min="0"
+                  placeholder="Enter initial purchase price"
+                  style={{
+                    width: '100%',
+                    padding: '1rem',
+                    border: `3px solid ${colors.border}`,
+                    fontSize: '1.05rem',
+                    fontFamily: '"Inter", sans-serif',
+                    boxSizing: 'border-box',
+                    outline: 'none'
+                  }}
+                />
+                <small style={{ color: colors.textLight, fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
+                  This is the initial purchase price for tracking growth (in {formData.currency || 'USD'})
+                </small>
+              </div>
 
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '1.05rem', color: colors.text }}>
