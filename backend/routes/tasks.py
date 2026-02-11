@@ -1,7 +1,8 @@
 from flask import Blueprint, request, jsonify, send_file, current_app
 from config import (
     get_db_connection, handle_error, serialize_task, token_required,
-    sanitize_csv_field, DEBUG, UPLOAD_FOLDER,
+    sanitize_csv_field, DEBUG, UPLOAD_FOLDER, TASK_ATTACHMENTS_FOLDER,
+    allowed_task_attachment, app, mail, FRONTEND_URL,
 )
 from mysql.connector import Error
 from werkzeug.utils import secure_filename
@@ -9,6 +10,8 @@ from datetime import datetime, date
 import csv
 import io
 import os
+import re
+import uuid
 import pandas as pd
 
 tasks_bp = Blueprint('tasks', __name__)
@@ -95,6 +98,24 @@ def get_tasks():
             # Convert datetime objects to strings and tags to array using helper
             for task in tasks:
                 serialize_task(task)
+
+            # Attach attachment list to each task
+            if tasks:
+                task_ids = [t['id'] for t in tasks]
+                placeholders = ','.join(['%s'] * len(task_ids))
+                cursor.execute(
+                    f"SELECT id, task_id, filename, content_type, file_size FROM task_attachments WHERE task_id IN ({placeholders}) ORDER BY task_id, id",
+                    task_ids
+                )
+                att_rows = cursor.fetchall()
+                att_by_task = {}
+                for r in att_rows:
+                    tid = r['task_id']
+                    if tid not in att_by_task:
+                        att_by_task[tid] = []
+                    att_by_task[tid].append(_attachment_to_json(r))
+                for task in tasks:
+                    task['attachments'] = att_by_task.get(task['id'], [])
 
             return jsonify(tasks)
 
@@ -358,6 +379,140 @@ def duplicate_task(task_id):
                 'id': new_task_id
             }), 201
 
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ================================
+# Task Attachments
+# ================================
+
+def _attachment_to_json(row):
+    """Convert attachment row to JSON with url path for frontend."""
+    return {
+        'id': row['id'],
+        'filename': row['filename'],
+        'content_type': row.get('content_type') or '',
+        'file_size': row.get('file_size'),
+        'url': f"/api/tasks/attachments/{row['id']}/file",
+    }
+
+
+@tasks_bp.route('/api/tasks/<int:task_id>/attachments', methods=['GET'])
+def get_task_attachments(task_id):
+    """List attachments for a task."""
+    try:
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT id, filename, content_type, file_size FROM task_attachments WHERE task_id = %s ORDER BY id",
+                (task_id,)
+            )
+            rows = cursor.fetchall()
+        return jsonify([_attachment_to_json(r) for r in rows])
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@tasks_bp.route('/api/tasks/<int:task_id>/attachments', methods=['POST'])
+def upload_task_attachment(task_id):
+    """Upload a file or image attachment for a task."""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+        file = request.files['file']
+        if not file or file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        if not allowed_task_attachment(file.filename):
+            return jsonify({'error': 'File type not allowed for task attachments'}), 400
+
+        # Ensure task exists
+        with get_db_connection() as connection:
+            cursor = connection.cursor()
+            cursor.execute("SELECT id FROM tasks WHERE id = %s", (task_id,))
+            if not cursor.fetchone():
+                return jsonify({'error': 'Task not found'}), 404
+
+        ext = (file.filename.rsplit('.', 1)[1].lower()) if '.' in file.filename else ''
+        stored_name = f"{uuid.uuid4().hex}.{ext}" if ext else uuid.uuid4().hex
+        upload_dir = current_app.config.get('TASK_ATTACHMENTS_FOLDER', TASK_ATTACHMENTS_FOLDER)
+        os.makedirs(upload_dir, exist_ok=True)
+        file_path = os.path.join(upload_dir, stored_name)
+        file.save(file_path)
+        file_size = os.path.getsize(file_path)
+        content_type = file.content_type or ''
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute(
+                """INSERT INTO task_attachments (task_id, filename, stored_filename, content_type, file_size)
+                   VALUES (%s, %s, %s, %s, %s)""",
+                (task_id, secure_filename(file.filename), stored_name, content_type, file_size)
+            )
+            connection.commit()
+            att_id = cursor.lastrowid
+            cursor.execute(
+                "SELECT id, filename, content_type, file_size FROM task_attachments WHERE id = %s",
+                (att_id,)
+            )
+            row = cursor.fetchone()
+        return jsonify(_attachment_to_json(row)), 201
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@tasks_bp.route('/api/tasks/attachments/<int:attachment_id>/file', methods=['GET'])
+def serve_task_attachment(attachment_id):
+    """Serve an attachment file by id."""
+    try:
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT stored_filename, filename, content_type FROM task_attachments WHERE id = %s",
+                (attachment_id,)
+            )
+            row = cursor.fetchone()
+        if not row:
+            return jsonify({'error': 'Attachment not found'}), 404
+        upload_dir = current_app.config.get('TASK_ATTACHMENTS_FOLDER', TASK_ATTACHMENTS_FOLDER)
+        path = os.path.join(upload_dir, row['stored_filename'])
+        if not os.path.isfile(path):
+            return jsonify({'error': 'File not found'}), 404
+        return send_file(
+            path,
+            mimetype=row.get('content_type') or 'application/octet-stream',
+            as_attachment=False,
+            download_name=row['filename']
+        )
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@tasks_bp.route('/api/tasks/<int:task_id>/attachments/<int:attachment_id>', methods=['DELETE'])
+def delete_task_attachment(task_id, attachment_id):
+    """Delete an attachment."""
+    try:
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT stored_filename FROM task_attachments WHERE id = %s AND task_id = %s",
+                (attachment_id, task_id)
+            )
+            row = cursor.fetchone()
+        if not row:
+            return jsonify({'error': 'Attachment not found'}), 404
+        upload_dir = current_app.config.get('TASK_ATTACHMENTS_FOLDER', TASK_ATTACHMENTS_FOLDER)
+        path = os.path.join(upload_dir, row['stored_filename'])
+        if os.path.isfile(path):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+        with get_db_connection() as connection:
+            cursor = connection.cursor()
+            cursor.execute("DELETE FROM task_attachments WHERE id = %s AND task_id = %s", (attachment_id, task_id))
+            connection.commit()
+        return jsonify({'message': 'Attachment deleted'})
     except Error as e:
         return jsonify({'error': str(e)}), 500
 

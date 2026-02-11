@@ -475,11 +475,19 @@ mail = Mail(app)
 # File upload configuration
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'csv', 'xlsx', 'xls'}
+# Task attachments: images + common document types
+TASK_ATTACHMENTS_FOLDER = os.path.join(UPLOAD_FOLDER, 'task_attachments')
+ALLOWED_TASK_ATTACHMENT_EXTENSIONS = {
+    'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'heic',
+    'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'csv', 'zip'
+}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['TASK_ATTACHMENTS_FOLDER'] = TASK_ATTACHMENTS_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 # Create uploads folder if it doesn't exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(TASK_ATTACHMENTS_FOLDER, exist_ok=True)
 DEBUG = os.getenv('DEBUG', 'false').lower() == 'true'
 
 
@@ -591,6 +599,13 @@ def _get_db_pool():
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def allowed_task_attachment(filename):
+    """Allow images and common document types for task attachments."""
+    if not filename or '.' not in filename:
+        return False
+    return filename.rsplit('.', 1)[1].lower() in ALLOWED_TASK_ATTACHMENT_EXTENSIONS
 
 
 DB_NAME_PATTERN = re.compile(r'^[A-Za-z0-9_]+$')
@@ -1012,6 +1027,22 @@ def init_db():
                 pass  # Index already exists
             else:
                 print(f"Note: {e}")
+
+        # Create task_attachments table for file/image attachments on tasks
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS task_attachments (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                task_id INT NOT NULL,
+                filename VARCHAR(255) NOT NULL,
+                stored_filename VARCHAR(255) NOT NULL,
+                content_type VARCHAR(100),
+                file_size INT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_task_id (task_id),
+                FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+            )
+        """)
+        print("Created task_attachments table")
 
         # Create bank_transactions table
         cursor.execute("""
