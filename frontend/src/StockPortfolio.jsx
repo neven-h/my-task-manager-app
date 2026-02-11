@@ -201,12 +201,6 @@ const StockPortfolio = ({ onBackToTasks }) => {
     }));
   };
 
-  // Dedicated handler for the units field to ensure it always updates
-  const handleUnitsChange = (e) => {
-    const val = e.target.value;
-    setFormData(prev => ({ ...prev, units: val }));
-  };
-
   const handleStockNameChange = (value) => {
     // Case-insensitive check to match CustomAutocomplete filtering behavior
     const isExistingStock = stockNames.some(
@@ -1597,12 +1591,14 @@ const StockPortfolio = ({ onBackToTasks }) => {
                   📦 Number of Units/Shares
                 </label>
                 <input
-                  type="text"
-                  inputMode="decimal"
+                  type="number"
+                  step="any"
+                  min="0"
                   name="units"
                   value={formData.units}
-                  onChange={handleUnitsChange}
+                  onChange={handleInputChange}
                   placeholder="e.g. 1, 2.5, 100"
+                  autoComplete="off"
                   style={{
                     width: '100%',
                     padding: '1rem',
