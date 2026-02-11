@@ -67,6 +67,8 @@
           -webkit-overflow-scrolling: touch;
           scrollbar-width: thin; /* Firefox */
           scrollbar-color: #ccc #f0f0f0; /* Firefox */
+          /* Prevent clipping: ensure content can scroll into view */
+          min-height: 1px;
         }
         
         .desktop-header-buttons::-webkit-scrollbar {
@@ -782,12 +784,13 @@
           }
         }
         
-        /* For wider screens, allow wrapping to show all buttons */
-        @media (min-width: 1200px) {
+        /* From 992px up, allow wrapping so all buttons are visible (no cropping) */
+        @media (min-width: 992px) {
           .desktop-header-buttons {
             flex-wrap: wrap;
             justify-content: flex-end;
             overflow-x: visible;
+            padding-right: 0;
           }
         }
         
