@@ -153,16 +153,21 @@ def create_portfolio_entry():
             if 'units' in existing_columns:
                 columns.append('units')
                 units_val = data.get('units')
-                if units_val is None or units_val == '':
-                    units_val = None
-                else:
+                parsed_units = None
+                if units_val is not None and units_val != '':
                     try:
-                        units_val = float(units_val)
-                        if units_val <= 0:
-                            units_val = None
-                    except (TypeError, ValueError):
-                        units_val = None
-                values_list.append(units_val)
+                        # Convert to float, handling both string and numeric inputs
+                        parsed = float(units_val)
+                        # Accept any positive value, reject zero, negative, and NaN
+                        if parsed > 0 and parsed == parsed:  # parsed == parsed checks for NaN
+                            parsed_units = parsed
+                        else:
+                            print(f"DEBUG: Rejected units value: {parsed} (must be > 0 and not NaN)")
+                    except (TypeError, ValueError) as e:
+                        print(f"DEBUG: Failed to parse units value '{units_val}': {e}")
+                        pass
+                values_list.append(parsed_units)
+                print(f"DEBUG: CREATE - units_val={units_val}, parsed_units={parsed_units}")
             
             query = f"""
                 INSERT INTO stock_portfolio
@@ -250,13 +255,19 @@ def update_portfolio_entry(entry_id):
                 parsed_units = None
                 if units_val is not None and units_val != '':
                     try:
+                        # Convert to float, handling both string and numeric inputs
                         parsed = float(str(units_val).strip())
-                        if parsed > 0:
+                        # Accept any positive value (including values > 1), reject zero, negative, and NaN
+                        if parsed > 0 and parsed == parsed:  # parsed == parsed checks for NaN
                             parsed_units = parsed
-                    except (TypeError, ValueError):
+                        else:
+                            print(f"DEBUG: Rejected units value: {parsed} (must be > 0 and not NaN)")
+                    except (TypeError, ValueError) as e:
+                        print(f"DEBUG: Failed to parse units value '{units_val}': {e}")
                         pass
                 set_clauses.append('units = %s')
                 values_list.append(parsed_units)
+                print(f"DEBUG: UPDATE - units_val={units_val}, parsed_units={parsed_units}")
             
             values_list.append(entry_id)  # For WHERE clause
             
