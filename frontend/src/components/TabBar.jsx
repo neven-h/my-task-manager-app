@@ -1,23 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Edit2, Trash2, X, Users, Save, MoreVertical } from 'lucide-react';
 
-/**
- * Shared tab bar component used by StockPortfolio and BankTransactions.
- *
- * Props:
- *  - tabs: array of { id, name }
- *  - activeTabId: currently selected tab id
- *  - apiBase: API base URL (e.g. from config)
- *  - tabEndpoint: API path segment for tabs (e.g. "portfolio-tabs" or "transaction-tabs")
- *  - authUser: current username
- *  - onTabCreated(newTabId, updatedTabs): called after a tab is created
- *  - onTabDeleted(deletedTabId, updatedTabs): called after a tab is deleted
- *  - onTabSwitched(tabId): called when user clicks a tab
- *  - onTabsChanged(updatedTabs): called after tabs are fetched/updated
- *  - onError(message): called on error
- *  - colors: theme colors object { primary, success, accent, text, textLight, border }
- *  - deleteConfirmMessage(tabName): returns the confirmation string for delete
- */
 export default function TabBar({
   tabs,
   activeTabId,
@@ -40,7 +23,6 @@ export default function TabBar({
   const [tabMenuOpen, setTabMenuOpen] = useState(null);
   const tabMenuRef = useRef(null);
 
-  // Close tab menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (tabMenuRef.current && !tabMenuRef.current.contains(e.target)) {
@@ -53,21 +35,16 @@ export default function TabBar({
 
   const fetchTabs = async () => {
     try {
-      const url = `${apiBase}/${tabEndpoint}?username=${authUser}&role=${authRole}`;
-      console.log('[TabBar] Fetching tabs from:', url);
-      const response = await fetch(url);
-      console.log('[TabBar] Fetch response status:', response.status);
+      const response = await fetch(`${apiBase}/${tabEndpoint}?username=${authUser}&role=${authRole}`);
       const data = await response.json();
-      console.log('[TabBar] Fetched tabs:', data);
       if (Array.isArray(data)) {
         onTabsChanged(data);
         return data;
       }
-      console.warn('[TabBar] Response is not an array:', data);
       onTabsChanged([]);
       return [];
     } catch (err) {
-      console.error('[TabBar] Error fetching tabs:', err);
+      console.error('Error fetching tabs:', err);
       onTabsChanged([]);
       return [];
     }
@@ -76,28 +53,21 @@ export default function TabBar({
   const handleCreateTab = async () => {
     if (!newTabName.trim()) return;
     try {
-      const url = `${apiBase}/${tabEndpoint}`;
-      const payload = { name: newTabName.trim(), username: authUser };
-      console.log('[TabBar] Creating tab at:', url, 'with payload:', payload);
-      const response = await fetch(url, {
+      const response = await fetch(`${apiBase}/${tabEndpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ name: newTabName.trim(), username: authUser })
       });
-      console.log('[TabBar] Create response status:', response.status);
       const data = await response.json();
-      console.log('[TabBar] Create response data:', data);
       if (response.ok) {
         setNewTabName('');
         setShowNewTabInput(false);
         const updatedTabs = await fetchTabs();
         onTabCreated(data.id, updatedTabs);
       } else {
-        console.error('[TabBar] Create tab failed:', data.error);
         onError(data.error || 'Failed to create tab');
       }
     } catch (err) {
-      console.error('[TabBar] Create tab error:', err);
       onError('Failed to create tab - server may be unavailable');
     }
   };
@@ -105,57 +75,47 @@ export default function TabBar({
   const handleRenameTab = async (tabId) => {
     if (!editingTabName.trim()) return;
     try {
-      const url = `${apiBase}/${tabEndpoint}/${tabId}`;
-      const payload = { name: editingTabName.trim() };
-      console.log('[TabBar] Renaming tab at:', url, 'with payload:', payload);
-      const response = await fetch(url, {
+      const response = await fetch(`${apiBase}/${tabEndpoint}/${tabId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ name: editingTabName.trim() })
       });
-      console.log('[TabBar] Rename response status:', response.status);
       if (response.ok) {
         setEditingTab(null);
         setEditingTabName('');
         await fetchTabs();
       } else {
-        const data = await response.json();
-        console.error('[TabBar] Rename tab failed:', data.error);
-        onError(data.error || 'Failed to rename tab');
+        onError('Failed to rename tab');
       }
     } catch (err) {
-      console.error('[TabBar] Rename tab error:', err);
       onError('Failed to rename tab');
     }
   };
 
   const handleDeleteTab = async (tabId) => {
-    const tab = tabs.find(t => t.id === tabId);
+    const tab = tabs.find(t => t.id == tabId);
     const message = deleteConfirmMessage
       ? deleteConfirmMessage(tab?.name)
       : `Delete "${tab?.name}" and all its data?`;
     if (!window.confirm(message)) return;
     try {
-      const url = `${apiBase}/${tabEndpoint}/${tabId}`;
-      console.log('[TabBar] Deleting tab at:', url);
-      const response = await fetch(url, {
+      const response = await fetch(`${apiBase}/${tabEndpoint}/${tabId}`, {
         method: 'DELETE'
       });
-      console.log('[TabBar] Delete response status:', response.status);
       if (response.ok) {
         const updatedTabs = await fetchTabs();
         setTabMenuOpen(null);
         onTabDeleted(tabId, updatedTabs);
       } else {
-        const data = await response.json();
-        console.error('[TabBar] Delete tab failed:', data.error);
-        onError(data.error || 'Failed to delete tab');
+        onError('Failed to delete tab');
       }
     } catch (err) {
-      console.error('[TabBar] Delete tab error:', err);
       onError('Failed to delete tab');
     }
   };
+
+  // eslint-disable-next-line eqeqeq
+  const isActive = (tabId) => activeTabId == tabId;
 
   return (
     <div className="tab-bar" style={{
@@ -169,7 +129,7 @@ export default function TabBar({
     }}>
       {tabs.map(tab => (
         <div key={tab.id} style={{ position: 'relative', display: 'flex', alignItems: 'stretch' }}>
-          {editingTab === tab.id ? (
+          {editingTab == tab.id ? (
             <div style={{ display: 'flex', alignItems: 'center', padding: '0.5rem', gap: '0.25rem' }}>
               <input
                 type="text"
@@ -207,12 +167,12 @@ export default function TabBar({
               style={{
                 padding: '0.75rem 1.25rem',
                 border: 'none',
-                borderBottom: activeTabId === tab.id ? `4px solid ${colors.primary}` : '4px solid transparent',
-                background: activeTabId === tab.id ? '#fff' : 'transparent',
+                borderBottom: isActive(tab.id) ? `4px solid ${colors.primary}` : '4px solid transparent',
+                background: isActive(tab.id) ? '#fff' : 'transparent',
                 cursor: 'pointer',
-                fontWeight: activeTabId === tab.id ? '700' : '500',
+                fontWeight: isActive(tab.id) ? '700' : '500',
                 fontSize: '0.95rem',
-                color: activeTabId === tab.id ? colors.primary : colors.text,
+                color: isActive(tab.id) ? colors.primary : colors.text,
                 fontFamily: '"Inter", sans-serif',
                 display: 'flex',
                 alignItems: 'center',
@@ -226,10 +186,10 @@ export default function TabBar({
             </button>
           )}
 
-          {/* 3-dot menu button - visible on active tab */}
-          {activeTabId === tab.id && editingTab !== tab.id && (
+          {/* 3-dot menu - always visible on every tab, not just active */}
+          {editingTab != tab.id && (
             <button
-              onClick={(e) => { e.stopPropagation(); setTabMenuOpen(tabMenuOpen === tab.id ? null : tab.id); }}
+              onClick={(e) => { e.stopPropagation(); setTabMenuOpen(tabMenuOpen == tab.id ? null : tab.id); }}
               style={{
                 background: 'transparent',
                 border: 'none',
@@ -237,15 +197,16 @@ export default function TabBar({
                 padding: '0 0.5rem',
                 display: 'flex',
                 alignItems: 'center',
-                color: colors.textLight
+                color: isActive(tab.id) ? colors.text : colors.textLight
               }}
+              title="Rename or delete tab"
             >
               <MoreVertical size={16} />
             </button>
           )}
 
-          {/* Context menu dropdown */}
-          {tabMenuOpen === tab.id && (
+          {/* Dropdown menu */}
+          {tabMenuOpen == tab.id && (
             <div ref={tabMenuRef} style={{
               position: 'absolute',
               top: '100%',
