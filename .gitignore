@@ -24,50 +24,51 @@ yarn-error.log*
 
 # OS / IDE
 .DS_Store
+**/.DS_Store
 .idea/
 .vscode/
-
-# Secrets
-.env
-.env.local
-.env.production
-!.env.example
-
-# macOS
-.DS_Store
-**/.DS_Store
-
-# JetBrains
-.idea/
 .vercel
-.env*.local
+
+# Secrets and env files (all of them)
+.env*
+
+# Claude AI config
+.claude-code-config.json
+.clauderc
+
+# Static assets that shouldn't be in repo
+frontend/public/background.jpg
+
+# Sensitive standalone auth server (hardcoded credentials - NOT the route files)
+files/auth_server.py
+files/index.html
+
+# Backup and one-off files
+backend/app_original.py
+backend/restore_task.py
+backend/import_transactions.py
+frontend/src/BankTransactions_backup.jsx
+frontend/fix3-autocomplete-style.css
+
+# SQL dumps and data files (keep out of repo)
+*.sql
+*.tsv
+
+# Shell scripts (local dev/deploy helpers)
+*.sh
+
+# Root-level stale lock file
+/package-lock.json
 
 # Local env / deployment notes
-.env.staging
 Git_Railway_Vercel_Staging_to_Production_Checklist.pdf
-production_data.sql
-.idea/sqldialects.xml
-.idea/
-.idea/sqldialects.xml
-.idea/
-production_data.sql
 
-# Documentation/guide files (local only, don't commit)
-*_GUIDE.md
-*_FIX.md
-*_SETUP.md
-*_DIAGNOSIS.md
-PRODUCTION_*.md
-DATA_*.md
-WEBSITE_*.md
-PYCHARM_*.md
-RAILWAY_*.md
-FIX_*.md
+# Local editor workspace
+My\ Task\ Manager\ App.code-workspace
 
-# Local-only files
-MD files/
-My Task Manager App.code-workspace
+# Local notes folder
+MD\ files/
 
-# Ignore markdown except README
+# Ignore all Markdown files except README.md
 *.md
 !README.md
