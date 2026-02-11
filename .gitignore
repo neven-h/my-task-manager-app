@@ -64,10 +64,10 @@ frontend/fix3-autocomplete-style.css
 Git_Railway_Vercel_Staging_to_Production_Checklist.pdf
 
 # Local editor workspace
-My Task Manager App.code-workspace
+My\ Task\ Manager\ App.code-workspace
 
 # Local notes folder
-MD files/
+MD\ files/
 
 # Ignore all Markdown files except README.md
 *.md

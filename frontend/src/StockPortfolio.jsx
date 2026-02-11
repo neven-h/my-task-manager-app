@@ -440,7 +440,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
       base_price: entry.base_price != null && entry.base_price !== '' ? entry.base_price : '',
       entry_date: entryDate ?? new Date().toISOString().split('T')[0],
       currency: entry.currency || 'USD',
-      units: entry.units != null && entry.units !== '' ? String(entry.units) : ''
+      units: entry.units != null ? String(entry.units) : ''
     };
     setFormData(editFormData);
     setInitialFormData({ ...editFormData }); // Track initial state for edits too
@@ -459,7 +459,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
       base_price: entry.base_price != null && entry.base_price !== '' ? entry.base_price : '',
       entry_date: new Date().toISOString().split('T')[0],
       currency: entry.currency || 'USD',
-      units: entry.units != null && entry.units !== '' ? String(entry.units) : ''
+      units: entry.units != null ? String(entry.units) : ''
     });
     setInitialFormData(null);
     setShowForm(true);
