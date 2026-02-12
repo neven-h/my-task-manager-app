@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from config import (
+from ..config import (
     get_db_connection, handle_error, token_required, DEBUG,
     _fetch_stock_info_robust, _yahoo_search_tickers,
     _get_exchange_rate,
@@ -153,20 +153,17 @@ def create_portfolio_entry():
             if 'units' in existing_columns:
                 columns.append('units')
                 units_val = data.get('units')
-                parsed_units = None
-                if units_val is not None and units_val != '':
+                if units_val is None or units_val == '':
+                    units_val = None
+                else:
                     try:
-                        # Convert to float, handling both string and numeric inputs
-                        parsed = float(units_val)
-                        # Accept any positive value, reject zero, negative, and NaN
-                        if parsed > 0 and parsed == parsed:  # parsed == parsed checks for NaN
-                            parsed_units = parsed
-                        else:
-                            print(f"DEBUG: Rejected units value: {parsed} (must be > 0 and not NaN)")
-                    except (TypeError, ValueError) as e:
-                        print(f"DEBUG: Failed to parse units value '{units_val}': {e}")
-                        pass
-                values_list.append(parsed_units)
+                        normalized_units = str(units_val).replace(',', '').strip()
+                        units_val = float(normalized_units)
+                        if units_val <= 0:
+                            units_val = None
+                    except (TypeError, ValueError):
+                        units_val = None
+                values_list.append(units_val)
                 print(f"DEBUG: CREATE - units_val={units_val}, parsed_units={parsed_units}")
             
             query = f"""
@@ -184,7 +181,7 @@ def create_portfolio_entry():
             return jsonify({
                 'id': entry_id,
                 'message': 'Portfolio entry created successfully'
-            }), 201
+            }, 201)
 
     except Error as e:
         return jsonify({'error': str(e)}), 500
@@ -255,15 +252,11 @@ def update_portfolio_entry(entry_id):
                 parsed_units = None
                 if units_val is not None and units_val != '':
                     try:
-                        # Convert to float, handling both string and numeric inputs
-                        parsed = float(str(units_val).strip())
-                        # Accept any positive value (including values > 1), reject zero, negative, and NaN
-                        if parsed > 0 and parsed == parsed:  # parsed == parsed checks for NaN
+                        normalized_units = str(units_val).replace(',', '').strip()
+                        parsed = float(normalized_units)
+                        if parsed > 0:
                             parsed_units = parsed
-                        else:
-                            print(f"DEBUG: Rejected units value: {parsed} (must be > 0 and not NaN)")
-                    except (TypeError, ValueError) as e:
-                        print(f"DEBUG: Failed to parse units value '{units_val}': {e}")
+                    except (TypeError, ValueError):
                         pass
                 set_clauses.append('units = %s')
                 values_list.append(parsed_units)
@@ -772,7 +765,7 @@ def add_to_watchlist():
             return jsonify({
                 'id': cursor.lastrowid,
                 'message': 'Stock added to watchlist successfully'
-            }), 201
+            }, 201)
 
     except Error as e:
         return jsonify({'error': str(e)}), 500
@@ -1062,7 +1055,7 @@ def import_yahoo_portfolio():
             'imported': imported,
             'errors': errors,
             'count': saved_count
-        }), 201
+        }, 201)
 
     except Exception as e:
         return jsonify({'error': f'Import failed: {str(e)}'}), 500

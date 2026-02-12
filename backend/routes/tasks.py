@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, send_file, current_app
-from config import (
+from ..config import (
     get_db_connection, handle_error, serialize_task, token_required,
     sanitize_csv_field, DEBUG, UPLOAD_FOLDER, TASK_ATTACHMENTS_FOLDER,
     allowed_task_attachment, app, mail, FRONTEND_URL,
