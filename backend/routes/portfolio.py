@@ -156,15 +156,11 @@ def create_portfolio_entry():
                 parsed_units = None
                 if units_val is not None and units_val != '':
                     try:
-                        # Convert to float, handling both string and numeric inputs
-                        parsed = float(units_val)
-                        # Accept any positive value, reject zero, negative, and NaN
-                        if parsed > 0 and parsed == parsed:  # parsed == parsed checks for NaN
+                        normalized_units = str(units_val).replace(',', '').strip()
+                        parsed = float(normalized_units)
+                        if parsed > 0:
                             parsed_units = parsed
-                        else:
-                            print(f"DEBUG: Rejected units value: {parsed} (must be > 0 and not NaN)")
-                    except (TypeError, ValueError) as e:
-                        print(f"DEBUG: Failed to parse units value '{units_val}': {e}")
+                    except (TypeError, ValueError):
                         pass
                 values_list.append(parsed_units)
                 print(f"DEBUG: CREATE - units_val={units_val}, parsed_units={parsed_units}")
@@ -184,7 +180,7 @@ def create_portfolio_entry():
             return jsonify({
                 'id': entry_id,
                 'message': 'Portfolio entry created successfully'
-            }), 201
+            }, 201)
 
     except Error as e:
         return jsonify({'error': str(e)}), 500
@@ -255,15 +251,11 @@ def update_portfolio_entry(entry_id):
                 parsed_units = None
                 if units_val is not None and units_val != '':
                     try:
-                        # Convert to float, handling both string and numeric inputs
-                        parsed = float(str(units_val).strip())
-                        # Accept any positive value (including values > 1), reject zero, negative, and NaN
-                        if parsed > 0 and parsed == parsed:  # parsed == parsed checks for NaN
+                        normalized_units = str(units_val).replace(',', '').strip()
+                        parsed = float(normalized_units)
+                        if parsed > 0:
                             parsed_units = parsed
-                        else:
-                            print(f"DEBUG: Rejected units value: {parsed} (must be > 0 and not NaN)")
-                    except (TypeError, ValueError) as e:
-                        print(f"DEBUG: Failed to parse units value '{units_val}': {e}")
+                    except (TypeError, ValueError):
                         pass
                 set_clauses.append('units = %s')
                 values_list.append(parsed_units)
@@ -405,32 +397,37 @@ def get_portfolio_summary():
             has_currency = cursor.fetchone()['count'] > 0
             currency_col = ", sp1.currency" if has_currency else ""
 
+            # Check if units column exists
+            cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND COLUMN_NAME = 'units'")
+            has_units = cursor.fetchone()['count'] > 0
+            units_col = ", sp1.units" if has_units else ""
+
             if has_ticker_symbol:
                 query = f"""
-                    SELECT sp1.name, sp1.ticker_symbol, sp1.percentage, sp1.value_ils, sp1.base_price, sp1.entry_date, sp1.created_by{currency_col}
+                    SELECT sp1.name, sp1.ticker_symbol, sp1.percentage, sp1.value_ils, sp1.base_price, sp1.entry_date, sp1.created_by{currency_col}{units_col}
                     FROM stock_portfolio sp1
                     INNER JOIN (
                         SELECT name, tab_id, MAX(entry_date) as max_date
                         FROM stock_portfolio
                         WHERE {subquery_where}
                         GROUP BY name, tab_id
-                    ) latest ON sp1.name = latest.name 
-                        AND sp1.tab_id = latest.tab_id 
+                    ) latest ON sp1.name = latest.name
+                        AND sp1.tab_id = latest.tab_id
                         AND sp1.entry_date = latest.max_date
                     WHERE 1=1 {outer_where}
                     ORDER BY sp1.value_ils DESC
                 """
             else:
                 query = f"""
-                    SELECT sp1.name, NULL as ticker_symbol, sp1.percentage, sp1.value_ils, sp1.base_price, sp1.entry_date, sp1.created_by{currency_col}
+                    SELECT sp1.name, NULL as ticker_symbol, sp1.percentage, sp1.value_ils, sp1.base_price, sp1.entry_date, sp1.created_by{currency_col}{units_col}
                     FROM stock_portfolio sp1
                     INNER JOIN (
                         SELECT name, tab_id, MAX(entry_date) as max_date
                         FROM stock_portfolio
                         WHERE {subquery_where}
                         GROUP BY name, tab_id
-                    ) latest ON sp1.name = latest.name 
-                        AND sp1.tab_id = latest.tab_id 
+                    ) latest ON sp1.name = latest.name
+                        AND sp1.tab_id = latest.tab_id
                         AND sp1.entry_date = latest.max_date
                     WHERE 1=1 {outer_where}
                     ORDER BY sp1.value_ils DESC
@@ -484,14 +481,25 @@ def get_portfolio_summary():
                     value = 0.0
                     entry['value_ils'] = 0.0
 
-                # Convert to ILS for the total
+                # Safely convert units (default 1 if missing)
+                units = 1.0
+                if entry.get('units') is not None:
+                    try:
+                        units = float(entry['units'])
+                        if units <= 0:
+                            units = 1.0
+                    except (TypeError, ValueError):
+                        units = 1.0
+                entry['units'] = units
+
+                # Convert to ILS for the total (value per unit * units * exchange rate)
                 currency = (entry.get('currency') or 'ILS').upper()
                 rate = exchange_rates.get(currency)
                 if rate is not None:
-                    value_in_ils = value * rate
+                    value_in_ils = value * units * rate
                 else:
                     # No rate available - use raw value as fallback
-                    value_in_ils = value
+                    value_in_ils = value * units
 
                 entry['value_ils_converted'] = round(value_in_ils, 2)
                 total_value_ils += value_in_ils
@@ -772,7 +780,7 @@ def add_to_watchlist():
             return jsonify({
                 'id': cursor.lastrowid,
                 'message': 'Stock added to watchlist successfully'
-            }), 201
+            }, 201)
 
     except Error as e:
         return jsonify({'error': str(e)}), 500
@@ -1062,7 +1070,7 @@ def import_yahoo_portfolio():
             'imported': imported,
             'errors': errors,
             'count': saved_count
-        }), 201
+        }, 201)
 
     except Exception as e:
         return jsonify({'error': f'Import failed: {str(e)}'}), 500
