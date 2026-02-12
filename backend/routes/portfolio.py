@@ -503,7 +503,7 @@ def get_portfolio_summary():
 
                 entry['value_ils_converted'] = round(value_in_ils, 2)
                 total_value_ils += value_in_ils
-                total_value_raw += value
+                total_value_raw += value * units
                 
                 # Safely convert base_price
                 if entry.get('base_price') is not None:
