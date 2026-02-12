@@ -360,9 +360,9 @@ useEffect(() => {
             const taskId = editingTask ? editingTask.id : data.id;
 
             if (taskId) {
-                for (const { file } of (newAttachments || [])) {
+                for (const { file, name } of (newAttachments || [])) {
                     const fd = new FormData();
-                    fd.append('file', file);
+                    fd.append('file', file, name || file.name || `image-${Date.now()}.png`);
                     const upRes = await fetch(`${API_BASE}/tasks/${taskId}/attachments`, {
                         method: 'POST',
                         body: fd
