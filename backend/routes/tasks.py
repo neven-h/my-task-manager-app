@@ -464,9 +464,12 @@ def upload_task_attachment(task_id):
         stored_name = None
         file_size = None
 
+        print(f"[UPLOAD] filename={original_filename} content_type={content_type} CLOUDINARY_ENABLED={CLOUDINARY_ENABLED}", flush=True)
+
         if CLOUDINARY_ENABLED:
             # Upload to Cloudinary (supports images + raw files)
             resource_type = 'image' if content_type.startswith('image/') else 'raw'
+            print(f"[UPLOAD] Uploading to Cloudinary resource_type={resource_type}", flush=True)
             upload_result = cloudinary.uploader.upload(
                 file,
                 folder='task_attachments',
@@ -477,7 +480,8 @@ def upload_task_attachment(task_id):
             cloudinary_url = upload_result.get('secure_url')
             cloudinary_public_id = upload_result.get('public_id')
             file_size = upload_result.get('bytes', 0)
-            stored_name = cloudinary_public_id  # store public_id as reference
+            stored_name = cloudinary_public_id
+            print(f"[UPLOAD] Cloudinary success url={cloudinary_url}", flush=True)
         else:
             # Fallback: save to local disk
             ext = (file.filename.rsplit('.', 1)[1].lower()) if '.' in file.filename else ''
@@ -505,8 +509,11 @@ def upload_task_attachment(task_id):
             row = cursor.fetchone()
         return jsonify(_attachment_to_json(row)), 201
     except Error as e:
+        print(f"[UPLOAD] DB error: {e}", flush=True)
         return jsonify({'error': str(e)}), 500
     except Exception as e:
+        import traceback
+        print(f"[UPLOAD] Exception: {traceback.format_exc()}", flush=True)
         return jsonify({'error': f'Upload failed: {str(e)}'}), 500
 
 

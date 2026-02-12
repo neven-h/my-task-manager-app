@@ -509,6 +509,8 @@ else:
     else:
         CLOUDINARY_ENABLED = False
 
+print(f"[CONFIG] CLOUDINARY_ENABLED={CLOUDINARY_ENABLED}", flush=True)
+
 # File upload configuration (fallback for local dev without Cloudinary)
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
 ALLOWED_EXTENSIONS = {'csv', 'xlsx', 'xls'}
