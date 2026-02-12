@@ -472,7 +472,26 @@ app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', os.getenv('MAIL_USERNAME'))
 mail = Mail(app)
 
-# File upload configuration
+# Cloudinary configuration (for persistent file storage on Railway)
+import cloudinary
+import cloudinary.uploader
+
+CLOUDINARY_CLOUD_NAME = os.getenv('CLOUDINARY_CLOUD_NAME')
+CLOUDINARY_API_KEY = os.getenv('CLOUDINARY_API_KEY')
+CLOUDINARY_API_SECRET = os.getenv('CLOUDINARY_API_SECRET')
+
+if CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET:
+    cloudinary.config(
+        cloud_name=CLOUDINARY_CLOUD_NAME,
+        api_key=CLOUDINARY_API_KEY,
+        api_secret=CLOUDINARY_API_SECRET,
+        secure=True
+    )
+    CLOUDINARY_ENABLED = True
+else:
+    CLOUDINARY_ENABLED = False
+
+# File upload configuration (fallback for local dev without Cloudinary)
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
 ALLOWED_EXTENSIONS = {'csv', 'xlsx', 'xls'}
 # Task attachments: images + common document types
@@ -1034,15 +1053,28 @@ def init_db():
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 task_id INT NOT NULL,
                 filename VARCHAR(255) NOT NULL,
-                stored_filename VARCHAR(255) NOT NULL,
+                stored_filename VARCHAR(255),
                 content_type VARCHAR(100),
                 file_size INT,
+                cloudinary_url VARCHAR(1024) DEFAULT NULL,
+                cloudinary_public_id VARCHAR(512) DEFAULT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 INDEX idx_task_id (task_id),
                 FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
             )
         """)
         print("Created task_attachments table")
+
+        # Migration: add Cloudinary columns to task_attachments if not present
+        try:
+            cursor.execute("""
+                ALTER TABLE task_attachments
+                ADD COLUMN cloudinary_url VARCHAR(1024) DEFAULT NULL,
+                ADD COLUMN cloudinary_public_id VARCHAR(512) DEFAULT NULL
+            """)
+            print("Added cloudinary columns to task_attachments")
+        except Exception as e:
+            print(f"Note: {e}")  # Columns already exist
 
         # Create bank_transactions table
         cursor.execute("""

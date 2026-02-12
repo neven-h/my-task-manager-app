@@ -1,9 +1,11 @@
-from flask import Blueprint, request, jsonify, send_file, current_app
+from flask import Blueprint, request, jsonify, send_file, current_app, redirect
 from config import (
     get_db_connection, handle_error, serialize_task, token_required,
     sanitize_csv_field, DEBUG, UPLOAD_FOLDER, TASK_ATTACHMENTS_FOLDER,
     allowed_task_attachment, app, mail, FRONTEND_URL,
+    CLOUDINARY_ENABLED,
 )
+import cloudinary.uploader
 from mysql.connector import Error
 from werkzeug.utils import secure_filename
 from datetime import datetime, date
@@ -120,7 +122,7 @@ def get_tasks():
                 task_ids = [t['id'] for t in tasks]
                 placeholders = ','.join(['%s'] * len(task_ids))
                 cursor.execute(
-                    f"SELECT id, task_id, filename, content_type, file_size FROM task_attachments WHERE task_id IN ({placeholders}) ORDER BY task_id, id",
+                    f"SELECT id, task_id, filename, content_type, file_size, cloudinary_url FROM task_attachments WHERE task_id IN ({placeholders}) ORDER BY task_id, id",
                     task_ids
                 )
                 att_rows = cursor.fetchall()
@@ -409,12 +411,14 @@ def duplicate_task(task_id):
 
 def _attachment_to_json(row):
     """Convert attachment row to JSON with url path for frontend."""
+    # Use Cloudinary URL directly if available, otherwise fall back to local serve route
+    url = row.get('cloudinary_url') or f"/api/tasks/attachments/{row['id']}/file"
     return {
         'id': row['id'],
         'filename': row['filename'],
         'content_type': row.get('content_type') or '',
         'file_size': row.get('file_size'),
-        'url': f"/api/tasks/attachments/{row['id']}/file",
+        'url': url,
     }
 
 
@@ -425,7 +429,7 @@ def get_task_attachments(task_id):
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
             cursor.execute(
-                "SELECT id, filename, content_type, file_size FROM task_attachments WHERE task_id = %s ORDER BY id",
+                "SELECT id, filename, content_type, file_size, cloudinary_url FROM task_attachments WHERE task_id = %s ORDER BY id",
                 (task_id,)
             )
             rows = cursor.fetchall()
@@ -453,26 +457,49 @@ def upload_task_attachment(task_id):
             if not cursor.fetchone():
                 return jsonify({'error': 'Task not found'}), 404
 
-        ext = (file.filename.rsplit('.', 1)[1].lower()) if '.' in file.filename else ''
-        stored_name = f"{uuid.uuid4().hex}.{ext}" if ext else uuid.uuid4().hex
-        upload_dir = current_app.config.get('TASK_ATTACHMENTS_FOLDER', TASK_ATTACHMENTS_FOLDER)
-        os.makedirs(upload_dir, exist_ok=True)
-        file_path = os.path.join(upload_dir, stored_name)
-        file.save(file_path)
-        file_size = os.path.getsize(file_path)
         content_type = file.content_type or ''
+        original_filename = secure_filename(file.filename)
+        cloudinary_url = None
+        cloudinary_public_id = None
+        stored_name = None
+        file_size = None
+
+        if CLOUDINARY_ENABLED:
+            # Upload to Cloudinary (supports images + raw files)
+            resource_type = 'image' if content_type.startswith('image/') else 'raw'
+            upload_result = cloudinary.uploader.upload(
+                file,
+                folder='task_attachments',
+                resource_type=resource_type,
+                use_filename=True,
+                unique_filename=True,
+            )
+            cloudinary_url = upload_result.get('secure_url')
+            cloudinary_public_id = upload_result.get('public_id')
+            file_size = upload_result.get('bytes', 0)
+            stored_name = cloudinary_public_id  # store public_id as reference
+        else:
+            # Fallback: save to local disk
+            ext = (file.filename.rsplit('.', 1)[1].lower()) if '.' in file.filename else ''
+            stored_name = f"{uuid.uuid4().hex}.{ext}" if ext else uuid.uuid4().hex
+            upload_dir = current_app.config.get('TASK_ATTACHMENTS_FOLDER', TASK_ATTACHMENTS_FOLDER)
+            os.makedirs(upload_dir, exist_ok=True)
+            file_path = os.path.join(upload_dir, stored_name)
+            file.save(file_path)
+            file_size = os.path.getsize(file_path)
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
             cursor.execute(
-                """INSERT INTO task_attachments (task_id, filename, stored_filename, content_type, file_size)
-                   VALUES (%s, %s, %s, %s, %s)""",
-                (task_id, secure_filename(file.filename), stored_name, content_type, file_size)
+                """INSERT INTO task_attachments
+                   (task_id, filename, stored_filename, content_type, file_size, cloudinary_url, cloudinary_public_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                (task_id, original_filename, stored_name, content_type, file_size, cloudinary_url, cloudinary_public_id)
             )
             connection.commit()
             att_id = cursor.lastrowid
             cursor.execute(
-                "SELECT id, filename, content_type, file_size FROM task_attachments WHERE id = %s",
+                "SELECT id, filename, content_type, file_size, cloudinary_url FROM task_attachments WHERE id = %s",
                 (att_id,)
             )
             row = cursor.fetchone()
@@ -490,12 +517,16 @@ def serve_task_attachment(attachment_id):
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
             cursor.execute(
-                "SELECT stored_filename, filename, content_type FROM task_attachments WHERE id = %s",
+                "SELECT stored_filename, filename, content_type, cloudinary_url FROM task_attachments WHERE id = %s",
                 (attachment_id,)
             )
             row = cursor.fetchone()
         if not row:
             return jsonify({'error': 'Attachment not found'}), 404
+        # If stored on Cloudinary, redirect directly to the CDN URL
+        if row.get('cloudinary_url'):
+            return redirect(row['cloudinary_url'])
+        # Fallback: serve from local disk
         upload_dir = current_app.config.get('TASK_ATTACHMENTS_FOLDER', TASK_ATTACHMENTS_FOLDER)
         path = os.path.join(upload_dir, row['stored_filename'])
         if not os.path.isfile(path):
@@ -517,19 +548,28 @@ def delete_task_attachment(task_id, attachment_id):
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
             cursor.execute(
-                "SELECT stored_filename FROM task_attachments WHERE id = %s AND task_id = %s",
+                "SELECT stored_filename, cloudinary_public_id, content_type FROM task_attachments WHERE id = %s AND task_id = %s",
                 (attachment_id, task_id)
             )
             row = cursor.fetchone()
         if not row:
             return jsonify({'error': 'Attachment not found'}), 404
-        upload_dir = current_app.config.get('TASK_ATTACHMENTS_FOLDER', TASK_ATTACHMENTS_FOLDER)
-        path = os.path.join(upload_dir, row['stored_filename'])
-        if os.path.isfile(path):
+        # Delete from Cloudinary if stored there
+        if CLOUDINARY_ENABLED and row.get('cloudinary_public_id'):
             try:
-                os.remove(path)
-            except OSError:
-                pass
+                resource_type = 'image' if (row.get('content_type') or '').startswith('image/') else 'raw'
+                cloudinary.uploader.destroy(row['cloudinary_public_id'], resource_type=resource_type)
+            except Exception:
+                pass  # Don't block DB delete if Cloudinary delete fails
+        else:
+            # Fallback: delete from local disk
+            upload_dir = current_app.config.get('TASK_ATTACHMENTS_FOLDER', TASK_ATTACHMENTS_FOLDER)
+            path = os.path.join(upload_dir, row['stored_filename'] or '')
+            if os.path.isfile(path):
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
         with get_db_connection() as connection:
             cursor = connection.cursor()
             cursor.execute("DELETE FROM task_attachments WHERE id = %s AND task_id = %s", (attachment_id, task_id))
