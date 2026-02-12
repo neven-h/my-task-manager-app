@@ -153,17 +153,16 @@ def create_portfolio_entry():
             if 'units' in existing_columns:
                 columns.append('units')
                 units_val = data.get('units')
-                if units_val is None or units_val == '':
-                    units_val = None
-                else:
+                parsed_units = None
+                if units_val is not None and units_val != '':
                     try:
                         normalized_units = str(units_val).replace(',', '').strip()
-                        units_val = float(normalized_units)
-                        if units_val <= 0:
-                            units_val = None
+                        parsed = float(normalized_units)
+                        if parsed > 0:
+                            parsed_units = parsed
                     except (TypeError, ValueError):
-                        units_val = None
-                values_list.append(units_val)
+                        pass
+                values_list.append(parsed_units)
                 print(f"DEBUG: CREATE - units_val={units_val}, parsed_units={parsed_units}")
             
             query = f"""
