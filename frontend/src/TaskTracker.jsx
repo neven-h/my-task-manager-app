@@ -18,7 +18,7 @@ const BULK_DRAFT_STORAGE_KEY = 'taskTracker_bulkDraft';
 
 import useDebounce from './hooks/useDebounce';
 
-const TaskTracker = ({onLogout, authRole, authUser}) => {
+const TaskTracker = ({onLogout, authToken, authRole, authUser}) => {
     const navigate = useNavigate();
     const isSharedUser = authRole === 'shared';
     const isLimitedUser = authRole === 'limited';
@@ -368,11 +368,13 @@ useEffect(() => {
             const taskId = editingTask ? editingTask.id : data.id;
 
             if (taskId) {
+                const authHeaders = authToken ? { 'Authorization': `Bearer ${authToken}` } : {};
                 for (const { file, name } of (newAttachments || [])) {
                     const fd = new FormData();
                     fd.append('file', file, name || file.name || `image-${Date.now()}.png`);
                     const upRes = await fetch(`${API_BASE}/tasks/${taskId}/attachments`, {
                         method: 'POST',
+                        headers: authHeaders,
                         body: fd
                     });
                     if (!upRes.ok) {
@@ -381,7 +383,10 @@ useEffect(() => {
                     }
                 }
                 for (const attId of (removedAttachmentIds || [])) {
-                    await fetch(`${API_BASE}/tasks/${taskId}/attachments/${attId}`, { method: 'DELETE' });
+                    await fetch(`${API_BASE}/tasks/${taskId}/attachments/${attId}`, {
+                        method: 'DELETE',
+                        headers: authHeaders
+                    });
                 }
             }
 
