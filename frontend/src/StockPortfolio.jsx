@@ -1322,7 +1322,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                                 fontWeight: '600'
                               }}>
                                 {change.percentChange >= 0 ? '+' : ''}{change.percentChange.toFixed(2)}%
-                              </div>
+                              </span>
                             </div>
                           ) : baseGrowth !== null ? (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
