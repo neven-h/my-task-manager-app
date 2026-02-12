@@ -1961,45 +1961,45 @@ useEffect(() => {
                                 </div>
 
                                 {/* Tag filter row */}
-                                {allTags.length > 0 && (
-                                    <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', flexWrap: 'wrap'}}>
-                                        <span style={{fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: '#666', flexShrink: 0}}>Filter by tag:</span>
-                                        {allTags.map(tag => {
-                                            const isActive = filters.tags.includes(tag.name);
-                                            return (
-                                                <button
-                                                    key={tag.id}
-                                                    type="button"
-                                                    onClick={() => setFilters(f => ({
-                                                        ...f,
-                                                        tags: isActive ? f.tags.filter(t => t !== tag.name) : [...f.tags, tag.name]
-                                                    }))}
-                                                    style={{
-                                                        padding: '4px 10px',
-                                                        border: '2px solid #000',
-                                                        background: isActive ? '#FFD500' : '#fff',
-                                                        fontWeight: isActive ? 700 : 500,
-                                                        fontSize: '0.82rem',
-                                                        cursor: 'pointer',
-                                                        fontFamily: '"Inter", sans-serif',
-                                                        boxShadow: isActive ? '2px 2px 0 #000' : 'none'
-                                                    }}
-                                                >
-                                                    {tag.name}
-                                                </button>
-                                            );
-                                        })}
-                                        {filters.tags.length > 0 && (
+                                <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', flexWrap: 'wrap'}}>
+                                    <span style={{fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: '#666', flexShrink: 0}}>Tags:</span>
+                                    {allTags.length === 0 ? (
+                                        <span style={{fontSize: '0.8rem', color: '#aaa'}}>No tags yet</span>
+                                    ) : allTags.map(tag => {
+                                        const isActive = filters.tags.includes(tag.name);
+                                        return (
                                             <button
+                                                key={tag.id}
                                                 type="button"
-                                                onClick={() => setFilters(f => ({...f, tags: []}))}
-                                                style={{padding: '4px 10px', border: '2px solid #000', background: '#fff', fontSize: '0.82rem', cursor: 'pointer', fontFamily: '"Inter", sans-serif', color: '#666'}}
+                                                onClick={() => setFilters(f => ({
+                                                    ...f,
+                                                    tags: isActive ? f.tags.filter(t => t !== tag.name) : [...f.tags, tag.name]
+                                                }))}
+                                                style={{
+                                                    padding: '4px 10px',
+                                                    border: '2px solid #000',
+                                                    background: isActive ? '#FFD500' : '#fff',
+                                                    fontWeight: isActive ? 700 : 500,
+                                                    fontSize: '0.82rem',
+                                                    cursor: 'pointer',
+                                                    fontFamily: '"Inter", sans-serif',
+                                                    boxShadow: isActive ? '2px 2px 0 #000' : 'none'
+                                                }}
                                             >
-                                                ✕ Clear
+                                                {tag.name}
                                             </button>
-                                        )}
-                                    </div>
-                                )}
+                                        );
+                                    })}
+                                    {filters.tags.length > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setFilters(f => ({...f, tags: []}))}
+                                            style={{padding: '4px 10px', border: '2px solid #000', background: '#fff', fontSize: '0.82rem', cursor: 'pointer', fontFamily: '"Inter", sans-serif', color: '#666'}}
+                                        >
+                                            ✕ Clear
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             {loading ? (
