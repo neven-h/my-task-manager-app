@@ -1195,6 +1195,20 @@ def manage_tags():
             with get_db_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
 
+                # Auto-seed tags table from tasks.tags if table is empty
+                cursor.execute("SELECT COUNT(*) as cnt FROM tags")
+                if cursor.fetchone()['cnt'] == 0:
+                    cursor.execute("SELECT DISTINCT tags FROM tasks WHERE tags IS NOT NULL AND tags != ''")
+                    all_tag_names = set()
+                    for row in cursor.fetchall():
+                        for t in row['tags'].split(','):
+                            t = t.strip()
+                            if t:
+                                all_tag_names.add(t)
+                    for tag_name in all_tag_names:
+                        cursor.execute("INSERT IGNORE INTO tags (name) VALUES (%s)", (tag_name,))
+                    connection.commit()
+
                 # Build query based on user role
                 if user_role == 'limited':
                     # Limited users only see their own tags OR tags with no owner (shared)
