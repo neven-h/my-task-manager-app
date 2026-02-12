@@ -479,6 +479,8 @@ def upload_task_attachment(task_id):
         return jsonify(_attachment_to_json(row)), 201
     except Error as e:
         return jsonify({'error': str(e)}), 500
+    except Exception as e:
+        return jsonify({'error': f'Upload failed: {str(e)}'}), 500
 
 
 @tasks_bp.route('/api/tasks/attachments/<int:attachment_id>/file', methods=['GET'])
