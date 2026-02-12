@@ -354,12 +354,11 @@ const StockPortfolio = ({ onBackToTasks }) => {
       const method = editingEntry ? 'PUT' : 'POST';
 
       // Parse units - allow decimal values, null if empty
+      const unitsValue = formData.units;
       let units = null;
-      const unitsStr = String(formData.units ?? '').trim();
-      console.log('DEBUG: formData.units =', formData.units, 'unitsStr =', unitsStr);
-      if (unitsStr !== '') {
-        const numValue = parseFloat(unitsStr);
-        console.log('DEBUG: parsed numValue =', numValue, 'isNaN =', isNaN(numValue), 'isFinite =', isFinite(numValue), 'numValue > 0 =', numValue > 0);
+      if (unitsValue != null && String(unitsValue).trim() !== '') {
+        const normalizedUnits = String(unitsValue).replace(/,/g, '').trim();
+        const numValue = parseFloat(normalizedUnits);
         if (!isNaN(numValue) && numValue > 0 && isFinite(numValue)) {
           units = numValue;
         }
