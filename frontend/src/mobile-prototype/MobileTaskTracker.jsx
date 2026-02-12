@@ -80,6 +80,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
     const [showShareModal, setShowShareModal] = useState(false);
     const [shareEmail, setShareEmail] = useState('');
     const [sharingTask, setSharingTask] = useState(null);
+    const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
     const [loading, setLoading] = useState(false);
     const [tagInput, setTagInput] = useState('');
     const [showBulkInput, setShowBulkInput] = useState(false);
@@ -302,7 +303,9 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
 
             await fetchTasks();
             clearDraft();
-            closeModal();
+            // Close directly after successful save so we don't show the "unsaved changes" dialog
+            setShowTaskModal(false);
+            setEditingTask(null);
         } catch (err) {
             console.error('Failed to save task:', err);
             alert('Failed to save task. See console for details.');
@@ -465,21 +468,20 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
 
     const closeModal = () => {
         if (hasUnsavedChanges()) {
-            const message = editingTask
-                ? 'You have unsaved changes. Are you sure you want to close without saving?'
-                : 'You have unsaved changes. Are you sure you want to discard this draft?';
-
-            if (window.confirm(message)) {
-                if (!editingTask) {
-                    clearDraft();
-                }
-                setShowTaskModal(false);
-                setEditingTask(null);
-            }
+            setShowDiscardConfirm(true);
         } else {
             setShowTaskModal(false);
             setEditingTask(null);
         }
+    };
+
+    const confirmDiscardAndClose = () => {
+        if (!editingTask) {
+            clearDraft();
+        }
+        setShowDiscardConfirm(false);
+        setShowTaskModal(false);
+        setEditingTask(null);
     };
 
     const duplicateTask = (task) => {
@@ -1848,6 +1850,79 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                     Delete Task
                                 </button>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* In-app discard confirmation (replaces browser confirm) */}
+            {showDiscardConfirm && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0,0,0,0.5)',
+                        zIndex: 250,
+                        display: 'flex',
+                        alignItems: 'flex-end',
+                        padding: 0
+                    }}
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) setShowDiscardConfirm(false);
+                    }}
+                >
+                    <div
+                        style={{
+                            width: '100%',
+                            background: THEME.bg,
+                            borderRadius: '16px 16px 0 0',
+                            padding: '24px',
+                            borderTop: `3px solid ${THEME.border}`,
+                            boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
+                            fontFamily: FONT_STACK
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h3 style={{
+                            fontSize: '1.2rem',
+                            fontWeight: 900,
+                            margin: '0 0 12px 0',
+                            textTransform: 'uppercase',
+                            fontFamily: FONT_STACK,
+                            color: THEME.text
+                        }}>
+                            Unsaved changes
+                        </h3>
+                        <p style={{
+                            margin: '0 0 24px 0',
+                            fontSize: '1rem',
+                            color: THEME.muted,
+                            lineHeight: 1.5
+                        }}>
+                            {editingTask
+                                ? 'You have unsaved changes. Are you sure you want to close without saving?'
+                                : 'You have unsaved changes. Are you sure you want to discard this draft?'}
+                        </p>
+                        <div style={{display: 'flex', gap: '12px'}}>
+                            <button
+                                type="button"
+                                onClick={() => setShowDiscardConfirm(false)}
+                                className="mobile-btn"
+                                style={{flex: 1}}
+                            >
+                                Keep editing
+                            </button>
+                            <button
+                                type="button"
+                                onClick={confirmDiscardAndClose}
+                                className="mobile-btn mobile-btn-accent"
+                                style={{flex: 1}}
+                            >
+                                Discard
+                            </button>
                         </div>
                     </div>
                 </div>
