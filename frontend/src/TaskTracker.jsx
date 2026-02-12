@@ -163,9 +163,10 @@ useEffect(() => {
         try {
             const response = await fetch(`${API_BASE}/categories?username=${authUser}&role=${authRole}`);
             const data = await response.json();
-            setAllCategories(data);
+            setAllCategories(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Error fetching categories:', err);
+            setAllCategories([]);
         }
     };
 
@@ -173,9 +174,10 @@ useEffect(() => {
         try {
             const response = await fetch(`${API_BASE}/tags?username=${authUser}&role=${authRole}`);
             const data = await response.json();
-            setAllTags(data);
+            setAllTags(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Error fetching tags:', err);
+            setAllTags([]);
         }
     };
 
@@ -244,9 +246,10 @@ useEffect(() => {
         try {
             const response = await fetch(`${API_BASE}/clients?username=${authUser}&role=${authRole}`);
             const data = await response.json();
-            setClients(data);
+            setClients(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Error fetching clients:', err);
+            setClients([]);
         }
     };
 
@@ -262,6 +265,9 @@ useEffect(() => {
 
             const response = await fetch(`${API_BASE}/tasks?${params}`);
             let data = await response.json();
+            if (!Array.isArray(data)) {
+                data = [];
+            }
 
             // Client-side filtering by tags
             if (activeFilters.tags.length > 0) {
@@ -276,6 +282,7 @@ useEffect(() => {
             setError(null);
         } catch (err) {
             setError('Failed to fetch tasks');
+            setTasks([]);
             console.error('Error fetching tasks:', err);
         } finally {
             setLoading(false);
@@ -286,9 +293,10 @@ useEffect(() => {
         try {
             const response = await fetch(`${API_BASE}/stats?username=${authUser}&role=${authRole}`);
             const data = await response.json();
-            setStats(data);
+            setStats(response.ok && data && typeof data === 'object' && !data.error ? data : null);
         } catch (err) {
             console.error('Error fetching stats:', err);
+            setStats(null);
         }
     };
 
@@ -1122,7 +1130,9 @@ useEffect(() => {
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                         {task.attachments.map(att => {
                             const baseOrigin = API_BASE.replace(/\/api\/?$/, '');
-                            const fullUrl = (att.url?.startsWith('/') ? baseOrigin + att.url : `${API_BASE}/${att.url || ''}`);
+                            const fullUrl = att.url?.startsWith('http')
+                                ? att.url  // Cloudinary absolute URL — use as-is
+                                : (att.url?.startsWith('/') ? baseOrigin + att.url : `${API_BASE}/${att.url || ''}`);
                             const isImage = (att.content_type || '').startsWith('image/');
                             return (
                                 <div key={att.id} className="task-card-attachment-item">
@@ -2189,7 +2199,7 @@ useEffect(() => {
                                             <div style={{
                                                 fontSize: '3rem',
                                                 fontWeight: 900
-                                            }}>{stats.overall.total_tasks}</div>
+                                            }}>{stats?.overall?.total_tasks ?? 0}</div>
                                             <div style={{
                                                 fontSize: '0.85rem',
                                                 fontWeight: 700,
@@ -2204,7 +2214,7 @@ useEffect(() => {
                                             <div style={{
                                                 fontSize: '3rem',
                                                 fontWeight: 900
-                                            }}>{stats.overall.completed_tasks}</div>
+                                            }}>{stats?.overall?.completed_tasks ?? 0}</div>
                                             <div style={{
                                                 fontSize: '0.85rem',
                                                 fontWeight: 700,
@@ -2224,7 +2234,7 @@ useEffect(() => {
                                             <div style={{
                                                 fontSize: '3rem',
                                                 fontWeight: 900
-                                            }}>{stats.overall.uncompleted_tasks}</div>
+                                            }}>{stats?.overall?.uncompleted_tasks ?? 0}</div>
                                             <div style={{
                                                 fontSize: '0.85rem',
                                                 fontWeight: 700,
@@ -2237,7 +2247,7 @@ useEffect(() => {
 
                                         <div style={{border: '3px solid #000', padding: '32px', background: '#fff'}}>
                                             <div style={{fontSize: '3rem', fontWeight: 900}}>
-                                                {stats.overall.total_duration ? stats.overall.total_duration.toFixed(1) : '0'}h
+                                                {stats?.overall?.total_duration != null ? Number(stats.overall.total_duration).toFixed(1) : '0'}h
                                             </div>
                                             <div style={{
                                                 fontSize: '0.85rem',
@@ -2630,7 +2640,9 @@ useEffect(() => {
                                         <div className="task-attachments-list" style={{ marginBottom: '10px' }}>
                                             {(formData.attachments || []).filter(a => !(formData.removedAttachmentIds || []).includes(a.id)).map(att => {
                                                 const baseOrigin = API_BASE.replace(/\/api\/?$/, '');
-                                                const fullUrl = (att.url?.startsWith('/') ? baseOrigin + att.url : `${API_BASE}/${att.url || ''}`);
+                                                const fullUrl = att.url?.startsWith('http')
+                                                    ? att.url
+                                                    : (att.url?.startsWith('/') ? baseOrigin + att.url : `${API_BASE}/${att.url || ''}`);
                                                 const isImage = (att.content_type || '').startsWith('image/');
                                                 return (
                                                     <div key={att.id} className="task-attachment-chip">

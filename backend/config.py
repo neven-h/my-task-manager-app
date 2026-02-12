@@ -1350,6 +1350,19 @@ def init_db():
                            )
                        """)
 
+        # Add owner column to tags table for user isolation (limited users see only their tags)
+        try:
+            cursor.execute("""
+                ALTER TABLE tags
+                ADD COLUMN owner VARCHAR(255)
+            """)
+            print("Added owner column to tags table")
+        except Error as e:
+            if 'Duplicate column' in str(e):
+                pass  # Column already exists
+            else:
+                print(f"Tags owner column migration note: {e}")
+
         # Create categories_master table for user-defined categories
         cursor.execute("""
                        CREATE TABLE IF NOT EXISTS categories_master
@@ -1450,6 +1463,19 @@ def init_db():
                        )
                            )
                        """)
+
+        # Add owner column to clients table for user isolation (limited users see only their clients)
+        try:
+            cursor.execute("""
+                ALTER TABLE clients
+                ADD COLUMN owner VARCHAR(255)
+            """)
+            print("Added owner column to clients table")
+        except Error as e:
+            if 'Duplicate column' in str(e):
+                pass  # Column already exists
+            else:
+                print(f"Clients owner column migration note: {e}")
 
         # Create users table for authentication
         cursor.execute("""
