@@ -1270,22 +1270,6 @@ useEffect(() => {
                                 Portfolio
                             </button>
                         )}
-                        {/* Bulk Add - only for admin */}
-                        {isAdmin && (
-                            <button className="btn btn-white" onClick={() => setShowBulkInput(true)} disabled={loading} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
-                                <Plus size={16}
-                                      style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>
-                                Bulk Add
-                            </button>
-                        )}
-                        {/* New Task - only for admin */}
-                        {isAdmin && (
-                            <button className="btn btn-red" onClick={openNewTaskForm} disabled={loading} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
-                                <Plus size={16}
-                                      style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>
-                                New Task
-                            </button>
-                        )}
                         {/* Stats button - for everyone (filtered by backend) */}
                         <button className="btn btn-yellow" onClick={() => setView(view === 'list' ? 'stats' : 'list')} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
                             {view === 'list' ? (
@@ -1890,26 +1874,53 @@ useEffect(() => {
                                 </h2>
                                 <p style={{color: '#666', fontSize: '1rem'}}>{tasks.length} tasks</p>
 
-                                {/* Task View Mode Toggle */}
-                                <div style={{display: 'flex', gap: '12px', marginTop: '24px'}}>
-                                    <button
-                                        className={`btn ${taskViewMode === 'all' ? 'btn-blue' : 'btn-white'}`}
-                                        onClick={() => setTaskViewMode('all')}
-                                    >
-                                        All Tasks
-                                    </button>
-                                    <button
-                                        className={`btn ${taskViewMode === 'completed' ? 'btn-yellow' : 'btn-white'}`}
-                                        onClick={() => setTaskViewMode('completed')}
-                                    >
-                                        Completed Only
-                                    </button>
-                                    <button
-                                        className={`btn ${taskViewMode === 'uncompleted' ? 'btn-red' : 'btn-white'}`}
-                                        onClick={() => setTaskViewMode('uncompleted')}
-                                    >
-                                        Uncompleted Only
-                                    </button>
+                                {/* Filter toggles + Action buttons row */}
+                                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '24px', gap: '12px', flexWrap: 'wrap'}}>
+                                    {/* Left: view filter toggles */}
+                                    <div style={{display: 'flex', gap: '12px', flexWrap: 'wrap'}}>
+                                        <button
+                                            className={`btn ${taskViewMode === 'all' ? 'btn-blue' : 'btn-white'}`}
+                                            onClick={() => setTaskViewMode('all')}
+                                        >
+                                            All Tasks
+                                        </button>
+                                        <button
+                                            className={`btn ${taskViewMode === 'completed' ? 'btn-yellow' : 'btn-white'}`}
+                                            onClick={() => setTaskViewMode('completed')}
+                                        >
+                                            Completed Only
+                                        </button>
+                                        <button
+                                            className={`btn ${taskViewMode === 'uncompleted' ? 'btn-red' : 'btn-white'}`}
+                                            onClick={() => setTaskViewMode('uncompleted')}
+                                        >
+                                            Uncompleted Only
+                                        </button>
+                                    </div>
+
+                                    {/* Right: action buttons */}
+                                    {isAdmin && (
+                                        <div style={{display: 'flex', gap: '12px', flexShrink: 0}}>
+                                            <button
+                                                className="btn btn-yellow"
+                                                onClick={() => setShowBulkInput(true)}
+                                                disabled={loading}
+                                                style={{whiteSpace: 'nowrap', background: '#FFD500', color: '#000', border: '2px solid #000', fontWeight: 700}}
+                                            >
+                                                <Plus size={16} style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>
+                                                Bulk Add
+                                            </button>
+                                            <button
+                                                className="btn btn-red"
+                                                onClick={openNewTaskForm}
+                                                disabled={loading}
+                                                style={{whiteSpace: 'nowrap', fontWeight: 700}}
+                                            >
+                                                <Plus size={16} style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>
+                                                + New Task
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
