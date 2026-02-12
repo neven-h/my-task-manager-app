@@ -16,6 +16,18 @@ import pandas as pd
 
 tasks_bp = Blueprint('tasks', __name__)
 
+
+def _sync_tags_to_table(cursor, tags):
+    """Ensure all tag names exist in the tags table (INSERT IGNORE)."""
+    for tag in tags:
+        tag = tag.strip()
+        if tag:
+            cursor.execute(
+                "INSERT IGNORE INTO tags (name) VALUES (%s)",
+                (tag,)
+            )
+
+
 # ================================
 # Tasks Endpoints
 # ================================
@@ -158,7 +170,8 @@ def create_task():
 
             # Handle tags - convert list to comma-separated string
             tags = data.get('tags', [])
-            tags_str = ','.join(tags) if isinstance(tags, list) else tags
+            tags_list = tags if isinstance(tags, list) else [t.strip() for t in tags.split(',') if t.strip()]
+            tags_str = ','.join(tags_list)
 
             # Handle duration - convert empty string to None/NULL
             duration = data.get('duration')
@@ -183,6 +196,7 @@ def create_task():
             )
 
             cursor.execute(query, values)
+            _sync_tags_to_table(cursor, tags_list)
             connection.commit()
 
             task_id = cursor.lastrowid
@@ -235,7 +249,8 @@ def update_task(task_id):
 
             # Handle tags - convert list to comma-separated string
             tags = data.get('tags', [])
-            tags_str = ','.join(tags) if isinstance(tags, list) else tags
+            tags_list = tags if isinstance(tags, list) else [t.strip() for t in tags.split(',') if t.strip()]
+            tags_str = ','.join(tags_list)
 
             # Handle duration - convert empty string to None/NULL
             duration = data.get('duration')
@@ -260,6 +275,7 @@ def update_task(task_id):
             )
 
             cursor.execute(query, values)
+            _sync_tags_to_table(cursor, tags_list)
             connection.commit()
 
             if cursor.rowcount == 0:
