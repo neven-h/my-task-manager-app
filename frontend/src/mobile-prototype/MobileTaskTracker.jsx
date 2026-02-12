@@ -198,7 +198,8 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
             const response = await fetch(`${API_BASE}/tasks?username=${authUser}&role=${authRole}`);
             if (!response.ok) throw new Error(`Tasks fetch failed: ${response.status}`);
             const data = await response.json();
-            const sorted = (data || []).sort((a, b) => {
+            const list = Array.isArray(data) ? data : [];
+            const sorted = list.sort((a, b) => {
                 if (a.status === 'uncompleted' && b.status === 'completed') return -1;
                 if (a.status === 'completed' && b.status === 'uncompleted') return 1;
                 return 0;
@@ -216,9 +217,10 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
             const response = await fetch(`${API_BASE}/categories`);
             if (!response.ok) throw new Error(`Categories fetch failed: ${response.status}`);
             const data = await response.json();
-            setCategories(data || []);
+            setCategories(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Failed to fetch categories:', err);
+            setCategories([]);
         }
     };
 
@@ -227,12 +229,14 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
             const response = await fetch(`${API_BASE}/clients`);
             if (!response.ok) throw new Error(`Clients fetch failed: ${response.status}`);
             const data = await response.json();
-            const clientNames = (data || []).map(client =>
+            const list = Array.isArray(data) ? data : [];
+            const clientNames = list.map(client =>
                 typeof client === 'string' ? client : client.name || client.client || client
             );
             setClients(clientNames);
         } catch (err) {
             console.error('Failed to fetch clients:', err);
+            setClients([]);
         }
     };
 
@@ -241,9 +245,10 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
             const response = await fetch(`${API_BASE}/tags`);
             if (!response.ok) throw new Error(`Tags fetch failed: ${response.status}`);
             const data = await response.json();
-            setAllTags(data || []);
+            setAllTags(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Failed to fetch tags:', err);
+            setAllTags([]);
         }
     };
 
@@ -1483,18 +1488,21 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                 >
                     <div style={{
                         width: '100%',
-                        maxHeight: '75vh',
+                        maxHeight: '94vh',
+                        height: '94vh',
                         background: '#fff',
                         borderRadius: '16px 16px 0 0',
                         overflowY: 'auto',
                         WebkitOverflowScrolling: 'touch',
                         display: 'flex',
                         flexDirection: 'column',
-                        boxShadow: '0 -4px 20px rgba(0,0,0,0.3)'
+                        boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
+                        paddingBottom: 'env(safe-area-inset-bottom, 0)'
                     }}>
                         {/* Modal Header */}
                         <div style={{
                             padding: '16px 20px',
+                            paddingTop: 'max(16px, env(safe-area-inset-top, 0))',
                             borderBottom: '1px solid rgba(0,0,0,0.1)',
                             display: 'flex',
                             justifyContent: 'space-between',
@@ -1527,7 +1535,10 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                         </div>
 
                         {/* Modal Body */}
-                        <div style={{padding: '16px', paddingBottom: '32px'}}>
+                        <div style={{
+                            padding: '16px',
+                            paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 24px))'
+                        }}>
                             {/* Title */}
                             <div style={{marginBottom: '16px'}}>
                                 <label style={{
@@ -1951,18 +1962,21 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                 >
                     <div style={{
                         width: '100%',
-                        maxHeight: '70vh',
+                        maxHeight: '94vh',
+                        height: '94vh',
                         background: '#fff',
                         borderRadius: '16px 16px 0 0',
                         overflowY: 'auto',
                         WebkitOverflowScrolling: 'touch',
                         display: 'flex',
                         flexDirection: 'column',
-                        boxShadow: '0 -4px 20px rgba(0,0,0,0.3)'
+                        boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
+                        paddingBottom: 'env(safe-area-inset-bottom, 0)'
                     }}>
                         {/* Modal Header */}
                         <div style={{
                             padding: '16px 20px',
+                            paddingTop: 'max(16px, env(safe-area-inset-top, 0))',
                             borderBottom: '1px solid rgba(0,0,0,0.1)',
                             display: 'flex',
                             justifyContent: 'space-between',
@@ -1996,7 +2010,10 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                         </div>
 
                         {/* Modal Body */}
-                        <div style={{padding: '16px', paddingBottom: '32px'}}>
+                        <div style={{
+                            padding: '16px',
+                            paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 24px))'
+                        }}>
                             <p style={{
                                 marginBottom: '16px',
                                 fontSize: '0.9rem',
