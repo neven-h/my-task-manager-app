@@ -70,7 +70,8 @@ useEffect(() => {
         client: '',
         dateStart: '',
         dateEnd: '',
-        tags: []
+        tags: [],
+        hasAttachment: false
     });
 
     const [formData, setFormData] = useState({
@@ -857,6 +858,7 @@ useEffect(() => {
         if (filters.search) params.append('search', filters.search);
         if (filters.dateStart) params.append('date_start', filters.dateStart);
         if (filters.dateEnd) params.append('date_end', filters.dateEnd);
+        if (filters.hasAttachment) params.append('has_attachment', 'true');
 
         return params;
     };
@@ -1676,7 +1678,18 @@ useEffect(() => {
                                     </div>
                                 )}
                             </div>
-                            {(filters.search || filters.category !== 'all' || filters.status !== 'all' || filters.client || filters.dateStart || filters.dateEnd || filters.tags.length > 0) && (
+                            <div>
+                                <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem'}}>
+                                    <input
+                                        type="checkbox"
+                                        checked={filters.hasAttachment}
+                                        onChange={(e) => setFilters(f => ({...f, hasAttachment: e.target.checked}))}
+                                        style={{width: '16px', height: '16px', cursor: 'pointer'}}
+                                    />
+                                    <Paperclip size={14} style={{flexShrink: 0}} /> Has Attachment
+                                </label>
+                            </div>
+                            {(filters.search || filters.category !== 'all' || filters.status !== 'all' || filters.client || filters.dateStart || filters.dateEnd || filters.tags.length > 0 || filters.hasAttachment) && (
                                 <button className="btn btn-white" onClick={() => setFilters({
                                     search: '',
                                     category: 'all',
@@ -1684,7 +1697,8 @@ useEffect(() => {
                                     client: '',
                                     dateStart: '',
                                     dateEnd: '',
-                                    tags: []
+                                    tags: [],
+                                    hasAttachment: false
                                 })} style={{width: '100%'}}>Clear Filters</button>
                             )}
                         </div>
@@ -1884,8 +1898,20 @@ useEffect(() => {
                                 )}
                             </div>
 
+                            <div>
+                                <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem'}}>
+                                    <input
+                                        type="checkbox"
+                                        checked={filters.hasAttachment}
+                                        onChange={(e) => setFilters(f => ({...f, hasAttachment: e.target.checked}))}
+                                        style={{width: '16px', height: '16px', cursor: 'pointer'}}
+                                    />
+                                    <Paperclip size={14} style={{flexShrink: 0}} /> Has Attachment
+                                </label>
+                            </div>
+
                             {(filters.search || filters.category !== 'all' || filters.status !== 'all' ||
-                                filters.client || filters.dateStart || filters.dateEnd || filters.tags.length > 0) && (
+                                filters.client || filters.dateStart || filters.dateEnd || filters.tags.length > 0 || filters.hasAttachment) && (
                                 <button
                                     className="btn btn-white"
                                     onClick={() => setFilters({
@@ -1895,7 +1921,8 @@ useEffect(() => {
                                         client: '',
                                         dateStart: '',
                                         dateEnd: '',
-                                        tags: []
+                                        tags: [],
+                                        hasAttachment: false
                                     })}
                                     style={{width: '100%', padding: '12px'}}
                                 >

@@ -47,6 +47,7 @@ def get_tasks():
         username = request.args.get('username')  # NEW: Get username from query
         user_role = request.args.get('role')  # NEW: Get role from query
         include_drafts = request.args.get('include_drafts', 'false')
+        has_attachment = request.args.get('has_attachment')
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -101,6 +102,9 @@ def get_tasks():
             if date_end:
                 query += " AND task_date <= %s"
                 params.append(date_end)
+
+            if has_attachment == 'true':
+                query += " AND id IN (SELECT DISTINCT task_id FROM task_attachments)"
 
             query += " ORDER BY task_date DESC, task_time DESC, created_at DESC"
 
