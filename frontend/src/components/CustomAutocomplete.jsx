@@ -7,13 +7,15 @@ import { ChevronDown } from 'lucide-react';
  * A brutalist-styled autocomplete dropdown that matches the app's design system
  * with thick borders, clear white background, and proper keyboard navigation.
  */
-const CustomAutocomplete = ({ 
-  value, 
-  onChange, 
-  options = [], 
+const CustomAutocomplete = ({
+  value,
+  onChange,
+  options = [],
   placeholder = "Select...",
   label = null,
-  required = false 
+  required = false,
+  onSelect = null,  // called when user picks from dropdown (receives selected value)
+  onEnter = null    // called when user presses Enter without selecting from dropdown
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [filteredOptions, setFilteredOptions] = useState(options);
@@ -52,7 +54,11 @@ const CustomAutocomplete = ({
   };
 
   const handleOptionClick = (option) => {
-    onChange(option);
+    if (onSelect) {
+      onSelect(option);
+    } else {
+      onChange(option);
+    }
     setIsOpen(false);
     inputRef.current?.blur();
   };
@@ -84,6 +90,9 @@ const CustomAutocomplete = ({
         e.preventDefault();
         if (isOpen && filteredOptions[highlightedIndex]) {
           handleOptionClick(filteredOptions[highlightedIndex]);
+        } else if (onEnter) {
+          onEnter();
+          setIsOpen(false);
         }
         break;
       case 'Escape':
