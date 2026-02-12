@@ -1,6 +1,7 @@
 import React, {useState, useEffect} from 'react';
 import { AlertCircle, ArrowLeft, Plus, TrendingDown, TrendingUp } from 'lucide-react';
 import CustomAutocomplete from '../../components/CustomAutocomplete';
+import YahooPortfolioSection from '../../components/portfolio/YahooPortfolioSection';
 import API_BASE from '../../config';
 import { formatCurrency, formatCurrencyWithCode } from '../../utils/formatCurrency';
 
@@ -429,6 +430,16 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                     </div>
                 </div>
             )}
+
+            {/* Yahoo Finance widget */}
+            <div style={{ padding: '0 16px 16px' }}>
+                <YahooPortfolioSection
+                    colors={{ ...THEME, textLight: THEME.muted }}
+                    authUser={authUser}
+                    authRole={authRole}
+                    defaultExpanded={true}
+                />
+            </div>
 
             {/* Entries List */}
             <div style={{padding: '16px'}}>
