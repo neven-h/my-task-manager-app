@@ -105,16 +105,19 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
         }
     };
 
-    const fetchEntries = async () => {
+    const fetchEntries = async (silent = false) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const response = await fetch(`${API_BASE}/portfolio?tab_id=${activeTabId}&username=${authUser}&role=${authRole}`);
             const data = await response.json();
-            setEntries(Array.isArray(data) ? data : []);
+            const raw = Array.isArray(data) ? data : [];
+            const normalized = raw.map(entry => ({ ...entry, name: entry.name ?? '' }));
+            setEntries(normalized);
         } catch (err) {
             console.error('Error fetching entries:', err);
+            setEntries([]);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
@@ -122,9 +125,11 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
         try {
             const response = await fetch(`${API_BASE}/portfolio/summary?tab_id=${activeTabId}&username=${authUser}&role=${authRole}`);
             const data = await response.json();
-            setSummary(data);
+            const isValid = response.ok && data && !data.error && (typeof data.total_value_ils === 'number' || Array.isArray(data.entries));
+            setSummary(isValid ? data : null);
         } catch (err) {
             console.error('Error fetching summary:', err);
+            setSummary(null);
         }
     };
 
@@ -132,9 +137,15 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
         try {
             const response = await fetch(`${API_BASE}/portfolio/names?tab_id=${activeTabId}&username=${authUser}&role=${authRole}`);
             const data = await response.json();
-            setStockNames(Array.isArray(data) ? data : []);
+            if (!response.ok || !data || data.error) {
+                setStockNames([]);
+                return;
+            }
+            const names = Array.isArray(data) ? data.map(s => typeof s === 'string' ? s : (s && s.name) ?? '') : [];
+            setStockNames(names);
         } catch (err) {
             console.error('Error fetching stock names:', err);
+            setStockNames([]);
         }
     };
 
@@ -319,8 +330,8 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                 }
                 handleCloseForm(true); // Force close immediately
                 setLoading(false); // Stop loading so UI is responsive
-                // Refresh data in background (don't block UI)
-                fetchEntries();
+                // Refresh data in background without showing loading again
+                fetchEntries(true);
                 fetchSummary();
                 return; // Skip finally's setLoading
             }
@@ -344,21 +355,24 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
         }
     };
 
-    // Group entries by stock name
+    // Group entries by stock name (safe key so reduce never uses undefined)
     const groupedEntries = entries.reduce((acc, entry) => {
-        if (!acc[entry.name]) {
-            acc[entry.name] = [];
+        const key = entry.name ?? '';
+        if (!acc[key]) {
+            acc[key] = [];
         }
-        acc[entry.name].push(entry);
+        acc[key].push(entry);
         return acc;
     }, {});
 
-    // Helper: current price per unit (live or from stored value), total value, and growth
+    // Helper: current price per unit (live or from stored value), total value, and growth (guarded against division by zero and non-finite value_ils)
     const getEntryValues = (entry, livePrice) => {
-        const units = entry.units ?? 1;
+        const units = entry.units != null && entry.units !== '' && Number(entry.units) > 0 ? Number(entry.units) : 1;
         const currency = entry.currency || 'ILS';
-        const currentPricePerUnit = livePrice?.currentPrice ?? (entry.value_ils / units);
-        const totalValue = units * currentPricePerUnit;
+        const valueNum = Number(entry.value_ils);
+        const safeValue = Number.isFinite(valueNum) ? valueNum : 0;
+        const currentPricePerUnit = livePrice?.currentPrice ?? (safeValue / units);
+        const totalValue = units * (Number.isFinite(currentPricePerUnit) ? currentPricePerUnit : safeValue);
         const basePrice = entry.base_price != null && entry.base_price !== '' ? parseFloat(entry.base_price) : null;
         const growthAmount = basePrice != null && basePrice !== 0
             ? currentPricePerUnit - basePrice
@@ -426,7 +440,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                         </div>
                     )}
                     <div style={{fontSize: '0.85rem', color: THEME.muted}}>
-                        {summary.latest_entries?.length || 0} stocks
+                        {summary.entries?.length ?? summary.count ?? 0} stocks
                     </div>
                 </div>
             )}
