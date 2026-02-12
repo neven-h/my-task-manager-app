@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     Plus, X, BarChart3,
     Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut, Menu, Filter, Copy, Settings, Share2,
-    CheckSquare, TrendingUp, Users, Paperclip, Image
+    CheckSquare, TrendingUp, Users, Paperclip, Image, Folder
 } from 'lucide-react';
 import BankTransactions from './BankTransactions';
 import ClientsManagement from './ClientsManagement';
@@ -944,17 +944,19 @@ useEffect(() => {
                         </p>
                     )}
                     {task.categories && task.categories.length > 0 && (
-                        <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px'}}>
+                        <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px', alignItems: 'center'}}>
+                            <Folder size={13} style={{color: '#1565c0', flexShrink: 0}} />
                             {task.categories.map((catId, idx) => (
                                 <span key={idx} className="tag"
                                       style={{background: '#e3f2fd', borderColor: '#1565c0', color: '#1565c0'}}>
-                  {getCategoryLabel(catId)}
-                </span>
+                                    {getCategoryLabel(catId)}
+                                </span>
                             ))}
                         </div>
                     )}
                     {task.tags && task.tags.length > 0 && (
-                        <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px'}}>
+                        <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px', alignItems: 'center'}}>
+                            <Tag size={13} style={{color: '#555', flexShrink: 0}} />
                             {task.tags.map((tag, idx) => {
                                 const isActive = filters.tags.includes(tag);
                                 return (
