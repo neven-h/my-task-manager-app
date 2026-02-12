@@ -1905,18 +1905,18 @@ useEffect(() => {
                                                 className="btn btn-yellow"
                                                 onClick={() => setShowBulkInput(true)}
                                                 disabled={loading}
-                                                style={{whiteSpace: 'nowrap', background: '#FFD500', color: '#000', border: '2px solid #000', fontWeight: 700}}
+                                                style={{whiteSpace: 'nowrap', background: '#FFD500', color: '#000', border: '2px solid #000', fontWeight: 700, fontSize: '1rem', padding: '12px 24px'}}
                                             >
-                                                <Plus size={16} style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>
+                                                <Plus size={20} style={{display: 'inline', verticalAlign: 'middle', marginRight: '6px'}}/>
                                                 Bulk Add
                                             </button>
                                             <button
                                                 className="btn btn-red"
                                                 onClick={openNewTaskForm}
                                                 disabled={loading}
-                                                style={{whiteSpace: 'nowrap', fontWeight: 700}}
+                                                style={{whiteSpace: 'nowrap', fontWeight: 700, fontSize: '1rem', padding: '12px 24px'}}
                                             >
-                                                <Plus size={16} style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>
+                                                <Plus size={20} style={{display: 'inline', verticalAlign: 'middle', marginRight: '6px'}}/>
                                                 + New Task
                                             </button>
                                         </div>
