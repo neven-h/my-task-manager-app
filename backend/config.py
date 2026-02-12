@@ -127,9 +127,9 @@ def _fetch_exchange_rate_background(from_currency, to_currency):
 
 def _get_exchange_rate(from_currency, to_currency='ILS'):
     """
-    Get exchange rate from cache. NEVER blocks the request.
-    If not cached, triggers a background fetch and returns None.
-    The rate will be available on the next request.
+    Get exchange rate. Returns cached value instantly if available.
+    On first call (cache empty), fetches synchronously so the rate is always returned.
+    On stale cache, triggers a background refresh but returns stale value immediately.
     """
     if from_currency == to_currency:
         return 1.0
@@ -149,14 +149,14 @@ def _get_exchange_rate(from_currency, to_currency='ILS'):
             # Return cached rate (fresh or stale) immediately
             return cached['rate']
 
-    # No cache at all - trigger background fetch, return None for now
+    # No cache at all - fetch synchronously so we always return a rate
+    _fetch_exchange_rate_background(from_currency, to_currency)
     with _cache_lock:
-        if cache_key not in _exchange_rate_fetching:
-            _exchange_rate_fetching.add(cache_key)
-            t = threading.Thread(target=_fetch_exchange_rate_background, args=(from_currency, to_currency), daemon=True)
-            t.start()
+        cached = _exchange_rate_cache.get(cache_key)
+        if cached:
+            return cached['rate']
 
-    return None  # Not yet available, will be cached for next request
+    return None  # Only if fetch truly failed
 
 
 # ==================== STOCK INFO HELPERS ====================
