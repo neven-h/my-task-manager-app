@@ -1617,22 +1617,45 @@ useEffect(() => {
                                     fontWeight: 700,
                                     fontSize: '0.85rem'
                                 }}>Tags</label>
-                                <select
-                                    multiple
-                                    value={filters.tags}
-                                    onChange={(e) => setFilters({
-                                        ...filters,
-                                        tags: Array.from(e.target.selectedOptions, option => option.value)
-                                    })}
-                                    style={{minHeight: '80px'}}
-                                >
-                                    {allTags.map(tag => (
-                                        <option key={tag.id} value={tag.name}>{tag.name}</option>
-                                    ))}
-                                </select>
-                                <div style={{fontSize: '0.75rem', color: '#64748b', marginTop: '4px'}}>
-                                    Hold Ctrl/Cmd to select multiple
-                                </div>
+                                {allTags.length === 0 ? (
+                                    <div style={{fontSize: '0.8rem', color: '#64748b'}}>No tags yet</div>
+                                ) : (
+                                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '6px'}}>
+                                        {allTags.map(tag => {
+                                            const isSelected = filters.tags.includes(tag.name);
+                                            return (
+                                                <button
+                                                    key={tag.id}
+                                                    type="button"
+                                                    onClick={() => setFilters(f => ({
+                                                        ...f,
+                                                        tags: isSelected
+                                                            ? f.tags.filter(t => t !== tag.name)
+                                                            : [...f.tags, tag.name]
+                                                    }))}
+                                                    style={{
+                                                        padding: '4px 10px',
+                                                        border: '2px solid #000',
+                                                        background: isSelected ? '#FFD500' : '#fff',
+                                                        fontWeight: isSelected ? 700 : 500,
+                                                        fontSize: '0.82rem',
+                                                        cursor: 'pointer',
+                                                        fontFamily: '"Inter", sans-serif',
+                                                        boxShadow: isSelected ? '2px 2px 0 #000' : 'none',
+                                                        transition: 'all 0.1s ease'
+                                                    }}
+                                                >
+                                                    {tag.name}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                {filters.tags.length > 0 && (
+                                    <div style={{fontSize: '0.75rem', color: '#64748b', marginTop: '6px'}}>
+                                        {filters.tags.length} tag{filters.tags.length > 1 ? 's' : ''} selected
+                                    </div>
+                                )}
                             </div>
                             {(filters.search || filters.category !== 'all' || filters.status !== 'all' || filters.client || filters.dateStart || filters.dateEnd || filters.tags.length > 0) && (
                                 <button className="btn btn-white" onClick={() => setFilters({
@@ -2381,31 +2404,26 @@ useEffect(() => {
                                         letterSpacing: '0.5px'
                                     }}>Tags</label>
                                     <div style={{display: 'flex', gap: '8px', marginBottom: '8px'}}>
-                                        <input
-                                            type="text"
-                                            list="tag-suggestions"
-                                            placeholder="Add tag... (autocomplete)"
-                                            value={tagInput}
-                                            onChange={(e) => setTagInput(e.target.value)}
-                                            onKeyPress={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    e.preventDefault();
-                                                    addTag();
-                                                }
-                                            }}
-                                            style={{flex: 1}}
-                                            enterKeyHint="done"
-                                        />
-                                        <datalist id="tag-suggestions">
-                                            {allTags.map((tag) => (
-                                                <option key={tag.id} value={tag.name}/>
-                                            ))}
-                                        </datalist>
+                                        <div style={{flex: 1}}>
+                                            <CustomAutocomplete
+                                                value={tagInput}
+                                                onChange={(val) => setTagInput(val)}
+                                                options={allTags.map(t => t.name).filter(n => !formData.tags.includes(n))}
+                                                placeholder="Type or select a tag..."
+                                                onSelect={(val) => {
+                                                    if (val && !formData.tags.includes(val)) {
+                                                        setFormData(fd => ({...fd, tags: [...fd.tags, val]}));
+                                                    }
+                                                    setTagInput('');
+                                                }}
+                                                onEnter={() => addTag()}
+                                            />
+                                        </div>
                                         <button
                                             type="button"
                                             onClick={addTag}
                                             className="btn btn-white"
-                                            style={{padding: '12px 20px'}}
+                                            style={{padding: '12px 20px', alignSelf: 'flex-start'}}
                                         >
                                             <Tag size={16} style={{marginRight: '4px'}}/> Add
                                         </button>
