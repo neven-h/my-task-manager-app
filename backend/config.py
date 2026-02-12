@@ -473,7 +473,7 @@ app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', os.getenv('
 mail = Mail(app)
 
 # File upload configuration
-UPLOAD_FOLDER = 'uploads'
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
 ALLOWED_EXTENSIONS = {'csv', 'xlsx', 'xls'}
 # Task attachments: images + common document types
 TASK_ATTACHMENTS_FOLDER = os.path.join(UPLOAD_FOLDER, 'task_attachments')
