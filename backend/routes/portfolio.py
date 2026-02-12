@@ -1146,6 +1146,8 @@ def get_yahoo_holdings():
                     entry['changePercent'] = info.get('changePercent')
                     entry['marketState'] = info.get('marketState', 'UNKNOWN')
                     entry['exchange'] = info.get('exchange', '')
+                    # Use currency from Yahoo when missing in DB
+                    entry['currency'] = (info.get('currency') or h.get('currency') or 'USD')
 
                     # Calculate position value and gain/loss
                     qty = h['quantity'] or 0
