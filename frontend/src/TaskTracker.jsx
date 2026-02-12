@@ -135,7 +135,7 @@ useEffect(() => {
     // Only fetch tasks when debounced filters change (not on every keystroke)
     useEffect(() => {
         if (authUser && authRole) {
-            fetchTasks();
+            fetchTasks(debouncedFilters);
         }
     }, [debouncedFilters, authUser, authRole]);
 
@@ -250,10 +250,11 @@ useEffect(() => {
         }
     };
 
-    const fetchTasks = async () => {
+    const fetchTasks = async (overrideFilters) => {
+        const activeFilters = overrideFilters || filters;
         try {
             setLoading(true);
-            const params = buildFilterParams();
+            const params = buildFilterParams(activeFilters);
 
             // Send username and role to backend for filtering
             params.append('username', authUser);
@@ -263,9 +264,9 @@ useEffect(() => {
             let data = await response.json();
 
             // Client-side filtering by tags
-            if (filters.tags.length > 0) {
+            if (activeFilters.tags.length > 0) {
                 data = data.filter(task =>
-                        task.tags && filters.tags.some(filterTag =>
+                        task.tags && activeFilters.tags.some(filterTag =>
                             task.tags.includes(filterTag)
                         )
                 );
@@ -849,16 +850,16 @@ useEffect(() => {
     };
 
     // Helper function to build URL parameters from filters
-    const buildFilterParams = () => {
+    const buildFilterParams = (f = filters) => {
         const params = new URLSearchParams();
 
-        if (filters.category !== 'all') params.append('category', filters.category);
-        if (filters.status !== 'all') params.append('status', filters.status);
-        if (filters.client) params.append('client', filters.client);
-        if (filters.search) params.append('search', filters.search);
-        if (filters.dateStart) params.append('date_start', filters.dateStart);
-        if (filters.dateEnd) params.append('date_end', filters.dateEnd);
-        if (filters.hasAttachment) params.append('has_attachment', 'true');
+        if (f.category !== 'all') params.append('category', f.category);
+        if (f.status !== 'all') params.append('status', f.status);
+        if (f.client) params.append('client', f.client);
+        if (f.search) params.append('search', f.search);
+        if (f.dateStart) params.append('date_start', f.dateStart);
+        if (f.dateEnd) params.append('date_end', f.dateEnd);
+        if (f.hasAttachment) params.append('has_attachment', 'true');
 
         return params;
     };
