@@ -1254,7 +1254,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>💰 Value</th>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>💵 Total Value</th>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>📈 Change</th>
-                    <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>📊 Percentage</th>
+                    <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>📊 Percentage</th>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontWeight: '700', fontSize: '0.9rem', color: colors.text, width: '140px' }}>Actions</th>
                   </tr>
                 </thead>
@@ -1366,7 +1366,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                             <span style={{ color: colors.textLight }}>-</span>
                           )}
                         </td>
-                        <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.9rem', color: colors.text }}>
+                        <td style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.9rem', color: colors.text }}>
                           {entry.percentage ? (
                             <span style={{
                               padding: '0.3rem 0.6rem',
@@ -1384,57 +1384,66 @@ const StockPortfolio = ({ onBackToTasks }) => {
                           )}
                         </td>
                         <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
-                          <button
-                            onClick={() => handleEdit(entry)}
-                            style={{
-                              padding: '0.4rem 0.6rem',
-                              background: colors.primary,
-                              color: '#fff',
-                              border: `2px solid ${colors.border}`,
-                              cursor: 'pointer',
-                              marginRight: '0.4rem',
-                              fontFamily: '"Inter", sans-serif',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.25rem'
-                            }}
-                          >
-                            <Edit2 size={14} />
-                          </button>
-                          <button
-                            onClick={() => handleDuplicate(entry)}
-                            title="Duplicate entry"
-                            style={{
-                              padding: '0.4rem 0.6rem',
-                              background: colors.success || '#28a745',
-                              color: '#fff',
-                              border: `2px solid ${colors.border}`,
-                              cursor: 'pointer',
-                              marginRight: '0.4rem',
-                              fontFamily: '"Inter", sans-serif',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.25rem'
-                            }}
-                          >
-                            <Copy size={14} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(entry.id)}
-                            style={{
-                              padding: '0.4rem 0.6rem',
-                              background: colors.accent,
-                              color: '#fff',
-                              border: `2px solid ${colors.border}`,
-                              cursor: 'pointer',
-                              fontFamily: '"Inter", sans-serif',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '0.25rem'
-                            }}
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                          <div style={{ display: 'flex', flexDirection: 'row', gap: '0.4rem', justifyContent: 'center', alignItems: 'center' }}>
+                            <button
+                              onClick={() => handleEdit(entry)}
+                              style={{
+                                width: '32px',
+                                height: '32px',
+                                padding: 0,
+                                background: colors.primary,
+                                color: '#fff',
+                                border: `2px solid ${colors.border}`,
+                                cursor: 'pointer',
+                                fontFamily: '"Inter", sans-serif',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                              }}
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDuplicate(entry)}
+                              title="Duplicate entry"
+                              style={{
+                                width: '32px',
+                                height: '32px',
+                                padding: 0,
+                                background: colors.success || '#28a745',
+                                color: '#fff',
+                                border: `2px solid ${colors.border}`,
+                                cursor: 'pointer',
+                                fontFamily: '"Inter", sans-serif',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                              }}
+                            >
+                              <Copy size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(entry.id)}
+                              style={{
+                                width: '32px',
+                                height: '32px',
+                                padding: 0,
+                                background: colors.accent,
+                                color: '#fff',
+                                border: `2px solid ${colors.border}`,
+                                cursor: 'pointer',
+                                fontFamily: '"Inter", sans-serif',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                              }}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                         </td>
                         </tr>
                       );
