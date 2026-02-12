@@ -1235,6 +1235,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>📦 Units</th>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>🏷️ Base Price</th>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>💰 Value</th>
+                    <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>💵 Total Value</th>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>📈 Change</th>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>📊 Percentage</th>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontWeight: '700', fontSize: '0.9rem', color: colors.text, width: '140px' }}>Actions</th>
@@ -1288,6 +1289,20 @@ const StockPortfolio = ({ onBackToTasks }) => {
                           color: colors.text
                         }}>
                           {formatCurrencyWithCode(entry.value_ils, entry.currency || 'USD')}
+                        </td>
+                        <td style={{
+                          padding: '0.75rem 1rem',
+                          textAlign: 'right',
+                          fontWeight: '700',
+                          fontFamily: 'Consolas, "Courier New", monospace',
+                          fontVariantNumeric: 'tabular-nums',
+                          fontSize: '0.95rem',
+                          color: colors.primary
+                        }}>
+                          {entry.units != null && entry.value_ils != null
+                            ? formatCurrencyWithCode(entry.value_ils * entry.units, entry.currency || 'USD')
+                            : <span style={{ color: colors.textLight }}>—</span>
+                          }
                         </td>
                         <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.9rem' }}>
                           {change ? (

@@ -192,21 +192,40 @@ export default function TabBar({
 
           {/* 3-dot menu - always visible on every tab, not just active */}
           {editingTab != tab.id && (
-            <button
-              onClick={(e) => { e.stopPropagation(); setTabMenuOpen(tabMenuOpen == tab.id ? null : tab.id); }}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '0 0.5rem',
-                display: 'flex',
-                alignItems: 'center',
-                color: isActive(tab.id) ? colors.text : colors.textLight
-              }}
-              title="Rename or delete tab"
-            >
-              <MoreVertical size={16} />
-            </button>
+            <>
+              <button
+                onClick={(e) => { e.stopPropagation(); setTabMenuOpen(tabMenuOpen == tab.id ? null : tab.id); }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '0 0.25rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: isActive(tab.id) ? colors.text : colors.textLight
+                }}
+                title="Rename tab"
+              >
+                <MoreVertical size={16} />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleDeleteTab(tab.id); }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '0 0.4rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: colors.accent,
+                  fontSize: '1rem',
+                  lineHeight: 1
+                }}
+                title="Delete tab"
+              >
+                <Trash2 size={14} />
+              </button>
+            </>
           )}
 
           {/* Dropdown menu */}
