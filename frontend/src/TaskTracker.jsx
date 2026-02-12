@@ -1164,10 +1164,10 @@ useEffect(() => {
                     width: '100%',
                     margin: '0 auto',
                     display: 'flex',
-                    justifyContent: 'space-between',
+                    justifyContent: 'flex-start',
                     alignItems: 'center',
                     padding: '0 16px',
-                    gap: '16px',
+                    gap: '32px',
                     flexWrap: 'nowrap',
                     minWidth: 0,
                     overflow: 'visible'
@@ -1222,13 +1222,10 @@ useEffect(() => {
                              gap: '12px',
                              flexWrap: 'nowrap',
                              alignItems: 'center',
-                             flex: '1 1 auto',
-                             justifyContent: 'flex-end',
                              minWidth: 0,
                              overflowX: 'auto',
                              overflowY: 'visible',
-                             paddingBottom: '2px',
-                             paddingRight: '16px'
+                             paddingBottom: '2px'
                          }}>
                         {/* Toggle Sidebar Button */}
                         <button
