@@ -16,4 +16,4 @@ pyotp==2.9.0
 qrcode==7.4.2
 Pillow==11.3.0
 yfinance==1.1.0
-git+https://github.com/neven-h/csv_parsing.git@main
+bank-csv-normalizer @ git+https://github.com/neven-h/csv_parsing.git@main
