@@ -408,7 +408,7 @@ const WatchlistSection = ({ colors, authUser, authRole }) => {
                               marginBottom: '0.5rem',
                               color: colors.text
                             }}>
-                              {Number(price.currentPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              {formatCurrencyWithCode(Number(price.currentPrice), price.currency || 'USD')}
                             </div>
                             {price.change !== null && price.change !== undefined && (
                               <div style={{
