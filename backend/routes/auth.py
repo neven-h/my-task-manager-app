@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app
-from ..config import (
+from config import (
     limiter, mail, get_db_connection, USERS, FRONTEND_URL,
     DEBUG, handle_error, validate_password,
     generate_jwt_token, verify_jwt_token,

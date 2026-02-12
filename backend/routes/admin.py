@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from ..config import (
+from config import (
     get_db_connection, handle_error, DEBUG,
     encrypt_field, decrypt_field, cipher_suite,
     log_bank_transaction_access, init_db,
