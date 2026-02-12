@@ -19,7 +19,7 @@ const CustomAutocomplete = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [filteredOptions, setFilteredOptions] = useState(options);
-  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const containerRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -50,7 +50,7 @@ const CustomAutocomplete = ({
   const handleInputChange = (e) => {
     onChange(e.target.value);
     setIsOpen(true);
-    setHighlightedIndex(0);
+    setHighlightedIndex(-1);
   };
 
   const handleOptionClick = (option) => {
@@ -78,13 +78,13 @@ const CustomAutocomplete = ({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setHighlightedIndex(prev => 
+        setHighlightedIndex(prev =>
           prev < filteredOptions.length - 1 ? prev + 1 : prev
         );
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setHighlightedIndex(prev => prev > 0 ? prev - 1 : prev);
+        setHighlightedIndex(prev => prev > 0 ? prev - 1 : -1);
         break;
       case 'Enter':
         e.preventDefault();
