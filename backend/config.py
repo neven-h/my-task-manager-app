@@ -476,25 +476,38 @@ mail = Mail(app)
 import cloudinary
 import cloudinary.uploader
 
-CLOUDINARY_CLOUD_NAME = os.getenv('CLOUDINARY_CLOUD_NAME')
-CLOUDINARY_API_KEY = os.getenv('CLOUDINARY_API_KEY')
-CLOUDINARY_API_SECRET = os.getenv('CLOUDINARY_API_SECRET')
-CLOUDINARY_URL = os.getenv('CLOUDINARY_URL')  # SDK auto-reads this format
+CLOUDINARY_URL = os.getenv('CLOUDINARY_URL')  # format: cloudinary://api_key:api_secret@cloud_name
 
 if CLOUDINARY_URL:
-    # SDK automatically parses CLOUDINARY_URL — just mark as enabled
-    cloudinary.config(secure=True)
-    CLOUDINARY_ENABLED = True
-elif CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET:
-    cloudinary.config(
-        cloud_name=CLOUDINARY_CLOUD_NAME,
-        api_key=CLOUDINARY_API_KEY,
-        api_secret=CLOUDINARY_API_SECRET,
-        secure=True
-    )
-    CLOUDINARY_ENABLED = True
+    # Parse cloudinary://api_key:api_secret@cloud_name manually
+    try:
+        from urllib.parse import urlparse
+        _parsed = urlparse(CLOUDINARY_URL)
+        cloudinary.config(
+            cloud_name=_parsed.hostname,
+            api_key=_parsed.username,
+            api_secret=_parsed.password,
+            secure=True
+        )
+        CLOUDINARY_ENABLED = True
+    except Exception as _e:
+        print(f"Warning: Failed to parse CLOUDINARY_URL: {_e}")
+        CLOUDINARY_ENABLED = False
 else:
-    CLOUDINARY_ENABLED = False
+    # Fallback: individual env vars
+    _cloud_name = os.getenv('CLOUDINARY_CLOUD_NAME')
+    _api_key = os.getenv('CLOUDINARY_API_KEY')
+    _api_secret = os.getenv('CLOUDINARY_API_SECRET')
+    if _cloud_name and _api_key and _api_secret:
+        cloudinary.config(
+            cloud_name=_cloud_name,
+            api_key=_api_key,
+            api_secret=_api_secret,
+            secure=True
+        )
+        CLOUDINARY_ENABLED = True
+    else:
+        CLOUDINARY_ENABLED = False
 
 # File upload configuration (fallback for local dev without Cloudinary)
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
