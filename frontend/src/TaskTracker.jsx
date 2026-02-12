@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     Plus, X, BarChart3,
     Check, Edit2, Trash2, Download, RefreshCw, AlertCircle, Tag, Save, DollarSign, Upload, LogOut, Menu, Filter, Copy, Settings, Share2,
-    CheckSquare, TrendingUp, Users, Paperclip, Image
+    CheckSquare, TrendingUp, Users, Paperclip, Image, Folder
 } from 'lucide-react';
 import BankTransactions from './BankTransactions';
 import ClientsManagement from './ClientsManagement';
@@ -944,17 +944,19 @@ useEffect(() => {
                         </p>
                     )}
                     {task.categories && task.categories.length > 0 && (
-                        <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px'}}>
+                        <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px', alignItems: 'center'}}>
+                            <Folder size={13} style={{color: '#1565c0', flexShrink: 0}} />
                             {task.categories.map((catId, idx) => (
                                 <span key={idx} className="tag"
                                       style={{background: '#e3f2fd', borderColor: '#1565c0', color: '#1565c0'}}>
-                  {getCategoryLabel(catId)}
-                </span>
+                                    {getCategoryLabel(catId)}
+                                </span>
                             ))}
                         </div>
                     )}
                     {task.tags && task.tags.length > 0 && (
-                        <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px'}}>
+                        <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px', alignItems: 'center'}}>
+                            <Tag size={13} style={{color: '#555', flexShrink: 0}} />
                             {task.tags.map((tag, idx) => {
                                 const isActive = filters.tags.includes(tag);
                                 return (
@@ -1835,8 +1837,55 @@ useEffect(() => {
                                 />
                             </div>
 
+                            <div>
+                                <label style={{
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem'
+                                }}>Tags</label>
+                                {allTags.length === 0 ? (
+                                    <div style={{fontSize: '0.8rem', color: '#64748b'}}>No tags yet</div>
+                                ) : (
+                                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '6px'}}>
+                                        {allTags.map(tag => {
+                                            const isSelected = filters.tags.includes(tag.name);
+                                            return (
+                                                <button
+                                                    key={tag.id}
+                                                    type="button"
+                                                    onClick={() => setFilters(f => ({
+                                                        ...f,
+                                                        tags: isSelected
+                                                            ? f.tags.filter(t => t !== tag.name)
+                                                            : [...f.tags, tag.name]
+                                                    }))}
+                                                    style={{
+                                                        padding: '4px 10px',
+                                                        border: '2px solid #000',
+                                                        background: isSelected ? '#FFD500' : '#fff',
+                                                        fontWeight: isSelected ? 700 : 500,
+                                                        fontSize: '0.82rem',
+                                                        cursor: 'pointer',
+                                                        fontFamily: '"Inter", sans-serif',
+                                                        boxShadow: isSelected ? '2px 2px 0 #000' : 'none'
+                                                    }}
+                                                >
+                                                    {tag.name}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                {filters.tags.length > 0 && (
+                                    <div style={{fontSize: '0.75rem', color: '#64748b', marginTop: '6px'}}>
+                                        {filters.tags.length} tag{filters.tags.length > 1 ? 's' : ''} selected
+                                    </div>
+                                )}
+                            </div>
+
                             {(filters.search || filters.category !== 'all' || filters.status !== 'all' ||
-                                filters.client || filters.dateStart || filters.dateEnd) && (
+                                filters.client || filters.dateStart || filters.dateEnd || filters.tags.length > 0) && (
                                 <button
                                     className="btn btn-white"
                                     onClick={() => setFilters({
@@ -1845,7 +1894,8 @@ useEffect(() => {
                                         status: 'all',
                                         client: '',
                                         dateStart: '',
-                                        dateEnd: ''
+                                        dateEnd: '',
+                                        tags: []
                                     })}
                                     style={{width: '100%', padding: '12px'}}
                                 >
