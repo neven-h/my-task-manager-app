@@ -1014,7 +1014,8 @@ const StockPortfolio = ({ onBackToTasks }) => {
                   <tr style={{ background: colors.primary }}>
                     <th style={{ padding: '0.75rem', textAlign: 'left', color: '#fff', fontSize: '0.9rem', fontWeight: '600' }}>Stock</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', color: '#fff', fontSize: '0.9rem', fontWeight: '600' }}>Live Price</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', color: '#fff', fontSize: '0.9rem', fontWeight: '600' }}>Tracked Value</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', color: '#fff', fontSize: '0.9rem', fontWeight: '600' }}>Value / Unit</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', color: '#fff', fontSize: '0.9rem', fontWeight: '600' }}>Total Value</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', color: '#fff', fontSize: '0.9rem', fontWeight: '600' }}>Base Price</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', color: '#fff', fontSize: '0.9rem', fontWeight: '600' }}>Growth</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', color: '#fff', fontSize: '0.9rem', fontWeight: '600' }}>% Change</th>
@@ -1023,12 +1024,18 @@ const StockPortfolio = ({ onBackToTasks }) => {
                 </thead>
                 <tbody>
                   {getStockSummary
-                    .sort((a, b) => (b.latestEntry.value_ils || 0) - (a.latestEntry.value_ils || 0))
+                    .sort((a, b) => {
+                      const aTotal = (b.latestEntry.value_ils || 0) * (b.latestEntry.units || 1);
+                      const bTotal = (a.latestEntry.value_ils || 0) * (a.latestEntry.units || 1);
+                      return aTotal - bTotal;
+                    })
                     .map(stock => {
                       const entryCurrency = stock.latestEntry.currency || 'USD';
                       const entryValue = stock.latestEntry.value_ils;
+                      const entryUnits = stock.latestEntry.units || 1;
+                      const totalValue = entryValue * entryUnits;
                       const growth = calculateGrowth(entryValue, stock.basePrice);
-                      const growthValue = stock.basePrice != null ? entryValue - stock.basePrice : null;
+                      const growthValue = stock.basePrice != null ? (entryValue - stock.basePrice) * entryUnits : null;
                       const isPositive = growth !== null && growth >= 0;
                       
                       const livePrice = stock.tickerSymbol ? stockPrices[stock.tickerSymbol] : null;
@@ -1094,9 +1101,20 @@ const StockPortfolio = ({ onBackToTasks }) => {
                             fontFamily: 'Consolas, "Courier New", monospace',
                             fontVariantNumeric: 'tabular-nums',
                             fontSize: '0.95rem',
-                            color: colors.text
+                            color: colors.textLight
                           }}>
                             {formatCurrencyWithCode(entryValue, entryCurrency)}
+                          </td>
+                          <td style={{
+                            padding: '0.75rem 1rem',
+                            textAlign: 'right',
+                            fontWeight: '800',
+                            fontFamily: 'Consolas, "Courier New", monospace',
+                            fontVariantNumeric: 'tabular-nums',
+                            fontSize: '0.95rem',
+                            color: colors.primary
+                          }}>
+                            {formatCurrencyWithCode(totalValue, entryCurrency)}
                           </td>
                           <td style={{
                             padding: '0.75rem 1rem',
