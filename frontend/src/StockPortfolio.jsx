@@ -894,13 +894,13 @@ const StockPortfolio = ({ onBackToTasks }) => {
                 color: colors.primary
               }}>
                 {summaryDisplayCurrency === 'ILS'
-                  ? formatCurrencyWithCode(summary.total_value_ils ?? 0, 'ILS')
-                  : formatCurrencyWithCode(
-                      summary.exchange_rates?.USD && summary.total_value_ils
-                        ? summary.total_value_ils / summary.exchange_rates.USD
-                        : summary.total_value ?? 0,
-                      'USD'
+                  ? formatCurrencyWithCode(
+                      summary.exchange_rates?.USD
+                        ? (summary.total_value ?? 0) * summary.exchange_rates.USD
+                        : (summary.total_value_ils ?? 0),
+                      'ILS'
                     )
+                  : formatCurrencyWithCode(summary.total_value ?? 0, 'USD')
                 }
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
