@@ -3,8 +3,8 @@ import { Upload, Trash2, RefreshCw, TrendingUp, TrendingDown, X, AlertCircle, Br
 import API_BASE from '../../config';
 import { formatCurrencyWithCode } from '../../utils/formatCurrency';
 
-const YahooPortfolioSection = ({ colors, authUser, authRole }) => {
-    const [showYahooPortfolio, setShowYahooPortfolio] = useState(false);
+const YahooPortfolioSection = ({ colors, authUser, authRole, defaultExpanded = false }) => {
+    const [showYahooPortfolio, setShowYahooPortfolio] = useState(defaultExpanded);
     const [yahooHoldings, setYahooHoldings] = useState([]);
     const [yahooSummary, setYahooSummary] = useState(null);
     const [yahooLoading, setYahooLoading] = useState(false);
