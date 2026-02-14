@@ -1994,43 +1994,30 @@ useEffect(() => {
                     {view === 'list' ? (
                         <>
                             <div style={{marginBottom: '32px'}}>
-                                <h2 style={{fontSize: '2rem', fontWeight: 900, marginBottom: '8px'}}>
-                                    {new Date().toLocaleDateString('en-US', {
-                                        weekday: 'long',
-                                        year: 'numeric',
-                                        month: 'long',
-                                        day: 'numeric'
-                                    })}
-                                </h2>
-                                <p style={{color: '#666', fontSize: '1rem'}}>{tasks.length} tasks</p>
-
-                                {/* Filter toggles + Action buttons row */}
-                                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '24px', gap: '12px', flexWrap: 'wrap'}}>
-                                    {/* Left: view filter toggles */}
-                                    <div style={{display: 'flex', gap: '12px', flexWrap: 'wrap'}}>
-                                        <button
-                                            className={`btn ${taskViewMode === 'all' ? 'btn-blue' : 'btn-white'}`}
-                                            onClick={() => setTaskViewMode('all')}
-                                        >
-                                            All Tasks
-                                        </button>
-                                        <button
-                                            className={`btn ${taskViewMode === 'completed' ? 'btn-yellow' : 'btn-white'}`}
-                                            onClick={() => setTaskViewMode('completed')}
-                                        >
-                                            Completed Only
-                                        </button>
-                                        <button
-                                            className={`btn ${taskViewMode === 'uncompleted' ? 'btn-red' : 'btn-white'}`}
-                                            onClick={() => setTaskViewMode('uncompleted')}
-                                        >
-                                            Uncompleted Only
-                                        </button>
+                                {/* Date row: date + task count on left, New Task (and Bulk Add below) on right */}
+                                <div style={{display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap'}}>
+                                    <div>
+                                        <h2 style={{fontSize: '2rem', fontWeight: 900, marginBottom: '8px'}}>
+                                            {new Date().toLocaleDateString('en-US', {
+                                                weekday: 'long',
+                                                year: 'numeric',
+                                                month: 'long',
+                                                day: 'numeric'
+                                            })}
+                                        </h2>
+                                        <p style={{color: '#666', fontSize: '1rem'}}>{tasks.length} tasks</p>
                                     </div>
-
-                                    {/* Right: action buttons */}
                                     {isAdmin && (
-                                        <div style={{display: 'flex', gap: '12px', flexShrink: 0}}>
+                                        <div style={{display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0}}>
+                                            <button
+                                                className="btn btn-red"
+                                                onClick={openNewTaskForm}
+                                                disabled={loading}
+                                                style={{whiteSpace: 'nowrap', fontWeight: 700, fontSize: '1rem', padding: '12px 24px'}}
+                                            >
+                                                <Plus size={20} style={{display: 'inline', verticalAlign: 'middle', marginRight: '6px'}}/>
+                                                New Task
+                                            </button>
                                             <button
                                                 className="btn btn-yellow"
                                                 onClick={() => setShowBulkInput(true)}
@@ -2040,58 +2027,30 @@ useEffect(() => {
                                                 <Plus size={20} style={{display: 'inline', verticalAlign: 'middle', marginRight: '6px'}}/>
                                                 Bulk Add
                                             </button>
-                                            <button
-                                                className="btn btn-red"
-                                                onClick={openNewTaskForm}
-                                                disabled={loading}
-                                                style={{whiteSpace: 'nowrap', fontWeight: 700, fontSize: '1rem', padding: '12px 24px'}}
-                                            >
-                                                <Plus size={20} style={{display: 'inline', verticalAlign: 'middle', marginRight: '6px'}}/>
-                                                + New Task
-                                            </button>
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Tag filter row */}
-                                <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', flexWrap: 'wrap'}}>
-                                    <span style={{fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: '#666', flexShrink: 0}}>Tags:</span>
-                                    {allTags.length === 0 ? (
-                                        <span style={{fontSize: '0.8rem', color: '#aaa'}}>No tags yet</span>
-                                    ) : allTags.map(tag => {
-                                        const isActive = filters.tags.includes(tag.name);
-                                        return (
-                                            <button
-                                                key={tag.id}
-                                                type="button"
-                                                onClick={() => setFilters(f => ({
-                                                    ...f,
-                                                    tags: isActive ? f.tags.filter(t => t !== tag.name) : [...f.tags, tag.name]
-                                                }))}
-                                                style={{
-                                                    padding: '4px 10px',
-                                                    border: '2px solid #000',
-                                                    background: isActive ? '#FFD500' : '#fff',
-                                                    fontWeight: isActive ? 700 : 500,
-                                                    fontSize: '0.82rem',
-                                                    cursor: 'pointer',
-                                                    fontFamily: '"Inter", sans-serif',
-                                                    boxShadow: isActive ? '2px 2px 0 #000' : 'none'
-                                                }}
-                                            >
-                                                {tag.name}
-                                            </button>
-                                        );
-                                    })}
-                                    {filters.tags.length > 0 && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setFilters(f => ({...f, tags: []}))}
-                                            style={{padding: '4px 10px', border: '2px solid #000', background: '#fff', fontSize: '0.82rem', cursor: 'pointer', fontFamily: '"Inter", sans-serif', color: '#666'}}
-                                        >
-                                            ✕ Clear
-                                        </button>
-                                    )}
+                                {/* Filter toggles row - Completed/Uncompleted only buttons are narrower */}
+                                <div className="task-view-toggle" style={{display: 'flex', alignItems: 'center', gap: '12px', marginTop: '24px', flexWrap: 'wrap'}}>
+                                    <button
+                                        className={`btn ${taskViewMode === 'all' ? 'btn-blue' : 'btn-white'}`}
+                                        onClick={() => setTaskViewMode('all')}
+                                    >
+                                        All Tasks
+                                    </button>
+                                    <button
+                                        className={`btn btn-narrow ${taskViewMode === 'completed' ? 'btn-yellow' : 'btn-white'}`}
+                                        onClick={() => setTaskViewMode('completed')}
+                                    >
+                                        Completed Only
+                                    </button>
+                                    <button
+                                        className={`btn btn-narrow ${taskViewMode === 'uncompleted' ? 'btn-red' : 'btn-white'}`}
+                                        onClick={() => setTaskViewMode('uncompleted')}
+                                    >
+                                        Uncompleted Only
+                                    </button>
                                 </div>
                             </div>
 
