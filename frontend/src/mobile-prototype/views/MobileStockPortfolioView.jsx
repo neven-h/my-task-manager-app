@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react';
-import { AlertCircle, ArrowLeft, Plus, TrendingDown, TrendingUp } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Plus, TrendingDown, TrendingUp, X } from 'lucide-react';
 import CustomAutocomplete from '../../components/CustomAutocomplete';
 import YahooPortfolioSection from '../../components/portfolio/YahooPortfolioSection';
 import API_BASE from '../../config';
@@ -27,6 +27,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
     const [priceLoading, setPriceLoading] = useState(false);
     const [showDraftDialog, setShowDraftDialog] = useState(false);
     const [initialFormData, setInitialFormData] = useState(null);
+    const [summaryDisplayCurrency, setSummaryDisplayCurrency] = useState('ILS');
     const [formData, setFormData] = useState({
         name: '',
         ticker_symbol: '',
@@ -80,9 +81,10 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
             const response = await fetch(`${API_BASE}/portfolio-tabs?username=${authUser}&role=${authRole}`);
             const data = await response.json();
             if (Array.isArray(data)) {
-                setTabs(data);
-                if (data.length > 0) {
-                    setActiveTabId(prev => (prev !== null ? prev : data[0].id));
+                const normalized = data.map(t => ({ ...t, id: Number(t.id) }));
+                setTabs(normalized);
+                if (normalized.length > 0) {
+                    setActiveTabId(prev => (prev !== null ? prev : normalized[0].id));
                 } else {
                     // Create default tab so new entries always have a tab
                     const createRes = await fetch(`${API_BASE}/portfolio-tabs`, {
@@ -92,7 +94,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                     });
                     if (createRes.ok) {
                         const newTab = await createRes.json();
-                        const id = newTab.id ?? newTab.tab_id;
+                        const id = Number(newTab.id ?? newTab.tab_id);
                         if (id) {
                             setTabs([{ id, name: 'Default' }]);
                             setActiveTabId(id);
@@ -102,6 +104,29 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
             }
         } catch (err) {
             console.error('Error fetching tabs:', err);
+        }
+    };
+
+    const handleCreateTab = async () => {
+        const name = window.prompt('New tab name:', '');
+        if (!name || !name.trim()) return;
+        try {
+            const res = await fetch(`${API_BASE}/portfolio-tabs`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ name: name.trim(), username: authUser })
+            });
+            if (!res.ok) return;
+            const newTab = await res.json();
+            const id = Number(newTab.id ?? newTab.tab_id);
+            if (id) {
+                setTabs(prev => [...prev, { id, name: newTab.name || name.trim() }]);
+                setActiveTabId(id);
+                setEntries([]);
+                setSummary(null);
+            }
+        } catch (err) {
+            console.error('Failed to create tab:', err);
         }
     };
 
@@ -308,7 +333,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
 
             const body = {
                 ...formData,
-                tab_id: activeTabId,
+                tab_id: Number(activeTabId),
                 percentage: parseFloat(formData.percentage) || 0,
                 value_ils: parseFloat(formData.value_ils) || 0,
                 base_price: (formData.base_price !== '' && formData.base_price != null) ? parseFloat(formData.base_price) : null,
@@ -417,12 +442,12 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                         {tabs.map(tab => (
                             <button
                                 key={tab.id}
-                                onClick={() => setActiveTabId(tab.id)}
+                                onClick={() => setActiveTabId(Number(tab.id))}
                                 style={{
                                     padding: '8px 16px',
                                     border: '3px solid #000',
-                                    background: activeTabId === tab.id ? THEME.primary : '#fff',
-                                    color: activeTabId === tab.id ? '#fff' : '#000',
+                                    background: Number(activeTabId) === Number(tab.id) ? THEME.primary : '#fff',
+                                    color: Number(activeTabId) === Number(tab.id) ? '#fff' : '#000',
                                     fontWeight: 700,
                                     fontSize: '0.85rem',
                                     whiteSpace: 'nowrap',
@@ -433,6 +458,23 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                                 {tab.name}
                             </button>
                         ))}
+                        <button
+                            type="button"
+                            onClick={handleCreateTab}
+                            style={{
+                                padding: '8px 16px',
+                                border: '3px solid #000',
+                                background: THEME.secondary,
+                                color: '#000',
+                                fontWeight: 700,
+                                fontSize: '0.85rem',
+                                whiteSpace: 'nowrap',
+                                cursor: 'pointer',
+                                flexShrink: 0
+                            }}
+                        >
+                            + Tab
+                        </button>
                     </div>
                 ) : (
                     <div style={{minHeight: '44px', display: 'flex', alignItems: 'center'}}>
@@ -444,8 +486,29 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
             {/* Summary */}
             {summary && (
                 <div style={{padding: '16px', borderBottom: '3px solid #000', background: '#f8f8f8'}}>
-                    <div style={{fontSize: '1.5rem', fontWeight: 900, marginBottom: '8px'}}>
-                        Total Value: {formatCurrencyWithCode(summary.total_value_ils ?? summary.total_value ?? 0, 'ILS')}
+                    <div style={{display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px', marginBottom: '8px'}}>
+                        <span style={{fontSize: '1.5rem', fontWeight: 900}}>
+                            Total Value: {summaryDisplayCurrency === 'ILS'
+                                ? formatCurrencyWithCode(summary.total_value_ils ?? 0, 'ILS')
+                                : formatCurrencyWithCode(summary.total_value ?? 0, 'USD')}
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => setSummaryDisplayCurrency(prev => prev === 'ILS' ? 'USD' : 'ILS')}
+                            style={{
+                                padding: '6px 12px',
+                                fontSize: '0.75rem',
+                                fontWeight: 700,
+                                background: THEME.primary,
+                                color: '#fff',
+                                border: '2px solid #000',
+                                cursor: 'pointer',
+                                fontFamily: FONT_STACK,
+                                textTransform: 'uppercase'
+                            }}
+                        >
+                            {summaryDisplayCurrency === 'ILS' ? '₪ ILS' : '$ USD'}
+                        </button>
                     </div>
                     {summary.exchange_rates && summary.exchange_rates.USD && (
                         <div style={{fontSize: '0.8rem', color: THEME.muted, marginBottom: '4px'}}>
