@@ -1993,25 +1993,20 @@ useEffect(() => {
                 <div style={{flex: 1, padding: '48px', transition: 'all 0.3s ease'}}>
                     {view === 'list' ? (
                         <>
-                            {/* Primary Action Bar - New Task is the core action */}
+                            {/* Primary Action - New Task is the core action */}
                             {isAdmin && (
-                                <div className="task-action-bar" style={{
+                                <div style={{
                                     display: 'flex',
-                                    gap: '16px',
-                                    marginBottom: '32px',
-                                    padding: '20px 24px',
-                                    background: '#000',
+                                    gap: '12px',
+                                    marginBottom: '24px',
                                     alignItems: 'center',
                                     flexWrap: 'wrap'
                                 }}>
                                     <button
-                                        className="btn"
+                                        className="btn btn-red"
                                         onClick={openNewTaskForm}
                                         disabled={loading}
                                         style={{
-                                            background: '#FF0000',
-                                            color: '#fff',
-                                            border: '3px solid #fff',
                                             fontWeight: 900,
                                             fontSize: '1.1rem',
                                             padding: '14px 32px',
@@ -2023,13 +2018,10 @@ useEffect(() => {
                                         New Task
                                     </button>
                                     <button
-                                        className="btn"
+                                        className="btn btn-yellow"
                                         onClick={() => setShowBulkInput(true)}
                                         disabled={loading}
                                         style={{
-                                            background: '#FFD500',
-                                            color: '#000',
-                                            border: '3px solid #fff',
                                             fontWeight: 700,
                                             fontSize: '0.95rem',
                                             padding: '12px 24px'
