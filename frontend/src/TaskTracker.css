@@ -111,6 +111,11 @@
           opacity: 0.4; 
           cursor: not-allowed; 
         }
+
+        .btn.btn-narrow {
+          padding: 10px 14px;
+          font-size: 0.8rem;
+        }
         
         .btn-red {
           background: #FF0000;
