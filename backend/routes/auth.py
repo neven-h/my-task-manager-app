@@ -642,3 +642,104 @@ def get_2fa_status():
         return jsonify({'error': str(e)}), 500
 
 
+@auth_bp.route('/api/auth/user-info', methods=['GET'])
+def get_user_info():
+    """Get user information including email"""
+    try:
+        username = request.args.get('username')
+
+        if not username:
+            return jsonify({'error': 'Username is required'}), 400
+
+        # Check if this is a hardcoded user
+        if username in USERS:
+            return jsonify({
+                'username': username,
+                'email': None,
+                'is_legacy_account': True
+            })
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            cursor.execute("""
+                SELECT username, email
+                FROM users
+                WHERE username = %s
+            """, (username,))
+            user = cursor.fetchone()
+
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+
+            return jsonify({
+                'username': user['username'],
+                'email': user['email'],
+                'is_legacy_account': False
+            })
+
+    except Exception as e:
+        print(f"User info error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@auth_bp.route('/api/auth/change-password', methods=['POST'])
+def change_password():
+    """Change user password"""
+    try:
+        data = request.json
+        username = data.get('username')
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+
+        if not username or not current_password or not new_password:
+            return jsonify({'error': 'All fields are required'}), 400
+
+        if len(new_password) < 8:
+            return jsonify({'error': 'New password must be at least 8 characters'}), 400
+
+        # Check if this is a hardcoded user (cannot change password)
+        if username in USERS:
+            return jsonify({
+                'error': 'Password change is not available for legacy accounts. Please create a new account via Sign Up.'
+            }), 400
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # Get user
+            cursor.execute("""
+                SELECT id, password_hash
+                FROM users
+                WHERE username = %s
+            """, (username,))
+            user = cursor.fetchone()
+
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+
+            # Verify current password
+            if not bcrypt.checkpw(current_password.encode('utf-8'), user['password_hash'].encode('utf-8')):
+                return jsonify({'error': 'Current password is incorrect'}), 401
+
+            # Hash new password
+            new_password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+            # Update password
+            cursor.execute("""
+                UPDATE users
+                SET password_hash = %s
+                WHERE id = %s
+            """, (new_password_hash, user['id']))
+            connection.commit()
+
+            return jsonify({
+                'success': True,
+                'message': 'Password changed successfully'
+            })
+
+    except Exception as e:
+        print(f"Change password error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
