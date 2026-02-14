@@ -30,7 +30,7 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
 
     useEffect(() => {
         fetchTabs();
-    }, []);
+    }, [authUser, authRole]);
 
     useEffect(() => {
         if (activeTabId !== null) {
@@ -45,8 +45,10 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
             const data = await response.json();
             if (Array.isArray(data)) {
                 setTabs(data);
-                if (data.length > 0 && !activeTabId) {
-                    setActiveTabId(data[0].id);
+                if (data.length > 0) {
+                    setActiveTabId(prev => (prev === null ? data[0].id : prev));
+                } else {
+                    setActiveTabId(null);
                 }
             }
         } catch (err) {
@@ -157,8 +159,8 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
                 </div>
 
                 {/* Tabs */}
-                {tabs.length > 0 && (
-                    <div style={{display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px'}}>
+                {tabs.length > 0 ? (
+                    <div style={{display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', minHeight: '44px', alignItems: 'center'}}>
                         {tabs.map(tab => (
                             <button
                                 key={tab.id}
@@ -178,6 +180,8 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
                             </button>
                         ))}
                     </div>
+                ) : (
+                    <p style={{fontSize: '0.9rem', color: THEME.muted, margin: 0}}>No tabs yet. Create one below.</p>
                 )}
             </div>
 
@@ -237,9 +241,13 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
             </div>
 
             {/* Transactions List */}
-            <div style={{padding: '0 16px 16px 16px'}}>
+            <div style={{padding: '0 16px 16px 16px', minHeight: '200px', overflow: 'visible'}}>
                 {loading ? (
                     <div style={{textAlign: 'center', padding: '40px'}}>Loading...</div>
+                ) : activeTabId === null && tabs.length === 0 ? (
+                    <div style={{textAlign: 'center', padding: '40px', color: THEME.muted}}>
+                        Loading tabs...
+                    </div>
                 ) : filteredTransactions.length === 0 ? (
                     <div style={{textAlign: 'center', padding: '40px', color: THEME.muted}}>
                         No transactions found

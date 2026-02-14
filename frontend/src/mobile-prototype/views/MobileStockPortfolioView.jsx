@@ -57,7 +57,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
 
     useEffect(() => {
         fetchTabs();
-    }, []);
+    }, [authUser, authRole]);
 
     useEffect(() => {
         if (activeTabId !== null) {
@@ -404,8 +404,16 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                 </div>
 
                 {/* Tabs */}
-                {tabs.length > 0 && (
-                    <div style={{display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px'}}>
+                {tabs.length > 0 ? (
+                    <div style={{
+                        display: 'flex',
+                        gap: '8px',
+                        overflowX: 'auto',
+                        paddingBottom: '4px',
+                        minHeight: '44px',
+                        alignItems: 'center',
+                        WebkitOverflowScrolling: 'touch'
+                    }}>
                         {tabs.map(tab => (
                             <button
                                 key={tab.id}
@@ -418,12 +426,17 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                                     fontWeight: 700,
                                     fontSize: '0.85rem',
                                     whiteSpace: 'nowrap',
-                                    cursor: 'pointer'
+                                    cursor: 'pointer',
+                                    flexShrink: 0
                                 }}
                             >
                                 {tab.name}
                             </button>
                         ))}
+                    </div>
+                ) : (
+                    <div style={{minHeight: '44px', display: 'flex', alignItems: 'center'}}>
+                        <p style={{fontSize: '0.9rem', color: THEME.muted, margin: 0}}>Loading tabs...</p>
                     </div>
                 )}
             </div>

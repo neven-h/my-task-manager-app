@@ -30,7 +30,8 @@ import {
     CreditCard,
     MoreVertical,
     Save,
-    FileDown
+    FileDown,
+    Paperclip
 } from 'lucide-react';
 import CustomAutocomplete from '../components/CustomAutocomplete';
 import API_BASE from '../config';
@@ -88,6 +89,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
     const [bulkCategory, setBulkCategory] = useState([]);
     const [bulkClient, setBulkClient] = useState('');
     const formChangeTimeoutRef = useRef(null);
+    const fileInputRef = useRef(null);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -101,7 +103,10 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
         status: 'uncompleted',
         tags: [],
         notes: '',
-        shared: false
+        shared: false,
+        attachments: [],
+        newAttachments: [],
+        removedAttachmentIds: []
     });
 
     // Swipe state
@@ -242,7 +247,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
 
     const fetchTags = async () => {
         try {
-            const response = await fetch(`${API_BASE}/tags`);
+            const response = await fetch(`${API_BASE}/tags?username=${authUser}&role=${authRole}`);
             if (!response.ok) throw new Error(`Tags fetch failed: ${response.status}`);
             const data = await response.json();
             setAllTags(Array.isArray(data) ? data : []);
@@ -290,15 +295,13 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
             const url = editingTask
                 ? `${API_BASE}/tasks/${editingTask.id}`
                 : `${API_BASE}/tasks`;
+            const { attachments, newAttachments, removedAttachmentIds, ...payload } = formData;
+            const body = { ...payload, username: authUser, role: authRole };
 
             const response = await fetch(url, {
                 method,
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    ...formData,
-                    username: authUser,
-                    role: authRole
-                })
+                body: JSON.stringify(body)
             });
 
             if (!response.ok) {
@@ -306,9 +309,31 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                 throw new Error(`Save failed: ${response.status} ${errBody || ''}`);
             }
 
+            const data = await response.json().catch(() => ({}));
+            const taskId = editingTask ? editingTask.id : data.id;
+
+            if (taskId) {
+                for (const { file, name } of (newAttachments || [])) {
+                    const fd = new FormData();
+                    fd.append('file', file, name || file.name || `image-${Date.now()}.png`);
+                    const upRes = await fetch(`${API_BASE}/tasks/${taskId}/attachments`, {
+                        method: 'POST',
+                        body: fd
+                    });
+                    if (!upRes.ok) {
+                        const upErr = await upRes.json().catch(() => ({}));
+                        throw new Error(upErr.error || 'Failed to upload attachment');
+                    }
+                }
+                for (const attId of (removedAttachmentIds || [])) {
+                    await fetch(`${API_BASE}/tasks/${taskId}/attachments/${attId}`, {
+                        method: 'DELETE'
+                    });
+                }
+            }
+
             await fetchTasks();
             clearDraft();
-            // Close directly after successful save so we don't show the "unsaved changes" dialog
             setShowTaskModal(false);
             setEditingTask(null);
         } catch (err) {
@@ -412,7 +437,12 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
         setEditingTask(null);
         const draft = loadDraft();
         if (draft) {
-            setFormData(draft);
+            setFormData({
+                ...draft,
+                attachments: draft.attachments || [],
+                newAttachments: [],
+                removedAttachmentIds: draft.removedAttachmentIds || []
+            });
         } else {
             setFormData({
                 title: '',
@@ -425,7 +455,10 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                 status: 'uncompleted',
                 tags: [],
                 notes: '',
-                shared: false
+                shared: false,
+                attachments: [],
+                newAttachments: [],
+                removedAttachmentIds: []
             });
         }
         setShowTaskModal(true);
@@ -444,14 +477,19 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
             status: task.status || 'uncompleted',
             tags: task.tags || [],
             notes: task.notes || '',
-            shared: task.shared || false
+            shared: task.shared || false,
+            attachments: task.attachments || [],
+            newAttachments: [],
+            removedAttachmentIds: []
         });
         setShowTaskModal(true);
     };
 
     const hasUnsavedChanges = () => {
+        const attachmentChanged =
+            (formData.newAttachments && formData.newAttachments.length > 0) ||
+            (formData.removedAttachmentIds && formData.removedAttachmentIds.length > 0);
         if (editingTask) {
-            // Check if editing task has unsaved changes
             return (
                 formData.title !== editingTask.title ||
                 formData.description !== (editingTask.description || '') ||
@@ -463,12 +501,40 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                 formData.status !== editingTask.status ||
                 JSON.stringify(formData.tags) !== JSON.stringify(editingTask.tags || []) ||
                 formData.notes !== (editingTask.notes || '') ||
-                formData.shared !== (editingTask.shared || false)
+                formData.shared !== (editingTask.shared || false) ||
+                attachmentChanged
             );
-        } else {
-            // Check if new task has any data
-            return !!(formData.title || formData.description);
         }
+        return !!(formData.title || formData.description || attachmentChanged);
+    };
+
+    const addAttachment = (file) => {
+        if (!file) return;
+        const name = file.name || `image-${Date.now()}.png`;
+        setFormData(prev => ({
+            ...prev,
+            newAttachments: [...(prev.newAttachments || []), { file, name }]
+        }));
+    };
+
+    const handleFileInputChange = (e) => {
+        const file = e.target.files?.[0];
+        if (file) addAttachment(file);
+        e.target.value = '';
+    };
+
+    const removeNewAttachment = (index) => {
+        setFormData(prev => ({
+            ...prev,
+            newAttachments: (prev.newAttachments || []).filter((_, i) => i !== index)
+        }));
+    };
+
+    const removeExistingAttachment = (att) => {
+        setFormData(prev => ({
+            ...prev,
+            removedAttachmentIds: [...(prev.removedAttachmentIds || []), att.id]
+        }));
     };
 
     const closeModal = () => {
@@ -769,13 +835,13 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
             )}
 
             {appView === 'tasks' && (<>
-                {/* Header with tri-color bar */}
+                {/* Header with tri-color bar - aligned with desktop TaskTracker */}
                 <div style={{
                     position: 'sticky',
                     top: 0,
                     zIndex: 100,
                     background: '#fff',
-                    borderBottom: '3px solid #000'
+                    borderBottom: '4px solid #000'
                 }}>
                     {/* Tri-color bar - 12px like desktop */}
                     <div className="color-bar"/>
@@ -788,18 +854,19 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                     }}>
                         <div>
                             <h1 style={{
-                                fontSize: '1.75rem',
+                                fontFamily: FONT_STACK,
+                                fontSize: 'clamp(1.5rem, 5vw, 2rem)',
                                 fontWeight: 900,
                                 margin: '0 0 4px 0',
+                                letterSpacing: '-1px',
                                 textTransform: 'uppercase',
-                                letterSpacing: '-0.5px',
-                                fontFamily: FONT_STACK
+                                whiteSpace: 'nowrap'
                             }}>
-                                TASKS
+                                Task Tracker
                             </h1>
 
                             <p style={{
-                                fontSize: '0.9rem',
+                                fontSize: '0.85rem',
                                 color: THEME.muted,
                                 margin: 0,
                                 fontFamily: FONT_STACK
@@ -922,35 +989,8 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                                 </h3>
                                             </div>
 
-                                            {/* Action buttons */}
+                                            {/* Action buttons - Edit first (primary), then Duplicate, then Share */}
                                             <div style={{display: 'flex', gap: '4px'}}>
-                                                {/* Duplicate button */}
-                                                <button
-                                                    onClick={() => duplicateTask(task)}
-                                                    style={{
-                                                        background: 'none',
-                                                        border: 'none',
-                                                        padding: '8px',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    <Copy size={20} color={THEME.secondary}/>
-                                                </button>
-
-                                                {/* Share button */}
-                                                <button
-                                                    onClick={() => openShareModal(task)}
-                                                    style={{
-                                                        background: 'none',
-                                                        border: 'none',
-                                                        padding: '8px',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    <Share2 size={20} color={THEME.accent}/>
-                                                </button>
-
-                                                {/* Edit button */}
                                                 <button
                                                     onClick={() => openEditModal(task)}
                                                     style={{
@@ -959,8 +999,33 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                                         padding: '8px',
                                                         cursor: 'pointer'
                                                     }}
+                                                    aria-label="Edit task"
                                                 >
                                                     <Edit2 size={20} color={THEME.primary}/>
+                                                </button>
+                                                <button
+                                                    onClick={() => duplicateTask(task)}
+                                                    style={{
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        padding: '8px',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    aria-label="Duplicate task"
+                                                >
+                                                    <Copy size={20} color={THEME.secondary}/>
+                                                </button>
+                                                <button
+                                                    onClick={() => openShareModal(task)}
+                                                    style={{
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        padding: '8px',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    aria-label="Share task"
+                                                >
+                                                    <Share2 size={20} color={THEME.accent}/>
                                                 </button>
                                             </div>
                                         </div>
@@ -1488,27 +1553,25 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                 >
                     <div style={{
                         width: '100%',
-                        maxHeight: '94vh',
                         height: '94vh',
+                        maxHeight: '94vh',
                         background: '#fff',
                         borderRadius: '16px 16px 0 0',
-                        overflowY: 'auto',
-                        WebkitOverflowScrolling: 'touch',
+                        overflow: 'hidden',
                         display: 'flex',
                         flexDirection: 'column',
                         boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
                         paddingBottom: 'env(safe-area-inset-bottom, 0)'
                     }}>
-                        {/* Modal Header */}
+                        {/* Modal Header - fixed, no scroll */}
                         <div style={{
+                            flexShrink: 0,
                             padding: '16px 20px',
                             paddingTop: 'max(16px, env(safe-area-inset-top, 0))',
                             borderBottom: '1px solid rgba(0,0,0,0.1)',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
-                            position: 'sticky',
-                            top: 0,
                             background: '#fff',
                             zIndex: 1
                         }}>
@@ -1534,11 +1597,18 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                             </button>
                         </div>
 
-                        {/* Modal Body */}
-                        <div style={{
-                            padding: '16px',
-                            paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 24px))'
-                        }}>
+                        {/* Modal Body - only this area scrolls to avoid layout shift */}
+                        <div
+                            style={{
+                                flex: '1 1 0',
+                                minHeight: 0,
+                                overflowY: 'auto',
+                                WebkitOverflowScrolling: 'touch',
+                                padding: '16px',
+                                paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 24px))',
+                                scrollPaddingBottom: '120px'
+                            }}
+                        >
                             {/* Title */}
                             <div style={{marginBottom: '16px'}}>
                                 <label style={{
@@ -1730,9 +1800,11 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                     </button>
                                 </div>
                                 <datalist id="tags-list">
-                                    {allTags.map(tag => (
-                                        <option key={tag} value={tag}/>
-                                    ))}
+                                    {allTags.map(tag => {
+                                        const name = typeof tag === 'object' ? tag.name : tag;
+                                        const key = typeof tag === 'object' ? (tag.id ?? tag.name ?? name) : tag;
+                                        return <option key={key} value={name}/>;
+                                    })}
                                 </datalist>
                                 {formData.tags.length > 0 && (
                                     <div style={{display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px'}}>
@@ -1802,6 +1874,83 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                     onChange={(e) => setFormData({...formData, notes: e.target.value})}
                                     placeholder="Additional notes..."
                                 />
+                            </div>
+
+                            {/* Attachments */}
+                            <div style={{marginBottom: '16px'}}>
+                                <label style={{
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px'
+                                }}>
+                                    Attachments
+                                </label>
+                                <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px'}}>
+                                    <button
+                                        type="button"
+                                        className="mobile-btn"
+                                        style={{padding: '10px 16px'}}
+                                        onClick={() => fileInputRef.current?.click()}
+                                    >
+                                        <Paperclip size={16} style={{marginRight: '6px', verticalAlign: 'middle'}}/>
+                                        Attach file
+                                    </button>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
+                                        onChange={handleFileInputChange}
+                                        style={{display: 'none'}}
+                                    />
+                                </div>
+                                {(formData.attachments || []).filter(a => !(formData.removedAttachmentIds || []).includes(a.id)).length > 0 && (
+                                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px'}}>
+                                        {(formData.attachments || []).filter(a => !(formData.removedAttachmentIds || []).includes(a.id)).map(att => {
+                                            const baseOrigin = API_BASE.replace(/\/api\/?$/, '');
+                                            const fullUrl = att.cloudinary_url || (att.url?.startsWith('http') ? att.url : (att.url?.startsWith('/') ? baseOrigin + att.url : `${API_BASE}/tasks/attachments/${att.id}/file`));
+                                            return (
+                                                <div key={att.id} style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    border: '2px solid #000',
+                                                    padding: '6px 10px',
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: 600
+                                                }}>
+                                                    <a href={fullUrl} target="_blank" rel="noopener noreferrer">{att.filename}</a>
+                                                    <button type="button" onClick={() => removeExistingAttachment(att)} style={{background: 'none', border: 'none', padding: 0, cursor: 'pointer'}} aria-label="Remove">
+                                                        <X size={14}/>
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                {(formData.newAttachments || []).length > 0 && (
+                                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px'}}>
+                                        {(formData.newAttachments || []).map((na, idx) => (
+                                            <div key={idx} style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                border: '2px solid #000',
+                                                padding: '6px 10px',
+                                                fontSize: '0.85rem',
+                                                fontWeight: 600,
+                                                background: THEME.secondary
+                                            }}>
+                                                <span>{na.name}</span>
+                                                <button type="button" onClick={() => removeNewAttachment(idx)} style={{background: 'none', border: 'none', padding: 0, cursor: 'pointer'}} aria-label="Remove">
+                                                    <X size={14}/>
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Shared checkbox (only for admin) */}
