@@ -843,8 +843,8 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                     background: '#fff',
                     borderBottom: '4px solid #000'
                 }}>
-                    {/* Tri-color bar: red | yellow | blue - same as desktop */}
-                    <div className="color-bar"/>
+                    {/* Top bar: solid pink (inline style so global CSS cannot override) */}
+                    <div style={{ height: '12px', width: '100%', background: '#F8B4D9' }}/>
                     <div style={{
                         padding: '16px',
                         display: 'flex',
@@ -1333,61 +1333,6 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                 </div>
                             </div>
 
-                            {/* Export / Import */}
-                            <div>
-                                <h3 style={{
-                                    fontSize: '0.75rem',
-                                    fontWeight: 900,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '1px',
-                                    marginBottom: '12px',
-                                    fontFamily: FONT_STACK
-                                }}>
-                                    Export / Import
-                                </h3>
-                                <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                                    <button
-                                        className="mobile-btn"
-                                        onClick={() => {
-                                            // Export CSV logic here
-                                            setShowMobileSidebar(false);
-                                        }}
-                                        disabled={tasks.length === 0}
-                                        style={{width: '100%', justifyContent: 'flex-start'}}
-                                    >
-                                        <Download size={16} style={{marginRight: '8px'}}/>
-                                        Export CSV
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Stats - for ALL users */}
-                            <div>
-                                <h3 style={{
-                                    fontSize: '0.75rem',
-                                    fontWeight: 900,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '1px',
-                                    marginBottom: '12px',
-                                    fontFamily: FONT_STACK
-                                }}>
-                                    Analytics
-                                </h3>
-                                <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                                    <button
-                                        className="mobile-btn"
-                                        onClick={() => {
-                                            setAppView('stats');
-                                            setShowMobileSidebar(false);
-                                        }}
-                                        style={{width: '100%', justifyContent: 'flex-start'}}
-                                    >
-                                        <BarChart3 size={16} style={{marginRight: '8px'}}/>
-                                        View Stats
-                                    </button>
-                                </div>
-                            </div>
-
                             {/* Bank Transactions - for ALL users (admin, shared, limited) */}
                             {(isAdmin || isSharedUser || isLimitedUser) && (
                                 <div>
@@ -1519,6 +1464,61 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                     </div>
                                 </div>
                             )}
+
+                            {/* Analytics (View Stats) - below Clients */}
+                            <div>
+                                <h3 style={{
+                                    fontSize: '0.75rem',
+                                    fontWeight: 900,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '1px',
+                                    marginBottom: '12px',
+                                    fontFamily: FONT_STACK
+                                }}>
+                                    Analytics
+                                </h3>
+                                <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                                    <button
+                                        className="mobile-btn"
+                                        onClick={() => {
+                                            setAppView('stats');
+                                            setShowMobileSidebar(false);
+                                        }}
+                                        style={{width: '100%', justifyContent: 'flex-start'}}
+                                    >
+                                        <BarChart3 size={16} style={{marginRight: '8px'}}/>
+                                        View Stats
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Export / Import - below Manage Clients */}
+                            <div>
+                                <h3 style={{
+                                    fontSize: '0.75rem',
+                                    fontWeight: 900,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '1px',
+                                    marginBottom: '12px',
+                                    fontFamily: FONT_STACK
+                                }}>
+                                    Export / Import
+                                </h3>
+                                <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                                    <button
+                                        className="mobile-btn"
+                                        onClick={() => {
+                                            // Export CSV logic here
+                                            setShowMobileSidebar(false);
+                                        }}
+                                        disabled={tasks.length === 0}
+                                        style={{width: '100%', justifyContent: 'flex-start'}}
+                                    >
+                                        <Download size={16} style={{marginRight: '8px'}}/>
+                                        Export CSV
+                                    </button>
+                                </div>
+                            </div>
 
                             {/* Account */}
                             <div>

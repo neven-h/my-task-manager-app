@@ -44,9 +44,10 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
             const response = await fetch(`${API_BASE}/transaction-tabs?username=${authUser}&role=${authRole}`);
             const data = await response.json();
             if (Array.isArray(data)) {
-                setTabs(data);
-                if (data.length > 0) {
-                    setActiveTabId(prev => (prev === null ? data[0].id : prev));
+                const normalized = data.map(t => ({ ...t, id: Number(t.id) }));
+                setTabs(normalized);
+                if (normalized.length > 0) {
+                    setActiveTabId(prev => (prev === null ? normalized[0].id : prev));
                 } else {
                     setActiveTabId(null);
                 }
@@ -59,7 +60,7 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
     const fetchTransactions = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${API_BASE}/transactions?tab_id=${activeTabId}&username=${authUser}&role=${authRole}`);
+            const response = await fetch(`${API_BASE}/transactions/all?tab_id=${activeTabId}&username=${authUser}&role=${authRole}`);
             const data = await response.json();
             setTransactions(Array.isArray(data) ? data : []);
         } catch (err) {
@@ -89,7 +90,7 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
             
             const body = {
                 ...newTransaction,
-                tab_id: activeTabId,
+                tab_id: Number(activeTabId),
                 amount: parseFloat(newTransaction.amount)
             };
 
@@ -164,12 +165,12 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
                         {tabs.map(tab => (
                             <button
                                 key={tab.id}
-                                onClick={() => setActiveTabId(tab.id)}
+                                onClick={() => setActiveTabId(Number(tab.id))}
                                 style={{
                                     padding: '8px 16px',
                                     border: '3px solid #000',
-                                    background: activeTabId === tab.id ? THEME.primary : '#fff',
-                                    color: activeTabId === tab.id ? '#fff' : '#000',
+                                    background: Number(activeTabId) === Number(tab.id) ? THEME.primary : '#fff',
+                                    color: Number(activeTabId) === Number(tab.id) ? '#fff' : '#000',
                                     fontWeight: 700,
                                     fontSize: '0.85rem',
                                     whiteSpace: 'nowrap',
