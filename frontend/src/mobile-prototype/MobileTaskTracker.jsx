@@ -835,7 +835,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
             )}
 
             {appView === 'tasks' && (<>
-                {/* Header with tri-color bar - aligned with desktop TaskTracker */}
+                {/* Desktop-style header: tri-color bar + white panel + TASK TRACKER */}
                 <div style={{
                     position: 'sticky',
                     top: 0,
@@ -843,39 +843,25 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                     background: '#fff',
                     borderBottom: '4px solid #000'
                 }}>
-                    {/* Tri-color bar - 12px like desktop */}
+                    {/* Tri-color bar: red | yellow | blue - same as desktop */}
                     <div className="color-bar"/>
-
                     <div style={{
                         padding: '16px',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center'
                     }}>
-                        <div>
-                            <h1 style={{
-                                fontFamily: FONT_STACK,
-                                fontSize: 'clamp(1.5rem, 5vw, 2rem)',
-                                fontWeight: 900,
-                                margin: '0 0 4px 0',
-                                letterSpacing: '-1px',
-                                textTransform: 'uppercase',
-                                whiteSpace: 'nowrap'
-                            }}>
-                                Task Tracker
-                            </h1>
-
-                            <p style={{
-                                fontSize: '0.85rem',
-                                color: THEME.muted,
-                                margin: 0,
-                                fontFamily: FONT_STACK
-                            }}>
-                                {counts.active} active • {counts.done} done
-                            </p>
-                        </div>
-
-                        {/* Hamburger Menu Button */}
+                        <h1 style={{
+                            fontFamily: FONT_STACK,
+                            fontSize: 'clamp(1.25rem, 4vw, 1.75rem)',
+                            fontWeight: 900,
+                            margin: 0,
+                            letterSpacing: '-1px',
+                            textTransform: 'uppercase',
+                            color: THEME.text
+                        }}>
+                            TASK TRACKER
+                        </h1>
                         <button
                             onClick={() => setShowMobileSidebar(true)}
                             style={{
@@ -887,38 +873,140 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                 alignItems: 'center',
                                 justifyContent: 'center'
                             }}
+                            aria-label="Menu"
                         >
                             <Menu size={24} color={THEME.text}/>
                         </button>
                     </div>
+                </div>
 
-                    {/* Quick filters - below header */}
-                    <div style={{padding: '0 16px 16px 16px'}}>
-                        <div style={{display: 'flex', gap: '8px', overflowX: 'auto'}}>
-                            <div
-                                className={`filter-pill ${filterMode === 'all' ? 'active' : ''}`}
-                                onClick={() => setFilterMode('all')}
-                            >
-                                All ({counts.all})
-                            </div>
-                            <div
-                                className={`filter-pill ${filterMode === 'active' ? 'active' : ''}`}
-                                onClick={() => setFilterMode('active')}
-                            >
-                                Active ({counts.active})
-                            </div>
-                            <div
-                                className={`filter-pill ${filterMode === 'done' ? 'active' : ''}`}
-                                onClick={() => setFilterMode('done')}
-                            >
-                                Done ({counts.done})
-                            </div>
-                        </div>
+                {/* Main content: same structure as desktop - actions, date, filters, then list */}
+                <div style={{padding: '16px', paddingBottom: '24px'}}>
+                    {/* Action buttons: + NEW TASK (red), + BULK ADD (yellow) - desktop proportions */}
+                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '20px'}}>
+                        <button
+                            onClick={openCreateModal}
+                            disabled={loading}
+                            style={{
+                                fontFamily: FONT_STACK,
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                                fontSize: '0.85rem',
+                                padding: '14px 20px',
+                                border: '3px solid #000',
+                                background: THEME.accent,
+                                color: '#fff',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}
+                        >
+                            <Plus size={20} strokeWidth={3}/>
+                            New Task
+                        </button>
+                        <button
+                            onClick={() => setShowBulkInput(true)}
+                            disabled={loading}
+                            style={{
+                                fontFamily: FONT_STACK,
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                                fontSize: '0.85rem',
+                                padding: '14px 20px',
+                                border: '3px solid #000',
+                                background: THEME.secondary,
+                                color: '#000',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}
+                        >
+                            <Plus size={18} strokeWidth={3}/>
+                            Bulk Add
+                        </button>
+                    </div>
+
+                    {/* Date and task count - desktop style */}
+                    <p style={{
+                        fontFamily: FONT_STACK,
+                        fontSize: 'clamp(1rem, 3vw, 1.25rem)',
+                        fontWeight: 700,
+                        color: THEME.text,
+                        margin: '0 0 4px 0'
+                    }}>
+                        {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    </p>
+                    <p style={{
+                        fontFamily: FONT_STACK,
+                        fontSize: '0.9rem',
+                        color: THEME.muted,
+                        margin: '0 0 16px 0'
+                    }}>
+                        {counts.all} task{counts.all !== 1 ? 's' : ''}
+                    </p>
+
+                    {/* Filter row: ALL TASKS | COMPLETED ONLY | UNCOMPLETED ONLY - desktop labels and colors */}
+                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px'}}>
+                        <button
+                            type="button"
+                            onClick={() => setFilterMode('all')}
+                            style={{
+                                fontFamily: FONT_STACK,
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                fontSize: '0.8rem',
+                                padding: '12px 18px',
+                                border: '3px solid #000',
+                                background: filterMode === 'all' ? THEME.primary : '#fff',
+                                color: filterMode === 'all' ? '#fff' : THEME.text,
+                                cursor: 'pointer'
+                            }}
+                        >
+                            All Tasks
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setFilterMode('done')}
+                            style={{
+                                fontFamily: FONT_STACK,
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                fontSize: '0.8rem',
+                                padding: '12px 18px',
+                                border: '3px solid #000',
+                                background: filterMode === 'done' ? THEME.primary : '#fff',
+                                color: filterMode === 'done' ? '#fff' : THEME.text,
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Completed Only
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setFilterMode('active')}
+                            style={{
+                                fontFamily: FONT_STACK,
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                fontSize: '0.8rem',
+                                padding: '12px 18px',
+                                border: '3px solid #000',
+                                background: filterMode === 'active' ? THEME.primary : '#fff',
+                                color: filterMode === 'active' ? '#fff' : THEME.text,
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Uncompleted Only
+                        </button>
                     </div>
                 </div>
 
                 {/* Task List */}
-                <div style={{padding: '16px'}}>
+                <div style={{padding: '0 16px 16px 16px'}}>
                     {loading ? (
                         <div style={{textAlign: 'center', padding: '40px', color: THEME.muted}}>
                             Loading...
@@ -1118,57 +1206,6 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                         })
                     )}
                 </div>
-
-                {/* Floating Action Buttons */}
-                {/* Bulk Add Button */}
-                <button
-                    onClick={() => setShowBulkInput(true)}
-                    style={{
-                        position: 'fixed',
-                        bottom: '100px',
-                        right: '20px',
-                        width: '48px',
-                        height: '48px',
-                        borderRadius: '50%',
-                        background: THEME.accent,
-                        border: '3px solid #000',
-                        boxShadow: '4px 4px 0px #000',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        zIndex: 90,
-                        fontSize: '20px',
-                        fontWeight: 'bold',
-                        color: '#000'
-                    }}
-                    title="Bulk Add Tasks"
-                >
-                    ≡
-                </button>
-
-                {/* Main Add Button */}
-                <button
-                    onClick={openCreateModal}
-                    style={{
-                        position: 'fixed',
-                        bottom: '20px',
-                        right: '20px',
-                        width: '64px',
-                        height: '64px',
-                        borderRadius: '50%',
-                        background: THEME.primary,
-                        border: '3px solid #000',
-                        boxShadow: '4px 4px 0px #000',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        zIndex: 90
-                    }}
-                >
-                    <Plus size={32} color="#fff" strokeWidth={3}/>
-                </button>
             </>)/* End of tasks view */}
 
             {/* Mobile Sidebar Menu */}
