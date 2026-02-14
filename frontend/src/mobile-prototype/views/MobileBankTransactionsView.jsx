@@ -14,6 +14,7 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
     const [activeTabId, setActiveTabId] = useState(null);
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [tabsLoading, setTabsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [showAddForm, setShowAddForm] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState(null);
@@ -48,6 +49,7 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
 
     const fetchTabs = async () => {
         try {
+            setTabsLoading(true);
             const response = await fetch(`${API_BASE}/transaction-tabs?username=${authUser}&role=${authRole}`);
             const data = await response.json();
             if (Array.isArray(data)) {
@@ -61,6 +63,8 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
             }
         } catch (err) {
             console.error('Error fetching tabs:', err);
+        } finally {
+            setTabsLoading(false);
         }
     };
 
@@ -251,7 +255,11 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
                 </div>
 
                 {/* Tabs */}
-                {tabs.length > 0 ? (
+                {tabsLoading ? (
+                    <div style={{padding: '8px 0', color: THEME.muted, fontSize: '0.85rem'}}>
+                        Loading tabs...
+                    </div>
+                ) : tabs.length > 0 ? (
                     <div style={{display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', minHeight: '44px', alignItems: 'center'}}>
                         {tabs.map(tab => (
                             <button
@@ -290,7 +298,9 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
                         </button>
                     </div>
                 ) : (
-                    <p style={{fontSize: '0.9rem', color: THEME.muted, margin: 0}}>No tabs yet. Create one below.</p>
+                    <div style={{padding: '8px 0', color: THEME.muted, fontSize: '0.85rem'}}>
+                        No tabs yet. Create one below.
+                    </div>
                 )}
             </div>
 
@@ -462,12 +472,14 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
 
             {/* Transactions List */}
             <div style={{padding: '0 16px 16px 16px', minHeight: '200px', overflow: 'visible'}}>
-                {loading ? (
-                    <div style={{textAlign: 'center', padding: '40px'}}>Loading...</div>
-                ) : activeTabId === null && tabs.length === 0 ? (
+                {tabsLoading ? (
+                    <div style={{textAlign: 'center', padding: '40px', color: THEME.muted}}>Loading...</div>
+                ) : !activeTabId ? (
                     <div style={{textAlign: 'center', padding: '40px', color: THEME.muted}}>
-                        Loading tabs...
+                        {tabs.length === 0 ? 'Create a tab to start tracking transactions' : 'Select a tab to view transactions'}
                     </div>
+                ) : loading ? (
+                    <div style={{textAlign: 'center', padding: '40px'}}>Loading transactions...</div>
                 ) : filteredTransactions.length === 0 ? (
                     <div style={{textAlign: 'center', padding: '40px', color: THEME.muted}}>
                         No transactions found
