@@ -1264,31 +1264,6 @@ useEffect(() => {
                              overflowY: 'visible',
                              paddingBottom: '2px'
                          }}>
-                        {/* Primary: New Task - core action, always visible when on Tasks */}
-                        {isAdmin && appView === 'tasks' && (
-                            <>
-                                <button
-                                    className="btn btn-red"
-                                    onClick={openNewTaskForm}
-                                    disabled={loading}
-                                    style={{ whiteSpace: 'nowrap', flexShrink: 0, fontWeight: 700, padding: '12px 24px' }}
-                                    title="Add a new task"
-                                >
-                                    <Plus size={20} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />
-                                    New Task
-                                </button>
-                                <button
-                                    className="btn btn-yellow"
-                                    onClick={() => setShowBulkInput(true)}
-                                    disabled={loading}
-                                    style={{ whiteSpace: 'nowrap', flexShrink: 0, background: '#FFD500', color: '#000', border: '2px solid #000', fontWeight: 700, padding: '12px 20px' }}
-                                    title="Add multiple tasks at once"
-                                >
-                                    <Plus size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} />
-                                    Bulk Add
-                                </button>
-                            </>
-                        )}
                         {/* Toggle Sidebar Button */}
                         <button
                             className="btn btn-white"
@@ -2018,6 +1993,54 @@ useEffect(() => {
                 <div style={{flex: 1, padding: '48px', transition: 'all 0.3s ease'}}>
                     {view === 'list' ? (
                         <>
+                            {/* Primary Action Bar - New Task is the core action */}
+                            {isAdmin && (
+                                <div className="task-action-bar" style={{
+                                    display: 'flex',
+                                    gap: '16px',
+                                    marginBottom: '32px',
+                                    padding: '20px 24px',
+                                    background: '#000',
+                                    alignItems: 'center',
+                                    flexWrap: 'wrap'
+                                }}>
+                                    <button
+                                        className="btn"
+                                        onClick={openNewTaskForm}
+                                        disabled={loading}
+                                        style={{
+                                            background: '#FF0000',
+                                            color: '#fff',
+                                            border: '3px solid #fff',
+                                            fontWeight: 900,
+                                            fontSize: '1.1rem',
+                                            padding: '14px 32px',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '1px'
+                                        }}
+                                    >
+                                        <Plus size={22} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '10px' }} />
+                                        New Task
+                                    </button>
+                                    <button
+                                        className="btn"
+                                        onClick={() => setShowBulkInput(true)}
+                                        disabled={loading}
+                                        style={{
+                                            background: '#FFD500',
+                                            color: '#000',
+                                            border: '3px solid #fff',
+                                            fontWeight: 700,
+                                            fontSize: '0.95rem',
+                                            padding: '12px 24px'
+                                        }}
+                                    >
+                                        <Plus size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />
+                                        Bulk Add
+                                    </button>
+                                </div>
+                            )}
+
                             <div style={{marginBottom: '32px'}}>
                                 {/* Date row */}
                                 <div>
