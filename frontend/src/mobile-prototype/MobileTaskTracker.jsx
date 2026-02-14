@@ -31,7 +31,8 @@ import {
     MoreVertical,
     Save,
     FileDown,
-    Paperclip
+    Paperclip,
+    BookOpen
 } from 'lucide-react';
 import CustomAutocomplete from '../components/CustomAutocomplete';
 import API_BASE from '../config';
@@ -42,6 +43,7 @@ import MobileStatsView from './views/MobileStatsView';
 import MobileBankTransactionsView from './views/MobileBankTransactionsView';
 import MobileStockPortfolioView from './views/MobileStockPortfolioView';
 import MobileClientsView from './views/MobileClientsView';
+import MobileNotebookView from './views/MobileNotebookView';
 
 const DRAFT_STORAGE_KEY = 'taskTracker_mobile_draft';
 const BULK_DRAFT_STORAGE_KEY = 'taskTracker_mobile_bulkDraft';
@@ -72,7 +74,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
     const [categories, setCategories] = useState([]);
     const [clients, setClients] = useState([]);
     const [allTags, setAllTags] = useState([]);
-    const [appView, setAppView] = useState('tasks'); // 'tasks', 'transactions', 'stats', 'portfolio', 'clients'
+    const [appView, setAppView] = useState('tasks'); // 'tasks', 'transactions', 'stats', 'portfolio', 'clients', 'notebook'
     const [filterMode, setFilterMode] = useState('all'); // all, active, done
     const [showFilterDrawer, setShowFilterDrawer] = useState(false);
     const [showTaskModal, setShowTaskModal] = useState(false);
@@ -834,6 +836,10 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                 />
             )}
 
+            {appView === 'notebook' && (
+                <MobileNotebookView onBack={() => setAppView('tasks')} />
+            )}
+
             {appView === 'tasks' && (<>
                 {/* Desktop-style header: tri-color bar + white panel + TASK TRACKER */}
                 <div style={{
@@ -1329,6 +1335,17 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                     >
                                         <RefreshCw size={16} style={{marginRight: '8px'}}/>
                                         Refresh
+                                    </button>
+                                    <button
+                                        className="mobile-btn"
+                                        onClick={() => {
+                                            setAppView('notebook');
+                                            setShowMobileSidebar(false);
+                                        }}
+                                        style={{width: '100%', justifyContent: 'flex-start'}}
+                                    >
+                                        <BookOpen size={16} style={{marginRight: '8px'}}/>
+                                        Notebook
                                     </button>
                                 </div>
                             </div>
