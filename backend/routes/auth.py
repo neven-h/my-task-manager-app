@@ -412,6 +412,12 @@ def setup_2fa():
         if not username:
             return jsonify({'error': 'Username is required'}), 400
 
+        # Check if this is a hardcoded user (not in database)
+        if username in USERS:
+            return jsonify({
+                'error': '2FA is not available for legacy accounts. Please create a new account via Sign Up to use 2FA.'
+            }), 400
+
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
@@ -424,7 +430,7 @@ def setup_2fa():
             user = cursor.fetchone()
 
             if not user:
-                return jsonify({'error': 'User not found'}), 404
+                return jsonify({'error': 'User not found in database. Please sign up for a new account.'}), 404
 
             # Generate a new secret
             secret = pyotp.random_base32()
