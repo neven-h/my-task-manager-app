@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Lock, AlertCircle, CheckCircle, ArrowLeft, X } from 'lucide-react';
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001';
+import API_BASE from './config';
 
 const SettingsPage = () => {
     const navigate = useNavigate();
@@ -28,7 +27,7 @@ const SettingsPage = () => {
     const fetchTwoFactorStatus = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${API_BASE}/api/auth/2fa/status?username=${username}`);
+            const response = await fetch(`${API_BASE}/auth/2fa/status?username=${username}`);
             const data = await response.json();
             setTwoFactorEnabled(data.enabled);
         } catch (err) {
@@ -48,7 +47,7 @@ const SettingsPage = () => {
         setDisableLoading(true);
 
         try {
-            const response = await fetch(`${API_BASE}/api/auth/2fa/disable`, {
+            const response = await fetch(`${API_BASE}/auth/2fa/disable`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })

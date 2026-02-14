@@ -63,7 +63,7 @@ const LoginPage = ({ onLogin, onBack }) => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE}/api/auth/2fa/verify`, {
+      const response = await fetch(`${API_BASE}/auth/2fa/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
