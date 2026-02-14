@@ -797,7 +797,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
         .color-bar {
           height: 12px;
           width: 100%;
-          background: linear-gradient(90deg, #FF0000 0%, #FF0000 33.33%, #FFD500 33.33%, #FFD500 66.66%, #0000FF 66.66%, #0000FF 100%);
+          background: #F8B4D9;
         }
       `}</style>
 
