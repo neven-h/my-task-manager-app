@@ -1264,6 +1264,31 @@ useEffect(() => {
                              overflowY: 'visible',
                              paddingBottom: '2px'
                          }}>
+                        {/* Primary: New Task - core action, always visible when on Tasks */}
+                        {isAdmin && appView === 'tasks' && (
+                            <>
+                                <button
+                                    className="btn btn-red"
+                                    onClick={openNewTaskForm}
+                                    disabled={loading}
+                                    style={{ whiteSpace: 'nowrap', flexShrink: 0, fontWeight: 700, padding: '12px 24px' }}
+                                    title="Add a new task"
+                                >
+                                    <Plus size={20} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />
+                                    New Task
+                                </button>
+                                <button
+                                    className="btn btn-yellow"
+                                    onClick={() => setShowBulkInput(true)}
+                                    disabled={loading}
+                                    style={{ whiteSpace: 'nowrap', flexShrink: 0, background: '#FFD500', color: '#000', border: '2px solid #000', fontWeight: 700, padding: '12px 20px' }}
+                                    title="Add multiple tasks at once"
+                                >
+                                    <Plus size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '6px' }} />
+                                    Bulk Add
+                                </button>
+                            </>
+                        )}
                         {/* Toggle Sidebar Button */}
                         <button
                             className="btn btn-white"
@@ -1994,41 +2019,17 @@ useEffect(() => {
                     {view === 'list' ? (
                         <>
                             <div style={{marginBottom: '32px'}}>
-                                {/* Date row: date + task count on left, New Task (and Bulk Add below) on right */}
-                                <div style={{display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap'}}>
-                                    <div>
-                                        <h2 style={{fontSize: '2rem', fontWeight: 900, marginBottom: '8px'}}>
-                                            {new Date().toLocaleDateString('en-US', {
-                                                weekday: 'long',
-                                                year: 'numeric',
-                                                month: 'long',
-                                                day: 'numeric'
-                                            })}
-                                        </h2>
-                                        <p style={{color: '#666', fontSize: '1rem'}}>{tasks.length} tasks</p>
-                                    </div>
-                                    {isAdmin && (
-                                        <div style={{display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0}}>
-                                            <button
-                                                className="btn btn-red"
-                                                onClick={openNewTaskForm}
-                                                disabled={loading}
-                                                style={{whiteSpace: 'nowrap', fontWeight: 700, fontSize: '1rem', padding: '12px 24px'}}
-                                            >
-                                                <Plus size={20} style={{display: 'inline', verticalAlign: 'middle', marginRight: '6px'}}/>
-                                                New Task
-                                            </button>
-                                            <button
-                                                className="btn btn-yellow"
-                                                onClick={() => setShowBulkInput(true)}
-                                                disabled={loading}
-                                                style={{whiteSpace: 'nowrap', background: '#FFD500', color: '#000', border: '2px solid #000', fontWeight: 700, fontSize: '1rem', padding: '12px 24px'}}
-                                            >
-                                                <Plus size={20} style={{display: 'inline', verticalAlign: 'middle', marginRight: '6px'}}/>
-                                                Bulk Add
-                                            </button>
-                                        </div>
-                                    )}
+                                {/* Date row */}
+                                <div>
+                                    <h2 style={{fontSize: '2rem', fontWeight: 900, marginBottom: '8px'}}>
+                                        {new Date().toLocaleDateString('en-US', {
+                                            weekday: 'long',
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric'
+                                        })}
+                                    </h2>
+                                    <p style={{color: '#666', fontSize: '1rem'}}>{tasks.length} tasks</p>
                                 </div>
 
                                 {/* Filter toggles row - Completed/Uncompleted only buttons are narrower */}
