@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Lock, AlertCircle, CheckCircle, ArrowLeft, X } from 'lucide-react';
+import { Shield, Lock, AlertCircle, CheckCircle, ArrowLeft, X, Eye, EyeOff } from 'lucide-react';
 import API_BASE from './config';
 
 const SettingsPage = () => {
@@ -12,28 +12,104 @@ const SettingsPage = () => {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [disableLoading, setDisableLoading] = useState(false);
+    const [userEmail, setUserEmail] = useState('');
+    
+    // Change password state
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [passwordError, setPasswordError] = useState('');
+    const [passwordSuccess, setPasswordSuccess] = useState('');
+    const [passwordLoading, setPasswordLoading] = useState(false);
 
     const username = localStorage.getItem('username');
-    const role = localStorage.getItem('role');
 
     useEffect(() => {
         if (!username) {
             navigate('/login');
             return;
         }
-        fetchTwoFactorStatus();
+        fetchUserInfo();
     }, [username]);
 
-    const fetchTwoFactorStatus = async () => {
+    const fetchUserInfo = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${API_BASE}/auth/2fa/status?username=${username}`);
-            const data = await response.json();
-            setTwoFactorEnabled(data.enabled);
+            // Fetch 2FA status
+            const twoFaResponse = await fetch(`${API_BASE}/auth/2fa/status?username=${username}`);
+            const twoFaData = await twoFaResponse.json();
+            setTwoFactorEnabled(Boolean(twoFaData.enabled));
+            
+            // Fetch user email
+            const userResponse = await fetch(`${API_BASE}/auth/user-info?username=${username}`);
+            if (userResponse.ok) {
+                const userData = await userResponse.json();
+                setUserEmail(userData.email || '');
+            }
         } catch (err) {
-            console.error('Error fetching 2FA status:', err);
+            console.error('Error fetching user info:', err);
         } finally {
             setLoading(false);
+        }
+    };
+    
+    const handleChangePassword = async (e) => {
+        e.preventDefault();
+        setPasswordError('');
+        setPasswordSuccess('');
+        
+        // Validation
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            setPasswordError('All fields are required');
+            return;
+        }
+        
+        if (newPassword.length < 8) {
+            setPasswordError('New password must be at least 8 characters');
+            return;
+        }
+        
+        if (newPassword !== confirmPassword) {
+            setPasswordError('New passwords do not match');
+            return;
+        }
+        
+        if (currentPassword === newPassword) {
+            setPasswordError('New password must be different from current password');
+            return;
+        }
+        
+        try {
+            setPasswordLoading(true);
+            const response = await fetch(`${API_BASE}/auth/change-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username,
+                    current_password: currentPassword,
+                    new_password: newPassword
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                setPasswordSuccess('Password changed successfully!');
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+                setTimeout(() => setPasswordSuccess(''), 5000);
+            } else {
+                setPasswordError(data.error || 'Failed to change password');
+            }
+        } catch (err) {
+            setPasswordError('Network error. Please try again.');
+            console.error('Change password error:', err);
+        } finally {
+            setPasswordLoading(false);
         }
     };
 
@@ -340,13 +416,250 @@ const SettingsPage = () => {
                         }}>
                             Account Information
                         </h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
                             <div style={{ display: 'flex', gap: '8px', color: '#666', fontSize: '0.9rem' }}>
                                 <strong>Username:</strong> <span>{username}</span>
                             </div>
                             <div style={{ display: 'flex', gap: '8px', color: '#666', fontSize: '0.9rem' }}>
-                                <strong>Role:</strong> <span style={{ textTransform: 'capitalize' }}>{role}</span>
+                                <strong>Email:</strong> <span>{userEmail || 'Not available'}</span>
                             </div>
+                        </div>
+                        
+                        {/* Change Password Section */}
+                        <div style={{
+                            borderTop: '2px solid #e5e7eb',
+                            paddingTop: '24px'
+                        }}>
+                            <h4 style={{
+                                fontWeight: 700,
+                                marginBottom: '16px',
+                                color: '#111',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                fontSize: '1rem'
+                            }}>
+                                <Lock size={18} />
+                                Change Password
+                            </h4>
+                            
+                            {passwordError && (
+                                <div style={{
+                                    background: '#fee2e2',
+                                    border: '1px solid #ef4444',
+                                    borderRadius: '8px',
+                                    padding: '12px',
+                                    marginBottom: '16px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    color: '#991b1b',
+                                    fontSize: '0.9rem'
+                                }}>
+                                    <AlertCircle size={18} />
+                                    {passwordError}
+                                </div>
+                            )}
+                            
+                            {passwordSuccess && (
+                                <div style={{
+                                    background: '#d1fae5',
+                                    border: '1px solid #10b981',
+                                    borderRadius: '8px',
+                                    padding: '12px',
+                                    marginBottom: '16px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    color: '#065f46',
+                                    fontSize: '0.9rem'
+                                }}>
+                                    <CheckCircle size={18} />
+                                    {passwordSuccess}
+                                </div>
+                            )}
+                            
+                            <form onSubmit={handleChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                {/* Current Password */}
+                                <div>
+                                    <label style={{ 
+                                        display: 'block', 
+                                        marginBottom: '6px', 
+                                        fontWeight: 600, 
+                                        color: '#333',
+                                        fontSize: '0.9rem'
+                                    }}>
+                                        Current Password
+                                    </label>
+                                    <div style={{ position: 'relative' }}>
+                                        <input
+                                            type={showCurrentPassword ? 'text' : 'password'}
+                                            value={currentPassword}
+                                            onChange={(e) => setCurrentPassword(e.target.value)}
+                                            placeholder="Enter current password"
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px 44px 12px 16px',
+                                                border: '2px solid #e5e7eb',
+                                                borderRadius: '8px',
+                                                fontSize: '1rem',
+                                                boxSizing: 'border-box',
+                                                transition: 'border-color 0.2s'
+                                            }}
+                                            onFocus={(e) => e.target.style.borderColor = '#667eea'}
+                                            onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                                            style={{
+                                                position: 'absolute',
+                                                right: '12px',
+                                                top: '50%',
+                                                transform: 'translateY(-50%)',
+                                                background: 'none',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                color: '#666',
+                                                padding: '4px'
+                                            }}
+                                        >
+                                            {showCurrentPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                {/* New Password */}
+                                <div>
+                                    <label style={{ 
+                                        display: 'block', 
+                                        marginBottom: '6px', 
+                                        fontWeight: 600, 
+                                        color: '#333',
+                                        fontSize: '0.9rem'
+                                    }}>
+                                        New Password
+                                    </label>
+                                    <div style={{ position: 'relative' }}>
+                                        <input
+                                            type={showNewPassword ? 'text' : 'password'}
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            placeholder="Enter new password (min 8 characters)"
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px 44px 12px 16px',
+                                                border: '2px solid #e5e7eb',
+                                                borderRadius: '8px',
+                                                fontSize: '1rem',
+                                                boxSizing: 'border-box',
+                                                transition: 'border-color 0.2s'
+                                            }}
+                                            onFocus={(e) => e.target.style.borderColor = '#667eea'}
+                                            onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowNewPassword(!showNewPassword)}
+                                            style={{
+                                                position: 'absolute',
+                                                right: '12px',
+                                                top: '50%',
+                                                transform: 'translateY(-50%)',
+                                                background: 'none',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                color: '#666',
+                                                padding: '4px'
+                                            }}
+                                        >
+                                            {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                {/* Confirm New Password */}
+                                <div>
+                                    <label style={{ 
+                                        display: 'block', 
+                                        marginBottom: '6px', 
+                                        fontWeight: 600, 
+                                        color: '#333',
+                                        fontSize: '0.9rem'
+                                    }}>
+                                        Confirm New Password
+                                    </label>
+                                    <div style={{ position: 'relative' }}>
+                                        <input
+                                            type={showConfirmPassword ? 'text' : 'password'}
+                                            value={confirmPassword}
+                                            onChange={(e) => setConfirmPassword(e.target.value)}
+                                            placeholder="Confirm new password"
+                                            style={{
+                                                width: '100%',
+                                                padding: '12px 44px 12px 16px',
+                                                border: '2px solid #e5e7eb',
+                                                borderRadius: '8px',
+                                                fontSize: '1rem',
+                                                boxSizing: 'border-box',
+                                                transition: 'border-color 0.2s'
+                                            }}
+                                            onFocus={(e) => e.target.style.borderColor = '#667eea'}
+                                            onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                            style={{
+                                                position: 'absolute',
+                                                right: '12px',
+                                                top: '50%',
+                                                transform: 'translateY(-50%)',
+                                                background: 'none',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                color: '#666',
+                                                padding: '4px'
+                                            }}
+                                        >
+                                            {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <button
+                                    type="submit"
+                                    disabled={passwordLoading}
+                                    style={{
+                                        padding: '14px 24px',
+                                        background: passwordLoading 
+                                            ? '#ccc' 
+                                            : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '10px',
+                                        fontSize: '1rem',
+                                        fontWeight: 600,
+                                        cursor: passwordLoading ? 'not-allowed' : 'pointer',
+                                        transition: 'transform 0.2s, box-shadow 0.2s',
+                                        boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+                                        marginTop: '8px',
+                                        alignSelf: 'flex-start'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (!passwordLoading) {
+                                            e.target.style.transform = 'translateY(-2px)';
+                                            e.target.style.boxShadow = '0 6px 16px rgba(102, 126, 234, 0.4)';
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.target.style.transform = 'translateY(0)';
+                                        e.target.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.3)';
+                                    }}
+                                >
+                                    {passwordLoading ? 'Changing Password...' : 'Change Password'}
+                                </button>
+                            </form>
                         </div>
                     </div>
                 </div>
