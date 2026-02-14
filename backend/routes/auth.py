@@ -650,17 +650,33 @@ def get_2fa_status():
 
 @auth_bp.route('/api/auth/user-info', methods=['GET'])
 def get_user_info():
-    """Get user information including email"""
+    """Get user information including email - requires authentication"""
     try:
-        username = request.args.get('username')
-
-        if not username:
-            return jsonify({'error': 'Username is required'}), 400
+        # Verify JWT token from Authorization header
+        token = request.headers.get('Authorization')
+        if not token:
+            return jsonify({'error': 'Authentication required'}), 401
+        
+        token_result = verify_jwt_token(token)
+        if not token_result['valid']:
+            return jsonify({'error': token_result.get('error', 'Invalid token')}), 401
+        
+        # Get username from token payload - users can only access their own info
+        authenticated_username = token_result['payload'].get('username')
+        requested_username = request.args.get('username')
+        
+        # If no username provided, use the authenticated user's username
+        if not requested_username:
+            requested_username = authenticated_username
+        
+        # Security: Users can only access their own information
+        if requested_username != authenticated_username:
+            return jsonify({'error': 'Access denied: You can only view your own account information'}), 403
 
         # Check if this is a hardcoded user
-        if username in USERS:
+        if requested_username in USERS:
             return jsonify({
-                'username': username,
+                'username': requested_username,
                 'email': None,
                 'is_legacy_account': True
             })
@@ -672,7 +688,7 @@ def get_user_info():
                 SELECT username, email
                 FROM users
                 WHERE username = %s
-            """, (username,))
+            """, (requested_username,))
             user = cursor.fetchone()
 
             if not user:

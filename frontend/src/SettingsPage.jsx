@@ -38,16 +38,24 @@ const SettingsPage = () => {
     const fetchUserInfo = async () => {
         try {
             setLoading(true);
+            const authToken = localStorage.getItem('authToken');
+            
             // Fetch 2FA status
             const twoFaResponse = await fetch(`${API_BASE}/auth/2fa/status?username=${username}`);
             const twoFaData = await twoFaResponse.json();
             setTwoFactorEnabled(Boolean(twoFaData.enabled));
             
-            // Fetch user email
-            const userResponse = await fetch(`${API_BASE}/auth/user-info?username=${username}`);
-            if (userResponse.ok) {
-                const userData = await userResponse.json();
-                setUserEmail(userData.email || '');
+            // Fetch user email (requires authentication)
+            if (authToken) {
+                const userResponse = await fetch(`${API_BASE}/auth/user-info?username=${username}`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+                if (userResponse.ok) {
+                    const userData = await userResponse.json();
+                    setUserEmail(userData.email || '');
+                }
             }
         } catch (err) {
             console.error('Error fetching user info:', err);
