@@ -47,12 +47,29 @@ const ClientsManagement = ({ onBackToTasks }) => {
     fetchClients();
   }, []);
 
+  // Helper to get auth headers
+  const getAuthHeaders = () => {
+    const token = localStorage.getItem('authToken');
+    return {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    };
+  };
+
   const fetchClients = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`${API_BASE}/clients/manage`);
+      const response = await fetch(`${API_BASE}/clients/manage`, {
+        headers: getAuthHeaders()
+      });
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication required. Please log in.');
+        }
+        if (response.status === 403) {
+          throw new Error('Access denied. Admin privileges required.');
+        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
@@ -70,8 +87,16 @@ const ClientsManagement = ({ onBackToTasks }) => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`${API_BASE}/clients/${encodeURIComponent(clientName)}/tasks`);
+      const response = await fetch(`${API_BASE}/clients/${encodeURIComponent(clientName)}/tasks`, {
+        headers: getAuthHeaders()
+      });
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication required. Please log in.');
+        }
+        if (response.status === 403) {
+          throw new Error('Access denied. Admin privileges required.');
+        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
@@ -93,11 +118,19 @@ const ClientsManagement = ({ onBackToTasks }) => {
       setLoading(true);
       const response = await fetch(`${API_BASE}/clients/${encodeURIComponent(oldName)}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ new_name: newClientName })
       });
 
-      if (!response.ok) throw new Error('Failed to rename client');
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication required. Please log in.');
+        }
+        if (response.status === 403) {
+          throw new Error('Access denied. Admin privileges required.');
+        }
+        throw new Error('Failed to rename client');
+      }
 
       setEditingClient(null);
       setNewClientName('');
@@ -115,10 +148,19 @@ const ClientsManagement = ({ onBackToTasks }) => {
     try {
       setLoading(true);
       const response = await fetch(`${API_BASE}/clients/${encodeURIComponent(clientName)}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: getAuthHeaders()
       });
 
-      if (!response.ok) throw new Error('Failed to delete client');
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication required. Please log in.');
+        }
+        if (response.status === 403) {
+          throw new Error('Access denied. Admin privileges required.');
+        }
+        throw new Error('Failed to delete client');
+      }
 
       setSelectedClient(null);
       setClientTasks([]);
@@ -154,7 +196,7 @@ const ClientsManagement = ({ onBackToTasks }) => {
       
       const response = await fetch(`${API_BASE}/clients`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           name: newClient.name.trim(),
           email: newClient.email?.trim() || '',
