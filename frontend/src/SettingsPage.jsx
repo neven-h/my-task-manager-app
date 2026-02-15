@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Lock, AlertCircle, CheckCircle, ArrowLeft, X, Eye, EyeOff } from 'lucide-react';
+import { Shield, Lock, AlertCircle, CheckCircle, ArrowLeft, X, Eye, EyeOff, Trash2 } from 'lucide-react';
 import API_BASE from './config';
 
 const SettingsPage = () => {
@@ -24,6 +24,13 @@ const SettingsPage = () => {
     const [passwordError, setPasswordError] = useState('');
     const [passwordSuccess, setPasswordSuccess] = useState('');
     const [passwordLoading, setPasswordLoading] = useState(false);
+    
+    // Delete account state
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deletePassword, setDeletePassword] = useState('');
+    const [deleteConfirmText, setDeleteConfirmText] = useState('');
+    const [deleteError, setDeleteError] = useState('');
+    const [deleteLoading, setDeleteLoading] = useState(false);
 
     const username = localStorage.getItem('username');
 
@@ -118,6 +125,51 @@ const SettingsPage = () => {
             console.error('Change password error:', err);
         } finally {
             setPasswordLoading(false);
+        }
+    };
+
+    const handleDeleteAccount = async (e) => {
+        e.preventDefault();
+        setDeleteError('');
+        
+        // Validation
+        if (!deletePassword) {
+            setDeleteError('Password is required');
+            return;
+        }
+        
+        if (deleteConfirmText !== 'DELETE') {
+            setDeleteError('Please type DELETE to confirm');
+            return;
+        }
+        
+        try {
+            setDeleteLoading(true);
+            const response = await fetch(`${API_BASE}/auth/delete-account`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username,
+                    password: deletePassword
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Clear local storage and redirect to login
+                localStorage.removeItem('username');
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('userRole');
+                navigate('/login', { state: { message: 'Account deleted successfully' } });
+            } else {
+                setDeleteError(data.error || 'Failed to delete account');
+            }
+        } catch (err) {
+            setDeleteError('Network error. Please try again.');
+            console.error('Delete account error:', err);
+        } finally {
+            setDeleteLoading(false);
         }
     };
 
@@ -670,6 +722,64 @@ const SettingsPage = () => {
                             </form>
                         </div>
                     </div>
+                    
+                    {/* Danger Zone - Delete Account */}
+                    <div style={{
+                        marginTop: '30px',
+                        padding: '20px',
+                        background: '#fef2f2',
+                        borderRadius: '12px',
+                        border: '2px solid #fecaca'
+                    }}>
+                        <h3 style={{
+                            fontSize: '1rem',
+                            fontWeight: 700,
+                            marginBottom: '12px',
+                            color: '#991b1b',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                        }}>
+                            <Trash2 size={18} />
+                            Danger Zone
+                        </h3>
+                        <p style={{
+                            color: '#7f1d1d',
+                            fontSize: '0.9rem',
+                            lineHeight: '1.6',
+                            marginBottom: '16px'
+                        }}>
+                            Once you delete your account, there is no going back. All your data including tasks, portfolio, and transactions will be permanently deleted.
+                        </p>
+                        <button
+                            onClick={() => setShowDeleteModal(true)}
+                            style={{
+                                padding: '12px 24px',
+                                background: 'transparent',
+                                border: '2px solid #dc2626',
+                                color: '#dc2626',
+                                borderRadius: '10px',
+                                fontSize: '0.95rem',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.target.style.background = '#dc2626';
+                                e.target.style.color = 'white';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.target.style.background = 'transparent';
+                                e.target.style.color = '#dc2626';
+                            }}
+                        >
+                            <Trash2 size={18} />
+                            Delete Account
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -884,6 +994,266 @@ const SettingsPage = () => {
                                     }}
                                 >
                                     {disableLoading ? 'Disabling...' : 'Disable 2FA'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </>
+            )}
+
+            {/* Delete Account Modal */}
+            {showDeleteModal && (
+                <>
+                    {/* Backdrop */}
+                    <div
+                        onClick={() => {
+                            setShowDeleteModal(false);
+                            setDeletePassword('');
+                            setDeleteConfirmText('');
+                            setDeleteError('');
+                        }}
+                        style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: 'rgba(0, 0, 0, 0.6)',
+                            zIndex: 999,
+                            animation: 'fadeIn 0.2s ease-out'
+                        }}
+                    />
+
+                    {/* Modal */}
+                    <div style={{
+                        position: 'fixed',
+                        top: '50%',
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        background: 'white',
+                        borderRadius: '16px',
+                        padding: '30px',
+                        maxWidth: '450px',
+                        width: '90%',
+                        zIndex: 1000,
+                        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+                        animation: 'slideUp 0.3s ease-out'
+                    }}>
+                        <button
+                            onClick={() => {
+                                setShowDeleteModal(false);
+                                setDeletePassword('');
+                                setDeleteConfirmText('');
+                                setDeleteError('');
+                            }}
+                            style={{
+                                position: 'absolute',
+                                top: '16px',
+                                right: '16px',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: '8px',
+                                color: '#999'
+                            }}
+                        >
+                            <X size={24} />
+                        </button>
+
+                        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                            <div style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: '64px',
+                                height: '64px',
+                                borderRadius: '50%',
+                                background: 'rgba(220, 38, 38, 0.1)',
+                                marginBottom: '16px'
+                            }}>
+                                <Trash2 size={32} color="#dc2626" />
+                            </div>
+                            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '8px', color: '#111' }}>
+                                Delete Account
+                            </h2>
+                            <p style={{ color: '#666', fontSize: '0.95rem', lineHeight: '1.5' }}>
+                                This action is <strong>permanent</strong> and cannot be undone. All your data will be lost forever.
+                            </p>
+                        </div>
+
+                        <form onSubmit={handleDeleteAccount}>
+                            <div style={{ marginBottom: '16px' }}>
+                                <label style={{
+                                    display: 'block',
+                                    color: '#333',
+                                    fontSize: '0.9rem',
+                                    fontWeight: '600',
+                                    marginBottom: '8px'
+                                }}>
+                                    Password
+                                </label>
+                                <div style={{ position: 'relative' }}>
+                                    <Lock
+                                        size={20}
+                                        style={{
+                                            position: 'absolute',
+                                            left: '16px',
+                                            top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            color: '#999'
+                                        }}
+                                    />
+                                    <input
+                                        type="password"
+                                        value={deletePassword}
+                                        onChange={(e) => setDeletePassword(e.target.value)}
+                                        required
+                                        autoFocus
+                                        style={{
+                                            width: '100%',
+                                            padding: '14px 16px 14px 48px',
+                                            background: '#f5f5f5',
+                                            border: '2px solid #e0e0e0',
+                                            borderRadius: '12px',
+                                            color: '#1a1a1a',
+                                            fontSize: '1rem',
+                                            outline: 'none',
+                                            transition: 'all 0.3s ease',
+                                            boxSizing: 'border-box'
+                                        }}
+                                        onFocus={(e) => {
+                                            e.target.style.borderColor = '#dc2626';
+                                            e.target.style.boxShadow = '0 0 0 3px rgba(220, 38, 38, 0.2)';
+                                        }}
+                                        onBlur={(e) => {
+                                            e.target.style.borderColor = '#e0e0e0';
+                                            e.target.style.boxShadow = 'none';
+                                        }}
+                                        placeholder="Enter your password"
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: '20px' }}>
+                                <label style={{
+                                    display: 'block',
+                                    color: '#333',
+                                    fontSize: '0.9rem',
+                                    fontWeight: '600',
+                                    marginBottom: '8px'
+                                }}>
+                                    Type <span style={{ color: '#dc2626', fontWeight: 700 }}>DELETE</span> to confirm
+                                </label>
+                                <input
+                                    type="text"
+                                    value={deleteConfirmText}
+                                    onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                    required
+                                    style={{
+                                        width: '100%',
+                                        padding: '14px 16px',
+                                        background: '#f5f5f5',
+                                        border: '2px solid #e0e0e0',
+                                        borderRadius: '12px',
+                                        color: '#1a1a1a',
+                                        fontSize: '1rem',
+                                        outline: 'none',
+                                        transition: 'all 0.3s ease',
+                                        boxSizing: 'border-box'
+                                    }}
+                                    onFocus={(e) => {
+                                        e.target.style.borderColor = '#dc2626';
+                                        e.target.style.boxShadow = '0 0 0 3px rgba(220, 38, 38, 0.2)';
+                                    }}
+                                    onBlur={(e) => {
+                                        e.target.style.borderColor = '#e0e0e0';
+                                        e.target.style.boxShadow = 'none';
+                                    }}
+                                    placeholder="DELETE"
+                                />
+                            </div>
+
+                            {deleteError && (
+                                <div style={{
+                                    background: '#fee2e2',
+                                    border: '2px solid #dc2626',
+                                    borderRadius: '8px',
+                                    padding: '12px',
+                                    marginBottom: '16px',
+                                    color: '#991b1b',
+                                    fontSize: '0.9rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                }}>
+                                    <AlertCircle size={18} />
+                                    {deleteError}
+                                </div>
+                            )}
+
+                            <div style={{
+                                display: 'flex',
+                                gap: '12px',
+                                marginTop: '24px'
+                            }}>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowDeleteModal(false);
+                                        setDeletePassword('');
+                                        setDeleteConfirmText('');
+                                        setDeleteError('');
+                                    }}
+                                    style={{
+                                        flex: 1,
+                                        padding: '14px',
+                                        background: 'transparent',
+                                        border: '2px solid #e0e0e0',
+                                        borderRadius: '12px',
+                                        color: '#666',
+                                        fontSize: '1rem',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.target.style.borderColor = '#999';
+                                        e.target.style.color = '#333';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.target.style.borderColor = '#e0e0e0';
+                                        e.target.style.color = '#666';
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={deleteLoading || deleteConfirmText !== 'DELETE'}
+                                    style={{
+                                        flex: 1,
+                                        padding: '14px',
+                                        background: (deleteLoading || deleteConfirmText !== 'DELETE')
+                                            ? 'rgba(220, 38, 38, 0.4)'
+                                            : 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+                                        border: 'none',
+                                        borderRadius: '12px',
+                                        color: 'white',
+                                        fontSize: '1rem',
+                                        fontWeight: 600,
+                                        cursor: (deleteLoading || deleteConfirmText !== 'DELETE') ? 'not-allowed' : 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (!deleteLoading && deleteConfirmText === 'DELETE') {
+                                            e.target.style.transform = 'translateY(-2px)';
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.target.style.transform = 'translateY(0)';
+                                    }}
+                                >
+                                    {deleteLoading ? 'Deleting...' : 'Delete Account'}
                                 </button>
                             </div>
                         </form>
