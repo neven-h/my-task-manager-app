@@ -825,6 +825,30 @@ def token_required(f):
     return decorated
 
 
+def admin_required(f):
+    """Decorator to require valid JWT token AND admin role for protected routes"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization')
+
+        if not token:
+            return jsonify({'error': 'Authentication token is missing'}), 401
+
+        result = verify_jwt_token(token)
+        if not result['valid']:
+            return jsonify({'error': result.get('error', 'Invalid token')}), 401
+
+        # Check for admin role
+        payload = result['payload']
+        if payload.get('role') != 'admin':
+            return jsonify({'error': 'Admin access required'}), 403
+
+        # Pass the payload to the decorated function
+        return f(payload, *args, **kwargs)
+
+    return decorated
+
+
 DB_CONNECT_MAX_RETRIES = int(os.getenv('DB_CONNECT_MAX_RETRIES', 3))
 DB_CONNECT_BASE_DELAY = float(os.getenv('DB_CONNECT_BASE_DELAY', 1.0))
 
