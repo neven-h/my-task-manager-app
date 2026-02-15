@@ -1,0 +1,161 @@
+from flask import Blueprint, request, jsonify
+from config import get_db_connection
+from mysql.connector import Error
+
+portfolio_tabs_bp = Blueprint('portfolio_tabs', __name__)
+
+# ==================== PORTFOLIO TABS ENDPOINTS ====================
+
+@portfolio_tabs_bp.route('/api/portfolio-tabs', methods=['GET'])
+def get_portfolio_tabs():
+    """Get all portfolio tabs for the current user"""
+    try:
+        username = request.args.get('username')
+        user_role = request.args.get('role')
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            query = "SELECT * FROM portfolio_tabs WHERE 1=1"
+            params = []
+
+            if user_role == 'limited':
+                query += " AND owner = %s"
+                params.append(username)
+
+            query += " ORDER BY created_at ASC"
+            cursor.execute(query, params)
+            tabs = cursor.fetchall()
+
+            for tab in tabs:
+                if tab.get('created_at'):
+                    tab['created_at'] = tab['created_at'].isoformat()
+
+            return jsonify(tabs)
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@portfolio_tabs_bp.route('/api/portfolio-tabs', methods=['POST'])
+def create_portfolio_tab():
+    """Create a new portfolio tab"""
+    try:
+        data = request.json
+        name = data.get('name', '').strip()
+        owner = data.get('username')
+
+        if not name:
+            return jsonify({'error': 'Tab name is required'}), 400
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            cursor.execute(
+                "INSERT INTO portfolio_tabs (name, owner) VALUES (%s, %s)",
+                (name, owner)
+            )
+            connection.commit()
+
+            tab_id = cursor.lastrowid
+            return jsonify({
+                'id': tab_id,
+                'name': name,
+                'owner': owner,
+                'message': 'Tab created successfully'
+            })
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@portfolio_tabs_bp.route('/api/portfolio-tabs/<int:tab_id>', methods=['PUT'])
+def update_portfolio_tab(tab_id):
+    """Rename a portfolio tab"""
+    try:
+        data = request.json
+        name = data.get('name', '').strip()
+        username = request.args.get('username')
+        user_role = request.args.get('role')
+
+        if not name:
+            return jsonify({'error': 'Tab name is required'}), 400
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # First verify ownership/authorization
+            check_query = "SELECT owner FROM portfolio_tabs WHERE id = %s"
+            cursor.execute(check_query, (tab_id,))
+            tab = cursor.fetchone()
+
+            if not tab:
+                return jsonify({'error': 'Tab not found'}), 404
+
+            # Authorization check: limited users can only modify their own tabs
+            if user_role == 'limited' and tab['owner'] != username:
+                return jsonify({'error': 'Unauthorized: You can only modify your own portfolio tabs'}), 403
+
+            # Update the tab
+            cursor.execute(
+                "UPDATE portfolio_tabs SET name = %s WHERE id = %s",
+                (name, tab_id)
+            )
+            connection.commit()
+
+            if cursor.rowcount == 0:
+                return jsonify({'error': 'Tab not found'}), 404
+
+            return jsonify({'message': 'Tab updated successfully'})
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@portfolio_tabs_bp.route('/api/portfolio-tabs/<int:tab_id>', methods=['DELETE'])
+def delete_portfolio_tab(tab_id):
+    """Delete a portfolio tab and its associated entries"""
+    try:
+        username = request.args.get('username')
+        user_role = request.args.get('role')
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # First verify ownership/authorization
+            check_query = "SELECT owner FROM portfolio_tabs WHERE id = %s"
+            cursor.execute(check_query, (tab_id,))
+            tab = cursor.fetchone()
+
+            if not tab:
+                return jsonify({'error': 'Tab not found'}), 404
+
+            # Authorization check: limited users can only delete their own tabs
+            if user_role == 'limited' and tab['owner'] != username:
+                return jsonify({'error': 'Unauthorized: You can only delete your own portfolio tabs'}), 403
+
+            # Delete associated portfolio entries first (CASCADE should handle this, but being explicit)
+            cursor.execute(
+                "DELETE FROM stock_portfolio WHERE tab_id = %s",
+                (tab_id,)
+            )
+            deleted_entries = cursor.rowcount
+
+            # Delete the tab
+            cursor.execute(
+                "DELETE FROM portfolio_tabs WHERE id = %s",
+                (tab_id,)
+            )
+            connection.commit()
+
+            if cursor.rowcount == 0:
+                return jsonify({'error': 'Tab not found'}), 404
+
+            return jsonify({
+                'message': f'Tab deleted with {deleted_entries} portfolio entries'
+            })
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
