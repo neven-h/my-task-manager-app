@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, send_file, current_app, redirect
 from config import (
-    get_db_connection, handle_error, serialize_task, token_required,
+    get_db_connection, handle_error, serialize_task, token_required, admin_required,
     sanitize_csv_field, DEBUG, UPLOAD_FOLDER, TASK_ATTACHMENTS_FOLDER,
     allowed_task_attachment, app, mail, FRONTEND_URL,
     CLOUDINARY_ENABLED,
@@ -1118,13 +1118,14 @@ def get_stats():
 
 
 @tasks_bp.route('/api/categories', methods=['GET', 'POST'])
-def manage_categories():
+@token_required
+def manage_categories(payload):
     """Get list of categories or create a new one"""
+    username = payload['username']
+    user_role = payload['role']
+
     if request.method == 'GET':
         try:
-            username = request.args.get('username')
-            user_role = request.args.get('role')
-
             with get_db_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
 
@@ -1158,7 +1159,8 @@ def manage_categories():
             label = data.get('label', '').strip()
             color = data.get('color', '#0d6efd')
             icon = data.get('icon', '📝')
-            owner = data.get('owner')  # Get owner from request
+            # Owner is always the authenticated user, never from request body
+            owner = username if user_role != 'admin' else None
 
             if not category_id or not label:
                 return jsonify({'error': 'Category ID and label are required'}), 400
@@ -1184,8 +1186,12 @@ def manage_categories():
 
 
 @tasks_bp.route('/api/categories/<category_id>', methods=['PUT', 'DELETE'])
-def update_delete_category(category_id):
+@token_required
+def update_delete_category(payload, category_id):
     """Update or delete a category"""
+    username = payload['username']
+    user_role = payload['role']
+
     if request.method == 'PUT':
         try:
             data = request.json
@@ -1197,7 +1203,20 @@ def update_delete_category(category_id):
                 return jsonify({'error': 'Label is required'}), 400
 
             with get_db_connection() as connection:
-                cursor = connection.cursor()
+                cursor = connection.cursor(dictionary=True)
+
+                # Ownership check: limited users can only edit their own categories
+                if user_role != 'admin':
+                    cursor.execute(
+                        "SELECT owner FROM categories_master WHERE category_id = %s",
+                        (category_id,)
+                    )
+                    row = cursor.fetchone()
+                    if not row:
+                        return jsonify({'error': 'Category not found'}), 404
+                    if row['owner'] != username:
+                        return jsonify({'error': 'Access denied'}), 403
+
                 cursor.execute("""
                                UPDATE categories_master
                                SET label = %s,
@@ -1217,7 +1236,20 @@ def update_delete_category(category_id):
     elif request.method == 'DELETE':
         try:
             with get_db_connection() as connection:
-                cursor = connection.cursor()
+                cursor = connection.cursor(dictionary=True)
+
+                # Ownership check: limited users can only delete their own categories
+                if user_role != 'admin':
+                    cursor.execute(
+                        "SELECT owner FROM categories_master WHERE category_id = %s",
+                        (category_id,)
+                    )
+                    row = cursor.fetchone()
+                    if not row:
+                        return jsonify({'error': 'Category not found'}), 404
+                    if row['owner'] != username:
+                        return jsonify({'error': 'Access denied'}), 403
+
                 cursor.execute("""
                                DELETE
                                FROM categories_master
@@ -1234,13 +1266,14 @@ def update_delete_category(category_id):
 
 
 @tasks_bp.route('/api/tags', methods=['GET', 'POST'])
-def manage_tags():
+@token_required
+def manage_tags(payload):
     """Get list of tags or create a new one"""
+    username = payload['username']
+    user_role = payload['role']
+
     if request.method == 'GET':
         try:
-            username = request.args.get('username')
-            user_role = request.args.get('role')
-
             with get_db_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
 
@@ -1258,7 +1291,7 @@ def manage_tags():
                         cursor.execute("INSERT IGNORE INTO tags (name) VALUES (%s)", (tag_name,))
                     connection.commit()
 
-                # Build query based on user role
+                # Build query based on role from JWT
                 if user_role == 'limited':
                     # Limited users only see their own tags OR tags with no owner (shared)
                     query = """
@@ -1286,7 +1319,8 @@ def manage_tags():
             data = request.json
             name = data.get('name', '').strip()
             color = data.get('color', '#0d6efd')
-            owner = data.get('owner')  # Get owner from request
+            # Owner is always the authenticated user, never from request body
+            owner = username if user_role != 'admin' else None
 
             if not name:
                 return jsonify({'error': 'Tag name is required'}), 400
@@ -1311,8 +1345,12 @@ def manage_tags():
 
 
 @tasks_bp.route('/api/tags/<int:tag_id>', methods=['PUT', 'DELETE'])
-def update_delete_tag(tag_id):
+@token_required
+def update_delete_tag(payload, tag_id):
     """Update or delete a tag"""
+    username = payload['username']
+    user_role = payload['role']
+
     if request.method == 'PUT':
         try:
             data = request.json
@@ -1323,7 +1361,17 @@ def update_delete_tag(tag_id):
                 return jsonify({'error': 'Tag name is required'}), 400
 
             with get_db_connection() as connection:
-                cursor = connection.cursor()
+                cursor = connection.cursor(dictionary=True)
+
+                # Ownership check: limited users can only edit their own tags
+                if user_role != 'admin':
+                    cursor.execute("SELECT owner FROM tags WHERE id = %s", (tag_id,))
+                    row = cursor.fetchone()
+                    if not row:
+                        return jsonify({'error': 'Tag not found'}), 404
+                    if row['owner'] != username:
+                        return jsonify({'error': 'Access denied'}), 403
+
                 cursor.execute("""
                                UPDATE tags
                                SET name  = %s,
@@ -1342,7 +1390,17 @@ def update_delete_tag(tag_id):
     elif request.method == 'DELETE':
         try:
             with get_db_connection() as connection:
-                cursor = connection.cursor()
+                cursor = connection.cursor(dictionary=True)
+
+                # Ownership check: limited users can only delete their own tags
+                if user_role != 'admin':
+                    cursor.execute("SELECT owner FROM tags WHERE id = %s", (tag_id,))
+                    row = cursor.fetchone()
+                    if not row:
+                        return jsonify({'error': 'Tag not found'}), 404
+                    if row['owner'] != username:
+                        return jsonify({'error': 'Access denied'}), 403
+
                 cursor.execute("""
                                DELETE
                                FROM tags
@@ -1359,12 +1417,14 @@ def update_delete_tag(tag_id):
 
 
 @tasks_bp.route('/api/clients', methods=['GET', 'POST'])
-def manage_clients_list():
+@token_required
+def manage_clients_list(payload):
     """Get list of clients or create a new one"""
+    username = payload['username']
+    user_role = payload['role']
+
     if request.method == 'GET':
         try:
-            username = request.args.get('username')
-            user_role = request.args.get('role')
 
             with get_db_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
@@ -1423,7 +1483,8 @@ def manage_clients_list():
         try:
             data = request.json
             name = data.get('name', '').strip()
-            owner = data.get('owner')  # Get owner from request
+            # Owner is always the authenticated user, never from request body
+            owner = username if user_role != 'admin' else None
 
             if not name:
                 return jsonify({'error': 'Client name is required'}), 400
