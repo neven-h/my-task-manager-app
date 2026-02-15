@@ -22,11 +22,11 @@ def manage_categories(payload):
                 cursor = connection.cursor(dictionary=True)
 
                 if user_role == 'limited':
-                    # Limited users only see their own categories OR categories with no owner (shared)
+                    # Limited users only see their own categories
                     cursor.execute("""
                         SELECT category_id as id, label, color, icon
                         FROM categories_master
-                        WHERE owner = %s OR owner IS NULL
+                        WHERE owner = %s
                         ORDER BY label
                     """, (username,))
                 else:
@@ -160,13 +160,15 @@ def manage_tags(payload):
                             if t:
                                 all_tag_names.add(t)
                     for tag_name in all_tag_names:
-                        cursor.execute("INSERT IGNORE INTO tags (name) VALUES (%s)", (tag_name,))
+                        # Seed as admin-owned so they are not exposed to limited users
+                        cursor.execute("INSERT IGNORE INTO tags (name, owner) VALUES (%s, %s)", (tag_name, username))
                     connection.commit()
 
                 if user_role == 'limited':
+                    # Limited users only see their own tags
                     cursor.execute("""
                         SELECT id, name, color FROM tags
-                        WHERE owner = %s OR owner IS NULL
+                        WHERE owner = %s
                         ORDER BY name
                     """, (username,))
                 else:
@@ -276,10 +278,11 @@ def manage_clients_list(payload):
                 cursor = connection.cursor(dictionary=True)
 
                 if user_role == 'limited':
+                    # Limited users only see their own clients
                     cursor.execute("""
                         SELECT name, email, phone, notes, created_at, updated_at
                         FROM clients
-                        WHERE owner = %s OR owner IS NULL
+                        WHERE owner = %s
                         ORDER BY name
                     """, (username,))
                     clients_from_table = cursor.fetchall()
@@ -290,7 +293,7 @@ def manage_clients_list(payload):
                         WHERE client IS NOT NULL
                           AND client != ''
                           AND created_by = %s
-                          AND client NOT IN (SELECT name FROM clients WHERE owner = %s OR owner IS NULL)
+                          AND client NOT IN (SELECT name FROM clients WHERE owner = %s)
                         ORDER BY client
                     """, (username, username))
                     clients_from_tasks = [row['client'] for row in cursor.fetchall()]
