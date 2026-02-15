@@ -765,3 +765,68 @@ def change_password():
         return jsonify({'error': str(e)}), 500
 
 
+@auth_bp.route('/api/auth/delete-account', methods=['POST'])
+def delete_account():
+    """Delete user account permanently"""
+    try:
+        data = request.json
+        username = data.get('username')
+        password = data.get('password')
+
+        if not username or not password:
+            return jsonify({'error': 'Username and password are required'}), 400
+
+        # Check if this is a hardcoded user (cannot delete)
+        if username in USERS:
+            return jsonify({
+                'error': 'Account deletion is not available for legacy accounts.'
+            }), 400
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # Get user
+            cursor.execute("""
+                SELECT id, password_hash
+                FROM users
+                WHERE username = %s
+            """, (username,))
+            user = cursor.fetchone()
+
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+
+            # Verify password
+            if not bcrypt.checkpw(password.encode('utf-8'), user['password_hash'].encode('utf-8')):
+                return jsonify({'error': 'Invalid password'}), 401
+
+            user_id = user['id']
+
+            # Delete user's related data first (foreign key constraints)
+            # Delete password reset tokens
+            cursor.execute("DELETE FROM password_reset_tokens WHERE user_id = %s", (user_id,))
+            
+            # Delete user's tasks
+            cursor.execute("DELETE FROM tasks WHERE user_id = %s", (user_id,))
+            
+            # Delete user's portfolio (if exists)
+            cursor.execute("DELETE FROM portfolio WHERE user_id = %s", (user_id,))
+            
+            # Delete user's transactions (if exists)
+            cursor.execute("DELETE FROM transactions WHERE user_id = %s", (user_id,))
+
+            # Finally, delete the user
+            cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+            
+            connection.commit()
+
+            return jsonify({
+                'success': True,
+                'message': 'Account deleted successfully'
+            })
+
+    except Exception as e:
+        print(f"Delete account error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
