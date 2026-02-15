@@ -803,17 +803,36 @@ def delete_account():
             user_id = user['id']
 
             # Delete user's related data first (foreign key constraints)
-            # Delete password reset tokens
+            # Delete password reset tokens (uses user_id foreign key)
             cursor.execute("DELETE FROM password_reset_tokens WHERE user_id = %s", (user_id,))
             
-            # Delete user's tasks
-            cursor.execute("DELETE FROM tasks WHERE user_id = %s", (user_id,))
+            # Delete user's tasks (uses created_by column with username)
+            cursor.execute("DELETE FROM tasks WHERE created_by = %s", (username,))
             
-            # Delete user's portfolio (if exists)
-            cursor.execute("DELETE FROM portfolio WHERE user_id = %s", (user_id,))
+            # Delete user's stock portfolio tabs and entries (uses owner column)
+            cursor.execute("DELETE FROM stock_portfolio WHERE created_by = %s", (username,))
+            cursor.execute("DELETE FROM portfolio_tabs WHERE owner = %s", (username,))
             
-            # Delete user's transactions (if exists)
-            cursor.execute("DELETE FROM transactions WHERE user_id = %s", (user_id,))
+            # Delete user's transaction tabs (uses owner column)
+            cursor.execute("DELETE FROM transaction_tabs WHERE owner = %s", (username,))
+            
+            # Delete user's bank transactions (uses username column)
+            cursor.execute("DELETE FROM bank_transactions WHERE username = %s", (username,))
+            
+            # Delete user's watched stocks (uses username column)
+            cursor.execute("DELETE FROM watched_stocks WHERE username = %s", (username,))
+            
+            # Delete user's yahoo portfolio (uses username column)
+            cursor.execute("DELETE FROM yahoo_portfolio WHERE username = %s", (username,))
+            
+            # Delete user's tags (uses owner column)
+            cursor.execute("DELETE FROM tags WHERE owner = %s", (username,))
+            
+            # Delete user's categories (uses owner column)
+            cursor.execute("DELETE FROM categories_master WHERE owner = %s", (username,))
+            
+            # Delete user's clients (uses owner column)
+            cursor.execute("DELETE FROM clients WHERE owner = %s", (username,))
 
             # Finally, delete the user
             cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
