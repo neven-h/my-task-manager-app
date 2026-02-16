@@ -12,12 +12,12 @@ import re
 transaction_query_bp = Blueprint('transaction_query', __name__)
 
 @transaction_query_bp.route('/api/transactions/months', methods=['GET'])
-def get_transaction_months():
+@token_required
+def get_transaction_months(payload):
     """Get list of months with saved transactions (filtered by user role and tab)"""
     try:
-        # Get username and role for filtering
-        username = request.args.get('username')
-        user_role = request.args.get('role')
+        username = payload['username']
+        user_role = payload['role']
         tab_id = request.args.get('tab_id')
 
         with get_db_connection() as connection:
@@ -99,12 +99,12 @@ def get_transaction_months():
 
 
 @transaction_query_bp.route('/api/transactions/all', methods=['GET'])
-def get_all_transactions():
+@token_required
+def get_all_transactions(payload):
     """Get all transactions (filtered by user role and tab) with decryption"""
     try:
-        # Get username and role for filtering
-        username = request.args.get('username')
-        user_role = request.args.get('role')
+        username = payload['username']
+        user_role = payload['role']
         tab_id = request.args.get('tab_id')
 
         with get_db_connection() as connection:
@@ -178,12 +178,12 @@ def get_all_transactions():
 
 
 @transaction_query_bp.route('/api/transactions/<month_year>', methods=['GET'])
-def get_transactions_by_month(month_year):
+@token_required
+def get_transactions_by_month(payload, month_year):
     """Get all transactions for a specific month (filtered by user role and tab) with decryption"""
     try:
-        # Get username and role for filtering
-        username = request.args.get('username')
-        user_role = request.args.get('role')
+        username = payload['username']
+        user_role = payload['role']
         tab_id = request.args.get('tab_id')
 
         with get_db_connection() as connection:
@@ -258,14 +258,31 @@ def get_transactions_by_month(month_year):
 
 
 @transaction_query_bp.route('/api/transactions/<int:transaction_id>', methods=['DELETE'])
-def delete_transaction(transaction_id):
+@token_required
+def delete_transaction(payload, transaction_id):
     """Delete a specific transaction with audit logging"""
     try:
-        username = request.args.get('username', 'unknown')
+        username = payload['username']
+        user_role = payload['role']
 
         with get_db_connection() as connection:
-            cursor = connection.cursor()
+            cursor = connection.cursor(dictionary=True)
 
+            # Ownership check via tab
+            if user_role != 'admin':
+                cursor.execute("""
+                    SELECT bt.uploaded_by, tt.owner
+                    FROM bank_transactions bt
+                    LEFT JOIN transaction_tabs tt ON bt.tab_id = tt.id
+                    WHERE bt.id = %s
+                """, (transaction_id,))
+                row = cursor.fetchone()
+                if not row:
+                    return jsonify({'error': 'Transaction not found'}), 404
+                if row['uploaded_by'] != username and row['owner'] != username:
+                    return jsonify({'error': 'Access denied'}), 403
+
+            cursor = connection.cursor()
             cursor.execute("DELETE FROM bank_transactions WHERE id = %s", (transaction_id,))
             connection.commit()
 
@@ -286,19 +303,31 @@ def delete_transaction(transaction_id):
 
 
 @transaction_query_bp.route('/api/transactions/month/<month_year>', methods=['DELETE'])
-def delete_month_transactions(month_year):
+@token_required
+def delete_month_transactions(payload, month_year):
     """Delete all transactions for a specific month with audit logging"""
     try:
-        username = request.args.get('username', 'unknown')
+        username = payload['username']
+        user_role = payload['role']
         tab_id = request.args.get('tab_id')
 
         with get_db_connection() as connection:
-            cursor = connection.cursor()
+            cursor = connection.cursor(dictionary=True)
 
             # Require tab_id for strict tab separation
             if not tab_id:
                 return jsonify({'error': 'tab_id is required'}), 400
 
+            # Ownership check: verify the tab belongs to the user
+            if user_role != 'admin':
+                cursor.execute("SELECT owner FROM transaction_tabs WHERE id = %s", (tab_id,))
+                tab = cursor.fetchone()
+                if not tab:
+                    return jsonify({'error': 'Tab not found'}), 404
+                if tab['owner'] != username:
+                    return jsonify({'error': 'Access denied'}), 403
+
+            cursor = connection.cursor()
             cursor.execute("DELETE FROM bank_transactions WHERE month_year = %s AND tab_id = %s", (month_year, tab_id))
             deleted_count = cursor.rowcount
             connection.commit()
@@ -320,11 +349,13 @@ def delete_month_transactions(month_year):
 
 
 @transaction_query_bp.route('/api/transactions/<int:transaction_id>', methods=['PUT'])
-def update_transaction(transaction_id):
+@token_required
+def update_transaction(payload, transaction_id):
     """Update a specific transaction with encryption"""
     try:
+        username = payload['username']
+        user_role = payload['role']
         data = request.json
-        username = data.get('username', 'unknown')
 
         with get_db_connection() as connection:
             cursor = connection.cursor()
@@ -370,11 +401,12 @@ def update_transaction(transaction_id):
 
 
 @transaction_query_bp.route('/api/transactions/manual', methods=['POST'])
-def add_manual_transaction():
+@token_required
+def add_manual_transaction(payload):
     """Add a transaction manually with encryption"""
     try:
+        username = payload['username']
         data = request.json
-        username = data.get('username', 'admin')
         tab_id = data.get('tab_id')
 
         # Require tab_id for strict tab separation
@@ -426,7 +458,8 @@ def add_manual_transaction():
 
 
 @transaction_query_bp.route('/api/transactions/descriptions', methods=['GET'])
-def get_all_descriptions():
+@token_required
+def get_all_descriptions(payload):
     """Get all unique transaction descriptions"""
     try:
         with get_db_connection() as connection:
@@ -448,14 +481,15 @@ def get_all_descriptions():
 
 
 @transaction_query_bp.route('/api/transactions/stats', methods=['GET'])
-def get_transaction_stats():
+@token_required
+def get_transaction_stats(payload):
     """Get transaction statistics including cash vs credit breakdown (filtered by user role and tab)"""
     try:
+        username = payload['username']
+        user_role = payload['role']
         # Get optional date filters
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
-        username = request.args.get('username')
-        user_role = request.args.get('role')
         tab_id = request.args.get('tab_id')
 
         print(f"[STATS DEBUG] tab_id={tab_id}, username={username}, role={user_role}")

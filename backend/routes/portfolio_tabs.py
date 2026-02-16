@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from config import get_db_connection
+from config import get_db_connection, token_required
 from mysql.connector import Error
 
 portfolio_tabs_bp = Blueprint('portfolio_tabs', __name__)
@@ -7,11 +7,12 @@ portfolio_tabs_bp = Blueprint('portfolio_tabs', __name__)
 # ==================== PORTFOLIO TABS ENDPOINTS ====================
 
 @portfolio_tabs_bp.route('/api/portfolio-tabs', methods=['GET'])
-def get_portfolio_tabs():
+@token_required
+def get_portfolio_tabs(payload):
     """Get all portfolio tabs for the current user"""
     try:
-        username = request.args.get('username')
-        user_role = request.args.get('role')
+        username = payload['username']
+        user_role = payload['role']
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -38,12 +39,13 @@ def get_portfolio_tabs():
 
 
 @portfolio_tabs_bp.route('/api/portfolio-tabs', methods=['POST'])
-def create_portfolio_tab():
+@token_required
+def create_portfolio_tab(payload):
     """Create a new portfolio tab"""
     try:
+        owner = payload['username']
         data = request.json
         name = data.get('name', '').strip()
-        owner = data.get('username')
 
         if not name:
             return jsonify({'error': 'Tab name is required'}), 400
@@ -70,13 +72,14 @@ def create_portfolio_tab():
 
 
 @portfolio_tabs_bp.route('/api/portfolio-tabs/<int:tab_id>', methods=['PUT'])
-def update_portfolio_tab(tab_id):
+@token_required
+def update_portfolio_tab(payload, tab_id):
     """Rename a portfolio tab"""
     try:
+        username = payload['username']
+        user_role = payload['role']
         data = request.json
         name = data.get('name', '').strip()
-        username = request.args.get('username')
-        user_role = request.args.get('role')
 
         if not name:
             return jsonify({'error': 'Tab name is required'}), 400
@@ -92,9 +95,9 @@ def update_portfolio_tab(tab_id):
             if not tab:
                 return jsonify({'error': 'Tab not found'}), 404
 
-            # Authorization check: limited users can only modify their own tabs
-            if user_role == 'limited' and tab['owner'] != username:
-                return jsonify({'error': 'Unauthorized: You can only modify your own portfolio tabs'}), 403
+            # Authorization check: non-admin users can only modify their own tabs
+            if user_role != 'admin' and tab['owner'] != username:
+                return jsonify({'error': 'Access denied'}), 403
 
             # Update the tab
             cursor.execute(
@@ -113,11 +116,12 @@ def update_portfolio_tab(tab_id):
 
 
 @portfolio_tabs_bp.route('/api/portfolio-tabs/<int:tab_id>', methods=['DELETE'])
-def delete_portfolio_tab(tab_id):
+@token_required
+def delete_portfolio_tab(payload, tab_id):
     """Delete a portfolio tab and its associated entries"""
     try:
-        username = request.args.get('username')
-        user_role = request.args.get('role')
+        username = payload['username']
+        user_role = payload['role']
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -130,9 +134,9 @@ def delete_portfolio_tab(tab_id):
             if not tab:
                 return jsonify({'error': 'Tab not found'}), 404
 
-            # Authorization check: limited users can only delete their own tabs
-            if user_role == 'limited' and tab['owner'] != username:
-                return jsonify({'error': 'Unauthorized: You can only delete your own portfolio tabs'}), 403
+            # Authorization check: non-admin users can only delete their own tabs
+            if user_role != 'admin' and tab['owner'] != username:
+                return jsonify({'error': 'Access denied'}), 403
 
             # Delete associated portfolio entries first (CASCADE should handle this, but being explicit)
             cursor.execute(

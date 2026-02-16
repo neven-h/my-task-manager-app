@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Upload, Trash2, RefreshCw, TrendingUp, TrendingDown, X, AlertCircle, Briefcase } from 'lucide-react';
 import API_BASE from '../../config';
 import { formatCurrencyWithCode } from '../../utils/formatCurrency';
+import { getAuthHeaders } from '../../api.js';
 
 const YahooPortfolioSection = ({ colors, authUser, authRole, defaultExpanded = false }) => {
     const [showYahooPortfolio, setShowYahooPortfolio] = useState(defaultExpanded);
@@ -22,7 +23,7 @@ const YahooPortfolioSection = ({ colors, authUser, authRole, defaultExpanded = f
     if (!authUser) return;
     try {
       setYahooLoading(true);
-      const response = await fetch(`${API_BASE}/portfolio/yahoo-holdings?username=${authUser}`);
+      const response = await fetch(`${API_BASE}/portfolio/yahoo-holdings`, { headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setYahooHoldings(data.holdings || []);
@@ -44,10 +45,10 @@ const YahooPortfolioSection = ({ colors, authUser, authRole, defaultExpanded = f
       setError(null);
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('username', authUser);
 
       const response = await fetch(`${API_BASE}/portfolio/yahoo-import`, {
         method: 'POST',
+        headers: getAuthHeaders(false),
         body: formData
       });
 
@@ -87,8 +88,8 @@ const YahooPortfolioSection = ({ colors, authUser, authRole, defaultExpanded = f
 
       const response = await fetch(`${API_BASE}/portfolio/yahoo-import`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: authUser, tickers })
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ tickers })
       });
 
       const data = await response.json();
@@ -109,8 +110,9 @@ const YahooPortfolioSection = ({ colors, authUser, authRole, defaultExpanded = f
 
   const handleDeleteYahooHolding = async (holdingId) => {
     try {
-      const response = await fetch(`${API_BASE}/portfolio/yahoo-holdings/${holdingId}?username=${authUser}`, {
-        method: 'DELETE'
+      const response = await fetch(`${API_BASE}/portfolio/yahoo-holdings/${holdingId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
       });
 
       if (response.ok) {
@@ -128,8 +130,9 @@ const YahooPortfolioSection = ({ colors, authUser, authRole, defaultExpanded = f
   const handleClearYahooPortfolio = async () => {
     if (!window.confirm('Are you sure you want to clear all imported Yahoo Finance holdings?')) return;
     try {
-      const response = await fetch(`${API_BASE}/portfolio/yahoo-holdings/clear?username=${authUser}`, {
-        method: 'DELETE'
+      const response = await fetch(`${API_BASE}/portfolio/yahoo-holdings/clear`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
       });
       if (response.ok) {
         setSuccess('Yahoo Finance portfolio cleared');

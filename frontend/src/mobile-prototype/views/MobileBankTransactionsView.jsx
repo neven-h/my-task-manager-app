@@ -2,6 +2,7 @@ import React, {useState, useEffect, useMemo} from 'react';
 import { ArrowLeft, Edit2, Plus, Trash2, PieChart } from 'lucide-react';
 import API_BASE from '../../config';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { getAuthHeaders } from '../../api.js';
 
 const THEME = {
     bg: '#fff', primary: '#0000FF', secondary: '#FFD500', accent: '#FF0000',
@@ -50,7 +51,7 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
     const fetchTabs = async () => {
         try {
             setTabsLoading(true);
-            const response = await fetch(`${API_BASE}/transaction-tabs?username=${authUser}&role=${authRole}`);
+            const response = await fetch(`${API_BASE}/transaction-tabs`, { headers: getAuthHeaders() });
             const data = await response.json();
             if (Array.isArray(data)) {
                 const normalized = data.map(t => ({ ...t, id: Number(t.id) }));
@@ -74,8 +75,8 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
         try {
             const res = await fetch(`${API_BASE}/transaction-tabs`, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ name: name.trim(), username: authUser })
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ name: name.trim() })
             });
             if (!res.ok) return;
             const newTab = await res.json();
@@ -93,7 +94,7 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
 
     const fetchMonths = async () => {
         try {
-            const response = await fetch(`${API_BASE}/transactions/months?username=${authUser}&role=${authRole}&tab_id=${activeTabId}`);
+            const response = await fetch(`${API_BASE}/transactions/months?tab_id=${activeTabId}`, { headers: getAuthHeaders() });
             const data = await response.json();
             // Backend returns array of objects { month_year: "2025-11", ... }; normalize to strings
             const list = Array.isArray(data)
@@ -121,9 +122,9 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
         try {
             setLoading(true);
             const path = selectedMonth === 'all'
-                ? `${API_BASE}/transactions/all?tab_id=${activeTabId}&username=${authUser}&role=${authRole}`
-                : `${API_BASE}/transactions/${selectedMonth}?tab_id=${activeTabId}&username=${authUser}&role=${authRole}`;
-            const response = await fetch(path);
+                ? `${API_BASE}/transactions/all?tab_id=${activeTabId}`
+                : `${API_BASE}/transactions/${selectedMonth}?tab_id=${activeTabId}`;
+            const response = await fetch(path, { headers: getAuthHeaders() });
             const data = await response.json();
             setTransactions(Array.isArray(data) ? data : []);
             setError(!response.ok ? (data?.error || 'Failed to load transactions') : null);
@@ -137,7 +138,7 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
 
     const fetchStats = async () => {
         try {
-            const response = await fetch(`${API_BASE}/transactions/stats?tab_id=${activeTabId}&username=${authUser}&role=${authRole}`);
+            const response = await fetch(`${API_BASE}/transactions/stats?tab_id=${activeTabId}`, { headers: getAuthHeaders() });
             const data = await response.json();
             setStats(data);
         } catch (err) {
@@ -149,10 +150,10 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
         try {
             setLoading(true);
             const url = editingTransaction
-                ? `${API_BASE}/transactions/${editingTransaction.id}?username=${authUser}&role=${authRole}`
-                : `${API_BASE}/transactions?username=${authUser}&role=${authRole}`;
+                ? `${API_BASE}/transactions/${editingTransaction.id}`
+                : `${API_BASE}/transactions`;
             const method = editingTransaction ? 'PUT' : 'POST';
-            
+
             const body = {
                 ...newTransaction,
                 tab_id: Number(activeTabId),
@@ -161,7 +162,7 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
 
             const response = await fetch(url, {
                 method,
-                headers: {'Content-Type': 'application/json'},
+                headers: getAuthHeaders(),
                 body: JSON.stringify(body)
             });
 
@@ -188,8 +189,9 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
     const handleDeleteTransaction = async (id) => {
         if (!window.confirm('Delete this transaction?')) return;
         try {
-            await fetch(`${API_BASE}/transactions/${id}?username=${authUser}&role=${authRole}`, {
-                method: 'DELETE'
+            await fetch(`${API_BASE}/transactions/${id}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
             });
             await fetchTransactions();
             await fetchStats();

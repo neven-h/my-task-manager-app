@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from config import get_db_connection
+from config import get_db_connection, token_required
 from mysql.connector import Error
 
 transaction_tabs_bp = Blueprint('transaction_tabs', __name__)
@@ -7,11 +7,12 @@ transaction_tabs_bp = Blueprint('transaction_tabs', __name__)
 # ==================== TRANSACTION TABS ENDPOINTS ====================
 
 @transaction_tabs_bp.route('/api/transaction-tabs', methods=['GET'])
-def get_transaction_tabs():
+@token_required
+def get_transaction_tabs(payload):
     """Get all transaction tabs for the current user"""
     try:
-        username = request.args.get('username')
-        user_role = request.args.get('role')
+        username = payload['username']
+        user_role = payload['role']
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -38,12 +39,13 @@ def get_transaction_tabs():
 
 
 @transaction_tabs_bp.route('/api/transaction-tabs', methods=['POST'])
-def create_transaction_tab():
+@token_required
+def create_transaction_tab(payload):
     """Create a new transaction tab"""
     try:
+        owner = payload['username']
         data = request.json
         name = data.get('name', '').strip()
-        owner = data.get('username')
 
         if not name:
             return jsonify({'error': 'Tab name is required'}), 400
@@ -70,9 +72,12 @@ def create_transaction_tab():
 
 
 @transaction_tabs_bp.route('/api/transaction-tabs/<int:tab_id>', methods=['PUT'])
-def update_transaction_tab(tab_id):
+@token_required
+def update_transaction_tab(payload, tab_id):
     """Rename a transaction tab"""
     try:
+        username = payload['username']
+        user_role = payload['role']
         data = request.json
         name = data.get('name', '').strip()
 
@@ -80,8 +85,18 @@ def update_transaction_tab(tab_id):
             return jsonify({'error': 'Tab name is required'}), 400
 
         with get_db_connection() as connection:
-            cursor = connection.cursor()
+            cursor = connection.cursor(dictionary=True)
 
+            # Ownership check
+            if user_role != 'admin':
+                cursor.execute("SELECT owner FROM transaction_tabs WHERE id = %s", (tab_id,))
+                tab = cursor.fetchone()
+                if not tab:
+                    return jsonify({'error': 'Tab not found'}), 404
+                if tab['owner'] != username:
+                    return jsonify({'error': 'Access denied'}), 403
+
+            cursor = connection.cursor()
             cursor.execute(
                 "UPDATE transaction_tabs SET name = %s WHERE id = %s",
                 (name, tab_id)
@@ -98,10 +113,25 @@ def update_transaction_tab(tab_id):
 
 
 @transaction_tabs_bp.route('/api/transaction-tabs/<int:tab_id>', methods=['DELETE'])
-def delete_transaction_tab(tab_id):
+@token_required
+def delete_transaction_tab(payload, tab_id):
     """Delete a transaction tab and its associated transactions"""
     try:
+        username = payload['username']
+        user_role = payload['role']
+
         with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # Ownership check
+            if user_role != 'admin':
+                cursor.execute("SELECT owner FROM transaction_tabs WHERE id = %s", (tab_id,))
+                tab = cursor.fetchone()
+                if not tab:
+                    return jsonify({'error': 'Tab not found'}), 404
+                if tab['owner'] != username:
+                    return jsonify({'error': 'Access denied'}), 403
+
             cursor = connection.cursor()
 
             # Delete associated transactions first
@@ -130,7 +160,8 @@ def delete_transaction_tab(tab_id):
 
 
 @transaction_tabs_bp.route('/api/transaction-tabs/orphaned', methods=['GET'])
-def get_orphaned_transaction_count():
+@token_required
+def get_orphaned_transaction_count(payload):
     """Get count of transactions with no tab_id (orphaned from before tabs existed)"""
     try:
         with get_db_connection() as connection:
@@ -143,10 +174,25 @@ def get_orphaned_transaction_count():
 
 
 @transaction_tabs_bp.route('/api/transaction-tabs/<int:tab_id>/adopt', methods=['POST'])
-def adopt_orphaned_transactions(tab_id):
+@token_required
+def adopt_orphaned_transactions(payload, tab_id):
     """Assign all transactions with tab_id=NULL to the specified tab"""
     try:
+        username = payload['username']
+        user_role = payload['role']
+
         with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # Ownership check: verify tab belongs to requesting user
+            if user_role != 'admin':
+                cursor.execute("SELECT owner FROM transaction_tabs WHERE id = %s", (tab_id,))
+                tab = cursor.fetchone()
+                if not tab:
+                    return jsonify({'error': 'Tab not found'}), 404
+                if tab['owner'] != username:
+                    return jsonify({'error': 'Access denied'}), 403
+
             cursor = connection.cursor()
             cursor.execute("UPDATE bank_transactions SET tab_id = %s WHERE tab_id IS NULL", (tab_id,))
             adopted_count = cursor.rowcount

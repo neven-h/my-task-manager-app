@@ -19,16 +19,15 @@ portfolio_yahoo_bp = Blueprint('portfolio_yahoo', __name__)
 # ==================== YAHOO FINANCE PORTFOLIO IMPORT ====================
 
 @portfolio_yahoo_bp.route('/api/portfolio/yahoo-import', methods=['POST'])
-def import_yahoo_portfolio():
+@token_required
+def import_yahoo_portfolio(payload):
     """Import portfolio from Yahoo Finance CSV export.
     Accepts a CSV file with columns: Symbol, Current Price, Date, Time, Change, Open, High, Low, Volume, Trade Date
     OR the Holdings format: Symbol, Quantity, Price Paid, etc.
     Also accepts JSON body with manual ticker list.
     """
     try:
-        username = request.form.get('username') or (request.json or {}).get('username')
-        if not username:
-            return jsonify({'error': 'Username is required'}), 400
+        username = payload['username']
 
         imported = []
         errors = []
@@ -207,12 +206,11 @@ def import_yahoo_portfolio():
 
 
 @portfolio_yahoo_bp.route('/api/portfolio/yahoo-holdings', methods=['GET'])
-def get_yahoo_holdings():
+@token_required
+def get_yahoo_holdings(payload):
     """Get user's imported Yahoo Finance portfolio holdings with live prices."""
     try:
-        username = request.args.get('username')
-        if not username:
-            return jsonify({'error': 'Username is required'}), 400
+        username = payload['username']
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -327,13 +325,12 @@ def get_yahoo_holdings():
 
 
 @portfolio_yahoo_bp.route('/api/portfolio/yahoo-holdings/<int:holding_id>', methods=['PUT'])
-def update_yahoo_holding(holding_id):
+@token_required
+def update_yahoo_holding(payload, holding_id):
     """Update a Yahoo Finance portfolio holding (quantity, cost basis, notes)."""
     try:
+        username = payload['username']
         data = request.json
-        username = data.get('username')
-        if not username:
-            return jsonify({'error': 'Username is required'}), 400
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -370,12 +367,11 @@ def update_yahoo_holding(holding_id):
 
 
 @portfolio_yahoo_bp.route('/api/portfolio/yahoo-holdings/<int:holding_id>', methods=['DELETE'])
-def delete_yahoo_holding(holding_id):
+@token_required
+def delete_yahoo_holding(payload, holding_id):
     """Remove a holding from Yahoo Finance portfolio."""
     try:
-        username = request.args.get('username')
-        if not username:
-            return jsonify({'error': 'Username is required'}), 400
+        username = payload['username']
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -394,12 +390,11 @@ def delete_yahoo_holding(holding_id):
 
 
 @portfolio_yahoo_bp.route('/api/portfolio/yahoo-holdings/clear', methods=['DELETE'])
-def clear_yahoo_holdings():
+@token_required
+def clear_yahoo_holdings(payload):
     """Clear all Yahoo Finance portfolio holdings for a user."""
     try:
-        username = request.args.get('username')
-        if not username:
-            return jsonify({'error': 'Username is required'}), 400
+        username = payload['username']
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)

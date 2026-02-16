@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Upload, Calendar, Trash2, FileText, AlertCircle, CheckCircle, ArrowLeft, Plus, Edit2, Save, X, FileDown, Banknote, CreditCard, PieChart, Users } from 'lucide-react';
 import API_BASE from './config';
 import { formatCurrency } from './utils/formatCurrency';
+import { getAuthHeaders } from './api.js';
 import TabBar from './components/TabBar';
 
 const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
@@ -56,7 +57,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
 
   const fetchTabs = async () => {
     try {
-      const response = await fetch(`${API_BASE}/transaction-tabs?username=${authUser}&role=${authRole}`);
+      const response = await fetch(`${API_BASE}/transaction-tabs`, { headers: getAuthHeaders() });
       const data = await response.json();
       if (Array.isArray(data)) {
         setTabs(data);
@@ -92,8 +93,8 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
     try {
       const response = await fetch(`${API_BASE}/transaction-tabs`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newTabName.trim(), username: authUser })
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ name: newTabName.trim() })
       });
       const data = await response.json();
       if (response.ok) {
@@ -117,7 +118,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
 
   const checkOrphanedTransactions = async () => {
     try {
-      const response = await fetch(`${API_BASE}/transaction-tabs/orphaned`);
+      const response = await fetch(`${API_BASE}/transaction-tabs/orphaned`, { headers: getAuthHeaders() });
       const data = await response.json();
       setOrphanedCount(data.count || 0);
     } catch (err) {
@@ -127,7 +128,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
 
   const adoptOrphanedTransactions = async (tabId) => {
     try {
-      const response = await fetch(`${API_BASE}/transaction-tabs/${tabId}/adopt`, { method: 'POST' });
+      const response = await fetch(`${API_BASE}/transaction-tabs/${tabId}/adopt`, { method: 'POST', headers: getAuthHeaders() });
       if (response.ok) {
         setOrphanedCount(0);
         // Refresh data for the current tab
@@ -184,7 +185,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
 
   const fetchAllDescriptions = async () => {
     try {
-      const response = await fetch(`${API_BASE}/transactions/descriptions`);
+      const response = await fetch(`${API_BASE}/transactions/descriptions`, { headers: getAuthHeaders() });
       const data = await response.json();
       setAllDescriptions(data);
     } catch (err) {
@@ -195,10 +196,10 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
   const fetchTransactionStats = async (tabId) => {
     try {
       const tid = tabId !== undefined ? tabId : activeTabId;
-      const tabParam = tid ? `&tab_id=${tid}` : '';
-      const url = `${API_BASE}/transactions/stats?username=${authUser}&role=${authRole}${tabParam}`;
+      const tabParam = tid ? `?tab_id=${tid}` : '';
+      const url = `${API_BASE}/transactions/stats${tabParam}`;
       console.log('[BankTransactions] Fetching stats from:', url, 'tabId:', tid);
-      const response = await fetch(url);
+      const response = await fetch(url, { headers: getAuthHeaders() });
       const data = await response.json();
       console.log('[BankTransactions] Stats response:', data);
 
@@ -219,8 +220,8 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
   const fetchSavedMonths = async (tabId) => {
     try {
       const tid = tabId !== undefined ? tabId : activeTabId;
-      const tabParam = tid ? `&tab_id=${tid}` : '';
-      const response = await fetch(`${API_BASE}/transactions/months?username=${authUser}&role=${authRole}${tabParam}`);
+      const tabParam = tid ? `?tab_id=${tid}` : '';
+      const response = await fetch(`${API_BASE}/transactions/months${tabParam}`, { headers: getAuthHeaders() });
       const data = await response.json();
       setSavedMonths(data);
       return Array.isArray(data) ? data : [];
@@ -234,8 +235,8 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
     try {
       setLoading(true);
       const tid = tabId !== undefined ? tabId : activeTabId;
-      const tabParam = tid ? `&tab_id=${tid}` : '';
-      const response = await fetch(`${API_BASE}/transactions/all?username=${authUser}&role=${authRole}${tabParam}`);
+      const tabParam = tid ? `?tab_id=${tid}` : '';
+      const response = await fetch(`${API_BASE}/transactions/all${tabParam}`, { headers: getAuthHeaders() });
       const data = await response.json();
       if (!response.ok || !Array.isArray(data)) {
         throw new Error(data?.error || 'Failed to fetch transactions');
@@ -257,8 +258,8 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
     try {
       setLoading(true);
       const tid = tabId !== undefined ? tabId : activeTabId;
-      const tabParam = tid ? `&tab_id=${tid}` : '';
-      const response = await fetch(`${API_BASE}/transactions/${monthYear}?username=${authUser}&role=${authRole}${tabParam}`);
+      const tabParam = tid ? `?tab_id=${tid}` : '';
+      const response = await fetch(`${API_BASE}/transactions/${monthYear}${tabParam}`, { headers: getAuthHeaders() });
       const data = await response.json();
       if (!response.ok || !Array.isArray(data)) {
         throw new Error(data?.error || 'Failed to fetch month transactions');
@@ -296,6 +297,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
 
       const response = await fetch(`${API_BASE}/transactions/upload`, {
         method: 'POST',
+        headers: getAuthHeaders(false),
         body: formData
       });
 
@@ -334,10 +336,9 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
 
       const response = await fetch(`${API_BASE}/transactions/save`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           transactions: uploadedData.transactions,
-          username: authUser,
           tab_id: activeTabId
         })
       });
@@ -368,7 +369,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
 
       const response = await fetch(`${API_BASE}/transactions/manual`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ ...newTransaction, tab_id: activeTabId })
       });
 
@@ -410,7 +411,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
 
       const response = await fetch(`${API_BASE}/transactions/${transactionId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(editingTransaction)
       });
 
@@ -444,7 +445,8 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
       setError(null);
 
       const response = await fetch(`${API_BASE}/transactions/${transactionId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: getAuthHeaders()
       });
 
       if (!response.ok) {
@@ -474,7 +476,8 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
       setLoading(true);
       const tabParam = activeTabId ? `?tab_id=${activeTabId}` : '';
       const response = await fetch(`${API_BASE}/transactions/month/${monthYear}${tabParam}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: getAuthHeaders()
       });
 
       if (!response.ok) {

@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, send_file, current_app, redirect
 from config import (
     get_db_connection, TASK_ATTACHMENTS_FOLDER,
-    allowed_task_attachment, CLOUDINARY_ENABLED,
+    allowed_task_attachment, CLOUDINARY_ENABLED, token_required,
 )
 import cloudinary.uploader
 from mysql.connector import Error
@@ -25,7 +25,8 @@ def _attachment_to_json(row):
 
 
 @attachments_bp.route('/api/tasks/<int:task_id>/attachments', methods=['GET'])
-def get_task_attachments(task_id):
+@token_required
+def get_task_attachments(payload, task_id):
     """List attachments for a task."""
     try:
         with get_db_connection() as connection:
@@ -41,7 +42,8 @@ def get_task_attachments(task_id):
 
 
 @attachments_bp.route('/api/tasks/<int:task_id>/attachments', methods=['POST'])
-def upload_task_attachment(task_id):
+@token_required
+def upload_task_attachment(payload, task_id):
     """Upload a file or image attachment for a task."""
     try:
         if 'file' not in request.files:
@@ -118,7 +120,8 @@ def upload_task_attachment(task_id):
 
 
 @attachments_bp.route('/api/tasks/attachments/<int:attachment_id>/file', methods=['GET'])
-def serve_task_attachment(attachment_id):
+@token_required
+def serve_task_attachment(payload, attachment_id):
     """Serve an attachment file by id."""
     try:
         with get_db_connection() as connection:
@@ -147,7 +150,8 @@ def serve_task_attachment(attachment_id):
 
 
 @attachments_bp.route('/api/tasks/<int:task_id>/attachments/<int:attachment_id>', methods=['DELETE'])
-def delete_task_attachment(task_id, attachment_id):
+@token_required
+def delete_task_attachment(payload, task_id, attachment_id):
     """Delete an attachment."""
     try:
         with get_db_connection() as connection:

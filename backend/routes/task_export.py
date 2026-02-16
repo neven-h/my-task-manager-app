@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, send_file, current_app
 from config import (
-    get_db_connection, sanitize_csv_field, UPLOAD_FOLDER,
+    get_db_connection, sanitize_csv_field, UPLOAD_FOLDER, token_required,
 )
 from mysql.connector import Error
 from werkzeug.utils import secure_filename
@@ -14,7 +14,8 @@ task_export_bp = Blueprint('task_export', __name__)
 
 
 @task_export_bp.route('/api/export/csv', methods=['GET'])
-def export_csv():
+@token_required
+def export_csv(payload):
     """Export tasks to CSV"""
     try:
         category = request.args.get('category')
@@ -82,7 +83,8 @@ def export_csv():
 
 
 @task_export_bp.route('/api/export/hours-report', methods=['GET'])
-def export_hours_report():
+@token_required
+def export_hours_report(payload):
     """Export tasks to CSV in hours report format"""
     try:
         category = request.args.get('category')
@@ -166,7 +168,8 @@ def export_hours_report():
 
 
 @task_export_bp.route('/api/import/hours-report', methods=['POST'])
-def import_hours_report():
+@token_required
+def import_hours_report(payload):
     """Import tasks from hours report CSV or Excel file"""
     try:
         if 'file' not in request.files:

@@ -12,6 +12,7 @@ import CustomAutocomplete from './components/CustomAutocomplete';
 import './TaskTracker.css';
 
 import API_BASE from './config';
+import { getAuthHeaders } from './api.js';
 
 const DRAFT_STORAGE_KEY = 'taskTracker_draft';
 const BULK_DRAFT_STORAGE_KEY = 'taskTracker_bulkDraft';
@@ -161,7 +162,7 @@ useEffect(() => {
 
     const fetchCategories = async () => {
         try {
-            const response = await fetch(`${API_BASE}/categories?username=${authUser}&role=${authRole}`);
+            const response = await fetch(`${API_BASE}/categories`, { headers: getAuthHeaders() });
             const data = await response.json();
             setAllCategories(Array.isArray(data) ? data : []);
         } catch (err) {
@@ -172,7 +173,7 @@ useEffect(() => {
 
     const fetchTags = async () => {
         try {
-            const response = await fetch(`${API_BASE}/tags?username=${authUser}&role=${authRole}`);
+            const response = await fetch(`${API_BASE}/tags`, { headers: getAuthHeaders() });
             const data = await response.json();
             setAllTags(Array.isArray(data) ? data : []);
         } catch (err) {
@@ -193,7 +194,7 @@ useEffect(() => {
 
             const response = await fetch(`${API_BASE}/categories`, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: getAuthHeaders(),
                 body: JSON.stringify({
                     id: newCategoryName.toLowerCase().replace(/\s+/g, '-'),
                     label: newCategoryName,
@@ -226,7 +227,7 @@ useEffect(() => {
         try {
             const response = await fetch(`${API_BASE}/tags`, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: getAuthHeaders(),
                 body: JSON.stringify({
                     name: tagName,
                     color: '#0d6efd',
@@ -244,7 +245,7 @@ useEffect(() => {
 
     const fetchClients = async () => {
         try {
-            const response = await fetch(`${API_BASE}/clients?username=${authUser}&role=${authRole}`);
+            const response = await fetch(`${API_BASE}/clients`, { headers: getAuthHeaders() });
             const data = await response.json();
             setClients(Array.isArray(data) ? data : []);
         } catch (err) {
@@ -259,11 +260,7 @@ useEffect(() => {
             setLoading(true);
             const params = buildFilterParams(activeFilters);
 
-            // Send username and role to backend for filtering
-            params.append('username', authUser);
-            params.append('role', authRole);
-
-            const response = await fetch(`${API_BASE}/tasks?${params}`);
+            const response = await fetch(`${API_BASE}/tasks?${params}`, { headers: getAuthHeaders() });
             let data = await response.json();
             if (!Array.isArray(data)) {
                 data = [];
@@ -291,7 +288,7 @@ useEffect(() => {
 
     const fetchStats = async () => {
         try {
-            const response = await fetch(`${API_BASE}/stats?username=${authUser}&role=${authRole}`);
+            const response = await fetch(`${API_BASE}/stats`, { headers: getAuthHeaders() });
             const data = await response.json();
             setStats(response.ok && data && typeof data === 'object' && !data.error ? data : null);
         } catch (err) {
@@ -351,11 +348,11 @@ useEffect(() => {
 
             const method = editingTask ? 'PUT' : 'POST';
             const { attachments, newAttachments, removedAttachmentIds, ...payload } = formData;
-            const body = { ...payload, username: authUser, role: authRole };
+            const body = { ...payload };
 
             const response = await fetch(url, {
                 method,
-                headers: {'Content-Type': 'application/json'},
+                headers: getAuthHeaders(),
                 body: JSON.stringify(body)
             });
 
@@ -368,13 +365,12 @@ useEffect(() => {
             const taskId = editingTask ? editingTask.id : data.id;
 
             if (taskId) {
-                const authHeaders = authToken ? { 'Authorization': `Bearer ${authToken}` } : {};
                 for (const { file, name } of (newAttachments || [])) {
                     const fd = new FormData();
                     fd.append('file', file, name || file.name || `image-${Date.now()}.png`);
                     const upRes = await fetch(`${API_BASE}/tasks/${taskId}/attachments`, {
                         method: 'POST',
-                        headers: authHeaders,
+                        headers: getAuthHeaders(false),
                         body: fd
                     });
                     if (!upRes.ok) {
@@ -385,7 +381,7 @@ useEffect(() => {
                 for (const attId of (removedAttachmentIds || [])) {
                     await fetch(`${API_BASE}/tasks/${taskId}/attachments/${attId}`, {
                         method: 'DELETE',
-                        headers: authHeaders
+                        headers: getAuthHeaders()
                     });
                 }
             }
@@ -410,7 +406,8 @@ useEffect(() => {
         try {
             setLoading(true);
             const response = await fetch(`${API_BASE}/tasks/${id}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: getAuthHeaders()
             });
 
             if (!response.ok) throw new Error('Failed to delete task');
@@ -429,7 +426,8 @@ useEffect(() => {
         try {
             setLoading(true);
             const response = await fetch(`${API_BASE}/tasks/${id}/duplicate`, {
-                method: 'POST'
+                method: 'POST',
+                headers: getAuthHeaders()
             });
 
             if (!response.ok) throw new Error('Failed to duplicate task');
@@ -473,7 +471,7 @@ useEffect(() => {
             setLoading(true);
             const response = await fetch(`${API_BASE}/tasks/${sharingTask.id}/share`, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: getAuthHeaders(),
                 body: JSON.stringify({email: shareEmail.trim()})
             });
 
@@ -495,7 +493,8 @@ useEffect(() => {
     const toggleTaskStatus = async (id) => {
         try {
             const response = await fetch(`${API_BASE}/tasks/${id}/toggle-status`, {
-                method: 'PATCH'
+                method: 'PATCH',
+                headers: getAuthHeaders()
             });
 
             if (!response.ok) throw new Error('Failed to toggle status');
@@ -744,7 +743,7 @@ useEffect(() => {
             const promises = tasksToCreate.map(task =>
                 fetch(`${API_BASE}/tasks`, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: getAuthHeaders(),
                     body: JSON.stringify(task)
                 })
             );
@@ -770,7 +769,7 @@ useEffect(() => {
         try {
             const params = buildFilterParams();
 
-            const response = await fetch(`${API_BASE}/export/csv?${params}`);
+            const response = await fetch(`${API_BASE}/export/csv?${params}`, { headers: getAuthHeaders() });
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -789,7 +788,7 @@ useEffect(() => {
         try {
             const params = buildFilterParams();
 
-            const response = await fetch(`${API_BASE}/export/hours-report?${params}`);
+            const response = await fetch(`${API_BASE}/export/hours-report?${params}`, { headers: getAuthHeaders() });
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -823,6 +822,7 @@ useEffect(() => {
 
             const response = await fetch(`${API_BASE}/import/hours-report`, {
                 method: 'POST',
+                headers: getAuthHeaders(false),
                 body: formData
             });
 

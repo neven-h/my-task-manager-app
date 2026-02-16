@@ -21,11 +21,12 @@ portfolio_bp = Blueprint('portfolio', __name__)
 # ==========================================
 
 @portfolio_bp.route('/api/portfolio', methods=['GET'])
-def get_portfolio_entries():
+@token_required
+def get_portfolio_entries(payload):
     """Get all portfolio entries with optional filtering"""
     try:
-        username = request.args.get('username')
-        user_role = request.args.get('role')
+        username = payload['username']
+        user_role = payload['role']
         tab_id = request.args.get('tab_id')
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
@@ -101,11 +102,12 @@ def get_portfolio_entries():
 
 
 @portfolio_bp.route('/api/portfolio', methods=['POST'])
-def create_portfolio_entry():
+@token_required
+def create_portfolio_entry(payload):
     """Create a new portfolio entry"""
     try:
+        username = payload['username']
         data = request.json
-        username = data.get('username')
         tab_id = data.get('tab_id')
         stock_name = data.get('name')
         base_price = data.get('base_price')
@@ -187,12 +189,13 @@ def create_portfolio_entry():
 
 
 @portfolio_bp.route('/api/portfolio/<int:entry_id>', methods=['PUT'])
-def update_portfolio_entry(entry_id):
+@token_required
+def update_portfolio_entry(payload, entry_id):
     """Update an existing portfolio entry"""
     try:
+        username = payload['username']
+        user_role = payload['role']
         data = request.json
-        username = request.args.get('username') or data.get('username')
-        user_role = request.args.get('role') or data.get('role')
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -205,9 +208,9 @@ def update_portfolio_entry(entry_id):
             if not entry:
                 return jsonify({'error': 'Portfolio entry not found'}), 404
 
-            # Authorization check: limited users can only modify their own entries
-            if user_role == 'limited' and entry['created_by'] != username:
-                return jsonify({'error': 'Unauthorized: You can only modify your own portfolio entries'}), 403
+            # Authorization check: non-admin users can only modify their own entries
+            if user_role != 'admin' and entry['created_by'] != username:
+                return jsonify({'error': 'Access denied'}), 403
 
             # Check which columns exist before building UPDATE query
             cursor.execute("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio'")
@@ -282,11 +285,12 @@ def update_portfolio_entry(entry_id):
 
 
 @portfolio_bp.route('/api/portfolio/<int:entry_id>', methods=['DELETE'])
-def delete_portfolio_entry(entry_id):
+@token_required
+def delete_portfolio_entry(payload, entry_id):
     """Delete a portfolio entry"""
     try:
-        username = request.args.get('username')
-        user_role = request.args.get('role')
+        username = payload['username']
+        user_role = payload['role']
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -299,9 +303,9 @@ def delete_portfolio_entry(entry_id):
             if not entry:
                 return jsonify({'error': 'Portfolio entry not found'}), 404
 
-            # Authorization check: limited users can only delete their own entries
-            if user_role == 'limited' and entry['created_by'] != username:
-                return jsonify({'error': 'Unauthorized: You can only delete your own portfolio entries'}), 403
+            # Authorization check: non-admin users can only delete their own entries
+            if user_role != 'admin' and entry['created_by'] != username:
+                return jsonify({'error': 'Access denied'}), 403
 
             # Delete the entry
             cursor.execute("DELETE FROM stock_portfolio WHERE id = %s", (entry_id,))
@@ -317,11 +321,12 @@ def delete_portfolio_entry(entry_id):
 
 
 @portfolio_bp.route('/api/portfolio/names', methods=['GET'])
-def get_portfolio_stock_names():
+@token_required
+def get_portfolio_stock_names(payload):
     """Get all unique stock names for autocomplete"""
     try:
-        username = request.args.get('username')
-        user_role = request.args.get('role')
+        username = payload['username']
+        user_role = payload['role']
         tab_id = request.args.get('tab_id')
 
         with get_db_connection() as connection:
@@ -350,11 +355,12 @@ def get_portfolio_stock_names():
 
 
 @portfolio_bp.route('/api/portfolio/summary', methods=['GET'])
-def get_portfolio_summary():
+@token_required
+def get_portfolio_summary(payload):
     """Get portfolio summary with total value and latest entries"""
     try:
-        username = request.args.get('username')
-        user_role = request.args.get('role')
+        username = payload['username']
+        user_role = payload['role']
         tab_id = request.args.get('tab_id')
 
         with get_db_connection() as connection:

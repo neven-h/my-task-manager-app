@@ -4,6 +4,7 @@ import CustomAutocomplete from '../../components/CustomAutocomplete';
 import YahooPortfolioSection from '../../components/portfolio/YahooPortfolioSection';
 import API_BASE from '../../config';
 import { formatCurrency, formatCurrencyWithCode } from '../../utils/formatCurrency';
+import { getAuthHeaders } from '../../api.js';
 
 const THEME = {
     bg: '#fff', primary: '#0000FF', secondary: '#FFD500', accent: '#FF0000',
@@ -78,7 +79,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
 
     const fetchTabs = async () => {
         try {
-            const response = await fetch(`${API_BASE}/portfolio-tabs?username=${authUser}&role=${authRole}`);
+            const response = await fetch(`${API_BASE}/portfolio-tabs`, { headers: getAuthHeaders() });
             const data = await response.json();
             if (Array.isArray(data)) {
                 const normalized = data.map(t => ({ ...t, id: Number(t.id) }));
@@ -89,8 +90,8 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                     // Create default tab so new entries always have a tab
                     const createRes = await fetch(`${API_BASE}/portfolio-tabs`, {
                         method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ name: 'Default', username: authUser })
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({ name: 'Default' })
                     });
                     if (createRes.ok) {
                         const newTab = await createRes.json();
@@ -113,8 +114,8 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
         try {
             const res = await fetch(`${API_BASE}/portfolio-tabs`, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ name: name.trim(), username: authUser })
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ name: name.trim() })
             });
             if (!res.ok) return;
             const newTab = await res.json();
@@ -133,7 +134,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
     const fetchEntries = async (silent = false) => {
         try {
             if (!silent) setLoading(true);
-            const response = await fetch(`${API_BASE}/portfolio?tab_id=${activeTabId}&username=${authUser}&role=${authRole}`);
+            const response = await fetch(`${API_BASE}/portfolio?tab_id=${activeTabId}`, { headers: getAuthHeaders() });
             const data = await response.json();
             const raw = Array.isArray(data) ? data : [];
             const normalized = raw.map(entry => ({ ...entry, name: entry.name ?? '' }));
@@ -148,7 +149,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
 
     const fetchSummary = async () => {
         try {
-            const response = await fetch(`${API_BASE}/portfolio/summary?tab_id=${activeTabId}&username=${authUser}&role=${authRole}`);
+            const response = await fetch(`${API_BASE}/portfolio/summary?tab_id=${activeTabId}`, { headers: getAuthHeaders() });
             const data = await response.json();
             const isValid = response.ok && data && !data.error && (typeof data.total_value_ils === 'number' || Array.isArray(data.entries));
             setSummary(isValid ? data : null);
@@ -160,7 +161,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
 
     const fetchStockNames = async () => {
         try {
-            const response = await fetch(`${API_BASE}/portfolio/names?tab_id=${activeTabId}&username=${authUser}&role=${authRole}`);
+            const response = await fetch(`${API_BASE}/portfolio/names?tab_id=${activeTabId}`, { headers: getAuthHeaders() });
             const data = await response.json();
             if (!response.ok || !data || data.error) {
                 setStockNames([]);
@@ -191,7 +192,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
 
             const response = await fetch(`${API_BASE}/portfolio/stock-prices`, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: getAuthHeaders(),
                 body: JSON.stringify({tickers})
             });
 
@@ -317,10 +318,10 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
         try {
             setLoading(true);
             const url = editingEntry
-                ? `${API_BASE}/portfolio/${editingEntry.id}?username=${authUser}&role=${authRole}`
-                : `${API_BASE}/portfolio?username=${authUser}&role=${authRole}`;
+                ? `${API_BASE}/portfolio/${editingEntry.id}`
+                : `${API_BASE}/portfolio`;
             const method = editingEntry ? 'PUT' : 'POST';
-            
+
             // Parse units - allow decimal values, null if empty
             const unitsValue = formData.units;
             let units = null;
@@ -337,14 +338,13 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
                 percentage: parseFloat(formData.percentage) || 0,
                 value_ils: parseFloat(formData.value_ils) || 0,
                 base_price: (formData.base_price !== '' && formData.base_price != null) ? parseFloat(formData.base_price) : null,
-                username: authUser,
                 currency: formData.currency || 'USD',
                 units: units  // Always a positive integer
             };
 
             const response = await fetch(url, {
                 method,
-                headers: {'Content-Type': 'application/json'},
+                headers: getAuthHeaders(),
                 body: JSON.stringify(body)
             });
 
@@ -370,8 +370,9 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
     const handleDeleteEntry = async (id) => {
         if (!window.confirm('Delete this entry?')) return;
         try {
-            await fetch(`${API_BASE}/portfolio/${id}?username=${authUser}&role=${authRole}`, {
-                method: 'DELETE'
+            await fetch(`${API_BASE}/portfolio/${id}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
             });
             await fetchEntries();
             await fetchSummary();

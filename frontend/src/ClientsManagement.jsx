@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Edit2, Trash2, Plus, ArrowLeft, Clock, CheckCircle } from 'lucide-react';
 import API_BASE from './config';
+import { getAuthHeaders } from './api.js';
 
 // Centralized theme + fonts - matching TaskTracker theme
 const THEME = {
@@ -46,15 +47,6 @@ const ClientsManagement = ({ onBackToTasks }) => {
   useEffect(() => {
     fetchClients();
   }, []);
-
-  // Helper to get auth headers
-  const getAuthHeaders = () => {
-    const token = localStorage.getItem('authToken');
-    return {
-      'Content-Type': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` })
-    };
-  };
 
   const fetchClients = async () => {
     try {
