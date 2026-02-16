@@ -37,6 +37,7 @@ import {
 import CustomAutocomplete from '../components/CustomAutocomplete';
 import API_BASE from '../config';
 import { formatCurrency, formatCurrencyWithCode } from '../utils/formatCurrency';
+import { getAuthHeaders } from '../api.js';
 
 // Import extracted view components
 import MobileStatsView from './views/MobileStatsView';
@@ -202,7 +203,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
     const fetchTasks = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${API_BASE}/tasks?username=${authUser}&role=${authRole}`);
+            const response = await fetch(`${API_BASE}/tasks`, { headers: getAuthHeaders() });
             if (!response.ok) throw new Error(`Tasks fetch failed: ${response.status}`);
             const data = await response.json();
             const list = Array.isArray(data) ? data : [];
@@ -221,7 +222,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
 
     const fetchCategories = async () => {
         try {
-            const response = await fetch(`${API_BASE}/categories`);
+            const response = await fetch(`${API_BASE}/categories`, { headers: getAuthHeaders() });
             if (!response.ok) throw new Error(`Categories fetch failed: ${response.status}`);
             const data = await response.json();
             setCategories(Array.isArray(data) ? data : []);
@@ -233,7 +234,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
 
     const fetchClients = async () => {
         try {
-            const response = await fetch(`${API_BASE}/clients`);
+            const response = await fetch(`${API_BASE}/clients`, { headers: getAuthHeaders() });
             if (!response.ok) throw new Error(`Clients fetch failed: ${response.status}`);
             const data = await response.json();
             const list = Array.isArray(data) ? data : [];
@@ -249,7 +250,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
 
     const fetchTags = async () => {
         try {
-            const response = await fetch(`${API_BASE}/tags?username=${authUser}&role=${authRole}`);
+            const response = await fetch(`${API_BASE}/tags`, { headers: getAuthHeaders() });
             if (!response.ok) throw new Error(`Tags fetch failed: ${response.status}`);
             const data = await response.json();
             setAllTags(Array.isArray(data) ? data : []);
@@ -265,7 +266,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
             const newStatus = currentStatus === 'completed' ? 'uncompleted' : 'completed';
             await fetch(`${API_BASE}/tasks/${taskId}`, {
                 method: 'PUT',
-                headers: {'Content-Type': 'application/json'},
+                headers: getAuthHeaders(),
                 body: JSON.stringify({status: newStatus})
             });
             await fetchTasks();
@@ -278,7 +279,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
         if (!window.confirm('Delete this task?')) return;
 
         try {
-            await fetch(`${API_BASE}/tasks/${taskId}`, {method: 'DELETE'});
+            await fetch(`${API_BASE}/tasks/${taskId}`, { method: 'DELETE', headers: getAuthHeaders() });
             await fetchTasks();
             setSwipeStates(prev => {
                 const updated = {...prev};
@@ -298,11 +299,11 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                 ? `${API_BASE}/tasks/${editingTask.id}`
                 : `${API_BASE}/tasks`;
             const { attachments, newAttachments, removedAttachmentIds, ...payload } = formData;
-            const body = { ...payload, username: authUser, role: authRole };
+            const body = { ...payload };
 
             const response = await fetch(url, {
                 method,
-                headers: {'Content-Type': 'application/json'},
+                headers: getAuthHeaders(),
                 body: JSON.stringify(body)
             });
 
@@ -320,6 +321,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                     fd.append('file', file, name || file.name || `image-${Date.now()}.png`);
                     const upRes = await fetch(`${API_BASE}/tasks/${taskId}/attachments`, {
                         method: 'POST',
+                        headers: getAuthHeaders(false),
                         body: fd
                     });
                     if (!upRes.ok) {
@@ -329,7 +331,8 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                 }
                 for (const attId of (removedAttachmentIds || [])) {
                     await fetch(`${API_BASE}/tasks/${taskId}/attachments/${attId}`, {
-                        method: 'DELETE'
+                        method: 'DELETE',
+                        headers: getAuthHeaders()
                     });
                 }
             }
@@ -402,9 +405,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
             duration: '',
             status: 'uncompleted',
             tags: [],
-            notes: '',
-            username: authUser,
-            role: authRole
+            notes: ''
         }));
 
         try {
@@ -412,7 +413,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
             const promises = tasksToCreate.map(task =>
                 fetch(`${API_BASE}/tasks`, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: getAuthHeaders(),
                     body: JSON.stringify(task)
                 })
             );
@@ -603,7 +604,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
             setLoading(true);
             const response = await fetch(`${API_BASE}/tasks/${sharingTask.id}/share`, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: getAuthHeaders(),
                 body: JSON.stringify({email: shareEmail.trim()})
             });
 
@@ -1397,11 +1398,11 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                                 const uploadFormData = new FormData();
                                                 uploadFormData.append('file', file);
                                                 uploadFormData.append('transaction_type', 'credit'); // default to credit
-                                                uploadFormData.append('username', authUser); // tag with username
 
                                                 try {
                                                     const response = await fetch(`${API_BASE}/transactions/upload`, {
                                                         method: 'POST',
+                                                        headers: getAuthHeaders(false),
                                                         body: uploadFormData
                                                     });
 

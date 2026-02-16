@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Lock, AlertCircle, CheckCircle, ArrowLeft, X, Eye, EyeOff, Trash2 } from 'lucide-react';
 import API_BASE from './config';
+import { getAuthHeaders } from './api.js';
 
 const SettingsPage = () => {
     const navigate = useNavigate();
@@ -45,24 +46,21 @@ const SettingsPage = () => {
     const fetchUserInfo = async () => {
         try {
             setLoading(true);
-            const authToken = localStorage.getItem('authToken');
-            
+
             // Fetch 2FA status
-            const twoFaResponse = await fetch(`${API_BASE}/auth/2fa/status?username=${username}`);
+            const twoFaResponse = await fetch(`${API_BASE}/auth/2fa/status?username=${username}`, {
+                headers: getAuthHeaders()
+            });
             const twoFaData = await twoFaResponse.json();
             setTwoFactorEnabled(Boolean(twoFaData.enabled));
-            
+
             // Fetch user email (requires authentication)
-            if (authToken) {
-                const userResponse = await fetch(`${API_BASE}/auth/user-info?username=${username}`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-                if (userResponse.ok) {
-                    const userData = await userResponse.json();
-                    setUserEmail(userData.email || '');
-                }
+            const userResponse = await fetch(`${API_BASE}/auth/user-info?username=${username}`, {
+                headers: getAuthHeaders()
+            });
+            if (userResponse.ok) {
+                const userData = await userResponse.json();
+                setUserEmail(userData.email || '');
             }
         } catch (err) {
             console.error('Error fetching user info:', err);
@@ -101,7 +99,7 @@ const SettingsPage = () => {
             setPasswordLoading(true);
             const response = await fetch(`${API_BASE}/auth/change-password`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify({
                     username,
                     current_password: currentPassword,
@@ -147,7 +145,7 @@ const SettingsPage = () => {
             setDeleteLoading(true);
             const response = await fetch(`${API_BASE}/auth/delete-account`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify({
                     username,
                     password: deletePassword
@@ -185,7 +183,7 @@ const SettingsPage = () => {
         try {
             const response = await fetch(`${API_BASE}/auth/2fa/disable`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify({ username, password })
             });
 

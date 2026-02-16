@@ -3,6 +3,7 @@ import { ArrowLeft, Plus, Edit2, Trash2, X, TrendingUp, PieChart, Calendar, Aler
 import TabBar from './components/TabBar';
 import API_BASE from './config';
 import { formatCurrencyWithCode } from './utils/formatCurrency';
+import { getAuthHeaders } from './api.js';
 import CustomAutocomplete from './components/CustomAutocomplete';
 import WatchlistSection from './components/portfolio/WatchlistSection';
 import YahooPortfolioSection from './components/portfolio/YahooPortfolioSection';
@@ -63,7 +64,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
 
   const fetchTabs = async () => {
     try {
-      const response = await fetch(`${API_BASE}/portfolio-tabs?username=${authUser}&role=${authRole}`);
+      const response = await fetch(`${API_BASE}/portfolio-tabs`, { headers: getAuthHeaders() });
       const data = await response.json();
       if (Array.isArray(data)) {
         setTabs(data);
@@ -91,8 +92,8 @@ const StockPortfolio = ({ onBackToTasks }) => {
     try {
       const response = await fetch(`${API_BASE}/portfolio-tabs`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newTabName.trim(), username: authUser })
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ name: newTabName.trim() })
       });
       const data = await response.json();
       if (response.ok) {
@@ -119,9 +120,10 @@ const StockPortfolio = ({ onBackToTasks }) => {
       setLoading(true);
       setError(null);
       const tid = tabId !== undefined ? tabId : activeTabId;
-      const tabParam = tid ? `&tab_id=${tid}` : '';
+      const tabParam = tid ? `?tab_id=${tid}` : '';
       const response = await fetch(
-        `${API_BASE}/portfolio?username=${authUser}&role=${authRole}${tabParam}`
+        `${API_BASE}/portfolio${tabParam}`,
+        { headers: getAuthHeaders() }
       );
       if (!response.ok) throw new Error('Failed to load portfolio entries');
       const data = await response.json();
@@ -137,9 +139,10 @@ const StockPortfolio = ({ onBackToTasks }) => {
   const fetchSummary = async (tabId) => {
     try {
       const tid = tabId !== undefined ? tabId : activeTabId;
-      const tabParam = tid ? `&tab_id=${tid}` : '';
+      const tabParam = tid ? `?tab_id=${tid}` : '';
       const response = await fetch(
-        `${API_BASE}/portfolio/summary?username=${authUser}&role=${authRole}${tabParam}`
+        `${API_BASE}/portfolio/summary${tabParam}`,
+        { headers: getAuthHeaders() }
       );
       if (!response.ok) throw new Error('Failed to load summary');
       const data = await response.json();
@@ -153,9 +156,10 @@ const StockPortfolio = ({ onBackToTasks }) => {
   const fetchStockNames = async (tabId) => {
     try {
       const tid = tabId !== undefined ? tabId : activeTabId;
-      const tabParam = tid ? `&tab_id=${tid}` : '';
+      const tabParam = tid ? `?tab_id=${tid}` : '';
       const response = await fetch(
-        `${API_BASE}/portfolio/names?username=${authUser}&role=${authRole}${tabParam}`
+        `${API_BASE}/portfolio/names${tabParam}`,
+        { headers: getAuthHeaders() }
       );
       if (response.ok) {
         const data = await response.json();
@@ -348,7 +352,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
 
       const entryId = editingEntry ? Number(editingEntry.id) : null;
       const url = editingEntry
-        ? `${API_BASE}/portfolio/${entryId}?username=${encodeURIComponent(authUser || '')}&role=${encodeURIComponent(authRole || '')}`
+        ? `${API_BASE}/portfolio/${entryId}`
         : `${API_BASE}/portfolio`;
 
       const method = editingEntry ? 'PUT' : 'POST';
@@ -372,7 +376,6 @@ const StockPortfolio = ({ onBackToTasks }) => {
         value_ils: valueIls,
         base_price: basePrice,
         entry_date: entryDate,
-        username: authUser,
         tab_id: activeTabId,
         currency: formData.currency || 'USD',
         units: units
@@ -387,7 +390,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
 
       const response = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(payload)
       });
 
@@ -478,7 +481,8 @@ const StockPortfolio = ({ onBackToTasks }) => {
       setSuccess(null);
       
       const response = await fetch(`${API_BASE}/portfolio/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: getAuthHeaders()
       });
 
       if (!response.ok) throw new Error('Failed to delete entry');
@@ -514,7 +518,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
 
       const response = await fetch(`${API_BASE}/portfolio/stock-prices`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ tickers })
       });
 

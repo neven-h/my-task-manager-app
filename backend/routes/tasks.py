@@ -26,9 +26,13 @@ def _sync_tags_to_table(cursor, tags):
 # ================================
 
 @tasks_bp.route('/api/tasks', methods=['GET'])
-def get_tasks():
+@token_required
+def get_tasks(payload):
     """Get all tasks with optional filtering"""
     try:
+        username = payload['username']
+        user_role = payload['role']
+
         category = request.args.get('category')
         status = request.args.get('status')
         client = request.args.get('client')
@@ -36,8 +40,6 @@ def get_tasks():
         date_start = request.args.get('date_start')
         date_end = request.args.get('date_end')
         shared_only = request.args.get('shared')
-        username = request.args.get('username')
-        user_role = request.args.get('role')
         include_drafts = request.args.get('include_drafts', 'false')
         has_attachment = request.args.get('has_attachment')
 
@@ -128,11 +130,12 @@ def get_tasks():
 
 
 @tasks_bp.route('/api/tasks', methods=['POST'])
-def create_task():
+@token_required
+def create_task(payload):
     """Create a new task"""
     try:
+        username = payload['username']
         data = request.json
-        username = data.get('username')
 
         task_time = data.get('task_time')
         if not task_time:
@@ -192,14 +195,27 @@ def create_task():
 
 
 @tasks_bp.route('/api/tasks/<int:task_id>', methods=['PUT'])
-def update_task(task_id):
+@token_required
+def update_task(payload, task_id):
     """Update an existing task"""
     try:
+        username = payload['username']
+        user_role = payload['role']
         data = request.json
 
         with get_db_connection() as connection:
-            cursor = connection.cursor()
+            cursor = connection.cursor(dictionary=True)
 
+            # Ownership check: non-admin users can only edit their own tasks
+            if user_role != 'admin':
+                cursor.execute("SELECT created_by FROM tasks WHERE id = %s", (task_id,))
+                row = cursor.fetchone()
+                if not row:
+                    return jsonify({'error': 'Task not found'}), 404
+                if row['created_by'] != username:
+                    return jsonify({'error': 'Access denied'}), 403
+
+            cursor = connection.cursor()
             query = """
                     UPDATE tasks
                     SET title       = %s,
@@ -265,10 +281,25 @@ def update_task(task_id):
 
 
 @tasks_bp.route('/api/tasks/<int:task_id>', methods=['DELETE'])
-def delete_task(task_id):
+@token_required
+def delete_task(payload, task_id):
     """Delete a task"""
     try:
+        username = payload['username']
+        user_role = payload['role']
+
         with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # Ownership check: non-admin users can only delete their own tasks
+            if user_role != 'admin':
+                cursor.execute("SELECT created_by FROM tasks WHERE id = %s", (task_id,))
+                row = cursor.fetchone()
+                if not row:
+                    return jsonify({'error': 'Task not found'}), 404
+                if row['created_by'] != username:
+                    return jsonify({'error': 'Access denied'}), 403
+
             cursor = connection.cursor()
             cursor.execute("DELETE FROM tasks WHERE id = %s", (task_id,))
             connection.commit()
@@ -283,21 +314,30 @@ def delete_task(task_id):
 
 
 @tasks_bp.route('/api/tasks/<int:task_id>/toggle-status', methods=['PATCH'])
-def toggle_task_status(task_id):
+@token_required
+def toggle_task_status(payload, task_id):
     """Toggle task completion status"""
     try:
-        with get_db_connection() as connection:
-            cursor = connection.cursor()
+        username = payload['username']
+        user_role = payload['role']
 
-            cursor.execute("SELECT status FROM tasks WHERE id = %s", (task_id,))
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            cursor.execute("SELECT status, created_by FROM tasks WHERE id = %s", (task_id,))
             result = cursor.fetchone()
 
             if not result:
                 return jsonify({'error': 'Task not found'}), 404
 
-            current_status = result[0]
+            # Ownership check
+            if user_role != 'admin' and result['created_by'] != username:
+                return jsonify({'error': 'Access denied'}), 403
+
+            current_status = result['status']
             new_status = 'completed' if current_status == 'uncompleted' else 'uncompleted'
 
+            cursor = connection.cursor()
             cursor.execute("UPDATE tasks SET status = %s WHERE id = %s", (new_status, task_id))
             connection.commit()
 
@@ -308,9 +348,13 @@ def toggle_task_status(task_id):
 
 
 @tasks_bp.route('/api/tasks/<int:task_id>/duplicate', methods=['POST'])
-def duplicate_task(task_id):
+@token_required
+def duplicate_task(payload, task_id):
     """Duplicate an existing task"""
     try:
+        username = payload['username']
+        user_role = payload['role']
+
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
@@ -320,12 +364,16 @@ def duplicate_task(task_id):
             if not original_task:
                 return jsonify({'error': 'Task not found'}), 404
 
+            # Ownership check: non-admin users can only duplicate their own tasks
+            if user_role != 'admin' and original_task.get('created_by') != username:
+                return jsonify({'error': 'Access denied'}), 403
+
             cursor = connection.cursor()
             query = """
                     INSERT INTO tasks
                     (title, description, category, categories, client, task_date, task_time,
-                     duration, status, tags, notes, shared, is_draft)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                     duration, status, tags, notes, shared, is_draft, created_by)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """
 
             values = (
@@ -341,7 +389,8 @@ def duplicate_task(task_id):
                 original_task['tags'],
                 original_task['notes'],
                 original_task['shared'],
-                False
+                False,
+                username
             )
 
             cursor.execute(query, values)
@@ -358,9 +407,12 @@ def duplicate_task(task_id):
 # ================================
 
 @tasks_bp.route('/api/tasks/<int:task_id>/share', methods=['POST'])
-def share_task(task_id):
+@token_required
+def share_task(payload, task_id):
     """Share a task via email"""
     try:
+        username = payload['username']
+        user_role = payload['role']
         data = request.json
         email = data.get('email', '').strip().lower()
 
@@ -378,6 +430,10 @@ def share_task(task_id):
 
             if not task:
                 return jsonify({'error': 'Task not found'}), 404
+
+            # Ownership check: non-admin users can only share their own tasks
+            if user_role != 'admin' and task.get('created_by') != username:
+                return jsonify({'error': 'Access denied'}), 403
 
             email_configured = bool(app.config.get('MAIL_USERNAME') and app.config.get('MAIL_PASSWORD'))
 
@@ -427,12 +483,23 @@ Task Tracker Team"""
 
 
 @tasks_bp.route('/api/drafts', methods=['GET'])
-def get_drafts():
-    """Get all draft tasks"""
+@token_required
+def get_drafts(payload):
+    """Get draft tasks for the authenticated user"""
     try:
+        username = payload['username']
+        user_role = payload['role']
+
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
-            cursor.execute("SELECT * FROM tasks WHERE is_draft = TRUE ORDER BY updated_at DESC")
+
+            if user_role == 'admin':
+                cursor.execute("SELECT * FROM tasks WHERE is_draft = TRUE ORDER BY updated_at DESC")
+            else:
+                cursor.execute(
+                    "SELECT * FROM tasks WHERE is_draft = TRUE AND created_by = %s ORDER BY updated_at DESC",
+                    (username,)
+                )
             drafts = cursor.fetchall()
 
             for draft in drafts:
@@ -449,14 +516,12 @@ def get_drafts():
 # ================================
 
 @tasks_bp.route('/api/stats', methods=['GET'])
-def get_stats():
+@token_required
+def get_stats(payload):
     """Get statistics about tasks - filtered by user role"""
     try:
-        username = request.args.get('username')
-        user_role = request.args.get('role')
-
-        if not username or not user_role:
-            return jsonify({'error': 'Unauthorized: username and role required'}), 401
+        username = payload['username']
+        user_role = payload['role']
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)

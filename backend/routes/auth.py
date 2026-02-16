@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify, current_app
 from config import (
     limiter, mail, get_db_connection, USERS, FRONTEND_URL,
     DEBUG, handle_error, validate_password,
-    generate_jwt_token, verify_jwt_token,
+    generate_jwt_token, verify_jwt_token, token_required,
 )
 from flask_mail import Message
 from mysql.connector import Error
@@ -127,6 +127,7 @@ def login():
 
 
 @auth_bp.route('/api/auth/signup', methods=['POST'])
+@limiter.limit("5 per hour")
 def signup():
     """Register a new user"""
     try:
@@ -220,7 +221,11 @@ def forgot_password():
             """, (user['id'],))
             result = cursor.fetchone()
             if result['count'] >= 3:
-                return jsonify({'error': 'Too many reset requests. Please try again later'}), 429
+                # Return same generic response as "user not found" to avoid leaking user existence
+                return jsonify({
+                    'success': True,
+                    'message': 'If that email is registered, you will receive a password reset link'
+                })
 
             # Generate secure token
             token = str(uuid.uuid4())
@@ -294,6 +299,7 @@ Task Tracker Team"""
 
 
 @auth_bp.route('/api/auth/verify-token', methods=['GET'])
+@limiter.limit("10 per minute")
 def verify_reset_token():
     """Verify if reset token is valid"""
     try:
@@ -403,14 +409,11 @@ def reset_password():
 # ================================
 
 @auth_bp.route('/api/auth/2fa/setup', methods=['POST'])
-def setup_2fa():
+@token_required
+def setup_2fa(payload):
     """Generate a new 2FA secret and QR code for user to scan"""
     try:
-        data = request.json
-        username = data.get('username')
-
-        if not username:
-            return jsonify({'error': 'Username is required'}), 400
+        username = payload['username']
 
         # Check if this is a hardcoded user (not in database)
         if username in USERS:
@@ -477,15 +480,16 @@ def setup_2fa():
 
 
 @auth_bp.route('/api/auth/2fa/enable', methods=['POST'])
-def enable_2fa():
+@token_required
+def enable_2fa(payload):
     """Enable 2FA after user verifies the code"""
     try:
+        username = payload['username']
         data = request.json
-        username = data.get('username')
         code = data.get('code', '').strip()
 
-        if not username or not code:
-            return jsonify({'error': 'Username and code are required'}), 400
+        if not code:
+            return jsonify({'error': 'Verification code is required'}), 400
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -525,6 +529,7 @@ def enable_2fa():
 
 
 @auth_bp.route('/api/auth/2fa/verify', methods=['POST'])
+@limiter.limit("5 per minute")
 def verify_2fa():
     """Verify 2FA code during login and return JWT token"""
     try:
@@ -570,15 +575,16 @@ def verify_2fa():
 
 
 @auth_bp.route('/api/auth/2fa/disable', methods=['POST'])
-def disable_2fa():
+@token_required
+def disable_2fa(payload):
     """Disable 2FA (requires password verification)"""
     try:
+        username = payload['username']
         data = request.json
-        username = data.get('username')
         password = data.get('password')
 
-        if not username or not password:
-            return jsonify({'error': 'Username and password are required'}), 400
+        if not password:
+            return jsonify({'error': 'Password is required'}), 400
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -618,13 +624,11 @@ def disable_2fa():
 
 
 @auth_bp.route('/api/auth/2fa/status', methods=['GET'])
-def get_2fa_status():
-    """Get 2FA status for a user"""
+@token_required
+def get_2fa_status(payload):
+    """Get 2FA status for the authenticated user"""
     try:
-        username = request.args.get('username')
-
-        if not username:
-            return jsonify({'error': 'Username is required'}), 400
+        username = payload['username']
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -706,15 +710,16 @@ def get_user_info():
 
 
 @auth_bp.route('/api/auth/change-password', methods=['POST'])
-def change_password():
+@token_required
+def change_password(payload):
     """Change user password"""
     try:
+        username = payload['username']
         data = request.json
-        username = data.get('username')
         current_password = data.get('current_password')
         new_password = data.get('new_password')
 
-        if not username or not current_password or not new_password:
+        if not current_password or not new_password:
             return jsonify({'error': 'All fields are required'}), 400
 
         if len(new_password) < 8:
@@ -766,15 +771,16 @@ def change_password():
 
 
 @auth_bp.route('/api/auth/delete-account', methods=['POST'])
-def delete_account():
+@token_required
+def delete_account(payload):
     """Delete user account permanently"""
     try:
+        username = payload['username']
         data = request.json
-        username = data.get('username')
         password = data.get('password')
 
-        if not username or not password:
-            return jsonify({'error': 'Username and password are required'}), 400
+        if not password:
+            return jsonify({'error': 'Password is required'}), 400
 
         # Check if this is a hardcoded user (cannot delete)
         if username in USERS:

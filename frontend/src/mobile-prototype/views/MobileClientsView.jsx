@@ -1,6 +1,7 @@
 import React, {useState, useEffect} from 'react';
 import { ArrowLeft, Plus } from 'lucide-react';
 import API_BASE from '../../config';
+import { getAuthHeaders } from '../../api.js';
 
 const THEME = {
     bg: '#fff', primary: '#0000FF', secondary: '#FFD500', accent: '#FF0000',
@@ -29,7 +30,7 @@ const MobileClientsView = ({authUser, authRole, onBack}) => {
     const fetchClients = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${API_BASE}/clients/manage`);
+            const response = await fetch(`${API_BASE}/clients/manage`, { headers: getAuthHeaders() });
             const data = await response.json();
             setClients(Array.isArray(data) ? data : []);
         } catch (err) {
@@ -41,7 +42,7 @@ const MobileClientsView = ({authUser, authRole, onBack}) => {
 
     const fetchClientTasks = async (clientName) => {
         try {
-            const response = await fetch(`${API_BASE}/clients/${encodeURIComponent(clientName)}/tasks`);
+            const response = await fetch(`${API_BASE}/clients/${encodeURIComponent(clientName)}/tasks`, { headers: getAuthHeaders() });
             const data = await response.json();
             setClientTasks(Array.isArray(data) ? data : []);
             setSelectedClient(clientName);
@@ -58,7 +59,7 @@ const MobileClientsView = ({authUser, authRole, onBack}) => {
             setCreateLoading(true);
             const response = await fetch(`${API_BASE}/clients`, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: getAuthHeaders(),
                 body: JSON.stringify({
                     name: newClient.name.trim(),
                     email: newClient.email?.trim() || '',
@@ -84,7 +85,8 @@ const MobileClientsView = ({authUser, authRole, onBack}) => {
         if (!window.confirm(`Delete all tasks for "${clientName}"?`)) return;
         try {
             await fetch(`${API_BASE}/clients/${encodeURIComponent(clientName)}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: getAuthHeaders()
             });
             setSelectedClient(null);
             setClientTasks([]);

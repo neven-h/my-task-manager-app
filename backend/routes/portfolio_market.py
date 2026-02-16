@@ -6,6 +6,7 @@ from config import (
 )
 from decimal import Decimal
 from mysql.connector import Error
+from datetime import datetime
 import yfinance as yf
 from yfinance.exceptions import YFRateLimitError
 
@@ -173,14 +174,11 @@ def search_stocks():
 
 
 @portfolio_market_bp.route('/api/portfolio/watchlist', methods=['GET'])
-def get_watchlist():
+@token_required
+def get_watchlist(payload):
     """Get user's watchlist"""
     try:
-        username = request.args.get('username')
-        user_role = request.args.get('role')
-        
-        if not username:
-            return jsonify({'error': 'Username is required'}), 400
+        username = payload['username']
         
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -201,16 +199,15 @@ def get_watchlist():
 
 
 @portfolio_market_bp.route('/api/portfolio/watchlist', methods=['POST'])
-def add_to_watchlist():
+@token_required
+def add_to_watchlist(payload):
     """Add a stock to user's watchlist"""
     try:
+        username = payload['username']
         data = request.json
-        username = data.get('username')
         ticker_symbol = data.get('ticker_symbol', '').strip().upper()
         stock_name = data.get('stock_name', '')
 
-        if not username:
-            return jsonify({'error': 'Username is required'}), 400
         if not ticker_symbol:
             return jsonify({'error': 'Ticker symbol is required'}), 400
 
@@ -266,14 +263,12 @@ def add_to_watchlist():
 
 
 @portfolio_market_bp.route('/api/portfolio/watchlist/<int:watchlist_id>', methods=['DELETE'])
-def remove_from_watchlist(watchlist_id):
+@token_required
+def remove_from_watchlist(payload, watchlist_id):
     """Remove a stock from user's watchlist"""
     try:
-        username = request.args.get('username')
-        user_role = request.args.get('role')
-        
-        if not username:
-            return jsonify({'error': 'Username is required'}), 400
+        username = payload['username']
+        user_role = payload['role']
         
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -286,9 +281,9 @@ def remove_from_watchlist(watchlist_id):
             if not item:
                 return jsonify({'error': 'Watchlist item not found'}), 404
             
-            # Authorization check: limited users can only remove their own items
-            if user_role == 'limited' and item['username'] != username:
-                return jsonify({'error': 'Unauthorized: You can only remove your own watchlist items'}), 403
+            # Authorization check: non-admin users can only remove their own items
+            if user_role != 'admin' and item['username'] != username:
+                return jsonify({'error': 'Access denied'}), 403
             
             # Delete the item
             cursor.execute("DELETE FROM watched_stocks WHERE id = %s", (watchlist_id,))
@@ -304,13 +299,11 @@ def remove_from_watchlist(watchlist_id):
 
 
 @portfolio_market_bp.route('/api/portfolio/watchlist/prices', methods=['GET'])
-def get_watchlist_prices():
+@token_required
+def get_watchlist_prices(payload):
     """Get live prices for all stocks in user's watchlist"""
     try:
-        username = request.args.get('username')
-
-        if not username:
-            return jsonify({'error': 'Username is required'}), 400
+        username = payload['username']
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
