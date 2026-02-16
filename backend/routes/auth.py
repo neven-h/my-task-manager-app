@@ -552,7 +552,7 @@ def verify_2fa():
             user = cursor.fetchone()
 
             if not user or not user.get('two_factor_enabled'):
-                return jsonify({'error': 'User not found or 2FA not enabled'}), 404
+                return jsonify({'error': 'Invalid username or verification code'}), 401
 
             # Verify TOTP code
             totp = pyotp.TOTP(user['two_factor_secret'])
