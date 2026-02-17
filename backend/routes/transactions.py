@@ -16,6 +16,8 @@ import os
 import re
 import json
 import base64
+from bank_csv_normalizer.normalize.io import load_csv, load_excel
+from bank_csv_normalizer.convert import convert_df
 
 transactions_bp = Blueprint('transactions', __name__)
 
@@ -199,158 +201,58 @@ def parse_cash_transaction_file(file_path):
 
 
 def parse_transaction_file(file_path, transaction_type='credit'):
-    """Parse CSV or Excel file and return cleaned dataframe"""
+    """Parse CSV or Excel file using bank_csv_normalizer and return cleaned dataframe."""
     try:
-        # If it's marked as cash transaction, use special parser
+        # Cash transactions still use the dedicated parser
         if transaction_type == 'cash':
             return parse_cash_transaction_file(file_path)
 
-        # Otherwise use standard credit card transaction parser
-        # Determine file type and read accordingly
-        if file_path.endswith('.csv'):
-            # Use chardet to detect encoding
-            with open(file_path, 'rb') as f:
-                raw_data = f.read()
-                result = chardet.detect(raw_data)
-                detected_encoding = result['encoding']
-                confidence = result['confidence']
+        ext = os.path.splitext(file_path)[1].lower()
+        print(f"\n{'=' * 60}", flush=True)
+        print(f"[NORMALIZER] Parsing file: {file_path} (ext={ext})", flush=True)
 
-                print(f"\n{'=' * 60}", flush=True)
-                print(f"[ENCODING DEBUG] File: {file_path}", flush=True)
-                print(f"[CHARDET] Detected: {detected_encoding} (confidence: {confidence})", flush=True)
-
-                # Show first 200 bytes in hex for debugging
-                print(f"[RAW BYTES] First 200 bytes (hex): {raw_data[:200].hex()}", flush=True)
-
-                # Try to decode first line with different encodings to see which looks right
-                first_line_end = raw_data.find(b'\n')
-                if first_line_end > 0:
-                    first_line_bytes = raw_data[:first_line_end]
-                    print(f"[FIRST LINE BYTES] {first_line_bytes.hex()}", flush=True)
-                    for test_enc in ['windows-1255', 'utf-8', 'iso-8859-8', 'cp1255']:
-                        try:
-                            decoded = first_line_bytes.decode(test_enc)
-                            print(f"[TEST DECODE {test_enc}] {decoded}", flush=True)
-                        except:
-                            print(f"[TEST DECODE {test_enc}] FAILED", flush=True)
-
-                # Map common encodings to their variants
-                encoding_map = {
-                    'ISO-8859-8': 'windows-1255',  # Hebrew ISO -> Windows Hebrew
-                    'ISO-8859-1': 'cp1252',  # Latin-1 -> Windows-1252
-                    'ascii': 'utf-8'  # ASCII -> UTF-8
-                }
-
-                # Try detected encoding first, then its mapped variant
-                encodings_to_try = []
-                if detected_encoding:
-                    encodings_to_try.append(detected_encoding)
-                    if detected_encoding.upper() in encoding_map:
-                        encodings_to_try.append(encoding_map[detected_encoding.upper()])
-
-                # Add Hebrew encodings as backup (since detection can be unreliable for Hebrew)
-                encodings_to_try.extend([
-                    'windows-1255',
-                    'cp1255',
-                    'iso-8859-8',
-                    'utf-8-sig',
-                    'utf-8',
-                    'cp1252',
-                    'windows-1252',
-                    'latin-1'
-                ])
-
-                # Remove duplicates while preserving order
-                seen = set()
-                encodings_to_try = [x for x in encodings_to_try if x and not (x in seen or seen.add(x))]
-
-            df = None
-            used_encoding = None
-            for encoding in encodings_to_try:
-                try:
-                    df = pd.read_csv(file_path, encoding=encoding)
-                    used_encoding = encoding
-                    print(f"[SUCCESS] Read CSV with encoding: {encoding}", flush=True)
-
-                    # Debug: show first description value
-                    if len(df) > 0 and len(df.columns) >= 3:
-                        first_desc = df.iloc[0, 2] if len(df.columns) > 2 else "N/A"
-                        print(f"[FIRST DESCRIPTION] {first_desc}", flush=True)
-                        print(f"[FIRST DESC BYTES] {str(first_desc).encode('utf-8').hex()}", flush=True)
-
-                    break
-                except (UnicodeDecodeError, UnicodeError, LookupError) as e:
-                    print(f"[FAILED] {encoding}: {str(e)[:50]}", flush=True)
-                    continue
-
-            if df is None:
-                # If all encodings fail, try with errors='replace'
-                df = pd.read_csv(file_path, encoding='utf-8', errors='replace')
-                used_encoding = 'utf-8-replace'
-                print(f"[FALLBACK] Using UTF-8 with error replacement", flush=True)
+        # Load via normalizer (auto encoding+header detection for CSV,
+        # fixed header_row=3 for known Excel bank exports)
+        if ext in ('.xlsx', '.xls'):
+            load_res = load_excel(file_path, sheet=0, header_row=3)
         else:
-            df = pd.read_excel(file_path)
+            load_res = load_csv(file_path)
 
-        # Clean the data
-        df = clean_transaction_data(df)
+        print(f"[NORMALIZER] Loaded {len(load_res.df)} rows, encoding={load_res.encoding}, "
+              f"header_row={load_res.header_row_index}", flush=True)
 
-        # Ensure we have the expected columns
-        if len(df.columns) < 4:
-            raise ValueError("File must have at least 4 columns: Account Number, Date, Description, Amount")
+        # Detect profile and produce canonical DataFrame
+        canonical, report = convert_df(load_res.df)
 
-        # Rename columns to standard names
-        df.columns = ['account_number', 'transaction_date', 'description', 'amount'] + list(df.columns[4:])
+        print(f"[NORMALIZER] Profile={report.profile} confidence={report.confidence:.2f} "
+              f"rows_in={report.rows_in} rows_out={report.rows_out}", flush=True)
+        if report.warnings:
+            for w in report.warnings:
+                print(f"[NORMALIZER] Warning: {w}", flush=True)
 
-        # Parse dates - try multiple formats
-        print(f"[PARSE] Before date parsing: {len(df)} rows", flush=True)
+        if len(canonical) == 0:
+            raise ValueError(
+                f"No valid transactions found (profile={report.profile}, "
+                f"warnings: {'; '.join(report.warnings)})"
+            )
 
-        # Try multiple date formats in order of specificity
-        date_formats = [
-            '%d.%m.%Y',   # DD.MM.YYYY (e.g., 03.02.2026)
-            '%d/%m/%Y',   # DD/MM/YYYY (e.g., 03/02/2026)
-            '%d/%m/%y',   # D/M/YY (e.g., 3/2/26)
-            '%d.%m.%y',   # D.M.YY (e.g., 3.2.26)
-            '%Y-%m-%d',   # YYYY-MM-DD (e.g., 2026-02-03)
-        ]
+        # canonical columns: account_number, transaction_date (ISO str), description, amount (str)
+        # Convert to the shape the rest of the endpoint expects
+        canonical['transaction_date'] = pd.to_datetime(
+            canonical['transaction_date'], format='%Y-%m-%d', errors='coerce'
+        )
+        canonical['amount'] = pd.to_numeric(canonical['amount'], errors='coerce')
+        canonical = canonical.dropna(subset=['transaction_date', 'amount'])
 
-        parsed_dates = None
-        for fmt in date_formats:
-            attempt = pd.to_datetime(df['transaction_date'], format=fmt, errors='coerce')
-            valid_count = attempt.notna().sum()
-            print(f"[PARSE] Format '{fmt}': {valid_count}/{len(df)} dates parsed", flush=True)
-            if valid_count > 0 and (parsed_dates is None or valid_count > parsed_dates.notna().sum()):
-                parsed_dates = attempt
+        canonical['month_year'] = canonical['transaction_date'].dt.strftime('%Y-%m')
+        canonical['transaction_type'] = transaction_type
 
-        # Final fallback: let pandas infer the format
-        if parsed_dates is None or parsed_dates.notna().sum() == 0:
-            parsed_dates = pd.to_datetime(df['transaction_date'], dayfirst=True, errors='coerce')
-            print(f"[PARSE] Fallback (dayfirst=True): {parsed_dates.notna().sum()}/{len(df)} dates parsed", flush=True)
+        # Store report metadata on the df for the endpoint to expose
+        canonical.attrs['normalizer_profile'] = report.profile
+        canonical.attrs['normalizer_confidence'] = report.confidence
 
-        df['transaction_date'] = parsed_dates
-        print(f"[PARSE] After date parsing, rows with NaT dates: {df['transaction_date'].isna().sum()}", flush=True)
-
-        # Convert amount to float
-        df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
-        print(f"[PARSE] After amount parsing, rows with NaN amounts: {df['amount'].isna().sum()}", flush=True)
-
-        # Show first 3 rows before dropping
-        print(f"[PARSE] First 3 rows before dropping NaN:", flush=True)
-        for i in range(min(3, len(df))):
-            print(
-                f"  Row {i}: date={df.iloc[i]['transaction_date']}, desc={df.iloc[i]['description']}, amt={df.iloc[i]['amount']}",
-                flush=True)
-
-        # Remove rows with invalid dates or amounts
-        df = df.dropna(subset=['transaction_date', 'amount'])
-        print(f"[PARSE] After dropping NaN: {len(df)} rows remaining", flush=True)
-
-        # Add month_year column
-        df['month_year'] = df['transaction_date'].dt.strftime('%Y-%m')
-
-        # Add transaction_type column
-        df['transaction_type'] = transaction_type
-
-        return df
+        print(f"[NORMALIZER] Successfully parsed {len(canonical)} credit transactions", flush=True)
+        return canonical
 
     except Exception as e:
         raise ValueError(f"Error parsing file: {str(e)}")
@@ -415,8 +317,10 @@ def upload_transactions(payload):
                 'transaction_count': len(transactions),
                 'transactions': transactions,
                 'month_year': transactions[0]['month_year'] if transactions else None,
-                'temp_filename': filename,  # Return filename for re-encoding attempts
-                'transaction_type': transaction_type
+                'temp_filename': filename,
+                'transaction_type': transaction_type,
+                'normalizer_profile': df.attrs.get('normalizer_profile'),
+                'normalizer_confidence': df.attrs.get('normalizer_confidence'),
             }
 
             # Debug the JSON response

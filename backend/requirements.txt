@@ -17,3 +17,4 @@ qrcode==7.4.2
 Pillow==11.3.0
 yfinance==1.1.0
 cloudinary==1.44.1
+bank-csv-normalizer @ git+ssh://git@github.com/neven-h/csv_parsing.git
