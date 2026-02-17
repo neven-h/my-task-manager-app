@@ -1,6 +1,3 @@
-[build]
-installCommand = "pip install \"bank-csv-normalizer @ git+https://x-access-token:${GH_TOKEN}@github.com/neven-h/csv_parsing.git\" && pip install -r requirements.txt"
-
 [deploy]
 healthcheckPath = "/api/health"
 healthcheckTimeout = 30

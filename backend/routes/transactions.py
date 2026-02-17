@@ -16,8 +16,6 @@ import os
 import re
 import json
 import base64
-from bank_csv_normalizer.normalize.io import load_csv, load_excel
-from bank_csv_normalizer.convert import convert_df
 
 transactions_bp = Blueprint('transactions', __name__)
 
@@ -206,6 +204,9 @@ def parse_transaction_file(file_path, transaction_type='credit'):
         # Cash transactions still use the dedicated parser
         if transaction_type == 'cash':
             return parse_cash_transaction_file(file_path)
+
+        from bank_csv_normalizer.normalize.io import load_csv, load_excel
+        from bank_csv_normalizer.convert import convert_df
 
         ext = os.path.splitext(file_path)[1].lower()
         print(f"\n{'=' * 60}", flush=True)
