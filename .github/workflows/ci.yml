@@ -45,9 +45,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           python -m pip install --upgrade pip
-          # Install the private library with the token embedded in the URL
+          # Install private dependency first with token auth (not in requirements.txt)
           pip install "bank-csv-normalizer @ git+https://x-access-token:${GH_TOKEN}@github.com/neven-h/csv_parsing.git"
-          # Install the rest of the requirements (bank-csv-normalizer already installed above)
+          # Install the rest of the public dependencies
           pip install -r requirements.txt
           
       - name: Check Python syntax
