@@ -917,6 +917,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
         tabEndpoint="transaction-tabs"
         authUser={authUser}
         authRole={authRole}
+        getAuthHeaders={getAuthHeaders}
         colors={colors}
         deleteConfirmMessage={(name) => `Delete "${name}" and all its transactions?`}
         onTabsChanged={(updatedTabs) => setTabs(updatedTabs)}
