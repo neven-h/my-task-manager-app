@@ -45,9 +45,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           python -m pip install --upgrade pip
-          # Write .netrc so git (invoked by pip) can authenticate to the private repo
-          echo "machine github.com login x-access-token password ${GH_TOKEN}" >> ~/.netrc
-          chmod 600 ~/.netrc
+          # Install the private library with the token embedded in the URL
+          pip install "bank-csv-normalizer @ git+https://x-access-token:${GH_TOKEN}@github.com/neven-h/csv_parsing.git"
+          # Install the rest of the requirements (bank-csv-normalizer already installed above)
           pip install -r requirements.txt
           
       - name: Check Python syntax
