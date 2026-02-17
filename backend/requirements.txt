@@ -17,4 +17,4 @@ qrcode==7.4.2
 Pillow==11.3.0
 yfinance==1.1.0
 cloudinary==1.44.1
-# bank-csv-normalizer: private repo, installed via GH_TOKEN in Railway/CI build commands
+bank-csv-normalizer @ https://github.com/neven-h/csv_parsing/archive/refs/heads/master.zip
