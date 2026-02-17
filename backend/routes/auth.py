@@ -811,9 +811,13 @@ def delete_account(payload):
             # Delete user's related data first (foreign key constraints)
             # Delete password reset tokens (uses user_id foreign key)
             cursor.execute("DELETE FROM password_reset_tokens WHERE user_id = %s", (user_id,))
-            
-            # Delete user's tasks (uses created_by column with username)
-            cursor.execute("DELETE FROM tasks WHERE created_by = %s", (username,))
+
+            # Reassign tasks to admin instead of deleting them — prevents accidental data loss.
+            # Tasks created by this user are preserved under the 'pitz' admin account.
+            cursor.execute(
+                "UPDATE tasks SET created_by = 'pitz' WHERE created_by = %s",
+                (username,)
+            )
             
             # Delete user's stock portfolio tabs and entries (uses owner column)
             cursor.execute("DELETE FROM stock_portfolio WHERE created_by = %s", (username,))
