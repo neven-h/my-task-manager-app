@@ -198,6 +198,45 @@ def parse_cash_transaction_file(file_path):
         raise ValueError(f"Error parsing cash transaction file: {str(e)}")
 
 
+def _load_excel_df(file_path):
+    """
+    Load an Excel bank export and return (df, header_row_index).
+
+    Strategy: read the sheet twice.
+    1. Read without a header to get all raw rows.
+    2. Scan for the first row whose cells contain known Hebrew/English header
+       keywords (תאריך, סכום, בית עסק, date, amount, …).
+    3. Re-read with that row as the header so column names are correct.
+    """
+    HEADER_KEYWORDS = {
+        "תאריך", "סכום", "תיאור", "תאור", "פרטים", "עסקה", "פעולה",
+        "בית עסק", "כרטיס", "אסמכתא", "חובה", "זכות", "יתרה", "מנפיק",
+        "date", "amount", "description", "transaction", "balance", "account",
+    }
+
+    # Read every cell as a string so we can search freely
+    raw = pd.read_excel(file_path, sheet_name=0, header=None, dtype=str)
+
+    header_row = 0  # sensible default
+    best_hits = 0
+    for i, row in raw.iterrows():
+        cells = [str(c).strip().lower() for c in row if pd.notna(c) and str(c).strip()]
+        hits = sum(1 for kw in HEADER_KEYWORDS if any(kw.lower() in c for c in cells))
+        if hits > best_hits:
+            best_hits = hits
+            header_row = i
+        if best_hits >= 3:   # good enough — stop early
+            # but keep scanning a bit more in case a better row exists nearby
+            if i > header_row + 5:
+                break
+
+    df = pd.read_excel(file_path, sheet_name=0, header=header_row, dtype=str)
+    df.columns = [str(c).strip() for c in df.columns]
+    # Drop rows that are entirely NaN (trailing footer rows)
+    df = df.dropna(how='all').reset_index(drop=True)
+    return df, int(header_row)
+
+
 def parse_transaction_file(file_path, transaction_type='credit'):
     """Parse CSV or Excel file using bank_csv_normalizer and return cleaned dataframe."""
     try:
@@ -205,25 +244,26 @@ def parse_transaction_file(file_path, transaction_type='credit'):
         if transaction_type == 'cash':
             return parse_cash_transaction_file(file_path)
 
-        from bank_csv_normalizer.normalize.io import load_csv, load_excel
+        from bank_csv_normalizer.normalize.io import load_csv
         from bank_csv_normalizer.convert import convert_df
 
         ext = os.path.splitext(file_path)[1].lower()
         print(f"\n{'=' * 60}", flush=True)
         print(f"[NORMALIZER] Parsing file: {file_path} (ext={ext})", flush=True)
 
-        # Load via normalizer (auto encoding+header detection for CSV,
-        # fixed header_row=3 for known Excel bank exports)
         if ext in ('.xlsx', '.xls'):
-            load_res = load_excel(file_path, sheet=0, header_row=3)
+            df, header_row_index = _load_excel_df(file_path)
+            print(f"[NORMALIZER] Loaded {len(df)} rows from Excel, "
+                  f"header_row={header_row_index}, columns={list(df.columns)[:6]}", flush=True)
         else:
             load_res = load_csv(file_path)
-
-        print(f"[NORMALIZER] Loaded {len(load_res.df)} rows, encoding={load_res.encoding}, "
-              f"header_row={load_res.header_row_index}", flush=True)
+            df = load_res.df
+            header_row_index = load_res.header_row_index
+            print(f"[NORMALIZER] Loaded {len(df)} rows, encoding={load_res.encoding}, "
+                  f"header_row={header_row_index}", flush=True)
 
         # Detect profile and produce canonical DataFrame
-        canonical, report = convert_df(load_res.df)
+        canonical, report = convert_df(df)
 
         print(f"[NORMALIZER] Profile={report.profile} confidence={report.confidence:.2f} "
               f"rows_in={report.rows_in} rows_out={report.rows_out}", flush=True)
