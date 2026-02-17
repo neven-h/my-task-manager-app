@@ -283,47 +283,88 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
   };
 
   const handleFileUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('transaction_type', transactionType);
+    const files = Array.from(event.target.files);
+    if (!files.length) return;
 
     try {
       setLoading(true);
       setError(null);
       setSuccess(null);
 
-      const response = await fetch(`${API_BASE}/transactions/upload`, {
-        method: 'POST',
-        headers: getAuthHeaders(false),
-        body: formData
-      });
+      const fileResults = [];
+      const errors = [];
 
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        console.error('Non-JSON response:', text);
-        console.error(`Server error: Expected JSON but got ${contentType}`);
-        throw new Error(`Server error: Expected JSON but got ${contentType}`);
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setSuccess(`Uploading file ${i + 1} of ${files.length}: ${file.name}…`);
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('transaction_type', transactionType);
+
+        const response = await fetch(`${API_BASE}/transactions/upload`, {
+          method: 'POST',
+          headers: getAuthHeaders(false),
+          body: formData
+        });
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const text = await response.text();
+          errors.push(`${file.name}: unexpected server response`);
+          console.error('Non-JSON response:', text);
+          continue;
+        }
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          errors.push(`${file.name}: ${data.error || 'upload failed'}`);
+          continue;
+        }
+
+        fileResults.push(data);
       }
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        console.error('Failed to save task');
+      if (fileResults.length === 0) {
+        setError(errors.join(' | ') || 'All files failed to upload.');
+        return;
       }
 
-      setUploadedData(data);
+      // Merge results from all successfully parsed files
+      const allTransactions = fileResults.flatMap(d => d.transactions);
+      const totalCount = allTransactions.length;
+      const totalAmount = allTransactions.reduce((sum, t) => sum + t.amount, 0);
+      const types = [...new Set(fileResults.map(d => d.transaction_type))];
+      const mergedType = types.length === 1 ? types[0] : 'mixed';
+
+      const merged = {
+        success: true,
+        transactions: allTransactions,
+        transaction_count: totalCount,
+        total_amount: totalAmount,
+        transaction_type: mergedType,
+        month_year: fileResults[0].month_year,
+        // keep last file's normalizer info for display
+        normalizer_profile: fileResults[fileResults.length - 1].normalizer_profile,
+        normalizer_confidence: fileResults[fileResults.length - 1].normalizer_confidence,
+      };
+
+      setUploadedData(merged);
       setPreviewFilter('all');
-      const typeLabel = transactionType === 'cash' ? 'cash' : 'credit card';
-      setSuccess(`Successfully parsed ${data.transaction_count} ${typeLabel} transactions.`);
+
+      const typeLabel = mergedType === 'cash' ? 'cash' : mergedType === 'mixed' ? 'mixed' : 'credit card';
+      const fileWord = fileResults.length === 1 ? '1 file' : `${fileResults.length} files`;
+      let msg = `Successfully parsed ${totalCount} ${typeLabel} transactions from ${fileWord}.`;
+      if (errors.length) msg += ` (${errors.length} file(s) failed: ${errors.join(', ')})`;
+      setSuccess(msg);
 
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
+      // Reset input so the same file(s) can be re-selected if needed
+      event.target.value = '';
     }
   };
 
@@ -1323,7 +1364,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
                 fontWeight: '700',
                 border: `2px solid ${colors.border}`
               }}>
-                {uploadedData.transaction_type === 'cash' ? '💵 CASH' : '💳 CREDIT'}
+                {uploadedData.transaction_type === 'cash' ? '💵 CASH' : uploadedData.transaction_type === 'mixed' ? '🔀 MIXED' : '💳 CREDIT'}
               </span>
             </h2>
             
@@ -1502,6 +1543,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
                 <input
                   type="file"
                   accept=".csv,.xlsx,.xls"
+                  multiple
                   onChange={handleFileUpload}
                   style={{ display: 'none' }}
                   id="file-upload"
@@ -1518,7 +1560,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
                     Click to upload
                   </span>
                   <span style={{ color: colors.textLight, fontSize: '0.7rem' }}>
-                    CSV or Excel
+                    CSV or Excel · select multiple files
                   </span>
                 </label>
               </div>
