@@ -8,6 +8,7 @@ export default function TabBar({
   tabEndpoint,
   authUser,
   authRole,
+  getAuthHeaders,
   onTabCreated,
   onTabDeleted,
   onTabSwitched,
@@ -35,7 +36,8 @@ export default function TabBar({
 
   const fetchTabs = async () => {
     try {
-      const response = await fetch(`${apiBase}/${tabEndpoint}?username=${authUser}&role=${authRole}`);
+      const headers = getAuthHeaders ? getAuthHeaders() : {};
+      const response = await fetch(`${apiBase}/${tabEndpoint}`, { headers });
       const data = await response.json();
       if (Array.isArray(data)) {
         onTabsChanged(data);
@@ -53,10 +55,11 @@ export default function TabBar({
   const handleCreateTab = async () => {
     if (!newTabName.trim()) return;
     try {
+      const headers = getAuthHeaders ? { ...getAuthHeaders(), 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
       const response = await fetch(`${apiBase}/${tabEndpoint}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newTabName.trim(), username: authUser })
+        headers,
+        body: JSON.stringify({ name: newTabName.trim() })
       });
       const data = await response.json();
       if (response.ok) {
@@ -75,11 +78,10 @@ export default function TabBar({
   const handleRenameTab = async (tabId) => {
     if (!editingTabName.trim()) return;
     try {
-      const qs = new URLSearchParams({ username: authUser || '', role: authRole || '' }).toString();
-      const url = `${apiBase}/${tabEndpoint}/${tabId}${qs ? `?${qs}` : ''}`;
-      const response = await fetch(url, {
+      const headers = getAuthHeaders ? { ...getAuthHeaders(), 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+      const response = await fetch(`${apiBase}/${tabEndpoint}/${tabId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ name: editingTabName.trim() })
       });
       if (response.ok) {
@@ -101,10 +103,10 @@ export default function TabBar({
       : `Delete "${tab?.name}" and all its data?`;
     if (!window.confirm(message)) return;
     try {
-      const qs = new URLSearchParams({ username: authUser || '', role: authRole || '' }).toString();
-      const url = `${apiBase}/${tabEndpoint}/${tabId}${qs ? `?${qs}` : ''}`;
-      const response = await fetch(url, {
-        method: 'DELETE'
+      const headers = getAuthHeaders ? getAuthHeaders() : {};
+      const response = await fetch(`${apiBase}/${tabEndpoint}/${tabId}`, {
+        method: 'DELETE',
+        headers
       });
       if (response.ok) {
         const updatedTabs = await fetchTabs();

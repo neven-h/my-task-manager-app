@@ -795,6 +795,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
         tabEndpoint="portfolio-tabs"
         authUser={authUser}
         authRole={authRole}
+        getAuthHeaders={getAuthHeaders}
         colors={colors}
         deleteConfirmMessage={(name) => `Delete "${name}" and all its portfolio entries?`}
         onTabsChanged={(updatedTabs) => setTabs(updatedTabs)}
