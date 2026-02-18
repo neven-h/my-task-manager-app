@@ -932,20 +932,6 @@ useEffect(() => {
                         }}>
               {getStatusLabel(task.status)}
             </span>
-                        {/* Shared indicator */}
-                        {task.shared && (
-                            <span style={{
-                                background: '#e3f2fd',
-                                color: '#1565c0',
-                                padding: '4px 10px',
-                                borderRadius: '4px',
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                border: '2px solid #1565c0'
-                            }}>
-                🔗 Shared
-              </span>
-                        )}
                     </div>
                     {task.description && (
                         <p style={{
