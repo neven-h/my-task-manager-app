@@ -32,7 +32,9 @@ import {
     Save,
     FileDown,
     Paperclip,
-    BookOpen
+    BookOpen,
+    Search,
+    SlidersHorizontal
 } from 'lucide-react';
 import CustomAutocomplete from '../components/CustomAutocomplete';
 import API_BASE from '../config';
@@ -77,7 +79,17 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
     const [allTags, setAllTags] = useState([]);
     const [appView, setAppView] = useState('tasks'); // 'tasks', 'transactions', 'stats', 'portfolio', 'clients', 'notebook'
     const [filterMode, setFilterMode] = useState('all'); // all, active, done
-    const [showFilterDrawer, setShowFilterDrawer] = useState(false);
+    const [showSearchDrawer, setShowSearchDrawer] = useState(false);
+    const [searchFilters, setSearchFilters] = useState({
+        search: '',
+        category: 'all',
+        status: 'all',
+        client: '',
+        dateStart: '',
+        dateEnd: '',
+        tags: [],
+        hasAttachment: false
+    });
     const [showTaskModal, setShowTaskModal] = useState(false);
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
     const [editingTask, setEditingTask] = useState(null);
@@ -200,13 +212,35 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
         loadData();
     }, [authUser, authRole]); // reload when auth context changes
 
-    const fetchTasks = async () => {
+    const buildFilterParams = (f) => {
+        const params = new URLSearchParams();
+        if (f.category !== 'all') params.append('category', f.category);
+        if (f.status !== 'all') params.append('status', f.status);
+        if (f.client) params.append('client', f.client);
+        if (f.search) params.append('search', f.search);
+        if (f.dateStart) params.append('date_start', f.dateStart);
+        if (f.dateEnd) params.append('date_end', f.dateEnd);
+        if (f.hasAttachment) params.append('has_attachment', 'true');
+        return params;
+    };
+
+    const fetchTasks = async (overrideFilters) => {
+        const activeFilters = overrideFilters || searchFilters;
         try {
             setLoading(true);
-            const response = await fetch(`${API_BASE}/tasks`, { headers: getAuthHeaders() });
+            const params = buildFilterParams(activeFilters);
+            const response = await fetch(`${API_BASE}/tasks?${params}`, { headers: getAuthHeaders() });
             if (!response.ok) throw new Error(`Tasks fetch failed: ${response.status}`);
-            const data = await response.json();
-            const list = Array.isArray(data) ? data : [];
+            let data = await response.json();
+            let list = Array.isArray(data) ? data : [];
+
+            // Client-side tag filtering
+            if (activeFilters.tags.length > 0) {
+                list = list.filter(task =>
+                    task.tags && activeFilters.tags.some(tag => task.tags.includes(tag))
+                );
+            }
+
             const sorted = list.sort((a, b) => {
                 if (a.status === 'uncompleted' && b.status === 'completed') return -1;
                 if (a.status === 'completed' && b.status === 'uncompleted') return 1;
@@ -1012,6 +1046,30 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                     </div>
                 </div>
 
+                {/* Active filter indicator */}
+                {(searchFilters.search || searchFilters.category !== 'all' || searchFilters.status !== 'all' || searchFilters.client || searchFilters.dateStart || searchFilters.dateEnd || searchFilters.tags.length > 0 || searchFilters.hasAttachment) && (
+                    <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '8px 16px', background: THEME.secondary, borderBottom: '2px solid #000',
+                        fontFamily: FONT_STACK
+                    }}>
+                        <span style={{fontSize: '0.8rem', fontWeight: 700}}>
+                            <SlidersHorizontal size={13} style={{marginRight: '6px', verticalAlign: 'middle'}}/>
+                            Filters active
+                        </span>
+                        <button
+                            onClick={() => {
+                                const cleared = {search: '', category: 'all', status: 'all', client: '', dateStart: '', dateEnd: '', tags: [], hasAttachment: false};
+                                setSearchFilters(cleared);
+                                fetchTasks(cleared);
+                            }}
+                            style={{background: 'none', border: 'none', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer', fontFamily: FONT_STACK, textDecoration: 'underline'}}
+                        >
+                            Clear
+                        </button>
+                    </div>
+                )}
+
                 {/* Task List */}
                 <div style={{padding: '0 16px 16px 16px'}}>
                     {loading ? (
@@ -1340,6 +1398,30 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                     <button
                                         className="mobile-btn"
                                         onClick={() => {
+                                            setShowSearchDrawer(true);
+                                            setShowMobileSidebar(false);
+                                        }}
+                                        style={{width: '100%', justifyContent: 'flex-start', position: 'relative'}}
+                                    >
+                                        <Search size={16} style={{marginRight: '8px'}}/>
+                                        Search
+                                        {(searchFilters.search || searchFilters.category !== 'all' || searchFilters.status !== 'all' || searchFilters.client || searchFilters.dateStart || searchFilters.dateEnd || searchFilters.tags.length > 0 || searchFilters.hasAttachment) && (
+                                            <span style={{
+                                                position: 'absolute',
+                                                top: '6px',
+                                                right: '10px',
+                                                background: THEME.accent,
+                                                color: '#fff',
+                                                borderRadius: '50%',
+                                                width: '8px',
+                                                height: '8px',
+                                                display: 'inline-block'
+                                            }}/>
+                                        )}
+                                    </button>
+                                    <button
+                                        className="mobile-btn"
+                                        onClick={() => {
                                             setAppView('notebook');
                                             setShowMobileSidebar(false);
                                         }}
@@ -1583,6 +1665,220 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                         >
                             Close Menu
                         </button>
+                    </div>
+                </>
+            )}
+
+            {/* Search / Filter Drawer */}
+            {showSearchDrawer && (
+                <>
+                    <div
+                        style={{
+                            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                            background: 'rgba(0,0,0,0.5)', zIndex: 300
+                        }}
+                        onClick={() => setShowSearchDrawer(false)}
+                    />
+                    <div style={{
+                        position: 'fixed', left: 0, right: 0, bottom: 0,
+                        background: '#fff',
+                        borderTop: '3px solid #000',
+                        zIndex: 301,
+                        padding: '24px',
+                        fontFamily: FONT_STACK,
+                        maxHeight: '85vh',
+                        overflowY: 'auto'
+                    }}>
+                        {/* Header */}
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+                            <h2 style={{margin: 0, fontSize: '1.25rem', fontWeight: 900, textTransform: 'uppercase', fontFamily: FONT_STACK}}>
+                                <Search size={18} style={{marginRight: '8px', verticalAlign: 'middle'}}/>
+                                Search & Filter
+                            </h2>
+                            <button onClick={() => setShowSearchDrawer(false)} style={{background: 'none', border: 'none', padding: '8px', cursor: 'pointer'}}>
+                                <X size={24}/>
+                            </button>
+                        </div>
+
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+                            {/* Keyword search */}
+                            <div>
+                                <label style={{display: 'block', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px'}}>
+                                    Keywords
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="Search tasks..."
+                                    value={searchFilters.search}
+                                    onChange={e => setSearchFilters(f => ({...f, search: e.target.value}))}
+                                    style={{
+                                        width: '100%', padding: '10px 12px', border: '2px solid #000',
+                                        fontFamily: FONT_STACK, fontSize: '1rem', boxSizing: 'border-box'
+                                    }}
+                                />
+                            </div>
+
+                            {/* Status */}
+                            <div>
+                                <label style={{display: 'block', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px'}}>
+                                    Status
+                                </label>
+                                <select
+                                    value={searchFilters.status}
+                                    onChange={e => setSearchFilters(f => ({...f, status: e.target.value}))}
+                                    style={{
+                                        width: '100%', padding: '10px 12px', border: '2px solid #000',
+                                        fontFamily: FONT_STACK, fontSize: '1rem', background: '#fff'
+                                    }}
+                                >
+                                    <option value="all">All</option>
+                                    <option value="uncompleted">Uncompleted</option>
+                                    <option value="completed">Completed</option>
+                                </select>
+                            </div>
+
+                            {/* Category */}
+                            <div>
+                                <label style={{display: 'block', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px'}}>
+                                    Category
+                                </label>
+                                <select
+                                    value={searchFilters.category}
+                                    onChange={e => setSearchFilters(f => ({...f, category: e.target.value}))}
+                                    style={{
+                                        width: '100%', padding: '10px 12px', border: '2px solid #000',
+                                        fontFamily: FONT_STACK, fontSize: '1rem', background: '#fff'
+                                    }}
+                                >
+                                    <option value="all">All Categories</option>
+                                    {categories.map(cat => (
+                                        <option key={cat.id} value={cat.name}>{cat.icon ? `${cat.icon} ` : ''}{cat.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Client */}
+                            <div>
+                                <label style={{display: 'block', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px'}}>
+                                    Client
+                                </label>
+                                <select
+                                    value={searchFilters.client}
+                                    onChange={e => setSearchFilters(f => ({...f, client: e.target.value}))}
+                                    style={{
+                                        width: '100%', padding: '10px 12px', border: '2px solid #000',
+                                        fontFamily: FONT_STACK, fontSize: '1rem', background: '#fff'
+                                    }}
+                                >
+                                    <option value="">All Clients</option>
+                                    {clients.map(c => (
+                                        <option key={c.id} value={c.name}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Date range */}
+                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+                                <div>
+                                    <label style={{display: 'block', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px'}}>
+                                        From
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={searchFilters.dateStart}
+                                        onChange={e => setSearchFilters(f => ({...f, dateStart: e.target.value}))}
+                                        style={{
+                                            width: '100%', padding: '10px 8px', border: '2px solid #000',
+                                            fontFamily: FONT_STACK, fontSize: '0.9rem', boxSizing: 'border-box'
+                                        }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{display: 'block', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px'}}>
+                                        To
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={searchFilters.dateEnd}
+                                        onChange={e => setSearchFilters(f => ({...f, dateEnd: e.target.value}))}
+                                        style={{
+                                            width: '100%', padding: '10px 8px', border: '2px solid #000',
+                                            fontFamily: FONT_STACK, fontSize: '0.9rem', boxSizing: 'border-box'
+                                        }}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Tags */}
+                            {allTags.length > 0 && (
+                                <div>
+                                    <label style={{display: 'block', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px'}}>
+                                        Tags
+                                    </label>
+                                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px'}}>
+                                        {allTags.map(tag => {
+                                            const isSelected = searchFilters.tags.includes(tag.name);
+                                            return (
+                                                <button
+                                                    key={tag.id}
+                                                    onClick={() => setSearchFilters(f => ({
+                                                        ...f,
+                                                        tags: isSelected ? f.tags.filter(t => t !== tag.name) : [...f.tags, tag.name]
+                                                    }))}
+                                                    style={{
+                                                        padding: '4px 10px', border: '2px solid #000',
+                                                        background: isSelected ? THEME.primary : '#fff',
+                                                        color: isSelected ? '#fff' : THEME.text,
+                                                        fontFamily: FONT_STACK, fontSize: '0.8rem',
+                                                        fontWeight: 700, cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    {tag.name}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Has attachment */}
+                            <label style={{display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 700}}>
+                                <input
+                                    type="checkbox"
+                                    checked={searchFilters.hasAttachment}
+                                    onChange={e => setSearchFilters(f => ({...f, hasAttachment: e.target.checked}))}
+                                    style={{width: '18px', height: '18px', cursor: 'pointer'}}
+                                />
+                                Has Attachment
+                            </label>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div style={{display: 'flex', gap: '12px', marginTop: '24px'}}>
+                            <button
+                                className="mobile-btn mobile-btn-primary"
+                                onClick={() => {
+                                    fetchTasks(searchFilters);
+                                    setShowSearchDrawer(false);
+                                }}
+                                style={{flex: 1}}
+                            >
+                                <Search size={16} style={{marginRight: '8px'}}/>
+                                Apply
+                            </button>
+                            <button
+                                className="mobile-btn"
+                                onClick={() => {
+                                    const cleared = {search: '', category: 'all', status: 'all', client: '', dateStart: '', dateEnd: '', tags: [], hasAttachment: false};
+                                    setSearchFilters(cleared);
+                                    fetchTasks(cleared);
+                                    setShowSearchDrawer(false);
+                                }}
+                                style={{flex: 1}}
+                            >
+                                Clear All
+                            </button>
+                        </div>
                     </div>
                 </>
             )}
