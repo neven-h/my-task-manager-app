@@ -31,6 +31,7 @@ yarn-error.log*
 
 # Secrets and env files (all of them)
 .env*
+!.env.example
 
 # Claude AI config
 .claude-code-config.json
@@ -51,6 +52,13 @@ frontend/fix3-autocomplete-style.css
 # SQL dumps and data files (keep out of repo)
 *.sql
 *.tsv
+*.csv
+*.xlsx
+*.xls
+
+# Uploaded bank/transaction data files
+backend/uploads/*
+!backend/uploads/.gitkeep
 
 # Shell scripts (local dev/deploy helpers)
 *.sh
