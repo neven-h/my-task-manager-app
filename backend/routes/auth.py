@@ -280,7 +280,7 @@ Task Tracker Team"""
                         }), 503
             else:
                 # Email not configured - return token for development/testing
-                print(f"Email not configured. Reset token: {token}")
+                app.logger.warning("Email not configured. Password reset unavailable in production.")
                 if DEBUG:
                     return jsonify({
                         'success': True,
