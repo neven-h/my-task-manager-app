@@ -1255,7 +1255,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>💵 Total Value</th>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>📈 Change</th>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>📊 Percentage</th>
-                    <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text, width: '140px' }}>Actions</th>
+                    <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: '700', fontSize: '0.9rem', color: colors.text, width: '140px' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1383,8 +1383,8 @@ const StockPortfolio = ({ onBackToTasks }) => {
                             <span style={{ color: colors.textLight }}>-</span>
                           )}
                         </td>
-                        <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
-                          <div style={{ display: 'flex', flexDirection: 'row', gap: '0.4rem', justifyContent: 'center', alignItems: 'center' }}>
+                        <td style={{ padding: '0.75rem 1rem', textAlign: 'left' }}>
+                          <div style={{ display: 'flex', flexDirection: 'row', gap: '0.4rem', justifyContent: 'flex-start', alignItems: 'center' }}>
                             <button
                               onClick={() => handleEdit(entry)}
                               style={{
