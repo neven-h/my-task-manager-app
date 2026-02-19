@@ -111,8 +111,25 @@ def get_portfolio_entries(payload):
             
             # Only add pagination if explicitly requested
             if use_pagination:
-                # Get total count before pagination
-                count_query = f"SELECT COUNT(*) as total FROM ({query}) as counted_entries"
+                # Build efficient COUNT query (same WHERE but no ORDER BY)
+                # Replace SELECT clause with COUNT and remove ORDER BY
+                if has_ticker_symbol:
+                    count_query = "SELECT COUNT(*) as total FROM stock_portfolio WHERE 1=1"
+                else:
+                    count_query = "SELECT COUNT(*) as total FROM stock_portfolio WHERE 1=1"
+                
+                # Add same filters as main query
+                if tab_id:
+                    count_query += " AND tab_id = %s"
+                if user_role == 'limited':
+                    count_query += " AND created_by = %s"
+                if start_date:
+                    count_query += " AND entry_date >= %s"
+                if end_date:
+                    count_query += " AND entry_date <= %s"
+                if name:
+                    count_query += " AND name LIKE %s"
+                
                 cursor.execute(count_query, params)
                 total_count = cursor.fetchone()['total']
                 

@@ -106,8 +106,12 @@ def get_tasks(payload):
             
             # Only add pagination if explicitly requested
             if use_pagination:
-                # Get total count before pagination
-                count_query = f"SELECT COUNT(*) as total FROM ({query}) as counted_tasks"
+                # Build efficient COUNT query (same WHERE but no ORDER BY)
+                # Start from the base query before ORDER BY was added
+                count_query = query.replace("SELECT * FROM tasks WHERE 1=1", "SELECT COUNT(*) as total FROM tasks WHERE 1=1")
+                # Remove the ORDER BY clause for counting (it's not needed and slows down COUNT)
+                count_query = count_query.split(" ORDER BY")[0]
+                
                 cursor.execute(count_query, params)
                 total_count = cursor.fetchone()['total']
                 

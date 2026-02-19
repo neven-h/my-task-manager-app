@@ -661,8 +661,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
   };
 
   // Helper function to aggregate transactions by category with credit/cash breakdown
-  // Memoized to avoid recreation on every render
-  const aggregateByCategory = useCallback((transactions) => {
+  const aggregateByCategory = (transactions) => {
     const categoryData = {};
     transactions.forEach(t => {
       const desc = t.description || 'Other';
@@ -678,7 +677,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
       }
     });
     return categoryData;
-  }, []);
+  };
 
   const getFilteredPreview = () => {
     if (!uploadedData?.transactions) return [];
