@@ -56,61 +56,60 @@ def get_tasks(payload):
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
-            query = "SELECT * FROM tasks WHERE 1=1"
+            # Build WHERE clause for filtering (shared by both SELECT and COUNT queries)
+            where_clause = "WHERE 1=1"
             params = []
 
             if include_drafts != 'true':
-                query += " AND (is_draft = FALSE OR is_draft IS NULL)"
+                where_clause += " AND (is_draft = FALSE OR is_draft IS NULL)"
 
             if user_role == 'shared':
-                query += " AND shared = TRUE"
+                where_clause += " AND shared = TRUE"
             elif user_role == 'limited':
-                query += " AND created_by = %s AND created_by IS NOT NULL"
+                where_clause += " AND created_by = %s AND created_by IS NOT NULL"
                 params.append(username)
 
             if DEBUG:
-                print(f"User: {username}, Role: {user_role}, Query: {query}, Params: {params}")
+                print(f"User: {username}, Role: {user_role}, Where: {where_clause}, Params: {params}")
 
             if shared_only == 'true':
-                query += " AND shared = TRUE"
+                where_clause += " AND shared = TRUE"
 
             if category and category != 'all':
-                query += " AND category = %s"
+                where_clause += " AND category = %s"
                 params.append(category)
 
             if status and status != 'all':
-                query += " AND status = %s"
+                where_clause += " AND status = %s"
                 params.append(status)
 
             if client:
-                query += " AND client LIKE %s"
+                where_clause += " AND client LIKE %s"
                 params.append(f"%{client}%")
 
             if search:
-                query += " AND (title LIKE %s OR description LIKE %s OR notes LIKE %s)"
+                where_clause += " AND (title LIKE %s OR description LIKE %s OR notes LIKE %s)"
                 search_term = f"%{search}%"
                 params.extend([search_term, search_term, search_term])
 
             if date_start:
-                query += " AND task_date >= %s"
+                where_clause += " AND task_date >= %s"
                 params.append(date_start)
 
             if date_end:
-                query += " AND task_date <= %s"
+                where_clause += " AND task_date <= %s"
                 params.append(date_end)
 
             if has_attachment == 'true':
-                query += " AND id IN (SELECT DISTINCT task_id FROM task_attachments)"
+                where_clause += " AND id IN (SELECT DISTINCT task_id FROM task_attachments)"
 
-            query += " ORDER BY task_date DESC, task_time DESC, created_at DESC"
+            # Build SELECT query with ORDER BY
+            query = f"SELECT * FROM tasks {where_clause} ORDER BY task_date DESC, task_time DESC, created_at DESC"
             
             # Only add pagination if explicitly requested
             if use_pagination:
-                # Build efficient COUNT query (same WHERE but no ORDER BY)
-                # Start from the base query before ORDER BY was added
-                count_query = query.replace("SELECT * FROM tasks WHERE 1=1", "SELECT COUNT(*) as total FROM tasks WHERE 1=1")
-                # Remove the ORDER BY clause for counting (it's not needed and slows down COUNT)
-                count_query = count_query.split(" ORDER BY")[0]
+                # Build efficient COUNT query (same WHERE clause, no ORDER BY)
+                count_query = f"SELECT COUNT(*) as total FROM tasks {where_clause}"
                 
                 cursor.execute(count_query, params)
                 total_count = cursor.fetchone()['total']

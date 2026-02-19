@@ -50,7 +50,10 @@ def add_missing_indexes():
                 
                 if not index_exists:
                     try:
-                        # Safe to use f-string now that we've validated identifiers
+                        # Safe to use f-string formatting here because:
+                        # 1. All identifiers were validated against VALID_IDENTIFIER regex pattern
+                        # 2. The pattern only allows alphanumeric and underscore characters
+                        # 3. This prevents SQL injection by ensuring no quotes, semicolons, or SQL keywords
                         cursor.execute(f"CREATE INDEX {index_name} ON {table_name}({column_name})")
                         connection.commit()
                         print(f"✓ Added index {index_name} on {table_name}.{column_name}")
