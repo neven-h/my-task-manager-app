@@ -602,16 +602,14 @@ const StockPortfolio = ({ onBackToTasks }) => {
     return Object.values(stockMap);
   }, [entries]);
 
-  // Group entries by stock name - memoized for performance
-  const groupedEntries = useMemo(() => {
-    return entries.reduce((acc, entry) => {
-      if (!acc[entry.name]) {
-        acc[entry.name] = [];
-      }
-      acc[entry.name].push(entry);
-      return acc;
-    }, {});
-  }, [entries]);
+  // Group entries by stock name
+  const groupedEntries = entries.reduce((acc, entry) => {
+    if (!acc[entry.name]) {
+      acc[entry.name] = [];
+    }
+    acc[entry.name].push(entry);
+    return acc;
+  }, {});
 
   return (
     <div style={{
@@ -1256,7 +1254,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>💰 Value</th>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>💵 Total Value</th>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>📈 Change</th>
-                    {/*<th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>📊 Percentage</th>*/}
+                    <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontWeight: '700', fontSize: '0.9rem', color: colors.text }}>📊 Percentage</th>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.9rem', color: colors.text, width: '140px' }}>Actions</th>
                   </tr>
                 </thead>
