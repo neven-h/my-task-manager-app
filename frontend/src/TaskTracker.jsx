@@ -1183,14 +1183,13 @@ useEffect(() => {
                 overflow: 'visible'
             }}>
                 <div style={{
-                    maxWidth: '1600px',
                     width: '100%',
                     margin: '0 auto',
                     display: 'flex',
                     justifyContent: 'flex-start',
                     alignItems: 'center',
-                    padding: '0 16px',
-                    gap: '32px',
+                    padding: '0 var(--header-padding, 16px)',
+                    gap: 'var(--header-gap, 32px)',
                     flexWrap: 'nowrap',
                     minWidth: 0,
                     overflow: 'visible'
@@ -1758,7 +1757,7 @@ useEffect(() => {
             <div style={{display: 'flex', minHeight: 'calc(100vh - 180px)'}}>
                 {/* Sidebar */}
                 {showSidebar && (
-                <div className="sidebar" style={{width: '320px', padding: '32px 24px', transition: 'all 0.3s ease'}}>
+                <div className="sidebar" style={{width: 'var(--sidebar-width, 320px)', padding: '32px 24px', transition: 'all 0.3s ease', flexShrink: 0}}>
                     <div style={{marginBottom: '32px'}}>
                         <h3 style={{
                             fontSize: '0.75rem',
@@ -1976,7 +1975,7 @@ useEffect(() => {
                 )}
 
                 {/* Main Area */}
-                <div style={{flex: 1, padding: '48px', transition: 'all 0.3s ease'}}>
+                <div style={{flex: 1, padding: 'var(--content-padding, 48px)', transition: 'all 0.3s ease', minWidth: 0}}>
                     {view === 'list' ? (
                         <>
                             {/* Primary Action - New Task is the core action */}

@@ -102,7 +102,7 @@ CORS(app, origins=ALLOWED_FRONTEND_ORIGINS, supports_credentials=True, max_age=3
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"],
+    default_limits=["5000 per day", "500 per hour"],
     storage_uri="memory://"
 )
 
