@@ -5,6 +5,14 @@ This ensures all foreign key and commonly-filtered columns have proper indexes.
 """
 from db import get_db_connection
 from mysql.connector import Error
+import re
+
+# Regex pattern for valid SQL identifiers (table names, column names, index names)
+VALID_IDENTIFIER = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+
+def is_valid_identifier(name):
+    """Validate that a name is a safe SQL identifier"""
+    return bool(VALID_IDENTIFIER.match(name)) and len(name) <= 64
 
 def add_missing_indexes():
     """Add missing performance indexes to database tables."""
@@ -27,6 +35,11 @@ def add_missing_indexes():
             cursor = connection.cursor(dictionary=True)
             
             for table_name, index_name, column_name in indexes_to_check:
+                # Validate all identifiers to prevent SQL injection
+                if not all(is_valid_identifier(x) for x in [table_name, index_name, column_name]):
+                    print(f"✗ Skipping invalid identifier: table={table_name}, index={index_name}, column={column_name}")
+                    continue
+                
                 # Check if index exists
                 cursor.execute(
                     "SELECT COUNT(*) as count FROM information_schema.STATISTICS "
@@ -37,6 +50,7 @@ def add_missing_indexes():
                 
                 if not index_exists:
                     try:
+                        # Safe to use f-string now that we've validated identifiers
                         cursor.execute(f"CREATE INDEX {index_name} ON {table_name}({column_name})")
                         connection.commit()
                         print(f"✓ Added index {index_name} on {table_name}.{column_name}")

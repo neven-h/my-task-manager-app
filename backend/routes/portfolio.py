@@ -13,26 +13,34 @@ import chardet
 import csv
 import io
 import json
+import threading
 
 portfolio_bp = Blueprint('portfolio', __name__)
 
 # Cache schema information to avoid repeated information_schema queries
-_schema_cache = {
-    'has_ticker_symbol': None,
-    'has_units': None
-}
+# Using a lock to ensure thread-safety in multi-threaded environments
+_schema_cache = {}
+_schema_cache_lock = threading.Lock()
 
 def _check_column_exists(cursor, table_name, column_name):
-    """Check if a column exists in a table, with caching"""
-    cache_key = f'has_{column_name}'
-    if _schema_cache.get(cache_key) is None:
-        cursor.execute(
-            "SELECT COUNT(*) as count FROM information_schema.COLUMNS "
-            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s",
-            (table_name, column_name)
-        )
-        _schema_cache[cache_key] = cursor.fetchone()['count'] > 0
-    return _schema_cache[cache_key]
+    """Check if a column exists in a table, with thread-safe caching"""
+    cache_key = f'{table_name}_has_{column_name}'
+    
+    # Fast path: check cache without lock first
+    if cache_key in _schema_cache:
+        return _schema_cache[cache_key]
+    
+    # Slow path: acquire lock and check/populate cache
+    with _schema_cache_lock:
+        # Double-check pattern: another thread might have populated it
+        if cache_key not in _schema_cache:
+            cursor.execute(
+                "SELECT COUNT(*) as count FROM information_schema.COLUMNS "
+                "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s",
+                (table_name, column_name)
+            )
+            _schema_cache[cache_key] = cursor.fetchone()['count'] > 0
+        return _schema_cache[cache_key]
 
 # ==========================================
 # STOCK PORTFOLIO ENDPOINTS
@@ -50,10 +58,15 @@ def get_portfolio_entries(payload):
         end_date = request.args.get('end_date')
         name = request.args.get('name')
         
-        # Pagination parameters
-        page = int(request.args.get('page', 1))
-        per_page = min(int(request.args.get('per_page', 100)), 500)  # Max 500 per page
-        offset = (page - 1) * per_page
+        # Pagination parameters - only paginate if explicitly requested
+        page = request.args.get('page')
+        per_page = request.args.get('per_page')
+        use_pagination = page is not None or per_page is not None
+        
+        if use_pagination:
+            page = int(page) if page else 1
+            per_page = min(int(per_page) if per_page else 100, 500)  # Max 500 per page
+            offset = (page - 1) * per_page
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -96,14 +109,16 @@ def get_portfolio_entries(payload):
 
             query += " ORDER BY entry_date DESC, id DESC"
             
-            # Get total count before pagination
-            count_query = f"SELECT COUNT(*) as total FROM ({query}) as counted_entries"
-            cursor.execute(count_query, params)
-            total_count = cursor.fetchone()['total']
-            
-            # Add pagination
-            query += " LIMIT %s OFFSET %s"
-            params.extend([per_page, offset])
+            # Only add pagination if explicitly requested
+            if use_pagination:
+                # Get total count before pagination
+                count_query = f"SELECT COUNT(*) as total FROM ({query}) as counted_entries"
+                cursor.execute(count_query, params)
+                total_count = cursor.fetchone()['total']
+                
+                # Add pagination
+                query += " LIMIT %s OFFSET %s"
+                params.extend([per_page, offset])
 
             cursor.execute(query, params)
             entries = cursor.fetchall()
@@ -125,15 +140,20 @@ def get_portfolio_entries(payload):
                 if entry.get('units') is not None:
                     entry['units'] = float(entry['units'])
 
-            return jsonify({
-                'entries': entries,
-                'pagination': {
-                    'page': page,
-                    'per_page': per_page,
-                    'total': total_count,
-                    'total_pages': (total_count + per_page - 1) // per_page
-                }
-            })
+            # Return paginated format only if pagination was requested
+            if use_pagination:
+                return jsonify({
+                    'entries': entries,
+                    'pagination': {
+                        'page': page,
+                        'per_page': per_page,
+                        'total': total_count,
+                        'total_pages': (total_count + per_page - 1) // per_page
+                    }
+                })
+            else:
+                # Backward compatible: return array for clients not using pagination
+                return jsonify(entries)
 
     except Error as e:
         return jsonify({'error': str(e)}), 500
