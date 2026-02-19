@@ -550,9 +550,16 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
     const filtered = getFilteredTransactions();
     const printWindow = window.open('', '_blank');
     
-    const totalCredit = filtered.filter(t => t.transaction_type === 'credit').reduce((sum, t) => sum + t.amount, 0);
-    const totalCash = filtered.filter(t => t.transaction_type === 'cash').reduce((sum, t) => sum + t.amount, 0);
-    const total = filtered.reduce((sum, t) => sum + t.amount, 0);
+    // PERFORMANCE OPTIMIZATION: Single-pass reduce instead of 3 separate filter+reduce operations
+    const { totalCredit, totalCash, total } = filtered.reduce((acc, t) => {
+      acc.total += t.amount;
+      if (t.transaction_type === 'credit') {
+        acc.totalCredit += t.amount;
+      } else if (t.transaction_type === 'cash') {
+        acc.totalCash += t.amount;
+      }
+      return acc;
+    }, { totalCredit: 0, totalCash: 0, total: 0 });
 
     const categories = aggregateByCategory(filtered);
     const sortedCategories = Object.entries(categories).sort((a, b) => b[1].total - a[1].total);

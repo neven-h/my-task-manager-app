@@ -602,14 +602,16 @@ const StockPortfolio = ({ onBackToTasks }) => {
     return Object.values(stockMap);
   }, [entries]);
 
-  // Group entries by stock name
-  const groupedEntries = entries.reduce((acc, entry) => {
-    if (!acc[entry.name]) {
-      acc[entry.name] = [];
-    }
-    acc[entry.name].push(entry);
-    return acc;
-  }, {});
+  // Group entries by stock name - memoized for performance
+  const groupedEntries = useMemo(() => {
+    return entries.reduce((acc, entry) => {
+      if (!acc[entry.name]) {
+        acc[entry.name] = [];
+      }
+      acc[entry.name].push(entry);
+      return acc;
+    }, {});
+  }, [entries]);
 
   return (
     <div style={{

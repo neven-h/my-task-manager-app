@@ -42,57 +42,81 @@ def get_tasks(payload):
         shared_only = request.args.get('shared')
         include_drafts = request.args.get('include_drafts', 'false')
         has_attachment = request.args.get('has_attachment')
+        
+        # Pagination parameters - only paginate if explicitly requested
+        page = request.args.get('page')
+        per_page = request.args.get('per_page')
+        use_pagination = page is not None or per_page is not None
+        
+        if use_pagination:
+            page = int(page) if page else 1
+            per_page = min(int(per_page) if per_page else 100, 500)  # Max 500 per page
+            offset = (page - 1) * per_page
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
-            query = "SELECT * FROM tasks WHERE 1=1"
+            # Build WHERE clause for filtering (shared by both SELECT and COUNT queries)
+            where_clause = "WHERE 1=1"
             params = []
 
             if include_drafts != 'true':
-                query += " AND (is_draft = FALSE OR is_draft IS NULL)"
+                where_clause += " AND (is_draft = FALSE OR is_draft IS NULL)"
 
             if user_role == 'shared':
-                query += " AND shared = TRUE"
+                where_clause += " AND shared = TRUE"
             elif user_role == 'limited':
-                query += " AND created_by = %s AND created_by IS NOT NULL"
+                where_clause += " AND created_by = %s AND created_by IS NOT NULL"
                 params.append(username)
 
             if DEBUG:
-                print(f"User: {username}, Role: {user_role}, Query: {query}, Params: {params}")
+                print(f"User: {username}, Role: {user_role}, Where: {where_clause}, Params: {params}")
 
             if shared_only == 'true':
-                query += " AND shared = TRUE"
+                where_clause += " AND shared = TRUE"
 
             if category and category != 'all':
-                query += " AND category = %s"
+                where_clause += " AND category = %s"
                 params.append(category)
 
             if status and status != 'all':
-                query += " AND status = %s"
+                where_clause += " AND status = %s"
                 params.append(status)
 
             if client:
-                query += " AND client LIKE %s"
+                where_clause += " AND client LIKE %s"
                 params.append(f"%{client}%")
 
             if search:
-                query += " AND (title LIKE %s OR description LIKE %s OR notes LIKE %s)"
+                where_clause += " AND (title LIKE %s OR description LIKE %s OR notes LIKE %s)"
                 search_term = f"%{search}%"
                 params.extend([search_term, search_term, search_term])
 
             if date_start:
-                query += " AND task_date >= %s"
+                where_clause += " AND task_date >= %s"
                 params.append(date_start)
 
             if date_end:
-                query += " AND task_date <= %s"
+                where_clause += " AND task_date <= %s"
                 params.append(date_end)
 
             if has_attachment == 'true':
-                query += " AND id IN (SELECT DISTINCT task_id FROM task_attachments)"
+                where_clause += " AND id IN (SELECT DISTINCT task_id FROM task_attachments)"
 
-            query += " ORDER BY task_date DESC, task_time DESC, created_at DESC"
+            # Build SELECT query with ORDER BY
+            query = f"SELECT * FROM tasks {where_clause} ORDER BY task_date DESC, task_time DESC, created_at DESC"
+            
+            # Only add pagination if explicitly requested
+            if use_pagination:
+                # Build efficient COUNT query (same WHERE clause, no ORDER BY)
+                count_query = f"SELECT COUNT(*) as total FROM tasks {where_clause}"
+                
+                cursor.execute(count_query, params)
+                total_count = cursor.fetchone()['total']
+                
+                # Add pagination
+                query += " LIMIT %s OFFSET %s"
+                params.extend([per_page, offset])
 
             cursor.execute(query, params)
             tasks = cursor.fetchall()
@@ -123,7 +147,20 @@ def get_tasks(payload):
                 for task in tasks:
                     task['attachments'] = att_by_task.get(task['id'], [])
 
-            return jsonify(tasks)
+            # Return paginated format only if pagination was requested
+            if use_pagination:
+                return jsonify({
+                    'tasks': tasks,
+                    'pagination': {
+                        'page': page,
+                        'per_page': per_page,
+                        'total': total_count,
+                        'total_pages': (total_count + per_page - 1) // per_page
+                    }
+                })
+            else:
+                # Backward compatible: return array for clients not using pagination
+                return jsonify(tasks)
 
     except Error as e:
         return jsonify({'error': str(e)}), 500
