@@ -14,7 +14,7 @@ Flask-Limiter==3.5.0
 cryptography==42.0.0
 pyotp==2.9.0
 qrcode==7.4.2
-Pillow==11.3.0
+Pillow==12.1.1
 yfinance==1.1.0
 cloudinary==1.44.1
 bank-csv-normalizer @ https://github.com/neven-h/csv_parsing/archive/refs/heads/master.zip
