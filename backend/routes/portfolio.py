@@ -74,61 +74,49 @@ def get_portfolio_entries(payload):
             # Check if ticker_symbol column exists (cached)
             has_ticker_symbol = _check_column_exists(cursor, 'stock_portfolio', 'ticker_symbol')
             
-            if has_ticker_symbol:
-                query = "SELECT * FROM stock_portfolio WHERE 1=1"
-            else:
-                # Check if units column exists (cached)
-                has_units = _check_column_exists(cursor, 'stock_portfolio', 'units')
-                units_col = ", units" if has_units else ""
-                query = f"SELECT id, name, NULL as ticker_symbol, percentage, value_ils, base_price, entry_date, tab_id, created_by, created_at, updated_at, currency{units_col} FROM stock_portfolio WHERE 1=1"
+            # Build WHERE clause for filtering (shared by both SELECT and COUNT queries)
+            where_clause = "WHERE 1=1"
             params = []
-
+            
             # Tab filtering
             if tab_id:
-                query += " AND tab_id = %s"
+                where_clause += " AND tab_id = %s"
                 params.append(tab_id)
 
             # Role-based filtering
             if user_role == 'limited':
-                query += " AND created_by = %s"
+                where_clause += " AND created_by = %s"
                 params.append(username)
 
             # Date range filtering
             if start_date:
-                query += " AND entry_date >= %s"
+                where_clause += " AND entry_date >= %s"
                 params.append(start_date)
 
             if end_date:
-                query += " AND entry_date <= %s"
+                where_clause += " AND entry_date <= %s"
                 params.append(end_date)
 
             # Filter by stock name
             if name:
-                query += " AND name LIKE %s"
+                where_clause += " AND name LIKE %s"
                 params.append(f"%{name}%")
 
+            # Build SELECT query based on available columns
+            if has_ticker_symbol:
+                query = f"SELECT * FROM stock_portfolio {where_clause}"
+            else:
+                # Check if units column exists (cached)
+                has_units = _check_column_exists(cursor, 'stock_portfolio', 'units')
+                units_col = ", units" if has_units else ""
+                query = f"SELECT id, name, NULL as ticker_symbol, percentage, value_ils, base_price, entry_date, tab_id, created_by, created_at, updated_at, currency{units_col} FROM stock_portfolio {where_clause}"
+            
             query += " ORDER BY entry_date DESC, id DESC"
             
             # Only add pagination if explicitly requested
             if use_pagination:
-                # Build efficient COUNT query (same WHERE but no ORDER BY)
-                # Replace SELECT clause with COUNT and remove ORDER BY
-                if has_ticker_symbol:
-                    count_query = "SELECT COUNT(*) as total FROM stock_portfolio WHERE 1=1"
-                else:
-                    count_query = "SELECT COUNT(*) as total FROM stock_portfolio WHERE 1=1"
-                
-                # Add same filters as main query
-                if tab_id:
-                    count_query += " AND tab_id = %s"
-                if user_role == 'limited':
-                    count_query += " AND created_by = %s"
-                if start_date:
-                    count_query += " AND entry_date >= %s"
-                if end_date:
-                    count_query += " AND entry_date <= %s"
-                if name:
-                    count_query += " AND name LIKE %s"
+                # Build efficient COUNT query (same WHERE clause, no ORDER BY)
+                count_query = f"SELECT COUNT(*) as total FROM stock_portfolio {where_clause}"
                 
                 cursor.execute(count_query, params)
                 total_count = cursor.fetchone()['total']
