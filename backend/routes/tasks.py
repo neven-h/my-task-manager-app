@@ -42,6 +42,11 @@ def get_tasks(payload):
         shared_only = request.args.get('shared')
         include_drafts = request.args.get('include_drafts', 'false')
         has_attachment = request.args.get('has_attachment')
+        
+        # Pagination parameters
+        page = int(request.args.get('page', 1))
+        per_page = min(int(request.args.get('per_page', 100)), 500)  # Max 500 per page
+        offset = (page - 1) * per_page
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -93,6 +98,15 @@ def get_tasks(payload):
                 query += " AND id IN (SELECT DISTINCT task_id FROM task_attachments)"
 
             query += " ORDER BY task_date DESC, task_time DESC, created_at DESC"
+            
+            # Get total count before pagination
+            count_query = f"SELECT COUNT(*) as total FROM ({query}) as counted_tasks"
+            cursor.execute(count_query, params)
+            total_count = cursor.fetchone()['total']
+            
+            # Add pagination
+            query += " LIMIT %s OFFSET %s"
+            params.extend([per_page, offset])
 
             cursor.execute(query, params)
             tasks = cursor.fetchall()
@@ -123,7 +137,15 @@ def get_tasks(payload):
                 for task in tasks:
                     task['attachments'] = att_by_task.get(task['id'], [])
 
-            return jsonify(tasks)
+            return jsonify({
+                'tasks': tasks,
+                'pagination': {
+                    'page': page,
+                    'per_page': per_page,
+                    'total': total_count,
+                    'total_pages': (total_count + per_page - 1) // per_page
+                }
+            })
 
     except Error as e:
         return jsonify({'error': str(e)}), 500

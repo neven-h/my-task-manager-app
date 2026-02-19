@@ -16,6 +16,24 @@ import json
 
 portfolio_bp = Blueprint('portfolio', __name__)
 
+# Cache schema information to avoid repeated information_schema queries
+_schema_cache = {
+    'has_ticker_symbol': None,
+    'has_units': None
+}
+
+def _check_column_exists(cursor, table_name, column_name):
+    """Check if a column exists in a table, with caching"""
+    cache_key = f'has_{column_name}'
+    if _schema_cache.get(cache_key) is None:
+        cursor.execute(
+            "SELECT COUNT(*) as count FROM information_schema.COLUMNS "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s",
+            (table_name, column_name)
+        )
+        _schema_cache[cache_key] = cursor.fetchone()['count'] > 0
+    return _schema_cache[cache_key]
+
 # ==========================================
 # STOCK PORTFOLIO ENDPOINTS
 # ==========================================
@@ -31,20 +49,23 @@ def get_portfolio_entries(payload):
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         name = request.args.get('name')
+        
+        # Pagination parameters
+        page = int(request.args.get('page', 1))
+        per_page = min(int(request.args.get('per_page', 100)), 500)  # Max 500 per page
+        offset = (page - 1) * per_page
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
-            # Check if ticker_symbol column exists
-            cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND COLUMN_NAME = 'ticker_symbol'")
-            has_ticker_symbol = cursor.fetchone()['count'] > 0
+            # Check if ticker_symbol column exists (cached)
+            has_ticker_symbol = _check_column_exists(cursor, 'stock_portfolio', 'ticker_symbol')
             
             if has_ticker_symbol:
                 query = "SELECT * FROM stock_portfolio WHERE 1=1"
             else:
-                # Check if units column exists
-                cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND COLUMN_NAME = 'units'")
-                has_units = cursor.fetchone()['count'] > 0
+                # Check if units column exists (cached)
+                has_units = _check_column_exists(cursor, 'stock_portfolio', 'units')
                 units_col = ", units" if has_units else ""
                 query = f"SELECT id, name, NULL as ticker_symbol, percentage, value_ils, base_price, entry_date, tab_id, created_by, created_at, updated_at, currency{units_col} FROM stock_portfolio WHERE 1=1"
             params = []
@@ -74,6 +95,15 @@ def get_portfolio_entries(payload):
                 params.append(f"%{name}%")
 
             query += " ORDER BY entry_date DESC, id DESC"
+            
+            # Get total count before pagination
+            count_query = f"SELECT COUNT(*) as total FROM ({query}) as counted_entries"
+            cursor.execute(count_query, params)
+            total_count = cursor.fetchone()['total']
+            
+            # Add pagination
+            query += " LIMIT %s OFFSET %s"
+            params.extend([per_page, offset])
 
             cursor.execute(query, params)
             entries = cursor.fetchall()
@@ -95,7 +125,15 @@ def get_portfolio_entries(payload):
                 if entry.get('units') is not None:
                     entry['units'] = float(entry['units'])
 
-            return jsonify(entries)
+            return jsonify({
+                'entries': entries,
+                'pagination': {
+                    'page': page,
+                    'per_page': per_page,
+                    'total': total_count,
+                    'total_pages': (total_count + per_page - 1) // per_page
+                }
+            })
 
     except Error as e:
         return jsonify({'error': str(e)}), 500

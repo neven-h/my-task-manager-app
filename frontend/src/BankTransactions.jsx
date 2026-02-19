@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Upload, Calendar, Trash2, FileText, AlertCircle, CheckCircle, ArrowLeft, Plus, Edit2, Save, X, FileDown, Banknote, CreditCard, PieChart, Users } from 'lucide-react';
 import API_BASE from './config';
 import { formatCurrency } from './utils/formatCurrency';
@@ -550,9 +550,16 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
     const filtered = getFilteredTransactions();
     const printWindow = window.open('', '_blank');
     
-    const totalCredit = filtered.filter(t => t.transaction_type === 'credit').reduce((sum, t) => sum + t.amount, 0);
-    const totalCash = filtered.filter(t => t.transaction_type === 'cash').reduce((sum, t) => sum + t.amount, 0);
-    const total = filtered.reduce((sum, t) => sum + t.amount, 0);
+    // PERFORMANCE OPTIMIZATION: Single-pass reduce instead of 3 separate filter+reduce operations
+    const { totalCredit, totalCash, total } = filtered.reduce((acc, t) => {
+      acc.total += t.amount;
+      if (t.transaction_type === 'credit') {
+        acc.totalCredit += t.amount;
+      } else if (t.transaction_type === 'cash') {
+        acc.totalCash += t.amount;
+      }
+      return acc;
+    }, { totalCredit: 0, totalCash: 0, total: 0 });
 
     const categories = aggregateByCategory(filtered);
     const sortedCategories = Object.entries(categories).sort((a, b) => b[1].total - a[1].total);
@@ -654,7 +661,8 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
   };
 
   // Helper function to aggregate transactions by category with credit/cash breakdown
-  const aggregateByCategory = (transactions) => {
+  // Memoized to avoid recreation on every render
+  const aggregateByCategory = useCallback((transactions) => {
     const categoryData = {};
     transactions.forEach(t => {
       const desc = t.description || 'Other';
@@ -670,7 +678,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
       }
     });
     return categoryData;
-  };
+  }, []);
 
   const getFilteredPreview = () => {
     if (!uploadedData?.transactions) return [];
