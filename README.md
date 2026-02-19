@@ -1,7 +1,7 @@
 # Task Manager App - drpitz.club
 
 Personal Assistant Task Management System with Hebrew support -
-that i created using Claude Code and cursor. 
+that I created using Claude Code and cursor. 
 
 ## Features
 - ✅ Task tracking with categories and tags
