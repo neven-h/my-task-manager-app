@@ -166,6 +166,19 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 
 ---
 
+## Built With AI
+
+This project was developed with the help of AI coding assistants:
+
+- **Claude Code** — Architecture decisions, security audit, code review, debugging
+- **GitHub Copilot** — Code completion, boilerplate generation
+- **Cursor** — Feature implementation, refactoring
+
+All AI-generated code was reviewed, tested, and adapted by the author.
+The overall architecture, feature design, and product decisions are my own.
+
+---
+
 ## License
 
 MIT
