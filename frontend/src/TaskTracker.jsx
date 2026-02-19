@@ -12,6 +12,7 @@ import CustomAutocomplete from './components/CustomAutocomplete';
 import './TaskTracker.css';
 
 import API_BASE from './config';
+import { getAuthHeaders } from './api.js';
 
 const DRAFT_STORAGE_KEY = 'taskTracker_draft';
 const BULK_DRAFT_STORAGE_KEY = 'taskTracker_bulkDraft';
@@ -161,7 +162,7 @@ useEffect(() => {
 
     const fetchCategories = async () => {
         try {
-            const response = await fetch(`${API_BASE}/categories?username=${authUser}&role=${authRole}`);
+            const response = await fetch(`${API_BASE}/categories`, { headers: getAuthHeaders() });
             const data = await response.json();
             setAllCategories(Array.isArray(data) ? data : []);
         } catch (err) {
@@ -172,7 +173,7 @@ useEffect(() => {
 
     const fetchTags = async () => {
         try {
-            const response = await fetch(`${API_BASE}/tags?username=${authUser}&role=${authRole}`);
+            const response = await fetch(`${API_BASE}/tags`, { headers: getAuthHeaders() });
             const data = await response.json();
             setAllTags(Array.isArray(data) ? data : []);
         } catch (err) {
@@ -193,7 +194,7 @@ useEffect(() => {
 
             const response = await fetch(`${API_BASE}/categories`, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: getAuthHeaders(),
                 body: JSON.stringify({
                     id: newCategoryName.toLowerCase().replace(/\s+/g, '-'),
                     label: newCategoryName,
@@ -226,7 +227,7 @@ useEffect(() => {
         try {
             const response = await fetch(`${API_BASE}/tags`, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: getAuthHeaders(),
                 body: JSON.stringify({
                     name: tagName,
                     color: '#0d6efd',
@@ -244,7 +245,7 @@ useEffect(() => {
 
     const fetchClients = async () => {
         try {
-            const response = await fetch(`${API_BASE}/clients?username=${authUser}&role=${authRole}`);
+            const response = await fetch(`${API_BASE}/clients`, { headers: getAuthHeaders() });
             const data = await response.json();
             setClients(Array.isArray(data) ? data : []);
         } catch (err) {
@@ -259,11 +260,7 @@ useEffect(() => {
             setLoading(true);
             const params = buildFilterParams(activeFilters);
 
-            // Send username and role to backend for filtering
-            params.append('username', authUser);
-            params.append('role', authRole);
-
-            const response = await fetch(`${API_BASE}/tasks?${params}`);
+            const response = await fetch(`${API_BASE}/tasks?${params}`, { headers: getAuthHeaders() });
             let data = await response.json();
             if (!Array.isArray(data)) {
                 data = [];
@@ -291,7 +288,7 @@ useEffect(() => {
 
     const fetchStats = async () => {
         try {
-            const response = await fetch(`${API_BASE}/stats?username=${authUser}&role=${authRole}`);
+            const response = await fetch(`${API_BASE}/stats`, { headers: getAuthHeaders() });
             const data = await response.json();
             setStats(response.ok && data && typeof data === 'object' && !data.error ? data : null);
         } catch (err) {
@@ -351,11 +348,11 @@ useEffect(() => {
 
             const method = editingTask ? 'PUT' : 'POST';
             const { attachments, newAttachments, removedAttachmentIds, ...payload } = formData;
-            const body = { ...payload, username: authUser, role: authRole };
+            const body = { ...payload };
 
             const response = await fetch(url, {
                 method,
-                headers: {'Content-Type': 'application/json'},
+                headers: getAuthHeaders(),
                 body: JSON.stringify(body)
             });
 
@@ -368,13 +365,12 @@ useEffect(() => {
             const taskId = editingTask ? editingTask.id : data.id;
 
             if (taskId) {
-                const authHeaders = authToken ? { 'Authorization': `Bearer ${authToken}` } : {};
                 for (const { file, name } of (newAttachments || [])) {
                     const fd = new FormData();
                     fd.append('file', file, name || file.name || `image-${Date.now()}.png`);
                     const upRes = await fetch(`${API_BASE}/tasks/${taskId}/attachments`, {
                         method: 'POST',
-                        headers: authHeaders,
+                        headers: getAuthHeaders(false),
                         body: fd
                     });
                     if (!upRes.ok) {
@@ -385,7 +381,7 @@ useEffect(() => {
                 for (const attId of (removedAttachmentIds || [])) {
                     await fetch(`${API_BASE}/tasks/${taskId}/attachments/${attId}`, {
                         method: 'DELETE',
-                        headers: authHeaders
+                        headers: getAuthHeaders()
                     });
                 }
             }
@@ -410,7 +406,8 @@ useEffect(() => {
         try {
             setLoading(true);
             const response = await fetch(`${API_BASE}/tasks/${id}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: getAuthHeaders()
             });
 
             if (!response.ok) throw new Error('Failed to delete task');
@@ -429,7 +426,8 @@ useEffect(() => {
         try {
             setLoading(true);
             const response = await fetch(`${API_BASE}/tasks/${id}/duplicate`, {
-                method: 'POST'
+                method: 'POST',
+                headers: getAuthHeaders()
             });
 
             if (!response.ok) throw new Error('Failed to duplicate task');
@@ -473,7 +471,7 @@ useEffect(() => {
             setLoading(true);
             const response = await fetch(`${API_BASE}/tasks/${sharingTask.id}/share`, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: getAuthHeaders(),
                 body: JSON.stringify({email: shareEmail.trim()})
             });
 
@@ -495,7 +493,8 @@ useEffect(() => {
     const toggleTaskStatus = async (id) => {
         try {
             const response = await fetch(`${API_BASE}/tasks/${id}/toggle-status`, {
-                method: 'PATCH'
+                method: 'PATCH',
+                headers: getAuthHeaders()
             });
 
             if (!response.ok) throw new Error('Failed to toggle status');
@@ -744,7 +743,7 @@ useEffect(() => {
             const promises = tasksToCreate.map(task =>
                 fetch(`${API_BASE}/tasks`, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: getAuthHeaders(),
                     body: JSON.stringify(task)
                 })
             );
@@ -770,7 +769,7 @@ useEffect(() => {
         try {
             const params = buildFilterParams();
 
-            const response = await fetch(`${API_BASE}/export/csv?${params}`);
+            const response = await fetch(`${API_BASE}/export/csv?${params}`, { headers: getAuthHeaders() });
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -789,7 +788,7 @@ useEffect(() => {
         try {
             const params = buildFilterParams();
 
-            const response = await fetch(`${API_BASE}/export/hours-report?${params}`);
+            const response = await fetch(`${API_BASE}/export/hours-report?${params}`, { headers: getAuthHeaders() });
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -823,6 +822,7 @@ useEffect(() => {
 
             const response = await fetch(`${API_BASE}/import/hours-report`, {
                 method: 'POST',
+                headers: getAuthHeaders(false),
                 body: formData
             });
 
@@ -932,20 +932,6 @@ useEffect(() => {
                         }}>
               {getStatusLabel(task.status)}
             </span>
-                        {/* Shared indicator */}
-                        {task.shared && (
-                            <span style={{
-                                background: '#e3f2fd',
-                                color: '#1565c0',
-                                padding: '4px 10px',
-                                borderRadius: '4px',
-                                fontSize: '0.75rem',
-                                fontWeight: 700,
-                                border: '2px solid #1565c0'
-                            }}>
-                🔗 Shared
-              </span>
-                        )}
                     </div>
                     {task.description && (
                         <p style={{
@@ -1993,105 +1979,80 @@ useEffect(() => {
                 <div style={{flex: 1, padding: '48px', transition: 'all 0.3s ease'}}>
                     {view === 'list' ? (
                         <>
+                            {/* Primary Action - New Task is the core action */}
+                            {isAdmin && (
+                                <div style={{
+                                    display: 'flex',
+                                    gap: '12px',
+                                    marginBottom: '24px',
+                                    alignItems: 'center',
+                                    flexWrap: 'wrap'
+                                }}>
+                                    <button
+                                        className="btn btn-red"
+                                        onClick={openNewTaskForm}
+                                        disabled={loading}
+                                        style={{
+                                            fontWeight: 900,
+                                            fontSize: '1.1rem',
+                                            padding: '14px 32px',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '1px'
+                                        }}
+                                    >
+                                        <Plus size={22} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '10px' }} />
+                                        New Task
+                                    </button>
+                                    <button
+                                        className="btn btn-yellow"
+                                        onClick={() => setShowBulkInput(true)}
+                                        disabled={loading}
+                                        style={{
+                                            fontWeight: 700,
+                                            fontSize: '0.95rem',
+                                            padding: '12px 24px'
+                                        }}
+                                    >
+                                        <Plus size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />
+                                        Bulk Add
+                                    </button>
+                                </div>
+                            )}
+
                             <div style={{marginBottom: '32px'}}>
-                                <h2 style={{fontSize: '2rem', fontWeight: 900, marginBottom: '8px'}}>
-                                    {new Date().toLocaleDateString('en-US', {
-                                        weekday: 'long',
-                                        year: 'numeric',
-                                        month: 'long',
-                                        day: 'numeric'
-                                    })}
-                                </h2>
-                                <p style={{color: '#666', fontSize: '1rem'}}>{tasks.length} tasks</p>
-
-                                {/* Filter toggles + Action buttons row */}
-                                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '24px', gap: '12px', flexWrap: 'wrap'}}>
-                                    {/* Left: view filter toggles */}
-                                    <div style={{display: 'flex', gap: '12px', flexWrap: 'wrap'}}>
-                                        <button
-                                            className={`btn ${taskViewMode === 'all' ? 'btn-blue' : 'btn-white'}`}
-                                            onClick={() => setTaskViewMode('all')}
-                                        >
-                                            All Tasks
-                                        </button>
-                                        <button
-                                            className={`btn ${taskViewMode === 'completed' ? 'btn-yellow' : 'btn-white'}`}
-                                            onClick={() => setTaskViewMode('completed')}
-                                        >
-                                            Completed Only
-                                        </button>
-                                        <button
-                                            className={`btn ${taskViewMode === 'uncompleted' ? 'btn-red' : 'btn-white'}`}
-                                            onClick={() => setTaskViewMode('uncompleted')}
-                                        >
-                                            Uncompleted Only
-                                        </button>
-                                    </div>
-
-                                    {/* Right: action buttons */}
-                                    {isAdmin && (
-                                        <div style={{display: 'flex', gap: '12px', flexShrink: 0}}>
-                                            <button
-                                                className="btn btn-yellow"
-                                                onClick={() => setShowBulkInput(true)}
-                                                disabled={loading}
-                                                style={{whiteSpace: 'nowrap', background: '#FFD500', color: '#000', border: '2px solid #000', fontWeight: 700, fontSize: '1rem', padding: '12px 24px'}}
-                                            >
-                                                <Plus size={20} style={{display: 'inline', verticalAlign: 'middle', marginRight: '6px'}}/>
-                                                Bulk Add
-                                            </button>
-                                            <button
-                                                className="btn btn-red"
-                                                onClick={openNewTaskForm}
-                                                disabled={loading}
-                                                style={{whiteSpace: 'nowrap', fontWeight: 700, fontSize: '1rem', padding: '12px 24px'}}
-                                            >
-                                                <Plus size={20} style={{display: 'inline', verticalAlign: 'middle', marginRight: '6px'}}/>
-                                                + New Task
-                                            </button>
-                                        </div>
-                                    )}
+                                {/* Date row */}
+                                <div>
+                                    <h2 style={{fontSize: '2rem', fontWeight: 900, marginBottom: '8px'}}>
+                                        {new Date().toLocaleDateString('en-US', {
+                                            weekday: 'long',
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric'
+                                        })}
+                                    </h2>
+                                    <p style={{color: '#666', fontSize: '1rem'}}>{tasks.length} tasks</p>
                                 </div>
 
-                                {/* Tag filter row */}
-                                <div style={{display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px', flexWrap: 'wrap'}}>
-                                    <span style={{fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', color: '#666', flexShrink: 0}}>Tags:</span>
-                                    {allTags.length === 0 ? (
-                                        <span style={{fontSize: '0.8rem', color: '#aaa'}}>No tags yet</span>
-                                    ) : allTags.map(tag => {
-                                        const isActive = filters.tags.includes(tag.name);
-                                        return (
-                                            <button
-                                                key={tag.id}
-                                                type="button"
-                                                onClick={() => setFilters(f => ({
-                                                    ...f,
-                                                    tags: isActive ? f.tags.filter(t => t !== tag.name) : [...f.tags, tag.name]
-                                                }))}
-                                                style={{
-                                                    padding: '4px 10px',
-                                                    border: '2px solid #000',
-                                                    background: isActive ? '#FFD500' : '#fff',
-                                                    fontWeight: isActive ? 700 : 500,
-                                                    fontSize: '0.82rem',
-                                                    cursor: 'pointer',
-                                                    fontFamily: '"Inter", sans-serif',
-                                                    boxShadow: isActive ? '2px 2px 0 #000' : 'none'
-                                                }}
-                                            >
-                                                {tag.name}
-                                            </button>
-                                        );
-                                    })}
-                                    {filters.tags.length > 0 && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setFilters(f => ({...f, tags: []}))}
-                                            style={{padding: '4px 10px', border: '2px solid #000', background: '#fff', fontSize: '0.82rem', cursor: 'pointer', fontFamily: '"Inter", sans-serif', color: '#666'}}
-                                        >
-                                            ✕ Clear
-                                        </button>
-                                    )}
+                                {/* Filter toggles row - Completed/Uncompleted only buttons are narrower */}
+                                <div className="task-view-toggle" style={{display: 'flex', alignItems: 'center', gap: '12px', marginTop: '24px', flexWrap: 'wrap'}}>
+                                    <button
+                                        className={`btn ${taskViewMode === 'all' ? 'btn-blue' : 'btn-white'}`}
+                                        onClick={() => setTaskViewMode('all')}
+                                    >
+                                        All Tasks
+                                    </button>
+                                    <button
+                                        className={`btn btn-narrow ${taskViewMode === 'completed' ? 'btn-yellow' : 'btn-white'}`}
+                                        onClick={() => setTaskViewMode('completed')}
+                                    >
+                                        Completed Only
+                                    </button>
+                                    <button
+                                        className={`btn btn-narrow ${taskViewMode === 'uncompleted' ? 'btn-red' : 'btn-white'}`}
+                                        onClick={() => setTaskViewMode('uncompleted')}
+                                    >
+                                        Uncompleted Only
+                                    </button>
                                 </div>
                             </div>
 

@@ -30,17 +30,23 @@ import {
     CreditCard,
     MoreVertical,
     Save,
-    FileDown
+    FileDown,
+    Paperclip,
+    BookOpen,
+    Search,
+    SlidersHorizontal
 } from 'lucide-react';
 import CustomAutocomplete from '../components/CustomAutocomplete';
 import API_BASE from '../config';
 import { formatCurrency, formatCurrencyWithCode } from '../utils/formatCurrency';
+import { getAuthHeaders } from '../api.js';
 
 // Import extracted view components
 import MobileStatsView from './views/MobileStatsView';
 import MobileBankTransactionsView from './views/MobileBankTransactionsView';
 import MobileStockPortfolioView from './views/MobileStockPortfolioView';
 import MobileClientsView from './views/MobileClientsView';
+import MobileNotebookView from './views/MobileNotebookView';
 
 const DRAFT_STORAGE_KEY = 'taskTracker_mobile_draft';
 const BULK_DRAFT_STORAGE_KEY = 'taskTracker_mobile_bulkDraft';
@@ -71,9 +77,19 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
     const [categories, setCategories] = useState([]);
     const [clients, setClients] = useState([]);
     const [allTags, setAllTags] = useState([]);
-    const [appView, setAppView] = useState('tasks'); // 'tasks', 'transactions', 'stats', 'portfolio', 'clients'
+    const [appView, setAppView] = useState('tasks'); // 'tasks', 'transactions', 'stats', 'portfolio', 'clients', 'notebook'
     const [filterMode, setFilterMode] = useState('all'); // all, active, done
-    const [showFilterDrawer, setShowFilterDrawer] = useState(false);
+    const [showSearchDrawer, setShowSearchDrawer] = useState(false);
+    const [searchFilters, setSearchFilters] = useState({
+        search: '',
+        category: 'all',
+        status: 'all',
+        client: '',
+        dateStart: '',
+        dateEnd: '',
+        tags: [],
+        hasAttachment: false
+    });
     const [showTaskModal, setShowTaskModal] = useState(false);
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
     const [editingTask, setEditingTask] = useState(null);
@@ -88,6 +104,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
     const [bulkCategory, setBulkCategory] = useState([]);
     const [bulkClient, setBulkClient] = useState('');
     const formChangeTimeoutRef = useRef(null);
+    const fileInputRef = useRef(null);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -101,7 +118,10 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
         status: 'uncompleted',
         tags: [],
         notes: '',
-        shared: false
+        shared: false,
+        attachments: [],
+        newAttachments: [],
+        removedAttachmentIds: []
     });
 
     // Swipe state
@@ -192,13 +212,35 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
         loadData();
     }, [authUser, authRole]); // reload when auth context changes
 
-    const fetchTasks = async () => {
+    const buildFilterParams = (f) => {
+        const params = new URLSearchParams();
+        if (f.category !== 'all') params.append('category', f.category);
+        if (f.status !== 'all') params.append('status', f.status);
+        if (f.client) params.append('client', f.client);
+        if (f.search) params.append('search', f.search);
+        if (f.dateStart) params.append('date_start', f.dateStart);
+        if (f.dateEnd) params.append('date_end', f.dateEnd);
+        if (f.hasAttachment) params.append('has_attachment', 'true');
+        return params;
+    };
+
+    const fetchTasks = async (overrideFilters) => {
+        const activeFilters = overrideFilters || searchFilters;
         try {
             setLoading(true);
-            const response = await fetch(`${API_BASE}/tasks?username=${authUser}&role=${authRole}`);
+            const params = buildFilterParams(activeFilters);
+            const response = await fetch(`${API_BASE}/tasks?${params}`, { headers: getAuthHeaders() });
             if (!response.ok) throw new Error(`Tasks fetch failed: ${response.status}`);
-            const data = await response.json();
-            const list = Array.isArray(data) ? data : [];
+            let data = await response.json();
+            let list = Array.isArray(data) ? data : [];
+
+            // Client-side tag filtering
+            if (activeFilters.tags.length > 0) {
+                list = list.filter(task =>
+                    task.tags && activeFilters.tags.some(tag => task.tags.includes(tag))
+                );
+            }
+
             const sorted = list.sort((a, b) => {
                 if (a.status === 'uncompleted' && b.status === 'completed') return -1;
                 if (a.status === 'completed' && b.status === 'uncompleted') return 1;
@@ -214,7 +256,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
 
     const fetchCategories = async () => {
         try {
-            const response = await fetch(`${API_BASE}/categories`);
+            const response = await fetch(`${API_BASE}/categories`, { headers: getAuthHeaders() });
             if (!response.ok) throw new Error(`Categories fetch failed: ${response.status}`);
             const data = await response.json();
             setCategories(Array.isArray(data) ? data : []);
@@ -226,7 +268,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
 
     const fetchClients = async () => {
         try {
-            const response = await fetch(`${API_BASE}/clients`);
+            const response = await fetch(`${API_BASE}/clients`, { headers: getAuthHeaders() });
             if (!response.ok) throw new Error(`Clients fetch failed: ${response.status}`);
             const data = await response.json();
             const list = Array.isArray(data) ? data : [];
@@ -242,7 +284,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
 
     const fetchTags = async () => {
         try {
-            const response = await fetch(`${API_BASE}/tags`);
+            const response = await fetch(`${API_BASE}/tags`, { headers: getAuthHeaders() });
             if (!response.ok) throw new Error(`Tags fetch failed: ${response.status}`);
             const data = await response.json();
             setAllTags(Array.isArray(data) ? data : []);
@@ -258,7 +300,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
             const newStatus = currentStatus === 'completed' ? 'uncompleted' : 'completed';
             await fetch(`${API_BASE}/tasks/${taskId}`, {
                 method: 'PUT',
-                headers: {'Content-Type': 'application/json'},
+                headers: getAuthHeaders(),
                 body: JSON.stringify({status: newStatus})
             });
             await fetchTasks();
@@ -271,7 +313,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
         if (!window.confirm('Delete this task?')) return;
 
         try {
-            await fetch(`${API_BASE}/tasks/${taskId}`, {method: 'DELETE'});
+            await fetch(`${API_BASE}/tasks/${taskId}`, { method: 'DELETE', headers: getAuthHeaders() });
             await fetchTasks();
             setSwipeStates(prev => {
                 const updated = {...prev};
@@ -290,15 +332,13 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
             const url = editingTask
                 ? `${API_BASE}/tasks/${editingTask.id}`
                 : `${API_BASE}/tasks`;
+            const { attachments, newAttachments, removedAttachmentIds, ...payload } = formData;
+            const body = { ...payload };
 
             const response = await fetch(url, {
                 method,
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    ...formData,
-                    username: authUser,
-                    role: authRole
-                })
+                headers: getAuthHeaders(),
+                body: JSON.stringify(body)
             });
 
             if (!response.ok) {
@@ -306,9 +346,33 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                 throw new Error(`Save failed: ${response.status} ${errBody || ''}`);
             }
 
+            const data = await response.json().catch(() => ({}));
+            const taskId = editingTask ? editingTask.id : data.id;
+
+            if (taskId) {
+                for (const { file, name } of (newAttachments || [])) {
+                    const fd = new FormData();
+                    fd.append('file', file, name || file.name || `image-${Date.now()}.png`);
+                    const upRes = await fetch(`${API_BASE}/tasks/${taskId}/attachments`, {
+                        method: 'POST',
+                        headers: getAuthHeaders(false),
+                        body: fd
+                    });
+                    if (!upRes.ok) {
+                        const upErr = await upRes.json().catch(() => ({}));
+                        throw new Error(upErr.error || 'Failed to upload attachment');
+                    }
+                }
+                for (const attId of (removedAttachmentIds || [])) {
+                    await fetch(`${API_BASE}/tasks/${taskId}/attachments/${attId}`, {
+                        method: 'DELETE',
+                        headers: getAuthHeaders()
+                    });
+                }
+            }
+
             await fetchTasks();
             clearDraft();
-            // Close directly after successful save so we don't show the "unsaved changes" dialog
             setShowTaskModal(false);
             setEditingTask(null);
         } catch (err) {
@@ -375,9 +439,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
             duration: '',
             status: 'uncompleted',
             tags: [],
-            notes: '',
-            username: authUser,
-            role: authRole
+            notes: ''
         }));
 
         try {
@@ -385,7 +447,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
             const promises = tasksToCreate.map(task =>
                 fetch(`${API_BASE}/tasks`, {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: getAuthHeaders(),
                     body: JSON.stringify(task)
                 })
             );
@@ -412,7 +474,12 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
         setEditingTask(null);
         const draft = loadDraft();
         if (draft) {
-            setFormData(draft);
+            setFormData({
+                ...draft,
+                attachments: draft.attachments || [],
+                newAttachments: [],
+                removedAttachmentIds: draft.removedAttachmentIds || []
+            });
         } else {
             setFormData({
                 title: '',
@@ -425,7 +492,10 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                 status: 'uncompleted',
                 tags: [],
                 notes: '',
-                shared: false
+                shared: false,
+                attachments: [],
+                newAttachments: [],
+                removedAttachmentIds: []
             });
         }
         setShowTaskModal(true);
@@ -444,14 +514,19 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
             status: task.status || 'uncompleted',
             tags: task.tags || [],
             notes: task.notes || '',
-            shared: task.shared || false
+            shared: task.shared || false,
+            attachments: task.attachments || [],
+            newAttachments: [],
+            removedAttachmentIds: []
         });
         setShowTaskModal(true);
     };
 
     const hasUnsavedChanges = () => {
+        const attachmentChanged =
+            (formData.newAttachments && formData.newAttachments.length > 0) ||
+            (formData.removedAttachmentIds && formData.removedAttachmentIds.length > 0);
         if (editingTask) {
-            // Check if editing task has unsaved changes
             return (
                 formData.title !== editingTask.title ||
                 formData.description !== (editingTask.description || '') ||
@@ -463,12 +538,40 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                 formData.status !== editingTask.status ||
                 JSON.stringify(formData.tags) !== JSON.stringify(editingTask.tags || []) ||
                 formData.notes !== (editingTask.notes || '') ||
-                formData.shared !== (editingTask.shared || false)
+                formData.shared !== (editingTask.shared || false) ||
+                attachmentChanged
             );
-        } else {
-            // Check if new task has any data
-            return !!(formData.title || formData.description);
         }
+        return !!(formData.title || formData.description || attachmentChanged);
+    };
+
+    const addAttachment = (file) => {
+        if (!file) return;
+        const name = file.name || `image-${Date.now()}.png`;
+        setFormData(prev => ({
+            ...prev,
+            newAttachments: [...(prev.newAttachments || []), { file, name }]
+        }));
+    };
+
+    const handleFileInputChange = (e) => {
+        const file = e.target.files?.[0];
+        if (file) addAttachment(file);
+        e.target.value = '';
+    };
+
+    const removeNewAttachment = (index) => {
+        setFormData(prev => ({
+            ...prev,
+            newAttachments: (prev.newAttachments || []).filter((_, i) => i !== index)
+        }));
+    };
+
+    const removeExistingAttachment = (att) => {
+        setFormData(prev => ({
+            ...prev,
+            removedAttachmentIds: [...(prev.removedAttachmentIds || []), att.id]
+        }));
     };
 
     const closeModal = () => {
@@ -535,7 +638,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
             setLoading(true);
             const response = await fetch(`${API_BASE}/tasks/${sharingTask.id}/share`, {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: getAuthHeaders(),
                 body: JSON.stringify({email: shareEmail.trim()})
             });
 
@@ -731,7 +834,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
         .color-bar {
           height: 12px;
           width: 100%;
-          background: linear-gradient(90deg, #FF0000 0%, #FF0000 33.33%, #FFD500 33.33%, #FFD500 66.66%, #0000FF 66.66%, #0000FF 100%);
+          background: #F8B4D9;
         }
       `}</style>
 
@@ -768,47 +871,38 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                 />
             )}
 
+            {appView === 'notebook' && (
+                <MobileNotebookView onBack={() => setAppView('tasks')} />
+            )}
+
             {appView === 'tasks' && (<>
-                {/* Header with tri-color bar */}
+                {/* Desktop-style header: tri-color bar + white panel + TASK TRACKER */}
                 <div style={{
                     position: 'sticky',
                     top: 0,
                     zIndex: 100,
                     background: '#fff',
-                    borderBottom: '3px solid #000'
+                    borderBottom: '4px solid #000'
                 }}>
-                    {/* Tri-color bar - 12px like desktop */}
-                    <div className="color-bar"/>
-
+                    {/* Top bar: solid pink (inline style so global CSS cannot override) */}
+                    <div style={{ height: '12px', width: '100%', background: '#F8B4D9' }}/>
                     <div style={{
                         padding: '16px',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center'
                     }}>
-                        <div>
-                            <h1 style={{
-                                fontSize: '1.75rem',
-                                fontWeight: 900,
-                                margin: '0 0 4px 0',
-                                textTransform: 'uppercase',
-                                letterSpacing: '-0.5px',
-                                fontFamily: FONT_STACK
-                            }}>
-                                TASKS
-                            </h1>
-
-                            <p style={{
-                                fontSize: '0.9rem',
-                                color: THEME.muted,
-                                margin: 0,
-                                fontFamily: FONT_STACK
-                            }}>
-                                {counts.active} active • {counts.done} done
-                            </p>
-                        </div>
-
-                        {/* Hamburger Menu Button */}
+                        <h1 style={{
+                            fontFamily: FONT_STACK,
+                            fontSize: 'clamp(1.25rem, 4vw, 1.75rem)',
+                            fontWeight: 900,
+                            margin: 0,
+                            letterSpacing: '-1px',
+                            textTransform: 'uppercase',
+                            color: THEME.text
+                        }}>
+                            TASK TRACKER
+                        </h1>
                         <button
                             onClick={() => setShowMobileSidebar(true)}
                             style={{
@@ -820,38 +914,164 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                 alignItems: 'center',
                                 justifyContent: 'center'
                             }}
+                            aria-label="Menu"
                         >
                             <Menu size={24} color={THEME.text}/>
                         </button>
                     </div>
+                </div>
 
-                    {/* Quick filters - below header */}
-                    <div style={{padding: '0 16px 16px 16px'}}>
-                        <div style={{display: 'flex', gap: '8px', overflowX: 'auto'}}>
-                            <div
-                                className={`filter-pill ${filterMode === 'all' ? 'active' : ''}`}
-                                onClick={() => setFilterMode('all')}
-                            >
-                                All ({counts.all})
-                            </div>
-                            <div
-                                className={`filter-pill ${filterMode === 'active' ? 'active' : ''}`}
-                                onClick={() => setFilterMode('active')}
-                            >
-                                Active ({counts.active})
-                            </div>
-                            <div
-                                className={`filter-pill ${filterMode === 'done' ? 'active' : ''}`}
-                                onClick={() => setFilterMode('done')}
-                            >
-                                Done ({counts.done})
-                            </div>
-                        </div>
+                {/* Main content: same structure as desktop - actions, date, filters, then list */}
+                <div style={{padding: '16px', paddingBottom: '24px'}}>
+                    {/* Action buttons: + NEW TASK (red), + BULK ADD (yellow) - desktop proportions */}
+                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '20px'}}>
+                        <button
+                            onClick={openCreateModal}
+                            disabled={loading}
+                            style={{
+                                fontFamily: FONT_STACK,
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                                fontSize: '0.85rem',
+                                padding: '14px 20px',
+                                border: '3px solid #000',
+                                background: THEME.accent,
+                                color: '#fff',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}
+                        >
+                            <Plus size={20} strokeWidth={3}/>
+                            New Task
+                        </button>
+                        <button
+                            onClick={() => setShowBulkInput(true)}
+                            disabled={loading}
+                            style={{
+                                fontFamily: FONT_STACK,
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                                fontSize: '0.85rem',
+                                padding: '14px 20px',
+                                border: '3px solid #000',
+                                background: THEME.secondary,
+                                color: '#000',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}
+                        >
+                            <Plus size={18} strokeWidth={3}/>
+                            Bulk Add
+                        </button>
+                    </div>
+
+                    {/* Date and task count - desktop style */}
+                    <p style={{
+                        fontFamily: FONT_STACK,
+                        fontSize: 'clamp(1rem, 3vw, 1.25rem)',
+                        fontWeight: 700,
+                        color: THEME.text,
+                        margin: '0 0 4px 0'
+                    }}>
+                        {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    </p>
+                    <p style={{
+                        fontFamily: FONT_STACK,
+                        fontSize: '0.9rem',
+                        color: THEME.muted,
+                        margin: '0 0 16px 0'
+                    }}>
+                        {counts.all} task{counts.all !== 1 ? 's' : ''}
+                    </p>
+
+                    {/* Filter row: ALL TASKS | COMPLETED ONLY | UNCOMPLETED ONLY - desktop labels and colors */}
+                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '20px'}}>
+                        <button
+                            type="button"
+                            onClick={() => setFilterMode('all')}
+                            style={{
+                                fontFamily: FONT_STACK,
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                fontSize: '0.8rem',
+                                padding: '12px 18px',
+                                border: '3px solid #000',
+                                background: filterMode === 'all' ? THEME.primary : '#fff',
+                                color: filterMode === 'all' ? '#fff' : THEME.text,
+                                cursor: 'pointer'
+                            }}
+                        >
+                            All Tasks
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setFilterMode('done')}
+                            style={{
+                                fontFamily: FONT_STACK,
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                fontSize: '0.8rem',
+                                padding: '12px 18px',
+                                border: '3px solid #000',
+                                background: filterMode === 'done' ? THEME.primary : '#fff',
+                                color: filterMode === 'done' ? '#fff' : THEME.text,
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Completed Only
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setFilterMode('active')}
+                            style={{
+                                fontFamily: FONT_STACK,
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                fontSize: '0.8rem',
+                                padding: '12px 18px',
+                                border: '3px solid #000',
+                                background: filterMode === 'active' ? THEME.primary : '#fff',
+                                color: filterMode === 'active' ? '#fff' : THEME.text,
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Uncompleted Only
+                        </button>
                     </div>
                 </div>
 
+                {/* Active filter indicator */}
+                {(searchFilters.search || searchFilters.category !== 'all' || searchFilters.status !== 'all' || searchFilters.client || searchFilters.dateStart || searchFilters.dateEnd || searchFilters.tags.length > 0 || searchFilters.hasAttachment) && (
+                    <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '8px 16px', background: THEME.secondary, borderBottom: '2px solid #000',
+                        fontFamily: FONT_STACK
+                    }}>
+                        <span style={{fontSize: '0.8rem', fontWeight: 700}}>
+                            <SlidersHorizontal size={13} style={{marginRight: '6px', verticalAlign: 'middle'}}/>
+                            Filters active
+                        </span>
+                        <button
+                            onClick={() => {
+                                const cleared = {search: '', category: 'all', status: 'all', client: '', dateStart: '', dateEnd: '', tags: [], hasAttachment: false};
+                                setSearchFilters(cleared);
+                                fetchTasks(cleared);
+                            }}
+                            style={{background: 'none', border: 'none', fontWeight: 900, fontSize: '0.8rem', cursor: 'pointer', fontFamily: FONT_STACK, textDecoration: 'underline'}}
+                        >
+                            Clear
+                        </button>
+                    </div>
+                )}
+
                 {/* Task List */}
-                <div style={{padding: '16px'}}>
+                <div style={{padding: '0 16px 16px 16px'}}>
                     {loading ? (
                         <div style={{textAlign: 'center', padding: '40px', color: THEME.muted}}>
                             Loading...
@@ -922,35 +1142,8 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                                 </h3>
                                             </div>
 
-                                            {/* Action buttons */}
+                                            {/* Action buttons - Edit first (primary), then Duplicate, then Share */}
                                             <div style={{display: 'flex', gap: '4px'}}>
-                                                {/* Duplicate button */}
-                                                <button
-                                                    onClick={() => duplicateTask(task)}
-                                                    style={{
-                                                        background: 'none',
-                                                        border: 'none',
-                                                        padding: '8px',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    <Copy size={20} color={THEME.secondary}/>
-                                                </button>
-
-                                                {/* Share button */}
-                                                <button
-                                                    onClick={() => openShareModal(task)}
-                                                    style={{
-                                                        background: 'none',
-                                                        border: 'none',
-                                                        padding: '8px',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    <Share2 size={20} color={THEME.accent}/>
-                                                </button>
-
-                                                {/* Edit button */}
                                                 <button
                                                     onClick={() => openEditModal(task)}
                                                     style={{
@@ -959,8 +1152,33 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                                         padding: '8px',
                                                         cursor: 'pointer'
                                                     }}
+                                                    aria-label="Edit task"
                                                 >
                                                     <Edit2 size={20} color={THEME.primary}/>
+                                                </button>
+                                                <button
+                                                    onClick={() => duplicateTask(task)}
+                                                    style={{
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        padding: '8px',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    aria-label="Duplicate task"
+                                                >
+                                                    <Copy size={20} color={THEME.secondary}/>
+                                                </button>
+                                                <button
+                                                    onClick={() => openShareModal(task)}
+                                                    style={{
+                                                        background: 'none',
+                                                        border: 'none',
+                                                        padding: '8px',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    aria-label="Share task"
+                                                >
+                                                    <Share2 size={20} color={THEME.accent}/>
                                                 </button>
                                             </div>
                                         </div>
@@ -1053,57 +1271,6 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                         })
                     )}
                 </div>
-
-                {/* Floating Action Buttons */}
-                {/* Bulk Add Button */}
-                <button
-                    onClick={() => setShowBulkInput(true)}
-                    style={{
-                        position: 'fixed',
-                        bottom: '100px',
-                        right: '20px',
-                        width: '48px',
-                        height: '48px',
-                        borderRadius: '50%',
-                        background: THEME.accent,
-                        border: '3px solid #000',
-                        boxShadow: '4px 4px 0px #000',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        zIndex: 90,
-                        fontSize: '20px',
-                        fontWeight: 'bold',
-                        color: '#000'
-                    }}
-                    title="Bulk Add Tasks"
-                >
-                    ≡
-                </button>
-
-                {/* Main Add Button */}
-                <button
-                    onClick={openCreateModal}
-                    style={{
-                        position: 'fixed',
-                        bottom: '20px',
-                        right: '20px',
-                        width: '64px',
-                        height: '64px',
-                        borderRadius: '50%',
-                        background: THEME.primary,
-                        border: '3px solid #000',
-                        boxShadow: '4px 4px 0px #000',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        zIndex: 90
-                    }}
-                >
-                    <Plus size={32} color="#fff" strokeWidth={3}/>
-                </button>
             </>)/* End of tasks view */}
 
             {/* Mobile Sidebar Menu */}
@@ -1228,60 +1395,40 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                         <RefreshCw size={16} style={{marginRight: '8px'}}/>
                                         Refresh
                                     </button>
-                                </div>
-                            </div>
-
-                            {/* Export / Import */}
-                            <div>
-                                <h3 style={{
-                                    fontSize: '0.75rem',
-                                    fontWeight: 900,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '1px',
-                                    marginBottom: '12px',
-                                    fontFamily: FONT_STACK
-                                }}>
-                                    Export / Import
-                                </h3>
-                                <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
                                     <button
                                         className="mobile-btn"
                                         onClick={() => {
-                                            // Export CSV logic here
+                                            setShowSearchDrawer(true);
                                             setShowMobileSidebar(false);
                                         }}
-                                        disabled={tasks.length === 0}
-                                        style={{width: '100%', justifyContent: 'flex-start'}}
+                                        style={{width: '100%', justifyContent: 'flex-start', position: 'relative'}}
                                     >
-                                        <Download size={16} style={{marginRight: '8px'}}/>
-                                        Export CSV
+                                        <Search size={16} style={{marginRight: '8px'}}/>
+                                        Search
+                                        {(searchFilters.search || searchFilters.category !== 'all' || searchFilters.status !== 'all' || searchFilters.client || searchFilters.dateStart || searchFilters.dateEnd || searchFilters.tags.length > 0 || searchFilters.hasAttachment) && (
+                                            <span style={{
+                                                position: 'absolute',
+                                                top: '6px',
+                                                right: '10px',
+                                                background: THEME.accent,
+                                                color: '#fff',
+                                                borderRadius: '50%',
+                                                width: '8px',
+                                                height: '8px',
+                                                display: 'inline-block'
+                                            }}/>
+                                        )}
                                     </button>
-                                </div>
-                            </div>
-
-                            {/* Stats - for ALL users */}
-                            <div>
-                                <h3 style={{
-                                    fontSize: '0.75rem',
-                                    fontWeight: 900,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '1px',
-                                    marginBottom: '12px',
-                                    fontFamily: FONT_STACK
-                                }}>
-                                    Analytics
-                                </h3>
-                                <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
                                     <button
                                         className="mobile-btn"
                                         onClick={() => {
-                                            setAppView('stats');
+                                            setAppView('notebook');
                                             setShowMobileSidebar(false);
                                         }}
                                         style={{width: '100%', justifyContent: 'flex-start'}}
                                     >
-                                        <BarChart3 size={16} style={{marginRight: '8px'}}/>
-                                        View Stats
+                                        <BookOpen size={16} style={{marginRight: '8px'}}/>
+                                        Notebook
                                     </button>
                                 </div>
                             </div>
@@ -1333,11 +1480,11 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                                 const uploadFormData = new FormData();
                                                 uploadFormData.append('file', file);
                                                 uploadFormData.append('transaction_type', 'credit'); // default to credit
-                                                uploadFormData.append('username', authUser); // tag with username
 
                                                 try {
                                                     const response = await fetch(`${API_BASE}/transactions/upload`, {
                                                         method: 'POST',
+                                                        headers: getAuthHeaders(false),
                                                         body: uploadFormData
                                                     });
 
@@ -1418,6 +1565,61 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                 </div>
                             )}
 
+                            {/* Analytics (View Stats) - below Clients */}
+                            <div>
+                                <h3 style={{
+                                    fontSize: '0.75rem',
+                                    fontWeight: 900,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '1px',
+                                    marginBottom: '12px',
+                                    fontFamily: FONT_STACK
+                                }}>
+                                    Analytics
+                                </h3>
+                                <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                                    <button
+                                        className="mobile-btn"
+                                        onClick={() => {
+                                            setAppView('stats');
+                                            setShowMobileSidebar(false);
+                                        }}
+                                        style={{width: '100%', justifyContent: 'flex-start'}}
+                                    >
+                                        <BarChart3 size={16} style={{marginRight: '8px'}}/>
+                                        View Stats
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Export / Import - below Manage Clients */}
+                            <div>
+                                <h3 style={{
+                                    fontSize: '0.75rem',
+                                    fontWeight: 900,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '1px',
+                                    marginBottom: '12px',
+                                    fontFamily: FONT_STACK
+                                }}>
+                                    Export / Import
+                                </h3>
+                                <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                                    <button
+                                        className="mobile-btn"
+                                        onClick={() => {
+                                            // Export CSV logic here
+                                            setShowMobileSidebar(false);
+                                        }}
+                                        disabled={tasks.length === 0}
+                                        style={{width: '100%', justifyContent: 'flex-start'}}
+                                    >
+                                        <Download size={16} style={{marginRight: '8px'}}/>
+                                        Export CSV
+                                    </button>
+                                </div>
+                            </div>
+
                             {/* Account */}
                             <div>
                                 <h3 style={{
@@ -1467,6 +1669,220 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                 </>
             )}
 
+            {/* Search / Filter Drawer */}
+            {showSearchDrawer && (
+                <>
+                    <div
+                        style={{
+                            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                            background: 'rgba(0,0,0,0.5)', zIndex: 300
+                        }}
+                        onClick={() => setShowSearchDrawer(false)}
+                    />
+                    <div style={{
+                        position: 'fixed', left: 0, right: 0, bottom: 0,
+                        background: '#fff',
+                        borderTop: '3px solid #000',
+                        zIndex: 301,
+                        padding: '24px',
+                        fontFamily: FONT_STACK,
+                        maxHeight: '85vh',
+                        overflowY: 'auto'
+                    }}>
+                        {/* Header */}
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
+                            <h2 style={{margin: 0, fontSize: '1.25rem', fontWeight: 900, textTransform: 'uppercase', fontFamily: FONT_STACK}}>
+                                <Search size={18} style={{marginRight: '8px', verticalAlign: 'middle'}}/>
+                                Search & Filter
+                            </h2>
+                            <button onClick={() => setShowSearchDrawer(false)} style={{background: 'none', border: 'none', padding: '8px', cursor: 'pointer'}}>
+                                <X size={24}/>
+                            </button>
+                        </div>
+
+                        <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+                            {/* Keyword search */}
+                            <div>
+                                <label style={{display: 'block', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px'}}>
+                                    Keywords
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="Search tasks..."
+                                    value={searchFilters.search}
+                                    onChange={e => setSearchFilters(f => ({...f, search: e.target.value}))}
+                                    style={{
+                                        width: '100%', padding: '10px 12px', border: '2px solid #000',
+                                        fontFamily: FONT_STACK, fontSize: '1rem', boxSizing: 'border-box'
+                                    }}
+                                />
+                            </div>
+
+                            {/* Status */}
+                            <div>
+                                <label style={{display: 'block', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px'}}>
+                                    Status
+                                </label>
+                                <select
+                                    value={searchFilters.status}
+                                    onChange={e => setSearchFilters(f => ({...f, status: e.target.value}))}
+                                    style={{
+                                        width: '100%', padding: '10px 12px', border: '2px solid #000',
+                                        fontFamily: FONT_STACK, fontSize: '1rem', background: '#fff'
+                                    }}
+                                >
+                                    <option value="all">All</option>
+                                    <option value="uncompleted">Uncompleted</option>
+                                    <option value="completed">Completed</option>
+                                </select>
+                            </div>
+
+                            {/* Category */}
+                            <div>
+                                <label style={{display: 'block', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px'}}>
+                                    Category
+                                </label>
+                                <select
+                                    value={searchFilters.category}
+                                    onChange={e => setSearchFilters(f => ({...f, category: e.target.value}))}
+                                    style={{
+                                        width: '100%', padding: '10px 12px', border: '2px solid #000',
+                                        fontFamily: FONT_STACK, fontSize: '1rem', background: '#fff'
+                                    }}
+                                >
+                                    <option value="all">All Categories</option>
+                                    {categories.map(cat => (
+                                        <option key={cat.id} value={cat.name}>{cat.icon ? `${cat.icon} ` : ''}{cat.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Client */}
+                            <div>
+                                <label style={{display: 'block', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px'}}>
+                                    Client
+                                </label>
+                                <select
+                                    value={searchFilters.client}
+                                    onChange={e => setSearchFilters(f => ({...f, client: e.target.value}))}
+                                    style={{
+                                        width: '100%', padding: '10px 12px', border: '2px solid #000',
+                                        fontFamily: FONT_STACK, fontSize: '1rem', background: '#fff'
+                                    }}
+                                >
+                                    <option value="">All Clients</option>
+                                    {clients.map(c => (
+                                        <option key={c.id} value={c.name}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Date range */}
+                            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+                                <div>
+                                    <label style={{display: 'block', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px'}}>
+                                        From
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={searchFilters.dateStart}
+                                        onChange={e => setSearchFilters(f => ({...f, dateStart: e.target.value}))}
+                                        style={{
+                                            width: '100%', padding: '10px 8px', border: '2px solid #000',
+                                            fontFamily: FONT_STACK, fontSize: '0.9rem', boxSizing: 'border-box'
+                                        }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{display: 'block', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px'}}>
+                                        To
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={searchFilters.dateEnd}
+                                        onChange={e => setSearchFilters(f => ({...f, dateEnd: e.target.value}))}
+                                        style={{
+                                            width: '100%', padding: '10px 8px', border: '2px solid #000',
+                                            fontFamily: FONT_STACK, fontSize: '0.9rem', boxSizing: 'border-box'
+                                        }}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Tags */}
+                            {allTags.length > 0 && (
+                                <div>
+                                    <label style={{display: 'block', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px'}}>
+                                        Tags
+                                    </label>
+                                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px'}}>
+                                        {allTags.map(tag => {
+                                            const isSelected = searchFilters.tags.includes(tag.name);
+                                            return (
+                                                <button
+                                                    key={tag.id}
+                                                    onClick={() => setSearchFilters(f => ({
+                                                        ...f,
+                                                        tags: isSelected ? f.tags.filter(t => t !== tag.name) : [...f.tags, tag.name]
+                                                    }))}
+                                                    style={{
+                                                        padding: '4px 10px', border: '2px solid #000',
+                                                        background: isSelected ? THEME.primary : '#fff',
+                                                        color: isSelected ? '#fff' : THEME.text,
+                                                        fontFamily: FONT_STACK, fontSize: '0.8rem',
+                                                        fontWeight: 700, cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    {tag.name}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Has attachment */}
+                            <label style={{display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 700}}>
+                                <input
+                                    type="checkbox"
+                                    checked={searchFilters.hasAttachment}
+                                    onChange={e => setSearchFilters(f => ({...f, hasAttachment: e.target.checked}))}
+                                    style={{width: '18px', height: '18px', cursor: 'pointer'}}
+                                />
+                                Has Attachment
+                            </label>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div style={{display: 'flex', gap: '12px', marginTop: '24px'}}>
+                            <button
+                                className="mobile-btn mobile-btn-primary"
+                                onClick={() => {
+                                    fetchTasks(searchFilters);
+                                    setShowSearchDrawer(false);
+                                }}
+                                style={{flex: 1}}
+                            >
+                                <Search size={16} style={{marginRight: '8px'}}/>
+                                Apply
+                            </button>
+                            <button
+                                className="mobile-btn"
+                                onClick={() => {
+                                    const cleared = {search: '', category: 'all', status: 'all', client: '', dateStart: '', dateEnd: '', tags: [], hasAttachment: false};
+                                    setSearchFilters(cleared);
+                                    fetchTasks(cleared);
+                                    setShowSearchDrawer(false);
+                                }}
+                                style={{flex: 1}}
+                            >
+                                Clear All
+                            </button>
+                        </div>
+                    </div>
+                </>
+            )}
+
             {/* Task Modal */}
             {showTaskModal && (
                 <div
@@ -1488,27 +1904,25 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                 >
                     <div style={{
                         width: '100%',
-                        maxHeight: '94vh',
                         height: '94vh',
+                        maxHeight: '94vh',
                         background: '#fff',
                         borderRadius: '16px 16px 0 0',
-                        overflowY: 'auto',
-                        WebkitOverflowScrolling: 'touch',
+                        overflow: 'hidden',
                         display: 'flex',
                         flexDirection: 'column',
                         boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
                         paddingBottom: 'env(safe-area-inset-bottom, 0)'
                     }}>
-                        {/* Modal Header */}
+                        {/* Modal Header - fixed, no scroll */}
                         <div style={{
+                            flexShrink: 0,
                             padding: '16px 20px',
                             paddingTop: 'max(16px, env(safe-area-inset-top, 0))',
                             borderBottom: '1px solid rgba(0,0,0,0.1)',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
-                            position: 'sticky',
-                            top: 0,
                             background: '#fff',
                             zIndex: 1
                         }}>
@@ -1534,11 +1948,18 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                             </button>
                         </div>
 
-                        {/* Modal Body */}
-                        <div style={{
-                            padding: '16px',
-                            paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 24px))'
-                        }}>
+                        {/* Modal Body - only this area scrolls to avoid layout shift */}
+                        <div
+                            style={{
+                                flex: '1 1 0',
+                                minHeight: 0,
+                                overflowY: 'auto',
+                                WebkitOverflowScrolling: 'touch',
+                                padding: '16px',
+                                paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 24px))',
+                                scrollPaddingBottom: '120px'
+                            }}
+                        >
                             {/* Title */}
                             <div style={{marginBottom: '16px'}}>
                                 <label style={{
@@ -1730,9 +2151,11 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                     </button>
                                 </div>
                                 <datalist id="tags-list">
-                                    {allTags.map(tag => (
-                                        <option key={tag} value={tag}/>
-                                    ))}
+                                    {allTags.map(tag => {
+                                        const name = typeof tag === 'object' ? tag.name : tag;
+                                        const key = typeof tag === 'object' ? (tag.id ?? tag.name ?? name) : tag;
+                                        return <option key={key} value={name}/>;
+                                    })}
                                 </datalist>
                                 {formData.tags.length > 0 && (
                                     <div style={{display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px'}}>
@@ -1802,6 +2225,83 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                     onChange={(e) => setFormData({...formData, notes: e.target.value})}
                                     placeholder="Additional notes..."
                                 />
+                            </div>
+
+                            {/* Attachments */}
+                            <div style={{marginBottom: '16px'}}>
+                                <label style={{
+                                    display: 'block',
+                                    marginBottom: '8px',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px'
+                                }}>
+                                    Attachments
+                                </label>
+                                <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px'}}>
+                                    <button
+                                        type="button"
+                                        className="mobile-btn"
+                                        style={{padding: '10px 16px'}}
+                                        onClick={() => fileInputRef.current?.click()}
+                                    >
+                                        <Paperclip size={16} style={{marginRight: '6px', verticalAlign: 'middle'}}/>
+                                        Attach file
+                                    </button>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip"
+                                        onChange={handleFileInputChange}
+                                        style={{display: 'none'}}
+                                    />
+                                </div>
+                                {(formData.attachments || []).filter(a => !(formData.removedAttachmentIds || []).includes(a.id)).length > 0 && (
+                                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px'}}>
+                                        {(formData.attachments || []).filter(a => !(formData.removedAttachmentIds || []).includes(a.id)).map(att => {
+                                            const baseOrigin = API_BASE.replace(/\/api\/?$/, '');
+                                            const fullUrl = att.cloudinary_url || (att.url?.startsWith('http') ? att.url : (att.url?.startsWith('/') ? baseOrigin + att.url : `${API_BASE}/tasks/attachments/${att.id}/file`));
+                                            return (
+                                                <div key={att.id} style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    border: '2px solid #000',
+                                                    padding: '6px 10px',
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: 600
+                                                }}>
+                                                    <a href={fullUrl} target="_blank" rel="noopener noreferrer">{att.filename}</a>
+                                                    <button type="button" onClick={() => removeExistingAttachment(att)} style={{background: 'none', border: 'none', padding: 0, cursor: 'pointer'}} aria-label="Remove">
+                                                        <X size={14}/>
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                {(formData.newAttachments || []).length > 0 && (
+                                    <div style={{display: 'flex', flexWrap: 'wrap', gap: '8px'}}>
+                                        {(formData.newAttachments || []).map((na, idx) => (
+                                            <div key={idx} style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '6px',
+                                                border: '2px solid #000',
+                                                padding: '6px 10px',
+                                                fontSize: '0.85rem',
+                                                fontWeight: 600,
+                                                background: THEME.secondary
+                                            }}>
+                                                <span>{na.name}</span>
+                                                <button type="button" onClick={() => removeNewAttachment(idx)} style={{background: 'none', border: 'none', padding: 0, cursor: 'pointer'}} aria-label="Remove">
+                                                    <X size={14}/>
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Shared checkbox (only for admin) */}

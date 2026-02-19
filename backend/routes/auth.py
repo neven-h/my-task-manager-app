@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify, current_app
 from config import (
     limiter, mail, get_db_connection, USERS, FRONTEND_URL,
     DEBUG, handle_error, validate_password,
-    generate_jwt_token, verify_jwt_token,
+    generate_jwt_token, verify_jwt_token, token_required,
 )
 from flask_mail import Message
 from mysql.connector import Error
@@ -127,6 +127,7 @@ def login():
 
 
 @auth_bp.route('/api/auth/signup', methods=['POST'])
+@limiter.limit("5 per hour")
 def signup():
     """Register a new user"""
     try:
@@ -220,7 +221,11 @@ def forgot_password():
             """, (user['id'],))
             result = cursor.fetchone()
             if result['count'] >= 3:
-                return jsonify({'error': 'Too many reset requests. Please try again later'}), 429
+                # Return same generic response as "user not found" to avoid leaking user existence
+                return jsonify({
+                    'success': True,
+                    'message': 'If that email is registered, you will receive a password reset link'
+                })
 
             # Generate secure token
             token = str(uuid.uuid4())
@@ -275,7 +280,7 @@ Task Tracker Team"""
                         }), 503
             else:
                 # Email not configured - return token for development/testing
-                print(f"Email not configured. Reset token: {token}")
+                app.logger.warning("Email not configured. Password reset unavailable in production.")
                 if DEBUG:
                     return jsonify({
                         'success': True,
@@ -294,6 +299,7 @@ Task Tracker Team"""
 
 
 @auth_bp.route('/api/auth/verify-token', methods=['GET'])
+@limiter.limit("10 per minute")
 def verify_reset_token():
     """Verify if reset token is valid"""
     try:
@@ -403,14 +409,17 @@ def reset_password():
 # ================================
 
 @auth_bp.route('/api/auth/2fa/setup', methods=['POST'])
-def setup_2fa():
+@token_required
+def setup_2fa(payload):
     """Generate a new 2FA secret and QR code for user to scan"""
     try:
-        data = request.json
-        username = data.get('username')
+        username = payload['username']
 
-        if not username:
-            return jsonify({'error': 'Username is required'}), 400
+        # Check if this is a hardcoded user (not in database)
+        if username in USERS:
+            return jsonify({
+                'error': '2FA is not available for legacy accounts. Please create a new account via Sign Up to use 2FA.'
+            }), 400
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -424,7 +433,7 @@ def setup_2fa():
             user = cursor.fetchone()
 
             if not user:
-                return jsonify({'error': 'User not found'}), 404
+                return jsonify({'error': 'User not found in database. Please sign up for a new account.'}), 404
 
             # Generate a new secret
             secret = pyotp.random_base32()
@@ -471,15 +480,16 @@ def setup_2fa():
 
 
 @auth_bp.route('/api/auth/2fa/enable', methods=['POST'])
-def enable_2fa():
+@token_required
+def enable_2fa(payload):
     """Enable 2FA after user verifies the code"""
     try:
+        username = payload['username']
         data = request.json
-        username = data.get('username')
         code = data.get('code', '').strip()
 
-        if not username or not code:
-            return jsonify({'error': 'Username and code are required'}), 400
+        if not code:
+            return jsonify({'error': 'Verification code is required'}), 400
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -519,6 +529,7 @@ def enable_2fa():
 
 
 @auth_bp.route('/api/auth/2fa/verify', methods=['POST'])
+@limiter.limit("5 per minute")
 def verify_2fa():
     """Verify 2FA code during login and return JWT token"""
     try:
@@ -541,7 +552,7 @@ def verify_2fa():
             user = cursor.fetchone()
 
             if not user or not user.get('two_factor_enabled'):
-                return jsonify({'error': 'User not found or 2FA not enabled'}), 404
+                return jsonify({'error': 'Invalid username or verification code'}), 401
 
             # Verify TOTP code
             totp = pyotp.TOTP(user['two_factor_secret'])
@@ -564,15 +575,16 @@ def verify_2fa():
 
 
 @auth_bp.route('/api/auth/2fa/disable', methods=['POST'])
-def disable_2fa():
+@token_required
+def disable_2fa(payload):
     """Disable 2FA (requires password verification)"""
     try:
+        username = payload['username']
         data = request.json
-        username = data.get('username')
         password = data.get('password')
 
-        if not username or not password:
-            return jsonify({'error': 'Username and password are required'}), 400
+        if not password:
+            return jsonify({'error': 'Password is required'}), 400
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -612,13 +624,11 @@ def disable_2fa():
 
 
 @auth_bp.route('/api/auth/2fa/status', methods=['GET'])
-def get_2fa_status():
-    """Get 2FA status for a user"""
+@token_required
+def get_2fa_status(payload):
+    """Get 2FA status for the authenticated user"""
     try:
-        username = request.args.get('username')
-
-        if not username:
-            return jsonify({'error': 'Username is required'}), 400
+        username = payload['username']
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -639,6 +649,213 @@ def get_2fa_status():
 
     except Exception as e:
         print(f"2FA status error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@auth_bp.route('/api/auth/user-info', methods=['GET'])
+def get_user_info():
+    """Get user information including email - requires authentication"""
+    try:
+        # Verify JWT token from Authorization header
+        token = request.headers.get('Authorization')
+        if not token:
+            return jsonify({'error': 'Authentication required'}), 401
+        
+        token_result = verify_jwt_token(token)
+        if not token_result['valid']:
+            return jsonify({'error': token_result.get('error', 'Invalid token')}), 401
+        
+        # Get username from token payload - users can only access their own info
+        authenticated_username = token_result['payload'].get('username')
+        requested_username = request.args.get('username')
+        
+        # If no username provided, use the authenticated user's username
+        if not requested_username:
+            requested_username = authenticated_username
+        
+        # Security: Users can only access their own information
+        if requested_username != authenticated_username:
+            return jsonify({'error': 'Access denied: You can only view your own account information'}), 403
+
+        # Check if this is a hardcoded user
+        if requested_username in USERS:
+            return jsonify({
+                'username': requested_username,
+                'email': None,
+                'is_legacy_account': True
+            })
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            cursor.execute("""
+                SELECT username, email
+                FROM users
+                WHERE username = %s
+            """, (requested_username,))
+            user = cursor.fetchone()
+
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+
+            return jsonify({
+                'username': user['username'],
+                'email': user['email'],
+                'is_legacy_account': False
+            })
+
+    except Exception as e:
+        print(f"User info error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@auth_bp.route('/api/auth/change-password', methods=['POST'])
+@token_required
+def change_password(payload):
+    """Change user password"""
+    try:
+        username = payload['username']
+        data = request.json
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+
+        if not current_password or not new_password:
+            return jsonify({'error': 'All fields are required'}), 400
+
+        if len(new_password) < 8:
+            return jsonify({'error': 'New password must be at least 8 characters'}), 400
+
+        # Check if this is a hardcoded user (cannot change password)
+        if username in USERS:
+            return jsonify({
+                'error': 'Password change is not available for legacy accounts. Please create a new account via Sign Up.'
+            }), 400
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # Get user
+            cursor.execute("""
+                SELECT id, password_hash
+                FROM users
+                WHERE username = %s
+            """, (username,))
+            user = cursor.fetchone()
+
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+
+            # Verify current password
+            if not bcrypt.checkpw(current_password.encode('utf-8'), user['password_hash'].encode('utf-8')):
+                return jsonify({'error': 'Current password is incorrect'}), 401
+
+            # Hash new password
+            new_password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+            # Update password
+            cursor.execute("""
+                UPDATE users
+                SET password_hash = %s
+                WHERE id = %s
+            """, (new_password_hash, user['id']))
+            connection.commit()
+
+            return jsonify({
+                'success': True,
+                'message': 'Password changed successfully'
+            })
+
+    except Exception as e:
+        print(f"Change password error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@auth_bp.route('/api/auth/delete-account', methods=['POST'])
+@token_required
+def delete_account(payload):
+    """Delete user account permanently"""
+    try:
+        username = payload['username']
+        data = request.json
+        password = data.get('password')
+
+        if not password:
+            return jsonify({'error': 'Password is required'}), 400
+
+        # Check if this is a hardcoded user (cannot delete)
+        if username in USERS:
+            return jsonify({
+                'error': 'Account deletion is not available for legacy accounts.'
+            }), 400
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # Get user
+            cursor.execute("""
+                SELECT id, password_hash
+                FROM users
+                WHERE username = %s
+            """, (username,))
+            user = cursor.fetchone()
+
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+
+            # Verify password
+            if not bcrypt.checkpw(password.encode('utf-8'), user['password_hash'].encode('utf-8')):
+                return jsonify({'error': 'Invalid password'}), 401
+
+            user_id = user['id']
+
+            # Delete user's related data first (foreign key constraints)
+            # Delete password reset tokens (uses user_id foreign key)
+            cursor.execute("DELETE FROM password_reset_tokens WHERE user_id = %s", (user_id,))
+
+            # Reassign tasks to admin instead of deleting them — prevents accidental data loss.
+            # Tasks created by this user are preserved under the 'pitz' admin account.
+            cursor.execute(
+                "UPDATE tasks SET created_by = 'pitz' WHERE created_by = %s",
+                (username,)
+            )
+            
+            # Delete user's stock portfolio tabs and entries (uses owner column)
+            cursor.execute("DELETE FROM stock_portfolio WHERE created_by = %s", (username,))
+            cursor.execute("DELETE FROM portfolio_tabs WHERE owner = %s", (username,))
+            
+            # Delete user's transaction tabs (uses owner column)
+            cursor.execute("DELETE FROM transaction_tabs WHERE owner = %s", (username,))
+            
+            # Delete user's bank transactions (uses username column)
+            cursor.execute("DELETE FROM bank_transactions WHERE username = %s", (username,))
+            
+            # Delete user's watched stocks (uses username column)
+            cursor.execute("DELETE FROM watched_stocks WHERE username = %s", (username,))
+            
+            # Delete user's yahoo portfolio (uses username column)
+            cursor.execute("DELETE FROM yahoo_portfolio WHERE username = %s", (username,))
+            
+            # Delete user's tags (uses owner column)
+            cursor.execute("DELETE FROM tags WHERE owner = %s", (username,))
+            
+            # Delete user's categories (uses owner column)
+            cursor.execute("DELETE FROM categories_master WHERE owner = %s", (username,))
+            
+            # Delete user's clients (uses owner column)
+            cursor.execute("DELETE FROM clients WHERE owner = %s", (username,))
+
+            # Finally, delete the user
+            cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+            
+            connection.commit()
+
+            return jsonify({
+                'success': True,
+                'message': 'Account deleted successfully'
+            })
+
+    except Exception as e:
+        print(f"Delete account error: {e}")
         return jsonify({'error': str(e)}), 500
 
 

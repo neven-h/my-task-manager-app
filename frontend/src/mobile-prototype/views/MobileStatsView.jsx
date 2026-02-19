@@ -1,6 +1,7 @@
 import React, {useState, useEffect} from 'react';
 import { ArrowLeft } from 'lucide-react';
 import API_BASE from '../../config';
+import { getAuthHeaders } from '../../api.js';
 
 const MobileStatsView = ({authUser, authRole, onBack}) => {
     const [stats, setStats] = useState(null);
@@ -9,7 +10,7 @@ const MobileStatsView = ({authUser, authRole, onBack}) => {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const response = await fetch(`${API_BASE}/stats?username=${authUser}&role=${authRole}`);
+                const response = await fetch(`${API_BASE}/stats`, { headers: getAuthHeaders() });
                 if (!response.ok) throw new Error(`Stats fetch failed: ${response.status}`);
                 const data = await response.json();
                 const overall = data.overall || {};

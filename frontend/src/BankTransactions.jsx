@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Upload, Calendar, Trash2, FileText, AlertCircle, CheckCircle, ArrowLeft, Plus, Edit2, Save, X, FileDown, Banknote, CreditCard, PieChart, Users } from 'lucide-react';
 import API_BASE from './config';
 import { formatCurrency } from './utils/formatCurrency';
+import { getAuthHeaders } from './api.js';
 import TabBar from './components/TabBar';
 
 const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
@@ -56,7 +57,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
 
   const fetchTabs = async () => {
     try {
-      const response = await fetch(`${API_BASE}/transaction-tabs?username=${authUser}&role=${authRole}`);
+      const response = await fetch(`${API_BASE}/transaction-tabs`, { headers: getAuthHeaders() });
       const data = await response.json();
       if (Array.isArray(data)) {
         setTabs(data);
@@ -92,8 +93,8 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
     try {
       const response = await fetch(`${API_BASE}/transaction-tabs`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newTabName.trim(), username: authUser })
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ name: newTabName.trim() })
       });
       const data = await response.json();
       if (response.ok) {
@@ -117,7 +118,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
 
   const checkOrphanedTransactions = async () => {
     try {
-      const response = await fetch(`${API_BASE}/transaction-tabs/orphaned`);
+      const response = await fetch(`${API_BASE}/transaction-tabs/orphaned`, { headers: getAuthHeaders() });
       const data = await response.json();
       setOrphanedCount(data.count || 0);
     } catch (err) {
@@ -127,7 +128,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
 
   const adoptOrphanedTransactions = async (tabId) => {
     try {
-      const response = await fetch(`${API_BASE}/transaction-tabs/${tabId}/adopt`, { method: 'POST' });
+      const response = await fetch(`${API_BASE}/transaction-tabs/${tabId}/adopt`, { method: 'POST', headers: getAuthHeaders() });
       if (response.ok) {
         setOrphanedCount(0);
         // Refresh data for the current tab
@@ -184,7 +185,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
 
   const fetchAllDescriptions = async () => {
     try {
-      const response = await fetch(`${API_BASE}/transactions/descriptions`);
+      const response = await fetch(`${API_BASE}/transactions/descriptions`, { headers: getAuthHeaders() });
       const data = await response.json();
       setAllDescriptions(data);
     } catch (err) {
@@ -195,10 +196,10 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
   const fetchTransactionStats = async (tabId) => {
     try {
       const tid = tabId !== undefined ? tabId : activeTabId;
-      const tabParam = tid ? `&tab_id=${tid}` : '';
-      const url = `${API_BASE}/transactions/stats?username=${authUser}&role=${authRole}${tabParam}`;
+      const tabParam = tid ? `?tab_id=${tid}` : '';
+      const url = `${API_BASE}/transactions/stats${tabParam}`;
       console.log('[BankTransactions] Fetching stats from:', url, 'tabId:', tid);
-      const response = await fetch(url);
+      const response = await fetch(url, { headers: getAuthHeaders() });
       const data = await response.json();
       console.log('[BankTransactions] Stats response:', data);
 
@@ -219,8 +220,8 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
   const fetchSavedMonths = async (tabId) => {
     try {
       const tid = tabId !== undefined ? tabId : activeTabId;
-      const tabParam = tid ? `&tab_id=${tid}` : '';
-      const response = await fetch(`${API_BASE}/transactions/months?username=${authUser}&role=${authRole}${tabParam}`);
+      const tabParam = tid ? `?tab_id=${tid}` : '';
+      const response = await fetch(`${API_BASE}/transactions/months${tabParam}`, { headers: getAuthHeaders() });
       const data = await response.json();
       setSavedMonths(data);
       return Array.isArray(data) ? data : [];
@@ -234,8 +235,8 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
     try {
       setLoading(true);
       const tid = tabId !== undefined ? tabId : activeTabId;
-      const tabParam = tid ? `&tab_id=${tid}` : '';
-      const response = await fetch(`${API_BASE}/transactions/all?username=${authUser}&role=${authRole}${tabParam}`);
+      const tabParam = tid ? `?tab_id=${tid}` : '';
+      const response = await fetch(`${API_BASE}/transactions/all${tabParam}`, { headers: getAuthHeaders() });
       const data = await response.json();
       if (!response.ok || !Array.isArray(data)) {
         throw new Error(data?.error || 'Failed to fetch transactions');
@@ -257,8 +258,8 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
     try {
       setLoading(true);
       const tid = tabId !== undefined ? tabId : activeTabId;
-      const tabParam = tid ? `&tab_id=${tid}` : '';
-      const response = await fetch(`${API_BASE}/transactions/${monthYear}?username=${authUser}&role=${authRole}${tabParam}`);
+      const tabParam = tid ? `?tab_id=${tid}` : '';
+      const response = await fetch(`${API_BASE}/transactions/${monthYear}${tabParam}`, { headers: getAuthHeaders() });
       const data = await response.json();
       if (!response.ok || !Array.isArray(data)) {
         throw new Error(data?.error || 'Failed to fetch month transactions');
@@ -282,46 +283,88 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
   };
 
   const handleFileUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('transaction_type', transactionType);
+    const files = Array.from(event.target.files);
+    if (!files.length) return;
 
     try {
       setLoading(true);
       setError(null);
       setSuccess(null);
 
-      const response = await fetch(`${API_BASE}/transactions/upload`, {
-        method: 'POST',
-        body: formData
-      });
+      const fileResults = [];
+      const errors = [];
 
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text();
-        console.error('Non-JSON response:', text);
-        console.error(`Server error: Expected JSON but got ${contentType}`);
-        throw new Error(`Server error: Expected JSON but got ${contentType}`);
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setSuccess(`Uploading file ${i + 1} of ${files.length}: ${file.name}…`);
+
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('transaction_type', transactionType);
+
+        const response = await fetch(`${API_BASE}/transactions/upload`, {
+          method: 'POST',
+          headers: getAuthHeaders(false),
+          body: formData
+        });
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const text = await response.text();
+          errors.push(`${file.name}: unexpected server response`);
+          console.error('Non-JSON response:', text);
+          continue;
+        }
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          errors.push(`${file.name}: ${data.error || 'upload failed'}`);
+          continue;
+        }
+
+        fileResults.push(data);
       }
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        console.error('Failed to save task');
+      if (fileResults.length === 0) {
+        setError(errors.join(' | ') || 'All files failed to upload.');
+        return;
       }
 
-      setUploadedData(data);
+      // Merge results from all successfully parsed files
+      const allTransactions = fileResults.flatMap(d => d.transactions);
+      const totalCount = allTransactions.length;
+      const totalAmount = allTransactions.reduce((sum, t) => sum + t.amount, 0);
+      const types = [...new Set(fileResults.map(d => d.transaction_type))];
+      const mergedType = types.length === 1 ? types[0] : 'mixed';
+
+      const merged = {
+        success: true,
+        transactions: allTransactions,
+        transaction_count: totalCount,
+        total_amount: totalAmount,
+        transaction_type: mergedType,
+        month_year: fileResults[0].month_year,
+        // keep last file's normalizer info for display
+        normalizer_profile: fileResults[fileResults.length - 1].normalizer_profile,
+        normalizer_confidence: fileResults[fileResults.length - 1].normalizer_confidence,
+      };
+
+      setUploadedData(merged);
       setPreviewFilter('all');
-      const typeLabel = transactionType === 'cash' ? 'cash' : 'credit card';
-      setSuccess(`Successfully parsed ${data.transaction_count} ${typeLabel} transactions.`);
+
+      const typeLabel = mergedType === 'cash' ? 'cash' : mergedType === 'mixed' ? 'mixed' : 'credit card';
+      const fileWord = fileResults.length === 1 ? '1 file' : `${fileResults.length} files`;
+      let msg = `Successfully parsed ${totalCount} ${typeLabel} transactions from ${fileWord}.`;
+      if (errors.length) msg += ` (${errors.length} file(s) failed: ${errors.join(', ')})`;
+      setSuccess(msg);
 
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
+      // Reset input so the same file(s) can be re-selected if needed
+      event.target.value = '';
     }
   };
 
@@ -334,10 +377,9 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
 
       const response = await fetch(`${API_BASE}/transactions/save`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           transactions: uploadedData.transactions,
-          username: authUser,
           tab_id: activeTabId
         })
       });
@@ -368,7 +410,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
 
       const response = await fetch(`${API_BASE}/transactions/manual`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ ...newTransaction, tab_id: activeTabId })
       });
 
@@ -410,7 +452,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
 
       const response = await fetch(`${API_BASE}/transactions/${transactionId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify(editingTransaction)
       });
 
@@ -444,7 +486,8 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
       setError(null);
 
       const response = await fetch(`${API_BASE}/transactions/${transactionId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: getAuthHeaders()
       });
 
       if (!response.ok) {
@@ -474,7 +517,8 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
       setLoading(true);
       const tabParam = activeTabId ? `?tab_id=${activeTabId}` : '';
       const response = await fetch(`${API_BASE}/transactions/month/${monthYear}${tabParam}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: getAuthHeaders()
       });
 
       if (!response.ok) {
@@ -506,9 +550,16 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
     const filtered = getFilteredTransactions();
     const printWindow = window.open('', '_blank');
     
-    const totalCredit = filtered.filter(t => t.transaction_type === 'credit').reduce((sum, t) => sum + t.amount, 0);
-    const totalCash = filtered.filter(t => t.transaction_type === 'cash').reduce((sum, t) => sum + t.amount, 0);
-    const total = filtered.reduce((sum, t) => sum + t.amount, 0);
+    // PERFORMANCE OPTIMIZATION: Single-pass reduce instead of 3 separate filter+reduce operations
+    const { totalCredit, totalCash, total } = filtered.reduce((acc, t) => {
+      acc.total += t.amount;
+      if (t.transaction_type === 'credit') {
+        acc.totalCredit += t.amount;
+      } else if (t.transaction_type === 'cash') {
+        acc.totalCash += t.amount;
+      }
+      return acc;
+    }, { totalCredit: 0, totalCash: 0, total: 0 });
 
     const categories = aggregateByCategory(filtered);
     const sortedCategories = Object.entries(categories).sort((a, b) => b[1].total - a[1].total);
@@ -873,6 +924,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
         tabEndpoint="transaction-tabs"
         authUser={authUser}
         authRole={authRole}
+        getAuthHeaders={getAuthHeaders}
         colors={colors}
         deleteConfirmMessage={(name) => `Delete "${name}" and all its transactions?`}
         onTabsChanged={(updatedTabs) => setTabs(updatedTabs)}
@@ -1320,7 +1372,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
                 fontWeight: '700',
                 border: `2px solid ${colors.border}`
               }}>
-                {uploadedData.transaction_type === 'cash' ? '💵 CASH' : '💳 CREDIT'}
+                {uploadedData.transaction_type === 'cash' ? '💵 CASH' : uploadedData.transaction_type === 'mixed' ? '🔀 MIXED' : '💳 CREDIT'}
               </span>
             </h2>
             
@@ -1499,6 +1551,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
                 <input
                   type="file"
                   accept=".csv,.xlsx,.xls"
+                  multiple
                   onChange={handleFileUpload}
                   style={{ display: 'none' }}
                   id="file-upload"
@@ -1515,7 +1568,7 @@ const BankTransactions = ({ onBackToTasks, authUser, authRole }) => {
                     Click to upload
                   </span>
                   <span style={{ color: colors.textLight, fontSize: '0.7rem' }}>
-                    CSV or Excel
+                    CSV or Excel · select multiple files
                   </span>
                 </label>
               </div>

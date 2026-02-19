@@ -111,6 +111,11 @@
           opacity: 0.4; 
           cursor: not-allowed; 
         }
+
+        .btn.btn-narrow {
+          padding: 10px 14px;
+          font-size: 0.8rem;
+        }
         
         .btn-red {
           background: #FF0000;
@@ -713,10 +718,10 @@
             padding-bottom: 80px !important;
           }
 
-          /* Color bar - make it more vibrant */
+          /* Color bar - solid pink on mobile */
           .color-bar {
-            height: 6px !important;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #43e97b 100%) !important;
+            height: 12px !important;
+            background: #F8B4D9 !important;
           }
           
           /* Tags mobile */

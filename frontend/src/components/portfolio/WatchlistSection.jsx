@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { TrendingUp, TrendingDown, Plus, Trash2, RefreshCw, X } from 'lucide-react';
 import API_BASE from '../../config';
 import { formatCurrencyWithCode } from '../../utils/formatCurrency';
+import { getAuthHeaders } from '../../api.js';
 
 const WatchlistSection = ({ colors, authUser, authRole }) => {
     const [showWatchlist, setShowWatchlist] = useState(true);
@@ -19,7 +20,7 @@ const WatchlistSection = ({ colors, authUser, authRole }) => {
 
   const fetchWatchlist = async () => {
     try {
-      const response = await fetch(`${API_BASE}/portfolio/watchlist?username=${authUser}&role=${authRole}`);
+      const response = await fetch(`${API_BASE}/portfolio/watchlist`, { headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setWatchlist(Array.isArray(data) ? data : []);
@@ -34,7 +35,7 @@ const WatchlistSection = ({ colors, authUser, authRole }) => {
     
     try {
       setWatchlistLoading(true);
-      const response = await fetch(`${API_BASE}/portfolio/watchlist/prices?username=${authUser}`);
+      const response = await fetch(`${API_BASE}/portfolio/watchlist/prices`, { headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         const priceMap = {};
@@ -76,7 +77,7 @@ const WatchlistSection = ({ colors, authUser, authRole }) => {
 
     try {
       setSearching(true);
-      const response = await fetch(`${API_BASE}/portfolio/search-stocks?q=${encodeURIComponent(searchQuery)}`);
+      const response = await fetch(`${API_BASE}/portfolio/search-stocks?q=${encodeURIComponent(searchQuery)}`, { headers: getAuthHeaders() });
       if (response.ok) {
         const data = await response.json();
         setSearchResults(data.results || []);
@@ -99,7 +100,7 @@ const WatchlistSection = ({ colors, authUser, authRole }) => {
       searchTimeoutRef.current = setTimeout(async () => {
         try {
           setSearching(true);
-          const response = await fetch(`${API_BASE}/portfolio/search-stocks?q=${encodeURIComponent(searchQuery)}`);
+          const response = await fetch(`${API_BASE}/portfolio/search-stocks?q=${encodeURIComponent(searchQuery)}`, { headers: getAuthHeaders() });
           if (response.ok) {
             const data = await response.json();
             setSearchResults(data.results || []);
@@ -126,9 +127,8 @@ const WatchlistSection = ({ colors, authUser, authRole }) => {
     try {
       const response = await fetch(`${API_BASE}/portfolio/watchlist`, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: getAuthHeaders(),
         body: JSON.stringify({
-          username: authUser,
           ticker_symbol: ticker,
           stock_name: name
         })
@@ -150,8 +150,9 @@ const WatchlistSection = ({ colors, authUser, authRole }) => {
 
   const handleRemoveFromWatchlist = async (watchlistId) => {
     try {
-      const response = await fetch(`${API_BASE}/portfolio/watchlist/${watchlistId}?username=${authUser}&role=${authRole}`, {
-        method: 'DELETE'
+      const response = await fetch(`${API_BASE}/portfolio/watchlist/${watchlistId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
       });
 
       if (response.ok) {

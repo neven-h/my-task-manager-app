@@ -198,321 +198,112 @@ def parse_cash_transaction_file(file_path):
         raise ValueError(f"Error parsing cash transaction file: {str(e)}")
 
 
+def _load_excel_df(file_path):
+    """
+    Load an Excel bank export and return (df, header_row_index).
+
+    Strategy: read the sheet twice.
+    1. Read without a header to get all raw rows.
+    2. Scan for the first row whose cells contain known Hebrew/English header
+       keywords (תאריך, סכום, בית עסק, date, amount, …).
+    3. Re-read with that row as the header so column names are correct.
+    """
+    HEADER_KEYWORDS = {
+        "תאריך", "סכום", "תיאור", "תאור", "פרטים", "עסקה", "פעולה",
+        "בית עסק", "כרטיס", "אסמכתא", "חובה", "זכות", "יתרה", "מנפיק",
+        "date", "amount", "description", "transaction", "balance", "account",
+    }
+
+    # Read every cell as a string so we can search freely
+    raw = pd.read_excel(file_path, sheet_name=0, header=None, dtype=str)
+
+    header_row = 0  # sensible default
+    best_hits = 0
+    for i, row in raw.iterrows():
+        cells = [str(c).strip().lower() for c in row if pd.notna(c) and str(c).strip()]
+        hits = sum(1 for kw in HEADER_KEYWORDS if any(kw.lower() in c for c in cells))
+        if hits > best_hits:
+            best_hits = hits
+            header_row = i
+        if best_hits >= 3:   # good enough — stop early
+            # but keep scanning a bit more in case a better row exists nearby
+            if i > header_row + 5:
+                break
+
+    df = pd.read_excel(file_path, sheet_name=0, header=header_row, dtype=str)
+    df.columns = [str(c).strip() for c in df.columns]
+    # Drop rows that are entirely NaN (trailing footer rows)
+    df = df.dropna(how='all').reset_index(drop=True)
+    return df, int(header_row)
+
+
 def parse_transaction_file(file_path, transaction_type='credit'):
-    """Parse CSV or Excel file and return cleaned dataframe"""
+    """Parse CSV or Excel file using bank_csv_normalizer and return cleaned dataframe."""
     try:
-        # If it's marked as cash transaction, use special parser
+        # Cash transactions still use the dedicated parser
         if transaction_type == 'cash':
             return parse_cash_transaction_file(file_path)
 
-        # Otherwise use standard credit card transaction parser
-        # Determine file type and read accordingly
-        if file_path.endswith('.csv'):
-            # Use chardet to detect encoding
-            with open(file_path, 'rb') as f:
-                raw_data = f.read()
-                result = chardet.detect(raw_data)
-                detected_encoding = result['encoding']
-                confidence = result['confidence']
+        from bank_csv_normalizer.normalize.io import load_csv
+        from bank_csv_normalizer.convert import convert_df
 
-                print(f"\n{'=' * 60}", flush=True)
-                print(f"[ENCODING DEBUG] File: {file_path}", flush=True)
-                print(f"[CHARDET] Detected: {detected_encoding} (confidence: {confidence})", flush=True)
+        ext = os.path.splitext(file_path)[1].lower()
+        print(f"\n{'=' * 60}", flush=True)
+        print(f"[NORMALIZER] Parsing file: {file_path} (ext={ext})", flush=True)
 
-                # Show first 200 bytes in hex for debugging
-                print(f"[RAW BYTES] First 200 bytes (hex): {raw_data[:200].hex()}", flush=True)
-
-                # Try to decode first line with different encodings to see which looks right
-                first_line_end = raw_data.find(b'\n')
-                if first_line_end > 0:
-                    first_line_bytes = raw_data[:first_line_end]
-                    print(f"[FIRST LINE BYTES] {first_line_bytes.hex()}", flush=True)
-                    for test_enc in ['windows-1255', 'utf-8', 'iso-8859-8', 'cp1255']:
-                        try:
-                            decoded = first_line_bytes.decode(test_enc)
-                            print(f"[TEST DECODE {test_enc}] {decoded}", flush=True)
-                        except:
-                            print(f"[TEST DECODE {test_enc}] FAILED", flush=True)
-
-                # Map common encodings to their variants
-                encoding_map = {
-                    'ISO-8859-8': 'windows-1255',  # Hebrew ISO -> Windows Hebrew
-                    'ISO-8859-1': 'cp1252',  # Latin-1 -> Windows-1252
-                    'ascii': 'utf-8'  # ASCII -> UTF-8
-                }
-
-                # Try detected encoding first, then its mapped variant
-                encodings_to_try = []
-                if detected_encoding:
-                    encodings_to_try.append(detected_encoding)
-                    if detected_encoding.upper() in encoding_map:
-                        encodings_to_try.append(encoding_map[detected_encoding.upper()])
-
-                # Add Hebrew encodings as backup (since detection can be unreliable for Hebrew)
-                encodings_to_try.extend([
-                    'windows-1255',
-                    'cp1255',
-                    'iso-8859-8',
-                    'utf-8-sig',
-                    'utf-8',
-                    'cp1252',
-                    'windows-1252',
-                    'latin-1'
-                ])
-
-                # Remove duplicates while preserving order
-                seen = set()
-                encodings_to_try = [x for x in encodings_to_try if x and not (x in seen or seen.add(x))]
-
-            df = None
-            used_encoding = None
-            for encoding in encodings_to_try:
-                try:
-                    df = pd.read_csv(file_path, encoding=encoding)
-                    used_encoding = encoding
-                    print(f"[SUCCESS] Read CSV with encoding: {encoding}", flush=True)
-
-                    # Debug: show first description value
-                    if len(df) > 0 and len(df.columns) >= 3:
-                        first_desc = df.iloc[0, 2] if len(df.columns) > 2 else "N/A"
-                        print(f"[FIRST DESCRIPTION] {first_desc}", flush=True)
-                        print(f"[FIRST DESC BYTES] {str(first_desc).encode('utf-8').hex()}", flush=True)
-
-                    break
-                except (UnicodeDecodeError, UnicodeError, LookupError) as e:
-                    print(f"[FAILED] {encoding}: {str(e)[:50]}", flush=True)
-                    continue
-
-            if df is None:
-                # If all encodings fail, try with errors='replace'
-                df = pd.read_csv(file_path, encoding='utf-8', errors='replace')
-                used_encoding = 'utf-8-replace'
-                print(f"[FALLBACK] Using UTF-8 with error replacement", flush=True)
+        if ext in ('.xlsx', '.xls'):
+            df, header_row_index = _load_excel_df(file_path)
+            print(f"[NORMALIZER] Loaded {len(df)} rows from Excel, "
+                  f"header_row={header_row_index}, columns={list(df.columns)[:6]}", flush=True)
         else:
-            df = pd.read_excel(file_path)
+            load_res = load_csv(file_path)
+            df = load_res.df
+            header_row_index = load_res.header_row_index
+            print(f"[NORMALIZER] Loaded {len(df)} rows, encoding={load_res.encoding}, "
+                  f"header_row={header_row_index}", flush=True)
 
-        # Clean the data
-        df = clean_transaction_data(df)
+        # Detect profile and produce canonical DataFrame
+        canonical, report = convert_df(df)
 
-        # Ensure we have the expected columns
-        if len(df.columns) < 4:
-            raise ValueError("File must have at least 4 columns: Account Number, Date, Description, Amount")
+        print(f"[NORMALIZER] Profile={report.profile} confidence={report.confidence:.2f} "
+              f"rows_in={report.rows_in} rows_out={report.rows_out}", flush=True)
+        if report.warnings:
+            for w in report.warnings:
+                print(f"[NORMALIZER] Warning: {w}", flush=True)
 
-        # Rename columns to standard names
-        df.columns = ['account_number', 'transaction_date', 'description', 'amount'] + list(df.columns[4:])
+        if len(canonical) == 0:
+            raise ValueError(
+                f"No valid transactions found (profile={report.profile}, "
+                f"warnings: {'; '.join(report.warnings)})"
+            )
 
-        # Parse dates - try multiple formats
-        print(f"[PARSE] Before date parsing: {len(df)} rows", flush=True)
+        # canonical columns: account_number, transaction_date (ISO str), description, amount (str)
+        # Convert to the shape the rest of the endpoint expects
+        canonical['transaction_date'] = pd.to_datetime(
+            canonical['transaction_date'], format='%Y-%m-%d', errors='coerce'
+        )
+        canonical['amount'] = pd.to_numeric(canonical['amount'], errors='coerce')
+        canonical = canonical.dropna(subset=['transaction_date', 'amount'])
 
-        # Try multiple date formats in order of specificity
-        date_formats = [
-            '%d.%m.%Y',   # DD.MM.YYYY (e.g., 03.02.2026)
-            '%d/%m/%Y',   # DD/MM/YYYY (e.g., 03/02/2026)
-            '%d/%m/%y',   # D/M/YY (e.g., 3/2/26)
-            '%d.%m.%y',   # D.M.YY (e.g., 3.2.26)
-            '%Y-%m-%d',   # YYYY-MM-DD (e.g., 2026-02-03)
-        ]
+        canonical['month_year'] = canonical['transaction_date'].dt.strftime('%Y-%m')
+        canonical['transaction_type'] = transaction_type
 
-        parsed_dates = None
-        for fmt in date_formats:
-            attempt = pd.to_datetime(df['transaction_date'], format=fmt, errors='coerce')
-            valid_count = attempt.notna().sum()
-            print(f"[PARSE] Format '{fmt}': {valid_count}/{len(df)} dates parsed", flush=True)
-            if valid_count > 0 and (parsed_dates is None or valid_count > parsed_dates.notna().sum()):
-                parsed_dates = attempt
+        # Store report metadata on the df for the endpoint to expose
+        canonical.attrs['normalizer_profile'] = report.profile
+        canonical.attrs['normalizer_confidence'] = report.confidence
 
-        # Final fallback: let pandas infer the format
-        if parsed_dates is None or parsed_dates.notna().sum() == 0:
-            parsed_dates = pd.to_datetime(df['transaction_date'], dayfirst=True, errors='coerce')
-            print(f"[PARSE] Fallback (dayfirst=True): {parsed_dates.notna().sum()}/{len(df)} dates parsed", flush=True)
-
-        df['transaction_date'] = parsed_dates
-        print(f"[PARSE] After date parsing, rows with NaT dates: {df['transaction_date'].isna().sum()}", flush=True)
-
-        # Convert amount to float
-        df['amount'] = pd.to_numeric(df['amount'], errors='coerce')
-        print(f"[PARSE] After amount parsing, rows with NaN amounts: {df['amount'].isna().sum()}", flush=True)
-
-        # Show first 3 rows before dropping
-        print(f"[PARSE] First 3 rows before dropping NaN:", flush=True)
-        for i in range(min(3, len(df))):
-            print(
-                f"  Row {i}: date={df.iloc[i]['transaction_date']}, desc={df.iloc[i]['description']}, amt={df.iloc[i]['amount']}",
-                flush=True)
-
-        # Remove rows with invalid dates or amounts
-        df = df.dropna(subset=['transaction_date', 'amount'])
-        print(f"[PARSE] After dropping NaN: {len(df)} rows remaining", flush=True)
-
-        # Add month_year column
-        df['month_year'] = df['transaction_date'].dt.strftime('%Y-%m')
-
-        # Add transaction_type column
-        df['transaction_type'] = transaction_type
-
-        return df
+        print(f"[NORMALIZER] Successfully parsed {len(canonical)} credit transactions", flush=True)
+        return canonical
 
     except Exception as e:
         raise ValueError(f"Error parsing file: {str(e)}")
 
 
-# ==================== TRANSACTION TABS ENDPOINTS ====================
-
-@transactions_bp.route('/api/transaction-tabs', methods=['GET'])
-def get_transaction_tabs():
-    """Get all transaction tabs for the current user"""
-    try:
-        username = request.args.get('username')
-        user_role = request.args.get('role')
-
-        with get_db_connection() as connection:
-            cursor = connection.cursor(dictionary=True)
-
-            query = "SELECT * FROM transaction_tabs WHERE 1=1"
-            params = []
-
-            if user_role == 'limited':
-                query += " AND owner = %s"
-                params.append(username)
-
-            query += " ORDER BY created_at ASC"
-            cursor.execute(query, params)
-            tabs = cursor.fetchall()
-
-            for tab in tabs:
-                if tab.get('created_at'):
-                    tab['created_at'] = tab['created_at'].isoformat()
-
-            return jsonify(tabs)
-
-    except Error as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@transactions_bp.route('/api/transaction-tabs', methods=['POST'])
-def create_transaction_tab():
-    """Create a new transaction tab"""
-    try:
-        data = request.json
-        name = data.get('name', '').strip()
-        owner = data.get('username')
-
-        if not name:
-            return jsonify({'error': 'Tab name is required'}), 400
-
-        with get_db_connection() as connection:
-            cursor = connection.cursor(dictionary=True)
-
-            cursor.execute(
-                "INSERT INTO transaction_tabs (name, owner) VALUES (%s, %s)",
-                (name, owner)
-            )
-            connection.commit()
-
-            tab_id = cursor.lastrowid
-            return jsonify({
-                'id': tab_id,
-                'name': name,
-                'owner': owner,
-                'message': 'Tab created successfully'
-            })
-
-    except Error as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@transactions_bp.route('/api/transaction-tabs/<int:tab_id>', methods=['PUT'])
-def update_transaction_tab(tab_id):
-    """Rename a transaction tab"""
-    try:
-        data = request.json
-        name = data.get('name', '').strip()
-
-        if not name:
-            return jsonify({'error': 'Tab name is required'}), 400
-
-        with get_db_connection() as connection:
-            cursor = connection.cursor()
-
-            cursor.execute(
-                "UPDATE transaction_tabs SET name = %s WHERE id = %s",
-                (name, tab_id)
-            )
-            connection.commit()
-
-            if cursor.rowcount == 0:
-                return jsonify({'error': 'Tab not found'}), 404
-
-            return jsonify({'message': 'Tab updated successfully'})
-
-    except Error as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@transactions_bp.route('/api/transaction-tabs/<int:tab_id>', methods=['DELETE'])
-def delete_transaction_tab(tab_id):
-    """Delete a transaction tab and its associated transactions"""
-    try:
-        with get_db_connection() as connection:
-            cursor = connection.cursor()
-
-            # Delete associated transactions first
-            cursor.execute(
-                "DELETE FROM bank_transactions WHERE tab_id = %s",
-                (tab_id,)
-            )
-            deleted_transactions = cursor.rowcount
-
-            # Delete the tab
-            cursor.execute(
-                "DELETE FROM transaction_tabs WHERE id = %s",
-                (tab_id,)
-            )
-            connection.commit()
-
-            if cursor.rowcount == 0:
-                return jsonify({'error': 'Tab not found'}), 404
-
-            return jsonify({
-                'message': f'Tab deleted with {deleted_transactions} transactions'
-            })
-
-    except Error as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@transactions_bp.route('/api/transaction-tabs/orphaned', methods=['GET'])
-def get_orphaned_transaction_count():
-    """Get count of transactions with no tab_id (orphaned from before tabs existed)"""
-    try:
-        with get_db_connection() as connection:
-            cursor = connection.cursor(dictionary=True)
-            cursor.execute("SELECT COUNT(*) as count FROM bank_transactions WHERE tab_id IS NULL")
-            result = cursor.fetchone()
-            return jsonify({'count': result['count']})
-    except Error as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@transactions_bp.route('/api/transaction-tabs/<int:tab_id>/adopt', methods=['POST'])
-def adopt_orphaned_transactions(tab_id):
-    """Assign all transactions with tab_id=NULL to the specified tab"""
-    try:
-        with get_db_connection() as connection:
-            cursor = connection.cursor()
-            cursor.execute("UPDATE bank_transactions SET tab_id = %s WHERE tab_id IS NULL", (tab_id,))
-            adopted_count = cursor.rowcount
-            connection.commit()
-            return jsonify({'message': f'{adopted_count} transactions assigned to tab', 'count': adopted_count})
-    except Error as e:
-        return jsonify({'error': str(e)}), 500
-
-
-
 # ==================== TRANSACTION ENDPOINTS ====================
 
 @transactions_bp.route('/api/transactions/upload', methods=['POST'])
-def upload_transactions():
+@token_required
+def upload_transactions(payload):
     """Upload and parse bank transaction file"""
     try:
         if 'file' not in request.files:
@@ -567,8 +358,10 @@ def upload_transactions():
                 'transaction_count': len(transactions),
                 'transactions': transactions,
                 'month_year': transactions[0]['month_year'] if transactions else None,
-                'temp_filename': filename,  # Return filename for re-encoding attempts
-                'transaction_type': transaction_type
+                'temp_filename': filename,
+                'transaction_type': transaction_type,
+                'normalizer_profile': df.attrs.get('normalizer_profile'),
+                'normalizer_confidence': df.attrs.get('normalizer_confidence'),
             }
 
             # Debug the JSON response
@@ -596,7 +389,8 @@ def upload_transactions():
 
 
 @transactions_bp.route('/api/transactions/encoding-preview', methods=['POST'])
-def encoding_preview():
+@token_required
+def encoding_preview(payload):
     """Show previews of file with different encodings to let user choose"""
     try:
         if 'file' not in request.files:
@@ -664,7 +458,8 @@ def encoding_preview():
 
 
 @transactions_bp.route('/api/transactions/upload-with-encoding', methods=['POST'])
-def upload_with_encoding():
+@token_required
+def upload_with_encoding(payload):
     """Upload file with user-selected encoding"""
     try:
         data = request.json
@@ -725,12 +520,13 @@ def upload_with_encoding():
 
 
 @transactions_bp.route('/api/transactions/save', methods=['POST'])
-def save_transactions():
+@token_required
+def save_transactions(payload):
     """Save parsed transactions to database with encryption"""
     try:
         data = request.json
         transactions = data.get('transactions', [])
-        username = data.get('username')  # Get uploader username
+        username = payload['username']  # Get uploader username from JWT
         tab_id = data.get('tab_id')
 
         if not transactions:
@@ -782,574 +578,6 @@ def save_transactions():
             return jsonify({
                 'success': True,
                 'message': f'{len(transactions)} transactions saved successfully (encrypted)'
-            })
-
-    except Error as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@transactions_bp.route('/api/transactions/months', methods=['GET'])
-def get_transaction_months():
-    """Get list of months with saved transactions (filtered by user role and tab)"""
-    try:
-        # Get username and role for filtering
-        username = request.args.get('username')
-        user_role = request.args.get('role')
-        tab_id = request.args.get('tab_id')
-
-        with get_db_connection() as connection:
-            cursor = connection.cursor(dictionary=True)
-
-            # Fetch individual rows to decrypt amounts in Python
-            query = """
-                SELECT month_year,
-                       amount,
-                       transaction_date,
-                       upload_date
-                FROM bank_transactions
-                WHERE 1=1
-            """
-            params = []
-
-            # Require tab_id for strict tab separation
-            if not tab_id:
-                return jsonify([])
-
-            query += " AND tab_id = %s"
-            params.append(tab_id)
-
-            # Filter by role
-            if user_role == 'limited':
-                query += " AND uploaded_by = %s"
-                params.append(username)
-            # admin and shared see all
-
-            cursor.execute(query, params)
-            rows = cursor.fetchall()
-
-            # Decrypt amounts and aggregate by month
-            month_data = {}
-            for row in rows:
-                my = row['month_year']
-                if my not in month_data:
-                    month_data[my] = {
-                        'month_year': my,
-                        'transaction_count': 0,
-                        'total_amount': 0.0,
-                        'start_date': row['transaction_date'],
-                        'end_date': row['transaction_date'],
-                        'last_upload': row['upload_date']
-                    }
-                month_data[my]['transaction_count'] += 1
-                try:
-                    decrypted = decrypt_field(row['amount'])
-                    month_data[my]['total_amount'] += float(decrypted) if decrypted else 0.0
-                except (ValueError, TypeError):
-                    pass
-                # Track min/max dates
-                if row['transaction_date']:
-                    if not month_data[my]['start_date'] or row['transaction_date'] < month_data[my]['start_date']:
-                        month_data[my]['start_date'] = row['transaction_date']
-                    if not month_data[my]['end_date'] or row['transaction_date'] > month_data[my]['end_date']:
-                        month_data[my]['end_date'] = row['transaction_date']
-                if row['upload_date']:
-                    if not month_data[my]['last_upload'] or row['upload_date'] > month_data[my]['last_upload']:
-                        month_data[my]['last_upload'] = row['upload_date']
-
-            # Convert to sorted list
-            months = sorted(month_data.values(), key=lambda x: x['month_year'], reverse=True)
-
-            for month in months:
-                if month['total_amount']:
-                    month['total_amount'] = float(month['total_amount'])
-                if month['start_date']:
-                    month['start_date'] = month['start_date'].isoformat()
-                if month['end_date']:
-                    month['end_date'] = month['end_date'].isoformat()
-                if month['last_upload']:
-                    month['last_upload'] = month['last_upload'].isoformat()
-
-            return jsonify(months)
-
-    except Error as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@transactions_bp.route('/api/transactions/all', methods=['GET'])
-def get_all_transactions():
-    """Get all transactions (filtered by user role and tab) with decryption"""
-    try:
-        # Get username and role for filtering
-        username = request.args.get('username')
-        user_role = request.args.get('role')
-        tab_id = request.args.get('tab_id')
-
-        with get_db_connection() as connection:
-            cursor = connection.cursor(dictionary=True)
-
-            # Build query based on role
-            query = """
-                SELECT id,
-                       account_number,
-                       transaction_date,
-                       description,
-                       amount,
-                       month_year,
-                       transaction_type,
-                       upload_date,
-                       uploaded_by
-                FROM bank_transactions
-                WHERE 1=1
-            """
-            params = []
-
-            # Require tab_id for strict tab separation
-            if not tab_id:
-                return jsonify([])
-
-            query += " AND tab_id = %s"
-            params.append(tab_id)
-
-            # Filter by role
-            if user_role == 'limited':
-                query += " AND uploaded_by = %s"
-                params.append(username)
-            # admin and shared see all transactions
-
-            query += " ORDER BY transaction_date DESC, id DESC"
-
-            cursor.execute(query, params)
-            transactions = cursor.fetchall()
-
-            # Decrypt sensitive fields and convert types
-            for trans in transactions:
-                # Decrypt sensitive fields
-                trans['account_number'] = decrypt_field(trans['account_number'])
-                trans['description'] = decrypt_field(trans['description'])
-                trans['amount'] = decrypt_field(trans['amount'])
-
-                # Convert types after decryption
-                if trans['transaction_date']:
-                    trans['transaction_date'] = trans['transaction_date'].isoformat()
-                if trans['amount']:
-                    try:
-                        trans['amount'] = float(trans['amount'])
-                    except (ValueError, TypeError):
-                        trans['amount'] = 0.0
-                if trans['upload_date']:
-                    trans['upload_date'] = trans['upload_date'].isoformat()
-                if not trans.get('transaction_type'):
-                    trans['transaction_type'] = 'credit'
-
-            # Audit log
-            log_bank_transaction_access(
-                username=username,
-                action='VIEW_ALL',
-                transaction_ids=f"Count: {len(transactions)}"
-            )
-
-            return jsonify(transactions)
-
-    except Error as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@transactions_bp.route('/api/transactions/<month_year>', methods=['GET'])
-def get_transactions_by_month(month_year):
-    """Get all transactions for a specific month (filtered by user role and tab) with decryption"""
-    try:
-        # Get username and role for filtering
-        username = request.args.get('username')
-        user_role = request.args.get('role')
-        tab_id = request.args.get('tab_id')
-
-        with get_db_connection() as connection:
-            cursor = connection.cursor(dictionary=True)
-
-            # Build query based on role
-            query = """
-                SELECT id,
-                       account_number,
-                       transaction_date,
-                       description,
-                       amount,
-                       month_year,
-                       transaction_type,
-                       upload_date,
-                       uploaded_by
-                FROM bank_transactions
-                WHERE month_year = %s
-            """
-            params = [month_year]
-
-            # Require tab_id for strict tab separation
-            if not tab_id:
-                return jsonify([])
-
-            query += " AND tab_id = %s"
-            params.append(tab_id)
-
-            # Filter by role
-            if user_role == 'limited':
-                query += " AND uploaded_by = %s"
-                params.append(username)
-            # admin and shared see all
-
-            query += " ORDER BY transaction_date DESC, id DESC"
-
-            cursor.execute(query, params)
-            transactions = cursor.fetchall()
-
-            # Decrypt sensitive fields and convert types
-            for trans in transactions:
-                # Decrypt sensitive fields
-                trans['account_number'] = decrypt_field(trans['account_number'])
-                trans['description'] = decrypt_field(trans['description'])
-                trans['amount'] = decrypt_field(trans['amount'])
-
-                # Convert types after decryption
-                if trans['transaction_date']:
-                    trans['transaction_date'] = trans['transaction_date'].isoformat()
-                if trans['amount']:
-                    try:
-                        trans['amount'] = float(trans['amount'])
-                    except (ValueError, TypeError):
-                        trans['amount'] = 0.0
-                if trans['upload_date']:
-                    trans['upload_date'] = trans['upload_date'].isoformat()
-                if not trans.get('transaction_type'):
-                    trans['transaction_type'] = 'credit'
-
-            # Audit log
-            log_bank_transaction_access(
-                username=username,
-                action='VIEW_MONTH',
-                month_year=month_year,
-                transaction_ids=f"Count: {len(transactions)}"
-            )
-
-            return jsonify(transactions)
-
-    except Error as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@transactions_bp.route('/api/transactions/<int:transaction_id>', methods=['DELETE'])
-def delete_transaction(transaction_id):
-    """Delete a specific transaction with audit logging"""
-    try:
-        username = request.args.get('username', 'unknown')
-
-        with get_db_connection() as connection:
-            cursor = connection.cursor()
-
-            cursor.execute("DELETE FROM bank_transactions WHERE id = %s", (transaction_id,))
-            connection.commit()
-
-            if cursor.rowcount == 0:
-                return jsonify({'error': 'Transaction not found'}), 404
-
-            # Audit log
-            log_bank_transaction_access(
-                username=username,
-                action='DELETE',
-                transaction_ids=str(transaction_id)
-            )
-
-            return jsonify({'message': 'Transaction deleted successfully'})
-
-    except Error as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@transactions_bp.route('/api/transactions/month/<month_year>', methods=['DELETE'])
-def delete_month_transactions(month_year):
-    """Delete all transactions for a specific month with audit logging"""
-    try:
-        username = request.args.get('username', 'unknown')
-        tab_id = request.args.get('tab_id')
-
-        with get_db_connection() as connection:
-            cursor = connection.cursor()
-
-            # Require tab_id for strict tab separation
-            if not tab_id:
-                return jsonify({'error': 'tab_id is required'}), 400
-
-            cursor.execute("DELETE FROM bank_transactions WHERE month_year = %s AND tab_id = %s", (month_year, tab_id))
-            deleted_count = cursor.rowcount
-            connection.commit()
-
-            # Audit log
-            log_bank_transaction_access(
-                username=username,
-                action='DELETE_MONTH',
-                month_year=month_year,
-                transaction_ids=f"Count: {deleted_count}"
-            )
-
-            return jsonify({
-                'message': f'{deleted_count} transactions deleted successfully'
-            })
-
-    except Error as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@transactions_bp.route('/api/transactions/<int:transaction_id>', methods=['PUT'])
-def update_transaction(transaction_id):
-    """Update a specific transaction with encryption"""
-    try:
-        data = request.json
-        username = data.get('username', 'unknown')
-
-        with get_db_connection() as connection:
-            cursor = connection.cursor()
-
-            # Encrypt sensitive fields
-            encrypted_account = encrypt_field(data.get('account_number', ''))
-            encrypted_description = encrypt_field(data['description'])
-            encrypted_amount = encrypt_field(str(data['amount']))
-
-            query = """
-                    UPDATE bank_transactions
-                    SET transaction_date = %s,
-                        description      = %s,
-                        amount           = %s,
-                        month_year       = %s,
-                        account_number   = %s,
-                        transaction_type = %s
-                    WHERE id = %s
-                    """
-
-            cursor.execute(query, (
-                data['transaction_date'],
-                encrypted_description,
-                encrypted_amount,
-                data['month_year'],
-                encrypted_account,
-                data.get('transaction_type', 'credit'),
-                transaction_id
-            ))
-            connection.commit()
-
-            # Audit log
-            log_bank_transaction_access(
-                username=username,
-                action='UPDATE',
-                transaction_ids=str(transaction_id)
-            )
-
-            return jsonify({'message': 'Transaction updated successfully (encrypted)'})
-
-    except Error as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@transactions_bp.route('/api/transactions/manual', methods=['POST'])
-def add_manual_transaction():
-    """Add a transaction manually with encryption"""
-    try:
-        data = request.json
-        username = data.get('username', 'admin')
-        tab_id = data.get('tab_id')
-
-        # Require tab_id for strict tab separation
-        if not tab_id:
-            return jsonify({'error': 'tab_id is required - select a tab first'}), 400
-
-        with get_db_connection() as connection:
-            cursor = connection.cursor()
-
-            # Encrypt sensitive fields
-            encrypted_account = encrypt_field(data.get('account_number', ''))
-            encrypted_description = encrypt_field(data['description'])
-            encrypted_amount = encrypt_field(str(data['amount']))
-
-            query = """
-                INSERT INTO bank_transactions
-                (account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by, tab_id)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """
-            cursor.execute(query, (
-                encrypted_account,
-                data['transaction_date'],
-                encrypted_description,
-                encrypted_amount,
-                data['month_year'],
-                data.get('transaction_type', 'credit'),
-                username,
-                tab_id
-            ))
-            connection.commit()
-
-            transaction_id = cursor.lastrowid
-
-            # Audit log
-            log_bank_transaction_access(
-                username=username,
-                action='MANUAL_ADD',
-                transaction_ids=str(transaction_id),
-                month_year=data.get('month_year')
-            )
-
-            return jsonify({
-                'message': 'Transaction added successfully (encrypted)',
-                'id': transaction_id
-            })
-
-    except Error as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@transactions_bp.route('/api/transactions/descriptions', methods=['GET'])
-def get_all_descriptions():
-    """Get all unique transaction descriptions"""
-    try:
-        with get_db_connection() as connection:
-            cursor = connection.cursor()
-
-            cursor.execute("""
-                           SELECT DISTINCT description
-                           FROM bank_transactions
-                           WHERE description IS NOT NULL
-                             AND description != ''
-                           ORDER BY description
-                           """)
-
-            descriptions = [row[0] for row in cursor.fetchall()]
-            return jsonify(descriptions)
-
-    except Error as e:
-        return jsonify({'error': str(e)}), 500
-
-
-@transactions_bp.route('/api/transactions/stats', methods=['GET'])
-def get_transaction_stats():
-    """Get transaction statistics including cash vs credit breakdown (filtered by user role and tab)"""
-    try:
-        # Get optional date filters
-        start_date = request.args.get('start_date')
-        end_date = request.args.get('end_date')
-        username = request.args.get('username')
-        user_role = request.args.get('role')
-        tab_id = request.args.get('tab_id')
-
-        print(f"[STATS DEBUG] tab_id={tab_id}, username={username}, role={user_role}")
-
-        with get_db_connection() as connection:
-            cursor = connection.cursor(dictionary=True)
-
-            # Require tab_id for strict tab separation
-            if not tab_id or tab_id == 'null' or tab_id == 'undefined':
-                print(f"[STATS DEBUG] Invalid tab_id, returning empty stats")
-                return jsonify({'by_type': [], 'monthly_by_type': []})
-
-            # Build filters
-            filters = ["tab_id = %s"]
-            params = [tab_id]
-
-            if start_date:
-                filters.append("transaction_date >= %s")
-                params.append(start_date)
-            if end_date:
-                filters.append("transaction_date <= %s")
-                params.append(end_date)
-            if user_role == 'limited':
-                filters.append("uploaded_by = %s")
-                params.append(username)
-
-            where_clause = " AND ".join(filters) if filters else "1=1"
-
-            # Fetch individual rows — amount is encrypted, so we must decrypt in Python
-            cursor.execute(f"""
-                SELECT
-                    transaction_type,
-                    amount,
-                    transaction_date,
-                    month_year
-                FROM bank_transactions
-                WHERE {where_clause}
-            """, params)
-
-            rows = cursor.fetchall()
-            print(f"[STATS DEBUG] Found {len(rows)} transactions for tab_id={tab_id}")
-
-            # Debug: Show sample of what we found
-            if len(rows) > 0:
-                print(f"[STATS DEBUG] Sample transaction: type={rows[0].get('transaction_type')}, date={rows[0].get('transaction_date')}")
-            else:
-                # Check if transactions exist without tab_id match
-                cursor.execute("SELECT COUNT(*) as count FROM bank_transactions WHERE tab_id IS NULL")
-                null_count = cursor.fetchone()
-                cursor.execute("SELECT COUNT(*) as count FROM bank_transactions")
-                total_count = cursor.fetchone()
-                print(f"[STATS DEBUG] Total transactions in DB: {total_count['count']}, NULL tab_id: {null_count['count']}")
-
-            # Aggregate by type in Python after decrypting amounts
-            type_stats = {}
-            for row in rows:
-                t = row['transaction_type'] or 'unknown'
-                if t not in type_stats:
-                    type_stats[t] = {
-                        'transaction_type': t,
-                        'transaction_count': 0,
-                        'total_amount': 0.0,
-                        'avg_amount': 0.0,
-                        'first_date': row['transaction_date'],
-                        'last_date': row['transaction_date']
-                    }
-                type_stats[t]['transaction_count'] += 1
-                try:
-                    decrypted = decrypt_field(row['amount'])
-                    amt = float(decrypted) if decrypted else 0.0
-                except (ValueError, TypeError):
-                    amt = 0.0
-                type_stats[t]['total_amount'] += amt
-                if row['transaction_date']:
-                    if not type_stats[t]['first_date'] or row['transaction_date'] < type_stats[t]['first_date']:
-                        type_stats[t]['first_date'] = row['transaction_date']
-                    if not type_stats[t]['last_date'] or row['transaction_date'] > type_stats[t]['last_date']:
-                        type_stats[t]['last_date'] = row['transaction_date']
-
-            by_type = []
-            for stat in type_stats.values():
-                if stat['transaction_count'] > 0:
-                    stat['avg_amount'] = stat['total_amount'] / stat['transaction_count']
-                if stat['first_date']:
-                    stat['first_date'] = stat['first_date'].isoformat()
-                if stat['last_date']:
-                    stat['last_date'] = stat['last_date'].isoformat()
-                by_type.append(stat)
-
-            # Aggregate monthly breakdown by type in Python
-            monthly_stats = {}
-            for row in rows:
-                key = (row['month_year'], row['transaction_type'] or 'unknown')
-                if key not in monthly_stats:
-                    monthly_stats[key] = {
-                        'month_year': row['month_year'],
-                        'transaction_type': key[1],
-                        'transaction_count': 0,
-                        'total_amount': 0.0
-                    }
-                monthly_stats[key]['transaction_count'] += 1
-                try:
-                    decrypted = decrypt_field(row['amount'])
-                    amt = float(decrypted) if decrypted else 0.0
-                except (ValueError, TypeError):
-                    amt = 0.0
-                monthly_stats[key]['total_amount'] += amt
-
-            monthly_by_type = sorted(
-                monthly_stats.values(),
-                key=lambda x: (x['month_year'], x['transaction_type']),
-                reverse=True
-            )
-
-            return jsonify({
-                'by_type': by_type,
-                'monthly_by_type': monthly_by_type
             })
 
     except Error as e:

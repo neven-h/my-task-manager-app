@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Smartphone, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5001';
+import API_BASE from './config';
 
 const TwoFactorSetup = () => {
     const navigate = useNavigate();
@@ -27,11 +26,25 @@ const TwoFactorSetup = () => {
     const setupTwoFactor = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${API_BASE}/api/auth/2fa/setup`, {
+            setError('');
+            
+            // Add timeout to prevent hanging forever
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+            
+            const response = await fetch(`${API_BASE}/auth/2fa/setup`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username })
+                body: JSON.stringify({ username }),
+                signal: controller.signal
             });
+            
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Server error: ${response.status} - ${errorText}`);
+            }
 
             const data = await response.json();
 
@@ -43,7 +56,11 @@ const TwoFactorSetup = () => {
                 setError(data.error || 'Failed to setup 2FA');
             }
         } catch (err) {
-            setError('Network error. Please try again.');
+            if (err.name === 'AbortError') {
+                setError('Request timed out. The server may be unavailable.');
+            } else {
+                setError(err.message || 'Network error. Please try again.');
+            }
             console.error('2FA setup error:', err);
         } finally {
             setLoading(false);
@@ -61,7 +78,7 @@ const TwoFactorSetup = () => {
 
         try {
             setLoading(true);
-            const response = await fetch(`${API_BASE}/api/auth/2fa/enable`, {
+            const response = await fetch(`${API_BASE}/auth/2fa/enable`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -113,7 +130,43 @@ const TwoFactorSetup = () => {
                     textAlign: 'center'
                 }}>
                     <Shield size={48} color="#667eea" style={{ marginBottom: '20px' }} />
-                    <h2>Setting up Two-Factor Authentication...</h2>
+                    {error ? (
+                        <>
+                            <h2 style={{ color: '#dc2626', marginBottom: '16px' }}>Setup Failed</h2>
+                            <p style={{ color: '#666', marginBottom: '24px' }}>{error}</p>
+                            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                                <button
+                                    onClick={() => navigate(-1)}
+                                    style={{
+                                        padding: '12px 24px',
+                                        background: '#f3f4f6',
+                                        border: '2px solid #e5e7eb',
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        fontWeight: 600
+                                    }}
+                                >
+                                    Go Back
+                                </button>
+                                <button
+                                    onClick={() => { setError(''); setupTwoFactor(); }}
+                                    style={{
+                                        padding: '12px 24px',
+                                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        fontWeight: 600
+                                    }}
+                                >
+                                    Try Again
+                                </button>
+                            </div>
+                        </>
+                    ) : (
+                        <h2>Setting up Two-Factor Authentication...</h2>
+                    )}
                 </div>
             </div>
         );

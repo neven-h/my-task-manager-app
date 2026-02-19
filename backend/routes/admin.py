@@ -3,16 +3,17 @@ from config import (
     get_db_connection, handle_error, DEBUG,
     encrypt_field, decrypt_field, cipher_suite,
     log_bank_transaction_access, init_db,
+    admin_required,
 )
 from mysql.connector import Error
-import os
 
 admin_bp = Blueprint('admin', __name__)
 
 # ============ CLIENT MANAGEMENT ENDPOINTS ============
 
 @admin_bp.route('/api/clients/manage', methods=['GET'])
-def get_all_clients_with_stats():
+@admin_required
+def get_all_clients_with_stats(payload):
     """Get all clients with their billable hours statistics"""
     try:
         with get_db_connection() as connection:
@@ -48,7 +49,8 @@ def get_all_clients_with_stats():
 
 
 @admin_bp.route('/api/clients/<client_name>', methods=['PUT'])
-def rename_client(client_name):
+@admin_required
+def rename_client(payload, client_name):
     """Rename a client across all tasks"""
     try:
         data = request.json
@@ -73,7 +75,8 @@ def rename_client(client_name):
 
 
 @admin_bp.route('/api/clients/<client_name>', methods=['DELETE'])
-def delete_client(client_name):
+@admin_required
+def delete_client(payload, client_name):
     """Delete all tasks for a specific client"""
     try:
         with get_db_connection() as connection:
@@ -91,7 +94,8 @@ def delete_client(client_name):
 
 
 @admin_bp.route('/api/clients/<client_name>/tasks', methods=['GET'])
-def get_client_tasks(client_name):
+@admin_required
+def get_client_tasks(payload, client_name):
     """Get all tasks for a specific client"""
     try:
         with get_db_connection() as connection:
@@ -120,7 +124,8 @@ def get_client_tasks(client_name):
 
 
 @admin_bp.route('/api/migrate-user-ownership', methods=['POST'])
-def migrate_user_ownership():
+@admin_required
+def migrate_user_ownership(payload):
     """Add owner column to categories_master, tags, and clients tables for user isolation"""
     try:
         with get_db_connection() as connection:
@@ -160,7 +165,8 @@ def migrate_user_ownership():
 
 
 @admin_bp.route('/api/migrate-encrypt-transactions', methods=['POST'])
-def migrate_encrypt_transactions():
+@admin_required
+def migrate_encrypt_transactions(payload):
     """
     CRITICAL SECURITY MIGRATION: Encrypt existing bank transaction data
 
@@ -171,12 +177,6 @@ def migrate_encrypt_transactions():
     is properly backed up before running!
     """
     try:
-        admin_password = request.json.get('admin_password')
-
-        # Require admin authentication
-        if not admin_password or admin_password != os.getenv('MIGRATION_PASSWORD'):
-            return jsonify({'error': 'Unauthorized - invalid admin password'}), 403
-
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
@@ -252,15 +252,75 @@ except Exception as e:
     print("⚠ App will start but database operations will fail until MySQL is configured")
 
 
+@admin_bp.route('/api/admin/diagnose-tasks', methods=['GET'])
+@admin_required
+def diagnose_tasks(payload):
+    """Show task counts grouped by created_by to identify orphaned (NULL) tasks."""
+    try:
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute("""
+                SELECT
+                    COALESCE(created_by, '(NULL - orphaned)') AS created_by,
+                    COUNT(*)           AS task_count,
+                    MIN(task_date)     AS oldest,
+                    MAX(task_date)     AS newest
+                FROM tasks
+                GROUP BY created_by
+                ORDER BY task_count DESC
+            """)
+            rows = cursor.fetchall()
+            for r in rows:
+                if r.get('oldest'):
+                    r['oldest'] = r['oldest'].isoformat()
+                if r.get('newest'):
+                    r['newest'] = r['newest'].isoformat()
+
+            cursor.execute("SELECT COUNT(*) AS total FROM tasks")
+            total = cursor.fetchone()['total']
+
+            return jsonify({'total_tasks': total, 'breakdown': rows})
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@admin_bp.route('/api/admin/repair-task-ownership', methods=['POST'])
+@admin_required
+def repair_task_ownership(payload):
+    """
+    Claim all tasks with created_by = NULL for the admin user.
+    These are tasks created before JWT auth was added to the create endpoint.
+    Safe to run multiple times (only affects NULL rows).
+    """
+    try:
+        admin_username = payload['username']
+        with get_db_connection() as connection:
+            cursor = connection.cursor()
+            cursor.execute("""
+                UPDATE tasks
+                SET created_by = %s
+                WHERE created_by IS NULL
+            """, (admin_username,))
+            connection.commit()
+            claimed = cursor.rowcount
+
+        return jsonify({
+            'success': True,
+            'claimed_tasks': claimed,
+            'assigned_to': admin_username,
+            'message': f'{claimed} orphaned task(s) assigned to {admin_username}'
+        })
+
+    except Error as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @admin_bp.route('/api/admin/migrate-db', methods=['POST'])
-def migrate_database():
+@admin_required
+def migrate_database(payload):
     """Manual database migration endpoint to add missing columns"""
     try:
-        # Simple auth check - in production, add proper authentication
-        auth_header = request.headers.get('Authorization')
-        if auth_header != f"Bearer {os.getenv('MIGRATION_SECRET', 'migration-secret-key')}":
-            return jsonify({'error': 'Unauthorized'}), 401
-        
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
             migrations_applied = []
