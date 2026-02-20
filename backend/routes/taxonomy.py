@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from config import get_db_connection, token_required
 from mysql.connector import Error
 
@@ -38,7 +38,8 @@ def manage_categories(payload):
 
                 return jsonify(cursor.fetchall())
         except Error as e:
-            return jsonify({'error': str(e)}), 500
+            current_app.logger.error('taxonomy db error: %s', e, exc_info=True)
+            return jsonify({'error': 'A database error occurred'}), 500
 
     elif request.method == 'POST':
         try:
@@ -64,7 +65,8 @@ def manage_categories(payload):
         except Error as e:
             if 'Duplicate entry' in str(e):
                 return jsonify({'error': 'Category already exists'}), 409
-            return jsonify({'error': str(e)}), 500
+            current_app.logger.error('taxonomy db error: %s', e, exc_info=True)
+            return jsonify({'error': 'A database error occurred'}), 500
 
 
 @taxonomy_bp.route('/api/categories/<category_id>', methods=['PUT', 'DELETE'])
@@ -107,7 +109,8 @@ def update_delete_category(payload, category_id):
 
                 return jsonify({'success': True})
         except Error as e:
-            return jsonify({'error': str(e)}), 500
+            current_app.logger.error('taxonomy db error: %s', e, exc_info=True)
+            return jsonify({'error': 'A database error occurred'}), 500
 
     elif request.method == 'DELETE':
         try:
@@ -130,7 +133,8 @@ def update_delete_category(payload, category_id):
 
                 return jsonify({'success': True})
         except Error as e:
-            return jsonify({'error': str(e)}), 500
+            current_app.logger.error('taxonomy db error: %s', e, exc_info=True)
+            return jsonify({'error': 'A database error occurred'}), 500
 
 
 # ================================
@@ -176,7 +180,8 @@ def manage_tags(payload):
 
                 return jsonify(cursor.fetchall())
         except Error as e:
-            return jsonify({'error': str(e)}), 500
+            current_app.logger.error('taxonomy db error: %s', e, exc_info=True)
+            return jsonify({'error': 'A database error occurred'}), 500
 
     elif request.method == 'POST':
         try:
@@ -197,7 +202,8 @@ def manage_tags(payload):
         except Error as e:
             if 'Duplicate entry' in str(e):
                 return jsonify({'error': 'Tag already exists'}), 409
-            return jsonify({'error': str(e)}), 500
+            current_app.logger.error('taxonomy db error: %s', e, exc_info=True)
+            return jsonify({'error': 'A database error occurred'}), 500
 
 
 @taxonomy_bp.route('/api/tags/<int:tag_id>', methods=['PUT', 'DELETE'])
@@ -235,7 +241,8 @@ def update_delete_tag(payload, tag_id):
 
                 return jsonify({'success': True})
         except Error as e:
-            return jsonify({'error': str(e)}), 500
+            current_app.logger.error('taxonomy db error: %s', e, exc_info=True)
+            return jsonify({'error': 'A database error occurred'}), 500
 
     elif request.method == 'DELETE':
         try:
@@ -258,7 +265,8 @@ def update_delete_tag(payload, tag_id):
 
                 return jsonify({'success': True})
         except Error as e:
-            return jsonify({'error': str(e)}), 500
+            current_app.logger.error('taxonomy db error: %s', e, exc_info=True)
+            return jsonify({'error': 'A database error occurred'}), 500
 
 
 # ================================
@@ -319,7 +327,8 @@ def manage_clients_list(payload):
                 return jsonify(all_clients)
 
         except Error as e:
-            return jsonify({'error': str(e)}), 500
+            current_app.logger.error('taxonomy db error: %s', e, exc_info=True)
+            return jsonify({'error': 'A database error occurred'}), 500
 
     elif request.method == 'POST':
         try:
@@ -349,4 +358,5 @@ def manage_clients_list(payload):
         except Error as e:
             if 'Duplicate entry' in str(e):
                 return jsonify({'error': 'Client already exists'}), 409
-            return jsonify({'error': str(e)}), 500
+            current_app.logger.error('taxonomy db error: %s', e, exc_info=True)
+            return jsonify({'error': 'A database error occurred'}), 500

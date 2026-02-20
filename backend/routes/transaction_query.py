@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from config import (
     get_db_connection, token_required, DEBUG,
     encrypt_field, decrypt_field, log_bank_transaction_access,
@@ -95,7 +95,8 @@ def get_transaction_months(payload):
             return jsonify(months)
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('transaction_query db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @transaction_query_bp.route('/api/transactions/all', methods=['GET'])
@@ -174,7 +175,8 @@ def get_all_transactions(payload):
             return jsonify(transactions)
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('transaction_query db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @transaction_query_bp.route('/api/transactions/<month_year>', methods=['GET'])
@@ -254,7 +256,8 @@ def get_transactions_by_month(payload, month_year):
             return jsonify(transactions)
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('transaction_query db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @transaction_query_bp.route('/api/transactions/<int:transaction_id>', methods=['DELETE'])
@@ -299,7 +302,8 @@ def delete_transaction(payload, transaction_id):
             return jsonify({'message': 'Transaction deleted successfully'})
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('transaction_query db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @transaction_query_bp.route('/api/transactions/month/<month_year>', methods=['DELETE'])
@@ -345,7 +349,8 @@ def delete_month_transactions(payload, month_year):
             })
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('transaction_query db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @transaction_query_bp.route('/api/transactions/<int:transaction_id>', methods=['PUT'])
@@ -397,7 +402,8 @@ def update_transaction(payload, transaction_id):
             return jsonify({'message': 'Transaction updated successfully (encrypted)'})
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('transaction_query db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @transaction_query_bp.route('/api/transactions/manual', methods=['POST'])
@@ -454,7 +460,8 @@ def add_manual_transaction(payload):
             })
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('transaction_query db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @transaction_query_bp.route('/api/transactions/descriptions', methods=['GET'])
@@ -477,7 +484,8 @@ def get_all_descriptions(payload):
             return jsonify(descriptions)
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('transaction_query db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @transaction_query_bp.route('/api/transactions/stats', methods=['GET'])
@@ -610,6 +618,7 @@ def get_transaction_stats(payload):
             })
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('transaction_query db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 

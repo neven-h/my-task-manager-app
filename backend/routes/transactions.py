@@ -385,7 +385,8 @@ def upload_transactions(payload):
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
     except Exception as e:
-        return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
+        current_app.logger.error('upload error: %s', e, exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred'}), 500
 
 
 @transactions_bp.route('/api/transactions/encoding-preview', methods=['POST'])
@@ -454,7 +455,8 @@ def encoding_preview(payload):
         })
 
     except Exception as e:
-        return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
+        current_app.logger.error('encoding-preview error: %s', e, exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred'}), 500
 
 
 @transactions_bp.route('/api/transactions/upload-with-encoding', methods=['POST'])
@@ -526,7 +528,8 @@ def upload_with_encoding(payload):
                 os.remove(file_path)
 
     except Exception as e:
-        return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
+        current_app.logger.error('upload-with-encoding error: %s', e, exc_info=True)
+        return jsonify({'error': 'An unexpected error occurred'}), 500
 
 
 @transactions_bp.route('/api/transactions/save', methods=['POST'])
@@ -591,6 +594,7 @@ def save_transactions(payload):
             })
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('save_transactions db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 

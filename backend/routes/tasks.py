@@ -5,6 +5,7 @@ from config import (
 )
 from mysql.connector import Error
 from datetime import datetime
+from email.utils import parseaddr
 import re
 
 tasks_bp = Blueprint('tasks', __name__)
@@ -456,8 +457,12 @@ def share_task(payload, task_id):
         if not email:
             return jsonify({'error': 'Email is required'}), 400
 
-        email_regex = r'^[^\s@]+@[^\s@]+\.[^\s@]+$'
-        if not re.match(email_regex, email):
+        # Validate email without a ReDoS-prone regex: parseaddr returns an
+        # empty string for the address part when the format is invalid.
+        if len(email) > 254 or '@' not in email or '.' not in email.split('@')[-1]:
+            return jsonify({'error': 'Invalid email address'}), 400
+        _, parsed_addr = parseaddr(email)
+        if not parsed_addr or parsed_addr != email:
             return jsonify({'error': 'Invalid email address'}), 400
 
         with get_db_connection() as connection:
