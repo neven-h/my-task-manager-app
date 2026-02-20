@@ -72,8 +72,8 @@ def export_csv(payload):
 
             output.seek(0)
             return send_file(
-                io.BytesIO(output.getvalue().encode('utf-8')),
-                mimetype='text/csv',
+                io.BytesIO(output.getvalue().encode('utf-8-sig')),
+                mimetype='text/csv; charset=utf-8',
                 as_attachment=True,
                 download_name=f'tasks_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
             )
@@ -158,8 +158,8 @@ def export_hours_report(payload):
 
             output.seek(0)
             return send_file(
-                io.BytesIO(output.getvalue().encode('utf-8')),
-                mimetype='text/csv',
+                io.BytesIO(output.getvalue().encode('utf-8-sig')),
+                mimetype='text/csv; charset=utf-8',
                 as_attachment=True,
                 download_name=f'hours_report_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
             )
@@ -195,7 +195,7 @@ def import_hours_report(payload):
                 for encoding in encodings_to_try:
                     try:
                         df = pd.read_csv(file_path, encoding=encoding)
-                        print(f"Successfully read file with encoding: {encoding}")
+                        current_app.logger.debug('task_export: read file with encoding %s', encoding)
                         break
                     except (UnicodeDecodeError, UnicodeError, LookupError):
                         continue
