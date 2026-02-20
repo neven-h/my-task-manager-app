@@ -9,7 +9,8 @@ const TaskList = () => {
         taskViewMode, setTaskViewMode,
         completedTasks, uncompletedTasks,
         openNewTaskForm, setShowBulkInput,
-        getStatusColor
+        getStatusColor,
+        rtlEnabled, setRtlEnabled,
     } = useTaskContext();
 
     return (
@@ -89,6 +90,14 @@ const TaskList = () => {
                         onClick={() => setTaskViewMode('uncompleted')}
                     >
                         Uncompleted Only
+                    </button>
+                    <button
+                        className={`btn btn-narrow ${rtlEnabled ? 'btn-blue' : 'btn-white'}`}
+                        onClick={() => setRtlEnabled(!rtlEnabled)}
+                        title="Toggle right-to-left text direction (for Hebrew / Arabic)"
+                        style={{marginLeft: 'auto'}}
+                    >
+                        RTL
                     </button>
                 </div>
             </div>
