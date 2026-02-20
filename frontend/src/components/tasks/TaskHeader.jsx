@@ -75,6 +75,16 @@ const TaskHeader = ({ showSidebar, setShowSidebar, setShowMobileMenu, setShowMob
                     <Menu size={24}/>
                 </button>
 
+                {/* Toggle Sidebar Button - outside scrollable area so it's always visible */}
+                <button
+                    className="btn btn-white"
+                    onClick={() => setShowSidebar(!showSidebar)}
+                    title={showSidebar ? "Hide Filters" : "Show Filters"}
+                    style={{padding: '10px', minWidth: 'auto', flexShrink: 0}}
+                >
+                    <Filter size={18}/>
+                </button>
+
                 {/* Desktop Header Buttons */}
                 <div className="desktop-header-buttons"
                      style={{
@@ -87,15 +97,6 @@ const TaskHeader = ({ showSidebar, setShowSidebar, setShowMobileMenu, setShowMob
                          overflowY: 'visible',
                          paddingBottom: '2px'
                      }}>
-                    {/* Toggle Sidebar Button */}
-                    <button
-                        className="btn btn-white"
-                        onClick={() => setShowSidebar(!showSidebar)}
-                        title={showSidebar ? "Hide Filters" : "Show Filters"}
-                        style={{padding: '10px', minWidth: 'auto'}}
-                    >
-                        <Filter size={18}/>
-                    </button>
 
                     {/* Show user info - only for admin */}
                     {isAdmin && (

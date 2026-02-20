@@ -61,7 +61,7 @@ const TaskCard = React.memo(({ task }) => {
                         </p>
                     )}
                     {task.categories && task.categories.length > 0 && (
-                        <div style={{display: 'flex', flexDirection: 'row', gap: '8px', flexWrap: 'wrap', marginBottom: '8px', alignItems: 'center'}}>
+                        <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px', alignItems: 'center'}}>
                             <Folder size={13} style={{color: '#1565c0', flexShrink: 0}} />
                             {task.categories.map((catId, idx) => (
                                 <span key={idx} className="tag"
@@ -72,7 +72,7 @@ const TaskCard = React.memo(({ task }) => {
                         </div>
                     )}
                     {task.tags && task.tags.length > 0 && (
-                        <div style={{display: 'flex', flexDirection: 'row', gap: '8px', flexWrap: 'wrap', marginTop: '8px', alignItems: 'center'}}>
+                        <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '8px', alignItems: 'center'}}>
                             <Tag size={13} style={{color: '#555', flexShrink: 0}} />
                             {task.tags.map((tag, idx) => {
                                 const isActive = filters.tags.includes(tag);
