@@ -3,6 +3,7 @@ import useTaskData from '../hooks/useTaskData';
 import useTaskFilters from '../hooks/useTaskFilters';
 import API_BASE from '../config';
 import { getAuthHeaders } from '../api.js';
+import storage, { STORAGE_KEYS } from '../utils/storage';
 
 const TaskContext = createContext(null);
 
@@ -45,23 +46,23 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
     // RTL preference (admin + limited only)
     const [rtlEnabled, setRtlEnabledState] = useState(() => {
         if (authRole === 'shared') return false;
-        return localStorage.getItem('taskRtlEnabled') === 'true';
+        return storage.get(STORAGE_KEYS.TASK_RTL_ENABLED) === 'true';
     });
     const setRtlEnabled = useCallback((val) => {
         setRtlEnabledState(val);
-        localStorage.setItem('taskRtlEnabled', String(val));
+        storage.set(STORAGE_KEYS.TASK_RTL_ENABLED, String(val));
     }, []);
 
     // Persist appView
     useEffect(() => {
-        const savedView = localStorage.getItem('lastActiveView');
+        const savedView = storage.get(STORAGE_KEYS.LAST_ACTIVE_VIEW);
         if (savedView && ['tasks', 'transactions', 'clients', 'portfolio'].includes(savedView)) {
             setAppView(savedView);
         }
     }, []);
 
     useEffect(() => {
-        localStorage.setItem('lastActiveView', appView);
+        storage.set(STORAGE_KEYS.LAST_ACTIVE_VIEW, appView);
     }, [appView]);
 
     // Load initial data

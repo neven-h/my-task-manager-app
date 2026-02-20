@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Edit2, Trash2, Plus, ArrowLeft, Clock, CheckCircle } from 'lucide-react';
 import API_BASE from './config';
 import { getAuthHeaders } from './api.js';
+import storage, { STORAGE_KEYS } from './utils/storage';
 
 // Centralized theme + fonts - matching TaskTracker theme
 const THEME = {
@@ -177,8 +178,8 @@ const ClientsManagement = ({ onBackToTasks }) => {
       setCreateLoading(true);
       setError(null);
       
-      // Get username from localStorage for owner field
-      const username = localStorage.getItem('authUser');
+      // Get username from storage for owner field
+      const username = storage.get(STORAGE_KEYS.AUTH_USER);
       
       if (!username) {
         setError('User not authenticated. Please log in again.');

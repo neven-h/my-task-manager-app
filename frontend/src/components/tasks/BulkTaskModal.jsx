@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Plus } from 'lucide-react';
 import { useTaskContext } from '../../context/TaskContext';
-
-const BULK_DRAFT_STORAGE_KEY = 'taskTracker_bulkDraft';
+import storage, { STORAGE_KEYS } from '../../utils/storage';
 
 const BulkTaskModal = () => {
     const {
@@ -18,16 +17,16 @@ const BulkTaskModal = () => {
     // Draft persistence
     const saveBulkDraft = () => {
         if (bulkTasksText.trim()) {
-            localStorage.setItem(BULK_DRAFT_STORAGE_KEY, bulkTasksText);
+            storage.set(STORAGE_KEYS.TASK_BULK_DRAFT, bulkTasksText);
         }
     };
 
     const loadBulkDraft = () => {
-        return localStorage.getItem(BULK_DRAFT_STORAGE_KEY) || '';
+        return storage.get(STORAGE_KEYS.TASK_BULK_DRAFT) || '';
     };
 
     const clearBulkDraft = () => {
-        localStorage.removeItem(BULK_DRAFT_STORAGE_KEY);
+        storage.remove(STORAGE_KEYS.TASK_BULK_DRAFT);
     };
 
     // Auto-save bulk tasks draft

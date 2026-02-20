@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import useBankTransactionData from '../hooks/useBankTransactionData';
 import { formatCurrency } from '../utils/formatCurrency';
+import storage, { STORAGE_KEYS } from '../utils/storage';
 
 const BankTransactionContext = createContext(null);
 
@@ -78,7 +79,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
                 return;
             }
 
-            const savedTabId = localStorage.getItem('activeTabId');
+            const savedTabId = storage.get(STORAGE_KEYS.ACTIVE_TAB_ID);
             let tabIdToUse = savedTabId && savedTabId !== 'null' ? parseInt(savedTabId) : null;
 
             if (!tabIdToUse || !fetchedTabs.find(t => t.id === tabIdToUse)) {
@@ -86,13 +87,13 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
             }
 
             setActiveTabId(tabIdToUse);
-            localStorage.setItem('activeTabId', String(tabIdToUse));
+            storage.set(STORAGE_KEYS.ACTIVE_TAB_ID, String(tabIdToUse));
 
             const fetchedMonths = await fetchSavedMonths(tabIdToUse);
             await fetchAllDescriptions();
             await fetchTransactionStats(tabIdToUse);
 
-            const savedMonth = localStorage.getItem('selectedMonth');
+            const savedMonth = storage.get(STORAGE_KEYS.SELECTED_MONTH);
             const monthList = fetchedMonths || [];
             if (savedMonth && savedMonth !== 'all' && monthList.some(m => m.month_year ? m.month_year === savedMonth : m === savedMonth)) {
                 await fetchMonthTransactions(savedMonth, tabIdToUse);
@@ -108,7 +109,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
 
     const handleSwitchTab = useCallback(async (tabId) => {
         setActiveTabId(tabId);
-        localStorage.setItem('activeTabId', String(tabId));
+        storage.set(STORAGE_KEYS.ACTIVE_TAB_ID, String(tabId));
         setSelectedMonth(null);
         setMonthTransactions([]);
         setUploadedData(null);
@@ -140,7 +141,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         if (result) {
             await fetchTabs();
             setActiveTabId(result.id);
-            localStorage.setItem('activeTabId', String(result.id));
+            storage.set(STORAGE_KEYS.ACTIVE_TAB_ID, String(result.id));
             setMonthTransactions([]);
             setSavedMonths([]);
             setSelectedMonth(null);
@@ -413,7 +414,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
 
     const onTabCreated = useCallback(async (newTabId) => {
         setActiveTabId(newTabId);
-        localStorage.setItem('activeTabId', String(newTabId));
+        storage.set(STORAGE_KEYS.ACTIVE_TAB_ID, String(newTabId));
         setMonthTransactions([]);
         setSavedMonths([]);
         setSelectedMonth(null);
@@ -430,7 +431,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
                 handleSwitchTab(updatedTabs[0].id);
             } else {
                 setActiveTabId(null);
-                localStorage.removeItem('activeTabId');
+                storage.remove(STORAGE_KEYS.ACTIVE_TAB_ID);
                 setMonthTransactions([]);
                 setSavedMonths([]);
                 setSelectedMonth(null);

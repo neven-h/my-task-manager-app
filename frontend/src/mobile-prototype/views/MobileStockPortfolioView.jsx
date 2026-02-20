@@ -5,15 +5,13 @@ import YahooPortfolioSection from '../../components/portfolio/YahooPortfolioSect
 import API_BASE from '../../config';
 import { formatCurrency, formatCurrencyWithCode } from '../../utils/formatCurrency';
 import { getAuthHeaders } from '../../api.js';
+import storage, { STORAGE_KEYS } from '../../utils/storage';
 
 const THEME = {
     bg: '#fff', primary: '#0000FF', secondary: '#FFD500', accent: '#FF0000',
     text: '#000', muted: '#666', success: '#00AA00', border: '#000'
 };
 const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
-
-// Mobile Stock Portfolio View Component
-const PORTFOLIO_DRAFT_STORAGE_KEY = 'mobile_portfolio_entry_draft';
 
 const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
     const [tabs, setTabs] = useState([]);
@@ -259,18 +257,17 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
 
     const saveDraft = () => {
         if (!editingEntry && hasFormData()) {
-            localStorage.setItem(PORTFOLIO_DRAFT_STORAGE_KEY, JSON.stringify({
+            storage.set(STORAGE_KEYS.MOBILE_PORTFOLIO_DRAFT, {
                 ...formData,
                 tab_id: activeTabId
-            }));
+            });
         }
     };
 
     const loadDraft = () => {
         try {
-            const draft = localStorage.getItem(PORTFOLIO_DRAFT_STORAGE_KEY);
-            if (draft) {
-                const draftData = JSON.parse(draft);
+            const draftData = storage.get(STORAGE_KEYS.MOBILE_PORTFOLIO_DRAFT);
+            if (draftData) {
                 // Only load if it's for the current tab or no tab was saved
                 if (!draftData.tab_id || draftData.tab_id === activeTabId) {
                     return draftData;
@@ -283,7 +280,7 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
     };
 
     const clearDraft = () => {
-        localStorage.removeItem(PORTFOLIO_DRAFT_STORAGE_KEY);
+        storage.remove(STORAGE_KEYS.MOBILE_PORTFOLIO_DRAFT);
     };
 
     const handleCloseForm = (forceClose = false) => {

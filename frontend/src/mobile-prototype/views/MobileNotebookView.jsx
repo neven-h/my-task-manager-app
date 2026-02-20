@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Bold, Italic, Strikethrough } from 'lucide-react';
-
-const NOTEBOOK_STORAGE_KEY = 'taskTracker_mobile_notebook';
+import storage, { STORAGE_KEYS } from '../../utils/storage';
 
 const THEME = {
     bg: '#fff', primary: '#0000FF', secondary: '#FFD500', accent: '#FF0000',
@@ -18,7 +17,7 @@ const MobileNotebookView = ({ onBack }) => {
         if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
         saveTimeoutRef.current = setTimeout(() => {
             try {
-                localStorage.setItem(NOTEBOOK_STORAGE_KEY, html || '');
+                storage.set(STORAGE_KEYS.MOBILE_NOTEBOOK, html || '');
             } catch (e) {
                 console.error('Notebook save error:', e);
             }
@@ -78,7 +77,7 @@ const MobileNotebookView = ({ onBack }) => {
                     if (el && !loadedRef.current) {
                         loadedRef.current = true;
                         try {
-                            const saved = localStorage.getItem(NOTEBOOK_STORAGE_KEY);
+                            const saved = storage.get(STORAGE_KEYS.MOBILE_NOTEBOOK);
                             if (saved) el.innerHTML = saved;
                         } catch (e) {
                             console.error('Notebook load error:', e);
