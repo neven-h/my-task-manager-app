@@ -10,6 +10,7 @@ import MobileTaskTracker from './mobile-prototype/MobileTaskTracker';
 import TwoFactorSetup from './TwoFactorSetup';
 import SettingsPage from './SettingsPage';
 import API_BASE from './config';
+import storage, { STORAGE_KEYS } from './utils/storage';
 
 const App = () => {
   const navigate = useNavigate();
@@ -38,9 +39,9 @@ const App = () => {
   // Check if user is already logged in on mount
   useEffect(() => {
     const validateAndRestoreSession = async () => {
-      const token = localStorage.getItem('authToken');
-      const user = localStorage.getItem('authUser');
-      const role = localStorage.getItem('authRole');
+      const token = storage.get(STORAGE_KEYS.AUTH_TOKEN);
+      const user = storage.get(STORAGE_KEYS.AUTH_USER);
+      const role = storage.get(STORAGE_KEYS.AUTH_ROLE);
 
       if (token && user) {
         try {
@@ -60,26 +61,20 @@ const App = () => {
             setAuthUser(user);
             setAuthRole(role || 'limited');
           } else {
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('authUser');
-            localStorage.removeItem('authRole');
+            storage.clearAuth();
           }
         } catch (error) {
           // Handle timeout gracefully - this is expected when backend is unresponsive
           if (error.name === 'AbortError') {
             // Timeout occurred - backend is likely down or slow
             // Silently clear session and let user login again
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('authUser');
-            localStorage.removeItem('authRole');
+            storage.clearAuth();
             return; // Exit early, don't log as error
           }
-          
+
           // Log other errors (network errors, etc.)
           console.error('Token validation failed:', error);
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('authUser');
-          localStorage.removeItem('authRole');
+          storage.clearAuth();
         }
       }
       setIsAuthenticating(false);
@@ -89,9 +84,9 @@ const App = () => {
   }, []);
 
   const handleLogin = (token, username, role) => {
-    localStorage.setItem('authToken', token);
-    localStorage.setItem('authUser', username);
-    localStorage.setItem('authRole', role || 'limited');
+    storage.set(STORAGE_KEYS.AUTH_TOKEN, token);
+    storage.set(STORAGE_KEYS.AUTH_USER, username);
+    storage.set(STORAGE_KEYS.AUTH_ROLE, role || 'limited');
     setAuthToken(token);
     setAuthUser(username);
     setAuthRole(role || 'limited');
@@ -99,9 +94,7 @@ const App = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('authUser');
-    localStorage.removeItem('authRole');
+    storage.clearAuth();
     setAuthToken(null);
     setAuthUser(null);
     setAuthRole(null);

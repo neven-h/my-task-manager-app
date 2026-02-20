@@ -2,6 +2,7 @@
  * Shared API utilities — centralises auth header injection.
  * Import getAuthHeaders() in every component that makes fetch calls.
  */
+import storage, { STORAGE_KEYS } from './utils/storage';
 
 /**
  * Returns headers with Authorization Bearer token + Content-Type.
@@ -10,7 +11,7 @@
  * @param {boolean} [contentType=true] - include Content-Type: application/json
  */
 export const getAuthHeaders = (contentType = true) => {
-  const token = localStorage.getItem('authToken');
+  const token = storage.get(STORAGE_KEYS.AUTH_TOKEN);
   const headers = {};
   if (contentType) {
     headers['Content-Type'] = 'application/json';

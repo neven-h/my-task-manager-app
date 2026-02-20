@@ -228,7 +228,19 @@ def import_hours_report(payload):
                             continue
 
                         client = str(row.get('Client', '')).strip() if pd.notna(row.get('Client')) else ''
-                        category = str(row.get('Category', 'other')).strip() if pd.notna(row.get('Category')) else 'other'
+
+                        # Category column is a comma-separated string as written by the exporter.
+                        # Split it back into a list and store as JSON for the `categories` column;
+                        # keep the first entry (or empty string) for the legacy `category` column.
+                        import json as _json
+                        raw_category = str(row.get('Category', '')).strip() if pd.notna(row.get('Category')) else ''
+                        if raw_category:
+                            categories_list = [c.strip() for c in raw_category.split(',') if c.strip()]
+                        else:
+                            categories_list = []
+                        categories_json = _json.dumps(categories_list) if categories_list else _json.dumps([])
+                        category_legacy = categories_list[0] if categories_list else ''
+
                         duration = row.get('Hours')
                         status = str(row.get('Status', 'completed')).strip().lower() if pd.notna(row.get('Status')) else 'completed'
                         notes = str(row.get('Notes', '')).strip() if pd.notna(row.get('Notes')) else ''
@@ -248,7 +260,7 @@ def import_hours_report(payload):
                                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                                 """
                         values = (
-                            title, '', category, category, client,
+                            title, '', category_legacy, categories_json, client,
                             task_date.strftime('%Y-%m-%d'), '00:00:00', duration,
                             status if status in ['completed', 'uncompleted'] else 'completed',
                             '', notes

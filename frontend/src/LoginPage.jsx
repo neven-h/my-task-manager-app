@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Lock, User, Eye, EyeOff, ArrowLeft, AlertCircle, Loader, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import API_BASE from './config';
+import storage, { STORAGE_KEYS } from './utils/storage';
 
 const LoginPage = ({ onLogin, onBack }) => {
   const [username, setUsername] = useState('');
@@ -40,11 +41,11 @@ const LoginPage = ({ onLogin, onBack }) => {
         }
 
         // No 2FA required, proceed with login
-        localStorage.setItem('authToken', data.token);
-        localStorage.setItem('authUser', data.username);
-        localStorage.setItem('authRole', data.role);
-        localStorage.setItem('username', data.username);
-        localStorage.setItem('role', data.role);
+        storage.set(STORAGE_KEYS.AUTH_TOKEN, data.token);
+        storage.set(STORAGE_KEYS.AUTH_USER, data.username);
+        storage.set(STORAGE_KEYS.AUTH_ROLE, data.role);
+        storage.set(STORAGE_KEYS.USERNAME, data.username);
+        storage.set(STORAGE_KEYS.ROLE, data.role);
         onLogin(data.token, data.username, data.role);
       } else {
         setError(data.error || 'Invalid username or password');
@@ -77,11 +78,11 @@ const LoginPage = ({ onLogin, onBack }) => {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        localStorage.setItem('authToken', data.token);
-        localStorage.setItem('authUser', data.username);
-        localStorage.setItem('authRole', data.role);
-        localStorage.setItem('username', data.username);
-        localStorage.setItem('role', data.role);
+        storage.set(STORAGE_KEYS.AUTH_TOKEN, data.token);
+        storage.set(STORAGE_KEYS.AUTH_USER, data.username);
+        storage.set(STORAGE_KEYS.AUTH_ROLE, data.role);
+        storage.set(STORAGE_KEYS.USERNAME, data.username);
+        storage.set(STORAGE_KEYS.ROLE, data.role);
         onLogin(data.token, data.username, data.role);
       } else {
         setError(data.error || 'Invalid verification code');
