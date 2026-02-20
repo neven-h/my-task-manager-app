@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from config import (
     get_db_connection, token_required, DEBUG,
     _fetch_stock_info_robust,
@@ -102,7 +102,8 @@ def import_yahoo_portfolio(payload):
                     })
 
             except Exception as e:
-                return jsonify({'error': f'Failed to parse CSV: {str(e)}'}), 400
+                current_app.logger.error('yahoo_portfolio CSV parse error: %s', e, exc_info=True)
+                return jsonify({'error': 'Failed to parse CSV file'}), 400
 
         # Handle JSON body with manual ticker list
         elif request.is_json:
@@ -190,7 +191,8 @@ def import_yahoo_portfolio(payload):
                     """, (username, item['ticker'], item['name'], item['quantity'], item['cost_basis'], item['currency']))
                     saved_count += 1
                 except Exception as e:
-                    errors.append(f"{item['ticker']}: {str(e)}")
+                    current_app.logger.error('yahoo_portfolio save error for %s: %s', item['ticker'], e, exc_info=True)
+                    errors.append(f"{item['ticker']}: failed to save")
 
             connection.commit()
 
@@ -202,7 +204,8 @@ def import_yahoo_portfolio(payload):
         }, 201)
 
     except Exception as e:
-        return jsonify({'error': f'Import failed: {str(e)}'}), 500
+        current_app.logger.error('yahoo_portfolio import error: %s', e, exc_info=True)
+        return jsonify({'error': 'Import failed'}), 500
 
 
 @portfolio_yahoo_bp.route('/api/portfolio/yahoo-holdings', methods=['GET'])
@@ -321,7 +324,8 @@ def get_yahoo_holdings(payload):
             })
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('yahoo_portfolio db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @portfolio_yahoo_bp.route('/api/portfolio/yahoo-holdings/<int:holding_id>', methods=['PUT'])
@@ -363,7 +367,8 @@ def update_yahoo_holding(payload, holding_id):
             return jsonify({'message': 'Holding updated successfully'})
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('yahoo_portfolio db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @portfolio_yahoo_bp.route('/api/portfolio/yahoo-holdings/<int:holding_id>', methods=['DELETE'])
@@ -386,7 +391,8 @@ def delete_yahoo_holding(payload, holding_id):
             return jsonify({'message': 'Holding removed successfully'})
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('yahoo_portfolio db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @portfolio_yahoo_bp.route('/api/portfolio/yahoo-holdings/clear', methods=['DELETE'])
@@ -405,7 +411,7 @@ def clear_yahoo_holdings(payload):
             return jsonify({'message': f'Cleared {deleted} holdings', 'deleted': deleted})
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
-
+        current_app.logger.error('yahoo_portfolio db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
