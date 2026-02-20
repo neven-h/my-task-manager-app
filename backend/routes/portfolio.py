@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from config import (
     get_db_connection, handle_error, token_required, DEBUG,
     _fetch_stock_info_robust, _yahoo_search_tickers,
@@ -161,7 +161,8 @@ def get_portfolio_entries(payload):
                 return jsonify(entries)
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('portfolio db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @portfolio_bp.route('/api/portfolio', methods=['POST'])
@@ -248,7 +249,8 @@ def create_portfolio_entry(payload):
             }, 201)
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('portfolio db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @portfolio_bp.route('/api/portfolio/<int:entry_id>', methods=['PUT'])
@@ -344,7 +346,8 @@ def update_portfolio_entry(payload, entry_id):
             return jsonify({'message': 'Portfolio entry updated successfully'})
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('portfolio db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @portfolio_bp.route('/api/portfolio/<int:entry_id>', methods=['DELETE'])
@@ -380,7 +383,8 @@ def delete_portfolio_entry(payload, entry_id):
             return jsonify({'message': 'Portfolio entry deleted successfully'})
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('portfolio db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @portfolio_bp.route('/api/portfolio/names', methods=['GET'])
@@ -414,7 +418,8 @@ def get_portfolio_stock_names(payload):
             return jsonify([stock['name'] for stock in stocks])
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('portfolio db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @portfolio_bp.route('/api/portfolio/summary', methods=['GET'])
@@ -592,12 +597,10 @@ def get_portfolio_summary(payload):
             })
 
     except Error as e:
-        print(f"Database error in get_portfolio_summary: {e}")
-        return jsonify({'error': f'Database error: {str(e)}'}), 500
+        current_app.logger.error('portfolio db error in summary: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
     except Exception as e:
-        print(f"Unexpected error in get_portfolio_summary: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': f'Failed to load summary: {str(e)}'}), 500
+        current_app.logger.error('portfolio unexpected error in summary: %s', e, exc_info=True)
+        return jsonify({'error': 'Failed to load summary'}), 500
 
 

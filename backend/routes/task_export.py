@@ -79,7 +79,8 @@ def export_csv(payload):
             )
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('task_export db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @task_export_bp.route('/api/export/hours-report', methods=['GET'])
@@ -164,7 +165,8 @@ def export_hours_report(payload):
             )
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('task_export db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @task_export_bp.route('/api/import/hours-report', methods=['POST'])
@@ -293,4 +295,5 @@ def import_hours_report(payload):
             raise e
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('task_export db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500

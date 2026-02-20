@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from config import (
     get_db_connection, serialize_task, token_required, admin_required,
     DEBUG, app, mail, FRONTEND_URL,
@@ -164,7 +164,8 @@ def get_tasks(payload):
                 return jsonify(tasks)
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('tasks db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @tasks_bp.route('/api/tasks', methods=['POST'])
@@ -229,7 +230,8 @@ def create_task(payload):
             return jsonify({'id': cursor.lastrowid, 'message': 'Task created successfully'})
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('tasks db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @tasks_bp.route('/api/tasks/<int:task_id>', methods=['PUT'])
@@ -315,7 +317,8 @@ def update_task(payload, task_id):
             return jsonify({'message': 'Task updated successfully'})
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('tasks db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @tasks_bp.route('/api/tasks/<int:task_id>', methods=['DELETE'])
@@ -348,7 +351,8 @@ def delete_task(payload, task_id):
             return jsonify({'message': 'Task deleted successfully'})
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('tasks db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @tasks_bp.route('/api/tasks/<int:task_id>/toggle-status', methods=['PATCH'])
@@ -382,7 +386,8 @@ def toggle_task_status(payload, task_id):
             return jsonify({'message': 'Status updated successfully', 'status': new_status})
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('tasks db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @tasks_bp.route('/api/tasks/<int:task_id>/duplicate', methods=['POST'])
@@ -437,7 +442,8 @@ def duplicate_task(payload, task_id):
             return jsonify({'message': 'Task duplicated successfully', 'id': cursor.lastrowid}), 201
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('tasks db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 # ================================
@@ -550,7 +556,8 @@ def get_drafts(payload):
             return jsonify(drafts)
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('tasks db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 # ================================
@@ -623,4 +630,5 @@ def get_stats(payload):
             })
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('tasks db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
