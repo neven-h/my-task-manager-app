@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from config import get_db_connection, token_required
 from mysql.connector import Error
 
@@ -35,7 +35,8 @@ def get_transaction_tabs(payload):
             return jsonify(tabs)
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('transaction_tabs db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @transaction_tabs_bp.route('/api/transaction-tabs', methods=['POST'])
@@ -68,7 +69,8 @@ def create_transaction_tab(payload):
             })
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('transaction_tabs db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @transaction_tabs_bp.route('/api/transaction-tabs/<int:tab_id>', methods=['PUT'])
@@ -109,7 +111,8 @@ def update_transaction_tab(payload, tab_id):
             return jsonify({'message': 'Tab updated successfully'})
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('transaction_tabs db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @transaction_tabs_bp.route('/api/transaction-tabs/<int:tab_id>', methods=['DELETE'])
@@ -156,7 +159,8 @@ def delete_transaction_tab(payload, tab_id):
             })
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('transaction_tabs db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @transaction_tabs_bp.route('/api/transaction-tabs/orphaned', methods=['GET'])
@@ -170,7 +174,8 @@ def get_orphaned_transaction_count(payload):
             result = cursor.fetchone()
             return jsonify({'count': result['count']})
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('transaction_tabs db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @transaction_tabs_bp.route('/api/transaction-tabs/<int:tab_id>/adopt', methods=['POST'])
@@ -199,7 +204,8 @@ def adopt_orphaned_transactions(payload, tab_id):
             connection.commit()
             return jsonify({'message': f'{adopted_count} transactions assigned to tab', 'count': adopted_count})
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('transaction_tabs db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 
