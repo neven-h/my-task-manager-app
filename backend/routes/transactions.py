@@ -383,7 +383,8 @@ def upload_transactions(payload):
             raise e
 
     except ValueError as e:
-        return jsonify({'error': str(e)}), 400
+        current_app.logger.error('upload validation error: %s', e, exc_info=True)
+        return jsonify({'error': 'Invalid file or data'}), 400
     except Exception as e:
         current_app.logger.error('upload error: %s', e, exc_info=True)
         return jsonify({'error': 'An unexpected error occurred'}), 500

@@ -119,10 +119,7 @@ def login():
             'error': 'Invalid username or password'
         }), 401
     except Exception as e:
-        # Log the error but don't expose internal details to the client
-        print(f"Login error: {e}")
-        if DEBUG:
-            return jsonify({'error': f'Internal server error: {str(e)}'}), 500
+        current_app.logger.error('login error: %s', e, exc_info=True)
         return jsonify({'error': 'Internal server error'}), 500
 
 
@@ -335,8 +332,8 @@ def verify_reset_token():
             })
             
     except Exception as e:
-        print(f"Verify token error: {e}")
-        return jsonify({'valid': False, 'error': str(e)}), 500
+        current_app.logger.error('verify_token error: %s', e, exc_info=True)
+        return jsonify({'valid': False, 'error': 'An error occurred'}), 500
 
 
 @auth_bp.route('/api/auth/reset-password', methods=['POST'])
@@ -400,8 +397,8 @@ def reset_password():
             })
             
     except Exception as e:
-        print(f"Reset password error: {e}")
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('reset_password error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 # ================================
@@ -475,8 +472,8 @@ def setup_2fa(payload):
             })
 
     except Exception as e:
-        print(f"2FA setup error: {e}")
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('2fa setup error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @auth_bp.route('/api/auth/2fa/enable', methods=['POST'])
@@ -524,8 +521,8 @@ def enable_2fa(payload):
             })
 
     except Exception as e:
-        print(f"2FA enable error: {e}")
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('2fa enable error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @auth_bp.route('/api/auth/2fa/verify', methods=['POST'])
@@ -570,8 +567,8 @@ def verify_2fa():
             return jsonify({'error': 'Invalid verification code. If you lost your phone, disable 2FA from a logged-in device.'}), 401
 
     except Exception as e:
-        print(f"2FA verify error: {e}")
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('2fa verify error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @auth_bp.route('/api/auth/2fa/disable', methods=['POST'])
@@ -619,8 +616,8 @@ def disable_2fa(payload):
             })
 
     except Exception as e:
-        print(f"2FA disable error: {e}")
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('2fa disable error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @auth_bp.route('/api/auth/2fa/status', methods=['GET'])
@@ -648,8 +645,8 @@ def get_2fa_status(payload):
             })
 
     except Exception as e:
-        print(f"2FA status error: {e}")
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('2fa status error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @auth_bp.route('/api/auth/user-info', methods=['GET'])
@@ -705,8 +702,8 @@ def get_user_info():
             })
 
     except Exception as e:
-        print(f"User info error: {e}")
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('user_info error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @auth_bp.route('/api/auth/change-password', methods=['POST'])
@@ -766,8 +763,8 @@ def change_password(payload):
             })
 
     except Exception as e:
-        print(f"Change password error: {e}")
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('change_password error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @auth_bp.route('/api/auth/delete-account', methods=['POST'])
@@ -855,7 +852,7 @@ def delete_account(payload):
             })
 
     except Exception as e:
-        print(f"Delete account error: {e}")
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('delete_account error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
