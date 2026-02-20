@@ -42,6 +42,16 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
     const [showBulkInput, setShowBulkInput] = useState(false);
     const [shareModalState, setShareModalState] = useState({ isOpen: false, sharingTask: null });
 
+    // RTL preference (admin + limited only)
+    const [rtlEnabled, setRtlEnabledState] = useState(() => {
+        if (authRole === 'shared') return false;
+        return localStorage.getItem('taskRtlEnabled') === 'true';
+    });
+    const setRtlEnabled = useCallback((val) => {
+        setRtlEnabledState(val);
+        localStorage.setItem('taskRtlEnabled', String(val));
+    }, []);
+
     // Persist appView
     useEffect(() => {
         const savedView = localStorage.getItem('lastActiveView');
@@ -368,6 +378,9 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
         showBulkInput, setShowBulkInput,
         shareModal: shareModalState,
         openShareModal, closeShareModal,
+
+        // Display preferences
+        rtlEnabled, setRtlEnabled,
     };
 
     return <TaskContext.Provider value={value}>{children}</TaskContext.Provider>;

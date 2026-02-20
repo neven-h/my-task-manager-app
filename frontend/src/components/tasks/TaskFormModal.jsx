@@ -157,10 +157,6 @@ const TaskFormModal = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (formData.categories.length === 0) {
-            setError('Please select at least one category');
-            return;
-        }
         const success = await submitTask(formData, editingTask);
         if (success) {
             clearDraft();
@@ -388,7 +384,7 @@ const TaskFormModal = () => {
                                     letterSpacing: '0.5px',
                                     margin: 0
                                 }}>
-                                    Categories <span style={{color: '#FF0000'}}>*</span> (Select one or more)
+                                    Categories (Select one or more)
                                 </label>
                                 <button
                                     type="button"
