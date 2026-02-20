@@ -5,7 +5,7 @@ import TaskCard from './TaskCard';
 
 const TaskList = () => {
     const {
-        isAdmin, loading, tasks,
+        isAdmin, isLimitedUser, loading, tasks,
         taskViewMode, setTaskViewMode,
         completedTasks, uncompletedTasks,
         openNewTaskForm, setShowBulkInput,
@@ -15,7 +15,7 @@ const TaskList = () => {
     return (
         <>
             {/* Primary Action - New Task is the core action */}
-            {isAdmin && (
+            {(isAdmin || isLimitedUser) && (
                 <div style={{
                     display: 'flex',
                     gap: '12px',
@@ -38,19 +38,21 @@ const TaskList = () => {
                         <Plus size={22} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '10px' }} />
                         New Task
                     </button>
-                    <button
-                        className="btn btn-yellow"
-                        onClick={() => setShowBulkInput(true)}
-                        disabled={loading}
-                        style={{
-                            fontWeight: 700,
-                            fontSize: '0.95rem',
-                            padding: '12px 24px'
-                        }}
-                    >
-                        <Plus size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />
-                        Bulk Add
-                    </button>
+                    {isAdmin && (
+                        <button
+                            className="btn btn-yellow"
+                            onClick={() => setShowBulkInput(true)}
+                            disabled={loading}
+                            style={{
+                                fontWeight: 700,
+                                fontSize: '0.95rem',
+                                padding: '12px 24px'
+                            }}
+                        >
+                            <Plus size={18} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />
+                            Bulk Add
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -103,10 +105,10 @@ const TaskList = () => {
                     background: '#f8f8f8'
                 }}>
                     <p style={{fontSize: '1.5rem', fontWeight: 700, marginBottom: '12px', color: '#dc3545'}}>
-                        {isAdmin ? '📋 Add Your First Task' : '📋 No Tasks Yet'}
+                        {(isAdmin || isLimitedUser) ? '📋 Add Your First Task' : '📋 No Tasks Yet'}
                     </p>
                     <p style={{color: '#666', fontSize: '1rem'}}>
-                        {isAdmin ? 'Click the "New Task" button above to get started' : 'Contact your administrator to add tasks'}
+                        {(isAdmin || isLimitedUser) ? 'Click the "New Task" button above to get started' : 'Contact your administrator to add tasks'}
                     </p>
                 </div>
             ) : (
