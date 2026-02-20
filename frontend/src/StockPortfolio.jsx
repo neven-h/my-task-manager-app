@@ -21,6 +21,8 @@ const StockPortfolio = ({ onBackToTasks }) => {
   const [isNewStock, setIsNewStock] = useState(false);
   const [showDraftDialog, setShowDraftDialog] = useState(false);
   const [initialFormData, setInitialFormData] = useState(null);
+  const [fetchingHistoricalPrice, setFetchingHistoricalPrice] = useState(false);
+  const [historicalPriceInfo, setHistoricalPriceInfo] = useState(null); // { actualDate, currency }
 
   // Tab state
   const [tabs, setTabs] = useState([]);
@@ -202,6 +204,36 @@ const StockPortfolio = ({ onBackToTasks }) => {
       ...prev,
       [name]: name === 'ticker_symbol' ? value.toUpperCase() : value
     }));
+    // Clear historical price info when user edits value manually
+    if (name === 'value_ils') {
+      setHistoricalPriceInfo(null);
+    }
+  };
+
+  const handleFetchHistoricalPrice = async () => {
+    const ticker = formData.ticker_symbol?.trim().toUpperCase();
+    const date = formData.entry_date;
+    if (!ticker || !date) return;
+
+    setFetchingHistoricalPrice(true);
+    setHistoricalPriceInfo(null);
+    try {
+      const res = await fetch(
+        `${API_BASE}/portfolio/historical-price?ticker=${encodeURIComponent(ticker)}&date=${encodeURIComponent(date)}`,
+        { headers: getAuthHeaders() }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Failed to fetch historical price');
+        return;
+      }
+      setFormData(prev => ({ ...prev, value_ils: String(data.price) }));
+      setHistoricalPriceInfo({ actualDate: data.actualDate, currency: data.currency });
+    } catch (err) {
+      setError('Failed to fetch historical price');
+    } finally {
+      setFetchingHistoricalPrice(false);
+    }
   };
 
   const handleStockNameChange = (value) => {
@@ -415,6 +447,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
         currency: 'USD',
         units: ''
       });
+      setHistoricalPriceInfo(null);
       setLoading(false); // Stop loading immediately so UI is responsive
       setSuccess(wasEditing ? 'Portfolio entry updated successfully' : 'Portfolio entry added successfully');
 
@@ -449,6 +482,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
     };
     setFormData(editFormData);
     setInitialFormData({ ...editFormData }); // Track initial state for edits too
+    setHistoricalPriceInfo(null);
     setShowForm(true);
   };
 
@@ -467,6 +501,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
       units: entry.units != null ? String(entry.units) : ''
     });
     setInitialFormData(null);
+    setHistoricalPriceInfo(null);
     setShowForm(true);
   };
 
@@ -1660,27 +1695,59 @@ const StockPortfolio = ({ onBackToTasks }) => {
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '1.05rem', color: colors.text }}>
                   💰 Current Value *
                 </label>
-                <input
-                  type="number"
-                  name="value_ils"
-                  value={formData.value_ils}
-                  onChange={handleInputChange}
-                  required
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  style={{
-                    width: '100%',
-                    padding: '1rem',
-                    border: `3px solid ${colors.border}`,
-                    fontSize: '1.05rem',
-                    fontFamily: '"Inter", sans-serif',
-                    boxSizing: 'border-box',
-                    outline: 'none'
-                  }}
-                />
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
+                  <input
+                    type="number"
+                    name="value_ils"
+                    value={formData.value_ils}
+                    onChange={handleInputChange}
+                    required
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    style={{
+                      flex: 1,
+                      padding: '1rem',
+                      border: `3px solid ${colors.border}`,
+                      fontSize: '1.05rem',
+                      fontFamily: '"Inter", sans-serif',
+                      boxSizing: 'border-box',
+                      outline: 'none'
+                    }}
+                  />
+                  {formData.ticker_symbol?.trim() && formData.entry_date && (
+                    <button
+                      type="button"
+                      onClick={handleFetchHistoricalPrice}
+                      disabled={fetchingHistoricalPrice}
+                      title={`Fetch closing price for ${formData.ticker_symbol} on ${formData.entry_date} from Yahoo Finance`}
+                      style={{
+                        padding: '0 1rem',
+                        border: `3px solid ${colors.border}`,
+                        background: fetchingHistoricalPrice ? '#e9ecef' : '#FFD500',
+                        color: '#000',
+                        fontWeight: '700',
+                        fontSize: '0.85rem',
+                        fontFamily: '"Inter", sans-serif',
+                        cursor: fetchingHistoricalPrice ? 'not-allowed' : 'pointer',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {fetchingHistoricalPrice ? '⏳' : '📈 Fetch from Yahoo'}
+                    </button>
+                  )}
+                </div>
+                {historicalPriceInfo && (
+                  <small style={{ color: '#1565c0', fontSize: '0.85rem', marginTop: '0.25rem', display: 'block', fontWeight: '600' }}>
+                    ✅ Price fetched for {historicalPriceInfo.actualDate} ({historicalPriceInfo.currency})
+                    {historicalPriceInfo.actualDate !== formData.entry_date && (
+                      <> — nearest trading day to {formData.entry_date}</>
+                    )}
+                  </small>
+                )}
                 <small style={{ color: colors.textLight, fontSize: '0.85rem', marginTop: '0.25rem', display: 'block' }}>
-                  Enter the current value in {formData.currency || 'ILS'}
+                  Enter manually or fetch the closing price from Yahoo Finance for the selected date
                 </small>
               </div>
 
