@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from config import get_db_connection, token_required
 from mysql.connector import Error
 
@@ -35,7 +35,8 @@ def get_portfolio_tabs(payload):
             return jsonify(tabs)
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('portfolio_tabs db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @portfolio_tabs_bp.route('/api/portfolio-tabs', methods=['POST'])
@@ -68,7 +69,8 @@ def create_portfolio_tab(payload):
             })
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('portfolio_tabs db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @portfolio_tabs_bp.route('/api/portfolio-tabs/<int:tab_id>', methods=['PUT'])
@@ -112,7 +114,8 @@ def update_portfolio_tab(payload, tab_id):
             return jsonify({'message': 'Tab updated successfully'})
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('portfolio_tabs db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @portfolio_tabs_bp.route('/api/portfolio-tabs/<int:tab_id>', methods=['DELETE'])
@@ -160,6 +163,7 @@ def delete_portfolio_tab(payload, tab_id):
             })
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('portfolio_tabs db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 

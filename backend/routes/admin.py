@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from config import (
     get_db_connection, handle_error, DEBUG,
     encrypt_field, decrypt_field, cipher_suite,
@@ -45,7 +45,8 @@ def get_all_clients_with_stats(payload):
             return jsonify(clients)
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('admin db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @admin_bp.route('/api/clients/<client_name>', methods=['PUT'])
@@ -71,7 +72,8 @@ def rename_client(payload, client_name):
             })
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('admin db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @admin_bp.route('/api/clients/<client_name>', methods=['DELETE'])
@@ -90,7 +92,8 @@ def delete_client(payload, client_name):
             })
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('admin db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @admin_bp.route('/api/clients/<client_name>/tasks', methods=['GET'])
@@ -120,7 +123,8 @@ def get_client_tasks(payload, client_name):
             return jsonify(tasks)
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('admin db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @admin_bp.route('/api/migrate-user-ownership', methods=['POST'])
@@ -160,8 +164,8 @@ def migrate_user_ownership(payload):
             })
 
     except Error as e:
-        print(f"Migration error: {e}")
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('admin migration error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @admin_bp.route('/api/migrate-encrypt-transactions', methods=['POST'])
@@ -239,8 +243,8 @@ def migrate_encrypt_transactions(payload):
             })
 
     except Exception as e:
-        print(f"Encryption migration error: {e}")
-        return jsonify({'error': f'Migration failed: {str(e)}'}), 500
+        current_app.logger.error('admin encrypt migration error: %s', e, exc_info=True)
+        return jsonify({'error': 'Migration failed'}), 500
 
 
 # Initialize database on import (works with gunicorn)
@@ -282,7 +286,8 @@ def diagnose_tasks(payload):
             return jsonify({'total_tasks': total, 'breakdown': rows})
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('admin db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @admin_bp.route('/api/admin/repair-task-ownership', methods=['POST'])
@@ -313,7 +318,8 @@ def repair_task_ownership(payload):
         })
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('admin db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @admin_bp.route('/api/admin/migrate-db', methods=['POST'])
@@ -333,8 +339,9 @@ def migrate_database(payload):
                     connection.commit()
                     migrations_applied.append('ticker_symbol')
             except Exception as e:
-                return jsonify({'error': f'Failed to add ticker_symbol: {str(e)}'}), 500
-            
+                current_app.logger.error('admin migrate-db ticker_symbol error: %s', e, exc_info=True)
+                return jsonify({'error': 'Failed to add ticker_symbol column'}), 500
+
             # Check and add currency
             try:
                 cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND COLUMN_NAME = 'currency'")
@@ -343,8 +350,9 @@ def migrate_database(payload):
                     connection.commit()
                     migrations_applied.append('currency')
             except Exception as e:
-                return jsonify({'error': f'Failed to add currency: {str(e)}'}), 500
-            
+                current_app.logger.error('admin migrate-db currency error: %s', e, exc_info=True)
+                return jsonify({'error': 'Failed to add currency column'}), 500
+
             # Check and add units
             try:
                 cursor.execute("SELECT COUNT(*) as count FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'stock_portfolio' AND COLUMN_NAME = 'units'")
@@ -353,8 +361,9 @@ def migrate_database(payload):
                     connection.commit()
                     migrations_applied.append('units')
             except Exception as e:
-                return jsonify({'error': f'Failed to add units: {str(e)}'}), 500
-            
+                current_app.logger.error('admin migrate-db units error: %s', e, exc_info=True)
+                return jsonify({'error': 'Failed to add units column'}), 500
+
             # Ensure watched_stocks table exists
             try:
                 cursor.execute("""
@@ -373,7 +382,8 @@ def migrate_database(payload):
                 connection.commit()
                 migrations_applied.append('watched_stocks_table')
             except Exception as e:
-                return jsonify({'error': f'Failed to create watched_stocks table: {str(e)}'}), 500
+                current_app.logger.error('admin migrate-db watched_stocks error: %s', e, exc_info=True)
+                return jsonify({'error': 'Failed to create watched_stocks table'}), 500
 
             # Ensure yahoo_portfolio table exists
             try:
@@ -397,13 +407,15 @@ def migrate_database(payload):
                 connection.commit()
                 migrations_applied.append('yahoo_portfolio_table')
             except Exception as e:
-                return jsonify({'error': f'Failed to create yahoo_portfolio table: {str(e)}'}), 500
+                current_app.logger.error('admin migrate-db yahoo_portfolio error: %s', e, exc_info=True)
+                return jsonify({'error': 'Failed to create yahoo_portfolio table'}), 500
 
             return jsonify({
                 'message': 'Migration completed successfully',
                 'migrations_applied': migrations_applied
             })
-            
+
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('admin db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 

@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from config import (
     get_db_connection, token_required, DEBUG,
     _fetch_stock_info_robust, _yahoo_search_tickers,
@@ -57,7 +57,8 @@ def get_stock_price():
                 'error': 'Yahoo Finance API rate limit exceeded. Please try again in a few minutes.',
                 'rateLimited': True
             }), 429
-        return jsonify({'error': f'Failed to fetch stock price: {str(e)}'}), 500
+        current_app.logger.error('portfolio_market stock price error: %s', e, exc_info=True)
+        return jsonify({'error': 'Failed to fetch stock price'}), 500
 
 
 @portfolio_market_bp.route('/api/portfolio/stock-prices', methods=['POST'])
@@ -128,7 +129,8 @@ def get_multiple_stock_prices():
         })
 
     except Exception as e:
-        return jsonify({'error': f'Failed to fetch stock prices: {str(e)}'}), 500
+        current_app.logger.error('portfolio_market stock prices error: %s', e, exc_info=True)
+        return jsonify({'error': 'Failed to fetch stock prices'}), 500
 
 
 @portfolio_market_bp.route('/api/portfolio/search-stocks', methods=['GET'])
@@ -170,7 +172,8 @@ def search_stocks():
         })
 
     except Exception as e:
-        return jsonify({'error': f'Failed to search stocks: {str(e)}'}), 500
+        current_app.logger.error('portfolio_market search error: %s', e, exc_info=True)
+        return jsonify({'error': 'Failed to search stocks'}), 500
 
 
 @portfolio_market_bp.route('/api/portfolio/watchlist', methods=['GET'])
@@ -195,7 +198,8 @@ def get_watchlist(payload):
             return jsonify(watchlist)
             
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('portfolio_market db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @portfolio_market_bp.route('/api/portfolio/watchlist', methods=['POST'])
@@ -259,7 +263,8 @@ def add_to_watchlist(payload):
             }, 201)
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('portfolio_market db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @portfolio_market_bp.route('/api/portfolio/watchlist/<int:watchlist_id>', methods=['DELETE'])
@@ -295,7 +300,8 @@ def remove_from_watchlist(payload, watchlist_id):
             return jsonify({'message': 'Stock removed from watchlist successfully'})
             
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('portfolio_market db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @portfolio_market_bp.route('/api/portfolio/watchlist/prices', methods=['GET'])
@@ -355,6 +361,7 @@ def get_watchlist_prices(payload):
             })
 
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('portfolio_market db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 

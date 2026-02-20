@@ -38,7 +38,8 @@ def get_task_attachments(payload, task_id):
             rows = cursor.fetchall()
         return jsonify([_attachment_to_json(r) for r in rows])
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('attachments db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @attachments_bp.route('/api/tasks/<int:task_id>/attachments', methods=['POST'])
@@ -114,12 +115,11 @@ def upload_task_attachment(payload, task_id):
             row = cursor.fetchone()
         return jsonify(_attachment_to_json(row)), 201
     except Error as e:
-        print(f"[UPLOAD] DB error: {e}", flush=True)
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('attachments db error on upload: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
     except Exception as e:
-        import traceback
-        print(f"[UPLOAD] Exception: {traceback.format_exc()}", flush=True)
-        return jsonify({'error': f'Upload failed: {str(e)}'}), 500
+        current_app.logger.error('attachments upload error: %s', e, exc_info=True)
+        return jsonify({'error': 'Upload failed'}), 500
 
 
 @attachments_bp.route('/api/tasks/attachments/<int:attachment_id>/file', methods=['GET'])
@@ -149,7 +149,8 @@ def serve_task_attachment(payload, attachment_id):
             download_name=row['filename']
         )
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('attachments db error on serve: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
 
 
 @attachments_bp.route('/api/tasks/<int:task_id>/attachments/<int:attachment_id>', methods=['DELETE'])
@@ -186,4 +187,5 @@ def delete_task_attachment(payload, task_id, attachment_id):
             connection.commit()
         return jsonify({'message': 'Attachment deleted'})
     except Error as e:
-        return jsonify({'error': str(e)}), 500
+        current_app.logger.error('attachments db error on delete: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
