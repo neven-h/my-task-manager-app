@@ -6,7 +6,7 @@ import { useTaskContext } from '../../context/TaskContext';
 const TaskMobileMenu = ({ isOpen, onClose, onOpenMobileSidebar }) => {
     const navigate = useNavigate();
     const {
-        isSharedUser, authUser,
+        isAdmin, isSharedUser, isLimitedUser, authUser,
         view, setView, onLogout,
         openNewTaskForm, setShowBulkInput
     } = useTaskContext();
@@ -77,9 +77,9 @@ const TaskMobileMenu = ({ isOpen, onClose, onOpenMobileSidebar }) => {
                         marginBottom: '12px',
                         textAlign: 'center'
                     }}>
-                        👤 {authUser} {isSharedUser ? '(shared view)' : '(admin)'}
+                        👤 {authUser} {isAdmin ? '(admin)' : isSharedUser ? '(shared view)' : '(limited)'}
                     </div>
-                    {!isSharedUser && (
+                    {isAdmin && (
                         <button className="btn btn-red" onClick={() => {
                             openNewTaskForm();
                             onClose();
@@ -88,7 +88,7 @@ const TaskMobileMenu = ({ isOpen, onClose, onOpenMobileSidebar }) => {
                             New Task
                         </button>
                     )}
-                    {!isSharedUser && (
+                    {isAdmin && (
                         <button className="btn btn-white" onClick={() => {
                             setShowBulkInput(true);
                             onClose();
