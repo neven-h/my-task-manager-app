@@ -103,7 +103,7 @@ const TaskList = () => {
                     background: '#f8f8f8'
                 }}>
                     <p style={{fontSize: '1.5rem', fontWeight: 700, marginBottom: '12px', color: '#dc3545'}}>
-                        📋 Add Your First Task
+                        {isAdmin ? '📋 Add Your First Task' : '📋 No Tasks Yet'}
                     </p>
                     <p style={{color: '#666', fontSize: '1rem'}}>
                         {isAdmin ? 'Click the "New Task" button above to get started' : 'Contact your administrator to add tasks'}
