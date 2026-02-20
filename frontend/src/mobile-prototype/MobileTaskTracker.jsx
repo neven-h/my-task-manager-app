@@ -43,6 +43,33 @@ import { getAuthHeaders } from '../api.js';
 
 // Import extracted view components
 import MobileStatsView from './views/MobileStatsView';
+
+// Basic URL sanitizer to prevent dangerous schemes (e.g., javascript:, data:)
+const sanitizeUrl = (url) => {
+    if (!url || typeof url !== 'string') {
+        return '#';
+    }
+    const trimmed = url.trim();
+    if (trimmed === '') {
+        return '#';
+    }
+    // Allow relative URLs (they inherit the current origin)
+    if (trimmed.startsWith('/')) {
+        return trimmed;
+    }
+    try {
+        const parsed = new URL(trimmed, window.location.origin);
+        const protocol = (parsed.protocol || '').toLowerCase();
+        if (protocol === 'http:' || protocol === 'https:') {
+            return parsed.toString();
+        }
+        // Disallow other protocols such as javascript:, data:, etc.
+        return '#';
+    } catch (e) {
+        // If URL parsing fails, fall back to a safe placeholder
+        return '#';
+    }
+};
 import MobileBankTransactionsView from './views/MobileBankTransactionsView';
 import MobileStockPortfolioView from './views/MobileStockPortfolioView';
 import MobileClientsView from './views/MobileClientsView';
@@ -2262,6 +2289,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                         {(formData.attachments || []).filter(a => !(formData.removedAttachmentIds || []).includes(a.id)).map(att => {
                                             const baseOrigin = API_BASE.replace(/\/api\/?$/, '');
                                             const fullUrl = att.cloudinary_url || (att.url?.startsWith('http') ? att.url : (att.url?.startsWith('/') ? baseOrigin + att.url : `${API_BASE}/tasks/attachments/${att.id}/file`));
+                                            const safeUrl = sanitizeUrl(fullUrl);
                                             return (
                                                 <div key={att.id} style={{
                                                     display: 'inline-flex',
@@ -2272,7 +2300,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                                                     fontSize: '0.85rem',
                                                     fontWeight: 600
                                                 }}>
-                                                    <a href={fullUrl} target="_blank" rel="noopener noreferrer">{att.filename}</a>
+                                                    <a href={safeUrl} target="_blank" rel="noopener noreferrer">{att.filename}</a>
                                                     <button type="button" onClick={() => removeExistingAttachment(att)} style={{background: 'none', border: 'none', padding: 0, cursor: 'pointer'}} aria-label="Remove">
                                                         <X size={14}/>
                                                     </button>
