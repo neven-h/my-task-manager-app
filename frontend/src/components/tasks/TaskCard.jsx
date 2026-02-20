@@ -25,6 +25,7 @@ const TaskCard = React.memo(({ task }) => {
         >
             <div style={{
                 display: 'flex',
+                flexDirection: rtlEnabled ? 'row-reverse' : 'row',
                 justifyContent: 'space-between',
                 alignItems: 'flex-start',
                 marginBottom: '16px'
@@ -32,6 +33,7 @@ const TaskCard = React.memo(({ task }) => {
                 <div style={{flex: 1}}>
                     <div style={{
                         display: 'flex',
+                        flexDirection: rtlEnabled ? 'row-reverse' : 'row',
                         alignItems: 'center',
                         gap: '12px',
                         marginBottom: '12px',
@@ -100,7 +102,7 @@ const TaskCard = React.memo(({ task }) => {
 
                 {/* Action buttons - hide for shared users */}
                 {!isSharedUser && (
-                    <div style={{display: 'flex', gap: '8px', marginLeft: '24px'}}>
+                    <div style={{display: 'flex', gap: '8px', ...(rtlEnabled ? {marginRight: '24px'} : {marginLeft: '24px'})}}>
                         <button
                             onClick={() => toggleTaskStatus(task.id)}
                             className="btn"
