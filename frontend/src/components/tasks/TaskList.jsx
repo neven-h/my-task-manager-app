@@ -72,30 +72,33 @@ const TaskList = () => {
                 </div>
 
                 {/* Filter toggles row */}
-                <div className="task-view-toggle" style={{display: 'flex', alignItems: 'center', gap: '12px', marginTop: '24px', flexWrap: 'wrap'}}>
-                    <button
-                        className={`btn ${taskViewMode === 'all' ? 'btn-blue' : 'btn-white'}`}
-                        onClick={() => setTaskViewMode('all')}
-                    >
-                        All Tasks
-                    </button>
-                    <button
-                        className={`btn btn-narrow ${taskViewMode === 'completed' ? 'btn-yellow' : 'btn-white'}`}
-                        onClick={() => setTaskViewMode('completed')}
-                    >
-                        Completed Only
-                    </button>
-                    <button
-                        className={`btn btn-narrow ${taskViewMode === 'uncompleted' ? 'btn-red' : 'btn-white'}`}
-                        onClick={() => setTaskViewMode('uncompleted')}
-                    >
-                        Uncompleted Only
-                    </button>
+                <div className="task-view-toggle" style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginTop: '24px', flexWrap: 'wrap', rowGap: '8px'}}>
+                    {/* Left group: status filters */}
+                    <div style={{display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', rowGap: '8px'}}>
+                        <button
+                            className={`btn ${taskViewMode === 'all' ? 'btn-blue' : 'btn-white'}`}
+                            onClick={() => setTaskViewMode('all')}
+                        >
+                            All Tasks
+                        </button>
+                        <button
+                            className={`btn btn-narrow ${taskViewMode === 'completed' ? 'btn-yellow' : 'btn-white'}`}
+                            onClick={() => setTaskViewMode('completed')}
+                        >
+                            Completed Only
+                        </button>
+                        <button
+                            className={`btn btn-narrow ${taskViewMode === 'uncompleted' ? 'btn-red' : 'btn-white'}`}
+                            onClick={() => setTaskViewMode('uncompleted')}
+                        >
+                            Uncompleted Only
+                        </button>
+                    </div>
+                    {/* Right group: RTL toggle — always visible, never pushed off-screen */}
                     <button
                         className={`btn btn-narrow ${rtlEnabled ? 'btn-blue' : 'btn-white'}`}
                         onClick={() => setRtlEnabled(!rtlEnabled)}
                         title="Toggle right-to-left text direction (for Hebrew / Arabic)"
-                        style={{marginLeft: 'auto'}}
                     >
                         RTL
                     </button>
