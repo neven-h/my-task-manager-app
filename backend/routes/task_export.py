@@ -271,7 +271,8 @@ def import_hours_report(payload):
                         imported_count += 1
 
                     except Exception as e:
-                        errors.append(f"Row {index + 2}: {str(e)}")
+                        current_app.logger.error('task_export import row %d error: %s', index + 2, e, exc_info=True)
+                        errors.append(f"Row {index + 2}: failed to import")
                         continue
 
                 connection.commit()

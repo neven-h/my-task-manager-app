@@ -48,8 +48,8 @@ def verify_jwt_token(token: str) -> dict:
         return {'valid': True, 'payload': payload}
     except jwt.ExpiredSignatureError:
         return {'valid': False, 'error': 'Token has expired'}
-    except jwt.InvalidTokenError as e:
-        return {'valid': False, 'error': f'Invalid token: {str(e)}'}
+    except jwt.InvalidTokenError:
+        return {'valid': False, 'error': 'Invalid token'}
 
 
 def token_required(f):

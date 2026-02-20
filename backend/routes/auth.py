@@ -21,7 +21,6 @@ auth_bp = Blueprint('auth', __name__)
 def health_check():
     """Health check endpoint that reports app and database status."""
     db_ok = False
-    db_error = None
     try:
         with get_db_connection() as connection:
             cursor = connection.cursor()
@@ -30,13 +29,11 @@ def health_check():
             cursor.close()
             db_ok = True
     except Exception as e:
-        db_error = str(e)
+        current_app.logger.error('health_check db error: %s', e, exc_info=True)
 
     status = "healthy" if db_ok else "degraded"
     code = 200 if db_ok else 503
     result = {"status": status, "database": "connected" if db_ok else "unavailable"}
-    if db_error:
-        result["database_error"] = db_error
     return jsonify(result), code
 
 

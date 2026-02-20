@@ -49,7 +49,8 @@ def get_stock_price():
                 'error': 'Yahoo Finance API rate limit exceeded. Please try again in a few minutes.',
                 'rateLimited': True
             }), 429
-        return jsonify({'error': error_msg}), 400
+        current_app.logger.error('portfolio_market stock price ValueError: %s', e, exc_info=True)
+        return jsonify({'error': 'Failed to fetch stock price'}), 400
     except Exception as e:
         error_str = str(e).lower()
         if '429' in error_str or 'too many requests' in error_str or 'rate limit' in error_str:
@@ -93,6 +94,7 @@ def get_multiple_stock_prices():
             except ValueError as e:
                 error_msg = str(e)
                 is_rate_limit = 'rate limit' in error_msg.lower() or 'rate limited' in error_msg.lower()
+                current_app.logger.error('portfolio_market batch price ValueError for %s: %s', ticker, e, exc_info=True)
                 results.append({
                     'ticker': ticker,
                     'name': ticker,
@@ -103,12 +105,13 @@ def get_multiple_stock_prices():
                     'currency': None,
                     'marketState': None,
                     'exchange': None,
-                    'error': 'Rate limit exceeded' if is_rate_limit else error_msg,
+                    'error': 'Rate limit exceeded' if is_rate_limit else 'Failed to fetch price',
                     'rateLimited': is_rate_limit
                 })
             except Exception as e:
                 error_str = str(e).lower()
                 is_rate_limit = '429' in error_str or 'too many requests' in error_str or 'rate limit' in error_str
+                current_app.logger.error('portfolio_market batch price error for %s: %s', ticker, e, exc_info=True)
                 results.append({
                     'ticker': ticker,
                     'name': ticker,
@@ -119,7 +122,7 @@ def get_multiple_stock_prices():
                     'currency': None,
                     'marketState': None,
                     'exchange': None,
-                    'error': 'Rate limit exceeded' if is_rate_limit else str(e),
+                    'error': 'Rate limit exceeded' if is_rate_limit else 'Failed to fetch price',
                     'rateLimited': is_rate_limit
                 })
 
@@ -236,7 +239,8 @@ def add_to_watchlist(payload):
                     if not stock_name:
                         stock_name = raw_info.get('longName') or raw_info.get('shortName', ticker_symbol)
                 except Exception as e2:
-                    return jsonify({'error': f'Failed to verify stock: {str(e2)}'}), 400
+                    current_app.logger.error('portfolio_market watchlist verify error for %s: %s', ticker_symbol, e2, exc_info=True)
+                    return jsonify({'error': 'Failed to verify stock ticker'}), 400
 
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
@@ -342,6 +346,9 @@ def get_watchlist_prices(payload):
                         'error': None
                     })
                 except Exception as e:
+                    current_app.logger.error('portfolio_market watchlist price error for %s: %s', ticker, e, exc_info=True)
+                    error_str = str(e).lower()
+                    is_rate_limit = '429' in error_str or 'too many requests' in error_str or 'rate limit' in error_str
                     results.append({
                         'ticker': ticker,
                         'name': ticker,
@@ -352,7 +359,7 @@ def get_watchlist_prices(payload):
                         'currency': None,
                         'marketState': None,
                         'exchange': None,
-                        'error': str(e)
+                        'error': 'Rate limit exceeded' if is_rate_limit else 'Failed to fetch price'
                     })
 
             return jsonify({

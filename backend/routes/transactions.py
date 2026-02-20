@@ -442,10 +442,11 @@ def encoding_preview(payload):
                         'samples': descriptions
                     })
             except Exception as e:
+                current_app.logger.error('encoding-preview decode error for %s: %s', encoding, e, exc_info=True)
                 previews.append({
                     'encoding': encoding,
                     'success': False,
-                    'error': str(e)[:100]
+                    'error': 'Failed to decode with this encoding'
                 })
 
         # Keep the file for when user selects an encoding
