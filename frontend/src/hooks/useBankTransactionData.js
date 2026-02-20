@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import API_BASE from '../config';
 import { getAuthHeaders } from '../api.js';
+import storage, { STORAGE_KEYS } from '../utils/storage';
 
 const useBankTransactionData = () => {
     // Core data
@@ -132,7 +133,7 @@ const useBankTransactionData = () => {
             }
             setMonthTransactions(data);
             setSelectedMonth('all');
-            localStorage.setItem('selectedMonth', 'all');
+            storage.set(STORAGE_KEYS.SELECTED_MONTH, 'all');
             return data;
         } catch (err) {
             setError(err.message || 'Failed to fetch transactions');
@@ -155,7 +156,7 @@ const useBankTransactionData = () => {
             }
             setMonthTransactions(data);
             setSelectedMonth(monthYear);
-            localStorage.setItem('selectedMonth', monthYear);
+            storage.set(STORAGE_KEYS.SELECTED_MONTH, monthYear);
         } catch (err) {
             setError(err.message || 'Failed to fetch transactions');
             // Fallback: show all transactions so the UI doesn't go blank

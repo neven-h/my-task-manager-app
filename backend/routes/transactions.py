@@ -469,7 +469,17 @@ def upload_with_encoding(payload):
         if not temp_filename:
             return jsonify({'error': 'No temp filename provided'}), 400
 
-        file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], f'preview_{temp_filename}')
+        # Sanitise the caller-supplied filename to prevent path traversal.
+        # secure_filename strips directory components and special characters;
+        # we then verify the resolved path stays inside UPLOAD_FOLDER.
+        safe_name = secure_filename(temp_filename)
+        if not safe_name:
+            return jsonify({'error': 'Invalid temp filename'}), 400
+
+        upload_folder = os.path.realpath(current_app.config['UPLOAD_FOLDER'])
+        file_path = os.path.realpath(os.path.join(upload_folder, f'preview_{safe_name}'))
+        if not file_path.startswith(upload_folder + os.sep):
+            return jsonify({'error': 'Invalid temp filename'}), 400
 
         if not os.path.exists(file_path):
             return jsonify({'error': 'Temporary file not found'}), 400

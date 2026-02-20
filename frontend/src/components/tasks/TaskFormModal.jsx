@@ -3,8 +3,7 @@ import { X, Plus, Tag, Save, Paperclip } from 'lucide-react';
 import { useTaskContext } from '../../context/TaskContext';
 import CustomAutocomplete from '../CustomAutocomplete';
 import API_BASE from '../../config';
-
-const DRAFT_STORAGE_KEY = 'taskTracker_draft';
+import storage, { STORAGE_KEYS } from '../../utils/storage';
 
 const TaskFormModal = () => {
     const {
@@ -37,21 +36,20 @@ const TaskFormModal = () => {
     const saveDraft = () => {
         if (!editingTask) {
             const toSave = { ...formData, newAttachments: [], attachments: [], removedAttachmentIds: [] };
-            localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(toSave));
+            storage.set(STORAGE_KEYS.TASK_DRAFT, toSave);
         }
     };
 
     const loadDraft = () => {
-        const draft = localStorage.getItem(DRAFT_STORAGE_KEY);
+        const draft = storage.get(STORAGE_KEYS.TASK_DRAFT);
         if (draft) {
-            const parsed = JSON.parse(draft);
-            return { ...parsed, attachments: [], newAttachments: [], removedAttachmentIds: [] };
+            return { ...draft, attachments: [], newAttachments: [], removedAttachmentIds: [] };
         }
         return null;
     };
 
     const clearDraft = () => {
-        localStorage.removeItem(DRAFT_STORAGE_KEY);
+        storage.remove(STORAGE_KEYS.TASK_DRAFT);
     };
 
     const resetFormData = () => {

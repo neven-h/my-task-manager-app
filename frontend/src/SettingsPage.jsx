@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Shield, Lock, AlertCircle, CheckCircle, ArrowLeft, X, Eye, EyeOff, Trash2, Languages } from 'lucide-react';
 import API_BASE from './config';
 import { getAuthHeaders } from './api.js';
+import storage, { STORAGE_KEYS } from './utils/storage';
 
 const SettingsPage = () => {
     const navigate = useNavigate();
@@ -34,18 +35,18 @@ const SettingsPage = () => {
     const [deleteLoading, setDeleteLoading] = useState(false);
 
     // RTL preference
-    const userRole = localStorage.getItem('userRole');
+    const userRole = storage.get(STORAGE_KEYS.USER_ROLE);
     const canUseRtl = userRole === 'admin' || userRole === 'limited';
     const [rtlEnabled, setRtlEnabledState] = useState(() =>
-        localStorage.getItem('taskRtlEnabled') === 'true'
+        storage.get(STORAGE_KEYS.TASK_RTL_ENABLED) === 'true'
     );
     const toggleRtl = () => {
         const next = !rtlEnabled;
         setRtlEnabledState(next);
-        localStorage.setItem('taskRtlEnabled', String(next));
+        storage.set(STORAGE_KEYS.TASK_RTL_ENABLED, String(next));
     };
 
-    const username = localStorage.getItem('username');
+    const username = storage.get(STORAGE_KEYS.USERNAME);
 
     useEffect(() => {
         if (!username) {
@@ -168,9 +169,7 @@ const SettingsPage = () => {
             
             if (data.success) {
                 // Clear local storage and redirect to login
-                localStorage.removeItem('username');
-                localStorage.removeItem('authToken');
-                localStorage.removeItem('userRole');
+                storage.clearAuth();
                 navigate('/login', { state: { message: 'Account deleted successfully' } });
             } else {
                 setDeleteError(data.error || 'Failed to delete account');

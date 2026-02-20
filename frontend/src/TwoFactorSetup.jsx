@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Smartphone, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
 import API_BASE from './config';
+import storage, { STORAGE_KEYS } from './utils/storage';
 
 const TwoFactorSetup = () => {
     const navigate = useNavigate();
@@ -12,8 +13,8 @@ const TwoFactorSetup = () => {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const username = localStorage.getItem('username');
-    const role = localStorage.getItem('role');
+    const username = storage.get(STORAGE_KEYS.USERNAME);
+    const role = storage.get(STORAGE_KEYS.ROLE);
 
     useEffect(() => {
         if (!username) {

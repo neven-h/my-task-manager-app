@@ -43,6 +43,7 @@ import { getAuthHeaders } from '../api.js';
 
 // Import extracted view components
 import MobileStatsView from './views/MobileStatsView';
+import storage, { STORAGE_KEYS } from '../utils/storage';
 
 // Basic URL sanitizer to prevent dangerous schemes (e.g., javascript:, data:)
 const sanitizeUrl = (url) => {
@@ -75,8 +76,7 @@ import MobileStockPortfolioView from './views/MobileStockPortfolioView';
 import MobileClientsView from './views/MobileClientsView';
 import MobileNotebookView from './views/MobileNotebookView';
 
-const DRAFT_STORAGE_KEY = 'taskTracker_mobile_draft';
-const BULK_DRAFT_STORAGE_KEY = 'taskTracker_mobile_bulkDraft';
+// Storage keys managed centrally via STORAGE_KEYS
 
 // Brutalist theme - EXACTLY matching desktop TaskTracker
 const THEME = {
@@ -164,7 +164,7 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
                 clearTimeout(formChangeTimeoutRef.current);
             }
             formChangeTimeoutRef.current = setTimeout(() => {
-                localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(formData));
+                storage.set(STORAGE_KEYS.MOBILE_TASK_DRAFT, formData);
             }, 1000);
         }
         // cleanup to avoid leaking timers
@@ -196,34 +196,29 @@ const MobileTaskTracker = ({authRole, authUser, onLogout}) => {
     }, [showBulkInput]);
 
     const saveDraft = () => {
-        localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(formData));
+        storage.set(STORAGE_KEYS.MOBILE_TASK_DRAFT, formData);
     };
 
     const loadDraft = () => {
-        const draft = localStorage.getItem(DRAFT_STORAGE_KEY);
-        if (draft) {
-            return JSON.parse(draft);
-        }
-        return null;
+        return storage.get(STORAGE_KEYS.MOBILE_TASK_DRAFT) || null;
     };
 
     const clearDraft = () => {
-        localStorage.removeItem(DRAFT_STORAGE_KEY);
+        storage.remove(STORAGE_KEYS.MOBILE_TASK_DRAFT);
     };
 
     const saveBulkDraft = () => {
         if (bulkTasksText.trim()) {
-            localStorage.setItem(BULK_DRAFT_STORAGE_KEY, bulkTasksText);
+            storage.set(STORAGE_KEYS.MOBILE_BULK_DRAFT, bulkTasksText);
         }
     };
 
     const loadBulkDraft = () => {
-        const draft = localStorage.getItem(BULK_DRAFT_STORAGE_KEY);
-        return draft || '';
+        return storage.get(STORAGE_KEYS.MOBILE_BULK_DRAFT) || '';
     };
 
     const clearBulkDraft = () => {
-        localStorage.removeItem(BULK_DRAFT_STORAGE_KEY);
+        storage.remove(STORAGE_KEYS.MOBILE_BULK_DRAFT);
     };
 
     // Load data

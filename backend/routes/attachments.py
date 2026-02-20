@@ -86,11 +86,14 @@ def upload_task_attachment(payload, task_id):
             stored_name = cloudinary_public_id
             print(f"[UPLOAD] Cloudinary success url={cloudinary_url}", flush=True)
         else:
-            ext = (file.filename.rsplit('.', 1)[1].lower()) if '.' in file.filename else ''
+            safe_original = secure_filename(file.filename)
+            ext = (safe_original.rsplit('.', 1)[1].lower()) if '.' in safe_original else ''
             stored_name = f"{uuid.uuid4().hex}.{ext}" if ext else uuid.uuid4().hex
-            upload_dir = current_app.config.get('TASK_ATTACHMENTS_FOLDER', TASK_ATTACHMENTS_FOLDER)
+            upload_dir = os.path.realpath(current_app.config.get('TASK_ATTACHMENTS_FOLDER', TASK_ATTACHMENTS_FOLDER))
             os.makedirs(upload_dir, exist_ok=True)
-            file_path = os.path.join(upload_dir, stored_name)
+            file_path = os.path.realpath(os.path.join(upload_dir, stored_name))
+            if not file_path.startswith(upload_dir + os.sep):
+                return jsonify({'error': 'Invalid file path'}), 400
             file.save(file_path)
             file_size = os.path.getsize(file_path)
 

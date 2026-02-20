@@ -7,8 +7,7 @@ import { getAuthHeaders } from './api.js';
 import CustomAutocomplete from './components/CustomAutocomplete';
 import WatchlistSection from './components/portfolio/WatchlistSection';
 import YahooPortfolioSection from './components/portfolio/YahooPortfolioSection';
-
-const DRAFT_STORAGE_KEY = 'portfolio_entry_draft';
+import storage, { STORAGE_KEYS } from './utils/storage';
 
 const StockPortfolio = ({ onBackToTasks }) => {
   const [entries, setEntries] = useState([]);
@@ -44,8 +43,8 @@ const StockPortfolio = ({ onBackToTasks }) => {
   const [priceLoading, setPriceLoading] = useState(false);
 
   const [summaryDisplayCurrency, setSummaryDisplayCurrency] = useState('ILS');
-  const authUser = localStorage.getItem('authUser');
-  const authRole = localStorage.getItem('authRole');
+  const authUser = storage.get(STORAGE_KEYS.AUTH_USER);
+  const authRole = storage.get(STORAGE_KEYS.AUTH_ROLE);
 
   // Color scheme - matching BankTransactions theme
   const colors = {
@@ -81,7 +80,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
 
   const handleSwitchTab = async (tabId) => {
     setActiveTabId(tabId);
-    localStorage.setItem('activePortfolioTabId', String(tabId));
+    storage.set(STORAGE_KEYS.ACTIVE_PORTFOLIO_TAB, String(tabId));
     await fetchEntries(tabId);
     await fetchSummary(tabId);
     await fetchStockNames(tabId);
@@ -100,7 +99,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
         setNewTabName('');
         await fetchTabs();
         setActiveTabId(data.id);
-        localStorage.setItem('activePortfolioTabId', String(data.id));
+        storage.set(STORAGE_KEYS.ACTIVE_PORTFOLIO_TAB, String(data.id));
         await fetchEntries(data.id);
         await fetchSummary(data.id);
         await fetchStockNames(data.id);
@@ -179,7 +178,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
         return;
       }
 
-      const savedTabId = localStorage.getItem('activePortfolioTabId');
+      const savedTabId = storage.get(STORAGE_KEYS.ACTIVE_PORTFOLIO_TAB);
       let tabIdToUse = savedTabId && savedTabId !== 'null' ? parseInt(savedTabId) : null;
 
       if (!tabIdToUse || !fetchedTabs.find(t => t.id === tabIdToUse)) {
@@ -187,7 +186,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
       }
 
       setActiveTabId(tabIdToUse);
-      localStorage.setItem('activePortfolioTabId', String(tabIdToUse));
+      storage.set(STORAGE_KEYS.ACTIVE_PORTFOLIO_TAB, String(tabIdToUse));
 
       await fetchEntries(tabIdToUse);
       await fetchSummary(tabIdToUse);
@@ -262,18 +261,17 @@ const StockPortfolio = ({ onBackToTasks }) => {
 
   const saveDraft = () => {
     if (!editingEntry && hasFormData()) {
-      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({
+      storage.set(STORAGE_KEYS.PORTFOLIO_DRAFT, {
         ...formData,
         tab_id: activeTabId
-      }));
+      });
     }
   };
 
   const loadDraft = () => {
     try {
-      const draft = localStorage.getItem(DRAFT_STORAGE_KEY);
-      if (draft) {
-        const draftData = JSON.parse(draft);
+      const draftData = storage.get(STORAGE_KEYS.PORTFOLIO_DRAFT);
+      if (draftData) {
         // Only load if it's for the current tab or no tab was saved
         if (!draftData.tab_id || draftData.tab_id === activeTabId) {
           return draftData;
@@ -286,7 +284,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
   };
 
   const clearDraft = () => {
-    localStorage.removeItem(DRAFT_STORAGE_KEY);
+    storage.remove(STORAGE_KEYS.PORTFOLIO_DRAFT);
   };
 
   const handleCloseForm = (forceClose = false) => {
@@ -801,7 +799,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
         onTabsChanged={(updatedTabs) => setTabs(updatedTabs)}
         onTabCreated={async (newTabId) => {
           setActiveTabId(newTabId);
-          localStorage.setItem('activePortfolioTabId', String(newTabId));
+          storage.set(STORAGE_KEYS.ACTIVE_PORTFOLIO_TAB, String(newTabId));
           await fetchEntries(newTabId);
           await fetchSummary(newTabId);
           await fetchStockNames(newTabId);
@@ -812,7 +810,7 @@ const StockPortfolio = ({ onBackToTasks }) => {
               handleSwitchTab(updatedTabs[0].id);
             } else {
               setActiveTabId(null);
-              localStorage.removeItem('activePortfolioTabId');
+              storage.remove(STORAGE_KEYS.ACTIVE_PORTFOLIO_TAB);
               setEntries([]);
               setSummary(null);
             }

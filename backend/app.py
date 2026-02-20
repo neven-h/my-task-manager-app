@@ -2,6 +2,7 @@
 Task Manager App - Main entry point.
 Registers all route blueprints and initializes the database.
 """
+import os
 from config import app, init_db
 
 # Import route blueprints
@@ -44,4 +45,5 @@ except Exception as e:
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    debug = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
+    app.run(debug=debug, host='0.0.0.0', port=5001)
