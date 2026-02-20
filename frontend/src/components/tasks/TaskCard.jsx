@@ -5,11 +5,13 @@ import API_BASE from '../../config';
 
 const TaskCard = React.memo(({ task }) => {
     const {
-        isSharedUser,
+        isSharedUser, rtlEnabled,
         filters, setFilters,
         getCategoryLabel, getStatusColor, getStatusLabel,
         toggleTaskStatus, openEditTaskForm, duplicateTask, deleteTask, openShareModal
     } = useTaskContext();
+
+    const textDir = rtlEnabled ? 'rtl' : undefined;
 
     const statusStyle = getStatusColor(task.status);
 
@@ -35,7 +37,7 @@ const TaskCard = React.memo(({ task }) => {
                         marginBottom: '12px',
                         flexWrap: 'wrap'
                     }}>
-                        <h3 style={{margin: 0, fontSize: '1.5rem', fontWeight: 700}}>{task.title}</h3>
+                        <h3 style={{margin: 0, fontSize: '1.5rem', fontWeight: 700}} dir={textDir}>{task.title}</h3>
                         <span className="status-badge" style={{
                             background: statusStyle.bg,
                             borderColor: statusStyle.border,
@@ -52,7 +54,7 @@ const TaskCard = React.memo(({ task }) => {
                             lineHeight: '1.6',
                             whiteSpace: 'pre-wrap',
                             wordBreak: 'break-word'
-                        }}>
+                        }} dir={textDir}>
                             {task.description}
                         </p>
                     )}
@@ -215,7 +217,7 @@ const TaskCard = React.memo(({ task }) => {
                     border: '2px solid #000',
                     fontSize: '0.95rem',
                     color: '#000'
-                }}>
+                }} dir={textDir}>
                     <strong>Notes:</strong> {task.notes}
                 </div>
             )}
