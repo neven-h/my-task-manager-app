@@ -299,14 +299,16 @@ def get_yahoo_holdings(payload):
                 except ValueError as e:
                     error_msg = str(e)
                     is_rate_limit = 'rate limit' in error_msg.lower() or 'rate limited' in error_msg.lower()
+                    current_app.logger.error('yahoo_portfolio price error for %s: %s', ticker, e, exc_info=True)
                     entry['currentPrice'] = None
-                    entry['error'] = 'Rate limit exceeded' if is_rate_limit else error_msg
+                    entry['error'] = 'Rate limit exceeded' if is_rate_limit else 'Failed to fetch price'
                     entry['rateLimited'] = is_rate_limit
                 except Exception as e:
                     error_str = str(e).lower()
                     is_rate_limit = '429' in error_str or 'too many requests' in error_str or 'rate limit' in error_str
+                    current_app.logger.error('yahoo_portfolio price error for %s: %s', ticker, e, exc_info=True)
                     entry['currentPrice'] = None
-                    entry['error'] = 'Rate limit exceeded' if is_rate_limit else str(e)
+                    entry['error'] = 'Rate limit exceeded' if is_rate_limit else 'Failed to fetch price'
                     entry['rateLimited'] = is_rate_limit
 
                 enriched.append(entry)

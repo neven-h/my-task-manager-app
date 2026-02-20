@@ -48,11 +48,10 @@ def sanitize_csv_field(value):
 
 def handle_error(e: Exception, default_message: str = "Internal server error", status_code: int = 500):
     """
-    Return a safe error response. Exposes details only in DEBUG mode.
+    Return a safe error response. Never exposes internal exception details to clients.
     """
-    print(f"Error: {str(e)}")
-    if DEBUG:
-        return jsonify({'error': f'{default_message}: {str(e)}'}), status_code
+    import logging
+    logging.getLogger(__name__).error('%s: %s', default_message, e, exc_info=True)
     return jsonify({'error': default_message}), status_code
 
 
