@@ -22,10 +22,11 @@ const IOSSidebar = ({ isOpen, onClose, onOpenSearch }) => {
     const navigate = useNavigate();
     const {
         authUser, isAdmin, isSharedUser, isLimitedUser,
-        openNewTaskForm, setAppView, fetchTasks, tasks, exportToCSV, onLogout
+        openNewTaskForm, setAppView, fetchTasks, tasks, exportToCSV, onLogout,
+        hasActiveFilters
     } = useTaskContext();
     const uploadRef = useRef(null);
-    const hasFilters = useTaskContext().hasActiveFilters;
+    const hasFilters = hasActiveFilters;
 
     if (!isOpen) return null;
 
