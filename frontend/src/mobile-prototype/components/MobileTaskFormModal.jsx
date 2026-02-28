@@ -1,26 +1,109 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { X, Plus, Trash2, Paperclip } from 'lucide-react';
 import CustomAutocomplete from '../../components/CustomAutocomplete';
-import { useMobileTask } from '../MobileTaskContext';
+import { useTaskContext } from '../../context/TaskContext';
 import API_BASE from '../../config';
 import sanitizeUrl from '../../utils/sanitizeUrl';
+import storage, { STORAGE_KEYS } from '../../utils/storage';
 import MobileDiscardConfirm from './MobileDiscardConfirm';
 
 const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 const labelStyle = { display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' };
 
+const defaultFormData = () => ({
+    title: '', description: '', categories: [], client: '',
+    task_date: new Date().toISOString().split('T')[0],
+    task_time: new Date().toTimeString().slice(0, 5),
+    duration: '', status: 'uncompleted', tags: [], notes: '',
+    shared: false, attachments: [], newAttachments: [], removedAttachmentIds: []
+});
+
 const MobileTaskFormModal = () => {
     const {
-        showTaskModal, setShowTaskModal, editingTask, setEditingTask,
-        formData, setFormData, tagInput, setTagInput,
-        categories, allTags, clients, loading, isAdmin,
-        saveTask, deleteTask, hasUnsavedChanges
-    } = useMobileTask();
+        formModal, closeFormModal, submitTask, deleteTask,
+        allCategories, allTags, clients, loading, isAdmin
+    } = useTaskContext();
+    const { isOpen, editingTask } = formModal;
 
+    const [formData, setFormData] = useState(defaultFormData);
+    const [tagInput, setTagInput] = useState('');
     const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+    const formChangeTimeoutRef = useRef(null);
     const fileInputRef = useRef(null);
 
-    if (!showTaskModal) return null;
+    // Initialize form when modal opens
+    useEffect(() => {
+        if (!isOpen) return;
+        if (editingTask) {
+            setFormData({
+                title: editingTask.title || '', description: editingTask.description || '',
+                categories: editingTask.categories || [], client: editingTask.client || '',
+                task_date: editingTask.task_date || new Date().toISOString().split('T')[0],
+                task_time: editingTask.task_time || '', duration: editingTask.duration || '',
+                status: editingTask.status || 'uncompleted', tags: editingTask.tags || [],
+                notes: editingTask.notes || '', shared: editingTask.shared || false,
+                attachments: editingTask.attachments || [], newAttachments: [], removedAttachmentIds: []
+            });
+        } else {
+            const draft = storage.get(STORAGE_KEYS.MOBILE_TASK_DRAFT);
+            if (draft && typeof draft === 'object') {
+                setFormData({ ...defaultFormData(), ...draft, newAttachments: [], removedAttachmentIds: draft.removedAttachmentIds || [] });
+            } else {
+                setFormData(defaultFormData());
+            }
+        }
+        setTagInput('');
+    }, [isOpen, editingTask]);
+
+    // Auto-save draft (1s debounce) for new tasks
+    useEffect(() => {
+        if (!isOpen || editingTask) return;
+        if (formData.title || formData.description) {
+            if (formChangeTimeoutRef.current) clearTimeout(formChangeTimeoutRef.current);
+            formChangeTimeoutRef.current = setTimeout(() => {
+                storage.set(STORAGE_KEYS.MOBILE_TASK_DRAFT, formData);
+            }, 1000);
+        }
+        return () => { if (formChangeTimeoutRef.current) clearTimeout(formChangeTimeoutRef.current); };
+    }, [formData, isOpen, editingTask]);
+
+    const hasUnsavedChanges = useCallback(() => {
+        const attachmentChanged = (formData.newAttachments?.length > 0) || (formData.removedAttachmentIds?.length > 0);
+        if (editingTask) {
+            return formData.title !== editingTask.title ||
+                formData.description !== (editingTask.description || '') ||
+                JSON.stringify(formData.categories) !== JSON.stringify(editingTask.categories || []) ||
+                formData.client !== (editingTask.client || '') ||
+                formData.task_date !== editingTask.task_date ||
+                formData.task_time !== (editingTask.task_time || '') ||
+                formData.duration !== (editingTask.duration || '') ||
+                formData.status !== editingTask.status ||
+                JSON.stringify(formData.tags) !== JSON.stringify(editingTask.tags || []) ||
+                formData.notes !== (editingTask.notes || '') ||
+                formData.shared !== (editingTask.shared || false) ||
+                attachmentChanged;
+        }
+        return !!(formData.title || formData.description || attachmentChanged);
+    }, [formData, editingTask]);
+
+    const handleClose = () => {
+        if (hasUnsavedChanges()) setShowDiscardConfirm(true);
+        else closeFormModal();
+    };
+
+    const confirmDiscard = () => {
+        if (!editingTask) storage.remove(STORAGE_KEYS.MOBILE_TASK_DRAFT);
+        setShowDiscardConfirm(false);
+        closeFormModal();
+    };
+
+    const handleSave = async () => {
+        const success = await submitTask(formData, editingTask);
+        if (success) {
+            storage.remove(STORAGE_KEYS.MOBILE_TASK_DRAFT);
+            closeFormModal();
+        }
+    };
 
     const update = (key, value) => setFormData(prev => ({ ...prev, [key]: value }));
 
@@ -40,16 +123,7 @@ const MobileTaskFormModal = () => {
         setFormData(prev => ({ ...prev, newAttachments: [...(prev.newAttachments || []), { file, name }] }));
     };
 
-    const handleClose = () => {
-        if (hasUnsavedChanges()) setShowDiscardConfirm(true);
-        else { setShowTaskModal(false); setEditingTask(null); }
-    };
-
-    const confirmDiscard = () => {
-        setShowDiscardConfirm(false);
-        setShowTaskModal(false);
-        setEditingTask(null);
-    };
+    if (!isOpen) return null;
 
     const visibleAttachments = (formData.attachments || []).filter(a => !(formData.removedAttachmentIds || []).includes(a.id));
 
@@ -102,7 +176,7 @@ const MobileTaskFormModal = () => {
                         <div style={{ marginBottom: '16px' }}>
                             <label style={labelStyle}>Categories</label>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                {categories.map(cat => (
+                                {allCategories.map(cat => (
                                     <div key={cat.id} className={`category-pill ${formData.categories.includes(cat.id) ? 'selected' : ''}`} onClick={() => toggleCategory(cat.id)}>
                                         {cat.label}
                                     </div>
@@ -198,13 +272,13 @@ const MobileTaskFormModal = () => {
                         {/* Actions */}
                         <div style={{ display: 'flex', gap: '12px' }}>
                             <button onClick={handleClose} className="mobile-btn" style={{ flex: 1 }} disabled={loading}>Cancel</button>
-                            <button onClick={saveTask} className="mobile-btn mobile-btn-primary" style={{ flex: 1 }} disabled={loading || !formData.title.trim()}>
+                            <button onClick={handleSave} className="mobile-btn mobile-btn-primary" style={{ flex: 1 }} disabled={loading || !formData.title.trim()}>
                                 {loading ? 'Saving...' : (editingTask ? 'Update' : 'Create')}
                             </button>
                         </div>
 
                         {editingTask && (
-                            <button onClick={() => { deleteTask(editingTask.id); handleClose(); }} className="mobile-btn mobile-btn-accent" style={{ width: '100%', marginTop: '12px' }} disabled={loading}>
+                            <button onClick={() => { deleteTask(editingTask.id); closeFormModal(); }} className="mobile-btn mobile-btn-accent" style={{ width: '100%', marginTop: '12px' }} disabled={loading}>
                                 <Trash2 size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} /> Delete Task
                             </button>
                         )}

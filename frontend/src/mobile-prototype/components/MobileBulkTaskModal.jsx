@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X } from 'lucide-react';
 import CustomAutocomplete from '../../components/CustomAutocomplete';
-import { useMobileTask } from '../MobileTaskContext';
+import { useTaskContext } from '../../context/TaskContext';
 import storage, { STORAGE_KEYS } from '../../utils/storage';
 
 const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
@@ -24,7 +24,7 @@ const parseBulkTasks = (text) => {
 };
 
 const MobileBulkTaskModal = () => {
-    const { showBulkInput, setShowBulkInput, handleBulkTaskSubmit, categories, clients, loading } = useMobileTask();
+    const { showBulkInput, setShowBulkInput, submitBulkTasks, allCategories, clients, loading } = useTaskContext();
     const [bulkText, setBulkText] = useState('');
     const [bulkCategory, setBulkCategory] = useState([]);
     const [bulkClient, setBulkClient] = useState('');
@@ -43,15 +43,18 @@ const MobileBulkTaskModal = () => {
     }, [bulkText, showBulkInput]);
 
     const handleSubmit = useCallback(async () => {
+        if (!bulkText.trim()) return;
         const titles = parseBulkTasks(bulkText);
         if (!titles.length) return;
-        const ok = await handleBulkTaskSubmit(bulkText, bulkCategory, bulkClient, titles);
+        const today = new Date().toISOString().split('T')[0];
+        const time = new Date().toTimeString().slice(0, 5);
+        const ok = await submitBulkTasks(titles, bulkCategory, bulkClient, today, time);
         if (ok) {
             setBulkText(''); setBulkCategory([]); setBulkClient('');
             storage.remove(STORAGE_KEYS.MOBILE_BULK_DRAFT);
             setShowBulkInput(false);
         }
-    }, [bulkText, bulkCategory, bulkClient, handleBulkTaskSubmit, setShowBulkInput]);
+    }, [bulkText, bulkCategory, bulkClient, submitBulkTasks, setShowBulkInput]);
 
     const handleCancel = () => {
         setBulkText(''); setBulkCategory([]); setBulkClient('');
@@ -84,7 +87,7 @@ const MobileBulkTaskModal = () => {
                     <div style={{ marginBottom: '16px' }}>
                         <label style={labelStyle}>Category (Optional)</label>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                            {categories.map(cat => (
+                            {allCategories.map(cat => (
                                 <div key={cat.id} className={`category-pill ${bulkCategory.includes(cat.id) ? 'selected' : ''}`}
                                     onClick={() => setBulkCategory(prev => prev.includes(cat.id) ? prev.filter(c => c !== cat.id) : [...prev, cat.id])}>
                                     {cat.label}

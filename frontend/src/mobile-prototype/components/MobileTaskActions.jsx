@@ -1,16 +1,16 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
-import { useMobileTask } from '../MobileTaskContext';
+import { useTaskContext } from '../../context/TaskContext';
 
 const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 
 const MobileTaskActions = () => {
-    const { openCreateModal, setShowBulkInput, tasks, loading } = useMobileTask();
+    const { openNewTaskForm, setShowBulkInput, tasks, loading } = useTaskContext();
 
     return (
         <div style={{ padding: '16px', paddingBottom: '24px' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
-                <button onClick={openCreateModal} disabled={loading} style={{
+                <button onClick={openNewTaskForm} disabled={loading} style={{
                     fontFamily: FONT_STACK, fontWeight: 700, textTransform: 'uppercase',
                     letterSpacing: '0.5px', fontSize: '0.85rem', padding: '14px 20px',
                     border: '3px solid #000', background: '#FF0000', color: '#fff',
