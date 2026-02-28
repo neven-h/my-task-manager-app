@@ -6,7 +6,7 @@ import SignUpPage from './SignUpPage';
 import ForgotPasswordPage from './ForgotPasswordPage';
 import ResetPasswordPage from './ResetPasswordPage';
 import TaskTracker from './TaskTracker';
-import MobileTaskTracker from './mobile-prototype/MobileTaskTracker';
+import IOSTaskTracker from './ios/IOSTaskTracker';
 import TwoFactorSetup from './TwoFactorSetup';
 import SettingsPage from './SettingsPage';
 import API_BASE from './config';
@@ -134,7 +134,7 @@ const App = () => {
       <Route path="/app" element={
         authToken ? (
           isMobile ? (
-            <MobileTaskTracker authToken={authToken} authUser={authUser} authRole={authRole} onLogout={handleLogout} />
+            <IOSTaskTracker authToken={authToken} authUser={authUser} authRole={authRole} onLogout={handleLogout} />
           ) : (
             <TaskTracker authToken={authToken} authUser={authUser} authRole={authRole} onLogout={handleLogout} />
           )
