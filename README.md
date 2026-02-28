@@ -6,7 +6,7 @@ A full-stack personal assistant web application built with Flask and React. Mana
 
 ---
 Personal Assistant Task Management System with Hebrew support -
-that i created using Claude Code and cursor. 
+that I created using Claude Code and cursor. 
 
 ## Features
 
