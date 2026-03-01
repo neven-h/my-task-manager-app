@@ -1,11 +1,11 @@
 import React from 'react';
 import { SlidersHorizontal } from 'lucide-react';
-import { useMobileTask } from '../MobileTaskContext';
+import { useTaskContext } from '../../context/TaskContext';
 
 const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 
 const MobileActiveFilterBanner = () => {
-    const { hasActiveFilters, clearFilters } = useMobileTask();
+    const { hasActiveFilters, clearFilters } = useTaskContext();
 
     if (!hasActiveFilters) return null;
 

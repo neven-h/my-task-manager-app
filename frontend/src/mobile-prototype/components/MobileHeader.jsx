@@ -1,12 +1,9 @@
 import React from 'react';
 import { Menu } from 'lucide-react';
-import { useMobileTask } from '../MobileTaskContext';
 
 const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 
-const MobileHeader = () => {
-    const { setShowSidebar } = useMobileTask();
-
+const MobileHeader = ({ onMenuOpen }) => {
     return (
         <div style={{ position: 'sticky', top: 0, zIndex: 100, background: '#fff', borderBottom: '4px solid #000' }}>
             <div style={{ height: '12px', width: '100%', background: '#F8B4D9' }} />
@@ -19,7 +16,7 @@ const MobileHeader = () => {
                     TASK TRACKER
                 </h1>
                 <button
-                    onClick={() => setShowSidebar(true)}
+                    onClick={onMenuOpen}
                     style={{ background: '#fff', border: '3px solid #000', padding: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     aria-label="Menu"
                 >

@@ -1,5 +1,4 @@
 import React from 'react';
-import { useMobileTask } from '../MobileTaskContext';
 
 const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 const FILTERS = [
@@ -8,9 +7,7 @@ const FILTERS = [
     { key: 'active', label: 'Uncompleted Only' }
 ];
 
-const MobileFilterBar = () => {
-    const { filterMode, setFilterMode } = useMobileTask();
-
+const MobileFilterBar = ({ filterMode, setFilterMode }) => {
     return (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', padding: '0 16px', marginBottom: '20px' }}>
             {FILTERS.map(({ key, label }) => (

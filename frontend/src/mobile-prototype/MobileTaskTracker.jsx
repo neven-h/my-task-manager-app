@@ -1,14 +1,13 @@
 /**
  * MobileTaskTracker — thin shell component.
  *
- * All state and data-fetching live in MobileTaskProvider (MobileTaskContext.jsx).
+ * Uses the shared TaskProvider from context/TaskContext.jsx — the same data layer
+ * as the desktop (TaskTracker.jsx) and iOS (IOSTaskTracker.jsx) versions.
+ * UI-only state (sidebar, filter mode, search drawer) lives here as local state.
  * Each visual region is handled by a focused component in components/.
- *
- * This is separate from the iOS version (frontend/src/ios/) which uses the shared
- * TaskProvider from context/TaskContext.jsx.
  */
-import React from 'react';
-import { MobileTaskProvider, useMobileTask } from './MobileTaskContext';
+import React, { useState } from 'react';
+import { TaskProvider, useTaskContext } from '../context/TaskContext';
 
 // Existing extracted views
 import MobileStatsView from './views/MobileStatsView';
@@ -33,7 +32,12 @@ import MobileShareTaskModal from './components/MobileShareTaskModal';
 const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 
 const MobileTaskTrackerInner = () => {
-    const { appView, setAppView, authUser, authRole } = useMobileTask();
+    const { appView, setAppView, authUser, authRole } = useTaskContext();
+
+    // UI-only state lives in the shell, not in context
+    const [showSidebar, setShowSidebar] = useState(false);
+    const [filterMode, setFilterMode] = useState('all');
+    const [showSearchDrawer, setShowSearchDrawer] = useState(false);
 
     // Alternate views
     if (appView === 'stats') return <MobileStatsView authUser={authUser} authRole={authRole} onBack={() => setAppView('tasks')} />;
@@ -45,14 +49,21 @@ const MobileTaskTrackerInner = () => {
     return (
         <div style={{ minHeight: '100vh', background: '#fff', paddingBottom: '20px', fontFamily: FONT_STACK }}>
             <MobileStyles />
-            <MobileHeader />
+            <MobileHeader onMenuOpen={() => setShowSidebar(true)} />
             <MobileTaskActions />
-            <MobileFilterBar />
+            <MobileFilterBar filterMode={filterMode} setFilterMode={setFilterMode} />
             <MobileActiveFilterBanner />
-            <MobileTaskList />
+            <MobileTaskList filterMode={filterMode} />
 
-            <MobileSidebar />
-            <MobileSearchDrawer />
+            <MobileSidebar
+                isOpen={showSidebar}
+                onClose={() => setShowSidebar(false)}
+                onOpenSearch={() => { setShowSearchDrawer(true); setShowSidebar(false); }}
+            />
+            <MobileSearchDrawer
+                isOpen={showSearchDrawer}
+                onClose={() => setShowSearchDrawer(false)}
+            />
 
             <MobileTaskFormModal />
             <MobileBulkTaskModal />
@@ -61,10 +72,10 @@ const MobileTaskTrackerInner = () => {
     );
 };
 
-const MobileTaskTracker = ({ authRole, authUser, onLogout }) => (
-    <MobileTaskProvider authRole={authRole} authUser={authUser} onLogout={onLogout}>
+const MobileTaskTracker = ({ authToken, authRole, authUser, onLogout }) => (
+    <TaskProvider authToken={authToken} authRole={authRole} authUser={authUser} onLogout={onLogout}>
         <MobileTaskTrackerInner />
-    </MobileTaskProvider>
+    </TaskProvider>
 );
 
 export default MobileTaskTracker;

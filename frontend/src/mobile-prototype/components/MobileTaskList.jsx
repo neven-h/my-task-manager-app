@@ -1,9 +1,9 @@
 import React, { useMemo } from 'react';
-import { useMobileTask } from '../MobileTaskContext';
+import { useTaskContext } from '../../context/TaskContext';
 import MobileTaskCard from './MobileTaskCard';
 
-const MobileTaskList = () => {
-    const { tasks, loading, filterMode } = useMobileTask();
+const MobileTaskList = ({ filterMode }) => {
+    const { tasks, loading } = useTaskContext();
 
     const filteredTasks = useMemo(() => {
         if (filterMode === 'active') return tasks.filter(t => t.status !== 'completed');

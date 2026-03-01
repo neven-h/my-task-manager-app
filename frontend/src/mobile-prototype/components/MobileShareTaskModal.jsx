@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { X, Share2 } from 'lucide-react';
-import { useMobileTask } from '../MobileTaskContext';
+import { useTaskContext } from '../../context/TaskContext';
 
 const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 
 const MobileShareTaskModal = () => {
-    const { showShareModal, closeShareModal, sharingTask, shareTask, loading } = useMobileTask();
+    const { shareModal, closeShareModal, shareTask, loading } = useTaskContext();
+    const { isOpen: showShareModal, sharingTask } = shareModal;
     const [email, setEmail] = useState('');
 
     if (!showShareModal || !sharingTask) return null;

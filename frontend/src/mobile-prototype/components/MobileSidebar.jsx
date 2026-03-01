@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Plus, RefreshCw, Search, BookOpen, DollarSign, Upload, TrendingUp, Users, BarChart3, Download, Settings, LogOut } from 'lucide-react';
-import { useMobileTask } from '../MobileTaskContext';
+import { useTaskContext } from '../../context/TaskContext';
 import API_BASE from '../../config';
 import { getAuthHeaders } from '../../api.js';
 
@@ -12,20 +12,18 @@ const SectionTitle = ({ children }) => (
     </h3>
 );
 
-const MobileSidebar = () => {
+const MobileSidebar = ({ isOpen, onClose, onOpenSearch }) => {
     const navigate = useNavigate();
     const {
-        showSidebar, setShowSidebar, authUser, authRole, onLogout,
-        isAdmin, isSharedUser, isLimitedUser,
-        setAppView, openCreateModal, fetchTasks, tasks,
-        setShowSearchDrawer, hasActiveFilters
-    } = useMobileTask();
+        authUser, isAdmin, isSharedUser, isLimitedUser, onLogout,
+        setAppView, openNewTaskForm, fetchTasks, tasks,
+        hasActiveFilters, exportToCSV
+    } = useTaskContext();
     const uploadRef = useRef(null);
 
-    if (!showSidebar) return null;
+    if (!isOpen) return null;
 
-    const close = () => setShowSidebar(false);
-    const nav = (view) => { setAppView(view); close(); };
+    const nav = (view) => { setAppView(view); onClose(); };
 
     const handleUpload = async (e) => {
         const file = e.target.files[0];
@@ -39,19 +37,19 @@ const MobileSidebar = () => {
             if (res.ok) alert(`Successfully uploaded ${data?.transaction_count || '0'} transactions!`);
             else alert(`Error: ${data?.error || 'Upload failed'}`);
         } catch (err) { alert(`Error uploading file: ${err?.message || err}`); }
-        close();
+        onClose();
         e.target.value = '';
     };
 
     return (
         <>
-            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300 }} onClick={close} />
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300 }} onClick={onClose} />
             <div style={{
                 position: 'fixed', top: 0, right: 0, bottom: 0, width: '85%', maxWidth: '350px',
                 background: '#fff', borderLeft: '3px solid #000', zIndex: 301,
                 overflowY: 'auto', padding: '24px', fontFamily: FONT_STACK
             }}>
-                <button onClick={close} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', padding: '8px', cursor: 'pointer' }}>
+                <button onClick={onClose} style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', padding: '8px', cursor: 'pointer' }}>
                     <X size={24} />
                 </button>
 
@@ -64,13 +62,13 @@ const MobileSidebar = () => {
                     <div>
                         <SectionTitle>Quick Actions</SectionTitle>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <button className="mobile-btn mobile-btn-primary" onClick={() => { openCreateModal(); close(); }} style={{ width: '100%', justifyContent: 'flex-start' }}>
+                            <button className="mobile-btn mobile-btn-primary" onClick={() => { openNewTaskForm(); onClose(); }} style={{ width: '100%', justifyContent: 'flex-start' }}>
                                 <Plus size={16} style={{ marginRight: '8px' }} /> New Task
                             </button>
-                            <button className="mobile-btn" onClick={async () => { await fetchTasks(); close(); }} style={{ width: '100%', justifyContent: 'flex-start' }}>
+                            <button className="mobile-btn" onClick={async () => { await fetchTasks(); onClose(); }} style={{ width: '100%', justifyContent: 'flex-start' }}>
                                 <RefreshCw size={16} style={{ marginRight: '8px' }} /> Refresh
                             </button>
-                            <button className="mobile-btn" onClick={() => { setShowSearchDrawer(true); close(); }} style={{ width: '100%', justifyContent: 'flex-start', position: 'relative' }}>
+                            <button className="mobile-btn" onClick={onOpenSearch} style={{ width: '100%', justifyContent: 'flex-start', position: 'relative' }}>
                                 <Search size={16} style={{ marginRight: '8px' }} /> Search
                                 {hasActiveFilters && <span style={{ position: 'absolute', top: '6px', right: '10px', background: '#FF0000', color: '#fff', borderRadius: '50%', width: '8px', height: '8px', display: 'inline-block' }} />}
                             </button>
@@ -122,23 +120,23 @@ const MobileSidebar = () => {
 
                     <div>
                         <SectionTitle>Export / Import</SectionTitle>
-                        <button className="mobile-btn" onClick={close} disabled={tasks.length === 0} style={{ width: '100%', justifyContent: 'flex-start' }}>
+                        <button className="mobile-btn" onClick={() => { exportToCSV(); onClose(); }} disabled={tasks.length === 0} style={{ width: '100%', justifyContent: 'flex-start' }}>
                             <Download size={16} style={{ marginRight: '8px' }} /> Export CSV
                         </button>
                     </div>
 
                     <div>
                         <SectionTitle>Account</SectionTitle>
-                        <button className="mobile-btn mobile-btn-accent" onClick={() => { navigate('/settings'); close(); }} style={{ width: '100%', justifyContent: 'flex-start', marginBottom: '12px' }}>
+                        <button className="mobile-btn mobile-btn-accent" onClick={() => { navigate('/settings'); onClose(); }} style={{ width: '100%', justifyContent: 'flex-start', marginBottom: '12px' }}>
                             <Settings size={16} style={{ marginRight: '8px' }} /> Settings
                         </button>
-                        <button className="mobile-btn mobile-btn-accent" onClick={() => { close(); if (onLogout) onLogout(); }} style={{ width: '100%', justifyContent: 'flex-start' }}>
+                        <button className="mobile-btn mobile-btn-accent" onClick={() => { onClose(); if (onLogout) onLogout(); }} style={{ width: '100%', justifyContent: 'flex-start' }}>
                             <LogOut size={16} style={{ marginRight: '8px' }} /> Logout
                         </button>
                     </div>
                 </div>
 
-                <button className="mobile-btn" onClick={close} style={{ width: '100%', marginTop: '32px' }}>Close Menu</button>
+                <button className="mobile-btn" onClick={onClose} style={{ width: '100%', marginTop: '32px' }}>Close Menu</button>
             </div>
         </>
     );

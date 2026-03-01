@@ -1,16 +1,20 @@
 import React from 'react';
 import { CheckCircle, Circle, Edit2, Copy, Share2, Calendar, Clock, Users, Trash2 } from 'lucide-react';
-import { useMobileTask } from '../MobileTaskContext';
+import { useTaskContext } from '../../context/TaskContext';
+import useSwipeGesture from '../../ios/hooks/useSwipeGesture';
 
 const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 
 const MobileTaskCard = ({ task }) => {
     const {
-        toggleTaskStatus, openEditModal, duplicateTask, openShareModal,
-        swipeStates, handleTouchStart, handleTouchMove, handleTouchEnd
-    } = useMobileTask();
+        toggleTaskStatus, openEditTaskForm, duplicateTask, openShareModal, deleteTask
+    } = useTaskContext();
 
-    const swipeOffset = swipeStates[task.id] || 0;
+    const { swipeOffset, handlers } = useSwipeGesture({
+        threshold: 100,
+        onSwipe: () => deleteTask(task.id)
+    });
+
     const isCompleted = task.status === 'completed';
 
     return (
@@ -20,15 +24,15 @@ const MobileTaskCard = ({ task }) => {
                 transform: `translateX(${swipeOffset}px)`,
                 borderLeft: `8px solid ${isCompleted ? '#FFD500' : '#FF0000'}`
             }}
-            onTouchStart={(e) => handleTouchStart(e, task.id)}
-            onTouchMove={(e) => handleTouchMove(e, task.id)}
-            onTouchEnd={() => handleTouchEnd(task.id)}
+            onTouchStart={handlers.onTouchStart}
+            onTouchMove={handlers.onTouchMove}
+            onTouchEnd={handlers.onTouchEnd}
         >
             <div style={{ padding: '20px' }}>
                 {/* Header row */}
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
                     <button
-                        onClick={() => toggleTaskStatus(task.id, task.status)}
+                        onClick={() => toggleTaskStatus(task.id)}
                         style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', minWidth: '32px', minHeight: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                         {isCompleted
@@ -47,10 +51,10 @@ const MobileTaskCard = ({ task }) => {
                     </div>
 
                     <div style={{ display: 'flex', gap: '4px' }}>
-                        <button onClick={() => openEditModal(task)} style={{ background: 'none', border: 'none', padding: '8px', cursor: 'pointer' }} aria-label="Edit task">
+                        <button onClick={() => openEditTaskForm(task)} style={{ background: 'none', border: 'none', padding: '8px', cursor: 'pointer' }} aria-label="Edit task">
                             <Edit2 size={20} color="#0000FF" />
                         </button>
-                        <button onClick={() => duplicateTask(task)} style={{ background: 'none', border: 'none', padding: '8px', cursor: 'pointer' }} aria-label="Duplicate task">
+                        <button onClick={() => duplicateTask(task.id)} style={{ background: 'none', border: 'none', padding: '8px', cursor: 'pointer' }} aria-label="Duplicate task">
                             <Copy size={20} color="#FFD500" />
                         </button>
                         <button onClick={() => openShareModal(task)} style={{ background: 'none', border: 'none', padding: '8px', cursor: 'pointer' }} aria-label="Share task">

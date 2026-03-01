@@ -1,0 +1,5 @@
+{
+  "appId": "com.drpitz.taskmanager",
+  "appName": "Task Manager",
+  "webDir": "dist"
+}
