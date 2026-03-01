@@ -91,6 +91,9 @@ _origins = [
     'http://localhost:3005',
     'https://drpitz.club',
     'https://www.drpitz.club',
+    'capacitor://localhost',
+    'ionic://localhost',
+    'http://localhost',
 ]
 _seen = set()
 ALLOWED_FRONTEND_ORIGINS = [o for o in _origins if not (o in _seen or _seen.add(o))]
