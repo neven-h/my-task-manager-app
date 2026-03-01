@@ -2,12 +2,13 @@ import React from 'react';
 import { Globe, Lock, Sparkles, UserPlus } from 'lucide-react';
 
 const LandingPage = ({ onEnter, onSignUp }) => {
+  const isMobile = window.innerWidth <= 768;
   return (
     <div style={{
       minHeight: '100vh',
       background: 'url(/background.jpg)',
       backgroundSize: 'cover',
-      backgroundPosition: 'center',
+      backgroundPosition: isMobile ? 'center center' : '20% 50%',
       backgroundRepeat: 'no-repeat',
       display: 'flex',
       flexDirection: 'column',
