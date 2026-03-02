@@ -13,19 +13,21 @@ jobs:
   frontend-check:
     name: Frontend Build Check
     runs-on: ubuntu-latest
-    
+
     steps:
-      - uses: actions/checkout@v3
-      
+      - uses: actions/checkout@v4
+
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '22.12.0'
-          
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
       - name: Install frontend dependencies
         working-directory: ./frontend
         run: npm ci
-        
+
       - name: Build frontend
         working-directory: ./frontend
         run: npm run build
@@ -33,22 +35,24 @@ jobs:
   backend-check:
     name: Backend Check
     runs-on: ubuntu-latest
-    
+
     steps:
-      - uses: actions/checkout@v3
-      
+      - uses: actions/checkout@v4
+
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
       - name: Install backend dependencies
         working-directory: ./backend
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          
-      - name: Check Python syntax
+
+      - name: Check Python syntax (all files)
         working-directory: ./backend
         run: |
-          python -m py_compile app.py
+          python -m compileall -q .
