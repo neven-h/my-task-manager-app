@@ -1,8 +1,9 @@
 import React, { useCallback } from 'react';
-import { CheckCircle, Circle, Edit2, Copy, Share2, Calendar, Clock, Users, Trash2 } from 'lucide-react';
+import { CheckCircle, Circle, Edit2, Copy, Share2, CalendarPlus, Calendar, Clock, Users, Trash2 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import useSwipeGesture from './hooks/useSwipeGesture';
 import { THEME, FONT_STACK } from './theme';
+import { downloadICS } from '../utils/generateICS';
 
 const IOSTaskCard = ({ task }) => {
     const { toggleTaskStatus, deleteTask, duplicateTask, openEditTaskForm, openShareModal } = useTaskContext();
@@ -69,6 +70,9 @@ const IOSTaskCard = ({ task }) => {
                         </button>
                         <button onClick={() => openShareModal(task)} style={{ background: 'none', border: 'none', padding: '8px', cursor: 'pointer' }} aria-label="Share task">
                             <Share2 size={20} color={THEME.accent} />
+                        </button>
+                        <button onClick={() => downloadICS(task)} style={{ background: 'none', border: 'none', padding: '8px', cursor: 'pointer' }} aria-label="Add to Calendar">
+                            <CalendarPlus size={20} color={THEME.secondary} />
                         </button>
                     </div>
                 </div>

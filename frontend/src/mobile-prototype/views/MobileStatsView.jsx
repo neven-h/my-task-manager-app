@@ -41,7 +41,7 @@ const MobileStatsView = ({authUser, authRole, onBack}) => {
     return (
         <div style={{minHeight: '100vh', background: '#fff', fontFamily: 'Inter, system-ui, sans-serif'}}>
             {/* Header */}
-            <div style={{background: '#fff', borderBottom: '3px solid #000', padding: '16px'}}>
+            <div style={{background: '#fff', borderBottom: '3px solid #000', padding: '16px', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)'}}>
                 <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px'}}>
                     <button onClick={onBack} style={{background: 'none', border: 'none', padding: '8px', margin: '-8px', cursor: 'pointer'}}>
                         <ArrowLeft size={24}/>
