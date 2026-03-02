@@ -84,3 +84,5 @@ MD\ files/
 xcuserdata/
 DerivedData/
 swiftpm/
+frontend/public/background-mobile.jpg
+frontend/public/background-*.jpg
