@@ -78,3 +78,5 @@ MD\ files/
 # Ignore all Markdown files except README.md
 *.md
 !README.md
+frontend/ios/App/App.xcodeproj/project.xcworkspace/
+frontend/public/background-mobile.jpg
