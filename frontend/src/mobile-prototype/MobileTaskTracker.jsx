@@ -12,7 +12,7 @@ import { TaskProvider, useTaskContext } from '../context/TaskContext';
 // Existing extracted views
 import MobileStatsView from './views/MobileStatsView';
 import MobileBankTransactionsView from './views/MobileBankTransactionsView';
-import MobileStockPortfolioView from './views/MobileStockPortfolioView';
+import MobileStockPortfolioBauhaus from './views/MobileStockPortfolioBauhaus';
 import MobileClientsView from './views/MobileClientsView';
 import MobileNotebookView from './views/MobileNotebookView';
 
@@ -42,7 +42,7 @@ const MobileTaskTrackerInner = () => {
     // Alternate views
     if (appView === 'stats') return <MobileStatsView authUser={authUser} authRole={authRole} onBack={() => setAppView('tasks')} />;
     if (appView === 'transactions') return <MobileBankTransactionsView authUser={authUser} authRole={authRole} onBack={() => setAppView('tasks')} />;
-    if (appView === 'portfolio') return <MobileStockPortfolioView authUser={authUser} authRole={authRole} onBack={() => setAppView('tasks')} />;
+    if (appView === 'portfolio') return <MobileStockPortfolioBauhaus authUser={authUser} authRole={authRole} onBack={() => setAppView('tasks')} />;
     if (appView === 'clients') return <MobileClientsView authUser={authUser} authRole={authRole} onBack={() => setAppView('tasks')} />;
     if (appView === 'notebook') return <MobileNotebookView onBack={() => setAppView('tasks')} />;
 
