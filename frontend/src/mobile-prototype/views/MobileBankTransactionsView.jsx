@@ -249,7 +249,7 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
                 zIndex: 100
             }}>
                 <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px'}}>
-                    <button onClick={onBack} style={{background: 'none', border: 'none', padding: '8px', margin: '-8px', cursor: 'pointer'}}>
+                    <button onClick={onBack} style={{background: 'none', border: 'none', padding: '12px', cursor: 'pointer', minWidth: '44px', minHeight: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
                         <ArrowLeft size={24}/>
                     </button>
                     <h1 style={{fontSize: '1.75rem', fontWeight: 900, margin: 0, textTransform: 'uppercase'}}>
