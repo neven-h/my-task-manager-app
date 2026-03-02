@@ -243,6 +243,7 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
                 background: '#fff',
                 borderBottom: '3px solid #000',
                 padding: '16px',
+                paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)',
                 position: 'sticky',
                 top: 0,
                 zIndex: 100
