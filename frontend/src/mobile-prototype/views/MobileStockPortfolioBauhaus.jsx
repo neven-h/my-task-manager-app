@@ -13,7 +13,7 @@ const THEME = {
 };
 const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 
-const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
+const MobileStockPortfolioBauhaus = ({authUser, authRole, onBack}) => {
     const [tabs, setTabs] = useState([]);
     const [activeTabId, setActiveTabId] = useState(null);
     const [entries, setEntries] = useState([]);
@@ -1044,4 +1044,4 @@ const MobileStockPortfolioView = ({authUser, authRole, onBack}) => {
     );
 };
 
-export default MobileStockPortfolioView;
+export default MobileStockPortfolioBauhaus;
