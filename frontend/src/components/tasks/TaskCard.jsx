@@ -1,7 +1,8 @@
 import React from 'react';
-import { Check, Edit2, Trash2, Copy, Tag, Folder, Share2 } from 'lucide-react';
+import { Check, Edit2, Trash2, Copy, Tag, Folder, Share2, CalendarPlus } from 'lucide-react';
 import { useTaskContext } from '../../context/TaskContext';
 import API_BASE from '../../config';
+import { downloadICS } from '../../utils/generateICS';
 
 const TaskCard = React.memo(({ task }) => {
     const {
@@ -126,6 +127,14 @@ const TaskCard = React.memo(({ task }) => {
                             title="Duplicate"
                         >
                             <Copy size={18}/>
+                        </button>
+                        <button
+                            onClick={() => downloadICS(task)}
+                            className="btn"
+                            style={{padding: '10px', minWidth: 'auto'}}
+                            title="Add to Calendar"
+                        >
+                            <CalendarPlus size={18}/>
                         </button>
                         <button
                             onClick={() => deleteTask(task.id)}

@@ -6,7 +6,7 @@ const LandingPage = ({ onEnter, onSignUp }) => {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'url(/background.jpg)',
+      background: isMobile ? 'url(/background-mobile.jpg)' : 'url(/background.jpg)',
       backgroundSize: 'cover',
       backgroundPosition: isMobile ? 'center center' : '20% 50%',
       backgroundRepeat: 'no-repeat',
