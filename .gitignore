@@ -91,3 +91,4 @@ frontend/public/
 xcuserdata/
 DerivedData/
 swiftpm/
+.claude/
