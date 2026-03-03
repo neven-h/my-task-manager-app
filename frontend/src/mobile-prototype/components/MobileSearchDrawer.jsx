@@ -1,8 +1,8 @@
 import React from 'react';
 import { Search, X } from 'lucide-react';
 import { useTaskContext } from '../../context/TaskContext';
+import { FONT_STACK } from '../theme';
 
-const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 const labelStyle = { display: 'block', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' };
 const fieldStyle = { width: '100%', padding: '10px 12px', border: '2px solid #000', fontFamily: FONT_STACK, fontSize: '1rem', boxSizing: 'border-box' };
 

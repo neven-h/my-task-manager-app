@@ -2,12 +2,8 @@ import React, {useState, useEffect} from 'react';
 import { ArrowLeft, Plus } from 'lucide-react';
 import API_BASE from '../../config';
 import { getAuthHeaders } from '../../api.js';
+import { THEME, FONT_STACK } from '../theme';
 
-const THEME = {
-    bg: '#fff', primary: '#0000FF', secondary: '#FFD500', accent: '#FF0000',
-    text: '#000', muted: '#666', success: '#00AA00', border: '#000'
-};
-const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 
 const MobileClientsView = ({authUser, authRole, onBack}) => {
     const [clients, setClients] = useState([]);

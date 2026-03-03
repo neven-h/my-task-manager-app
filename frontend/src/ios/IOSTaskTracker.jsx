@@ -4,7 +4,7 @@ import { TaskProvider, useTaskContext } from '../context/TaskContext';
 // Existing mobile views (unchanged)
 import MobileStatsView from '../mobile-prototype/views/MobileStatsView';
 import MobileBankTransactionsView from '../mobile-prototype/views/MobileBankTransactionsView';
-import MobileStockPortfolioView from '../mobile-prototype/views/MobileStockPortfolioView';
+import MobileStockPortfolioBauhaus from '../mobile-prototype/views/MobileStockPortfolioBauhaus';
 import MobileClientsView from '../mobile-prototype/views/MobileClientsView';
 import MobileNotebookView from '../mobile-prototype/views/MobileNotebookView';
 
@@ -32,7 +32,7 @@ const IOSTaskTrackerInner = () => {
     // Alternate views
     if (appView === 'stats') return <MobileStatsView authUser={authUser} authRole={authRole} onBack={() => setAppView('tasks')} />;
     if (appView === 'transactions') return <MobileBankTransactionsView authUser={authUser} authRole={authRole} onBack={() => setAppView('tasks')} />;
-    if (appView === 'portfolio') return <MobileStockPortfolioView authUser={authUser} authRole={authRole} onBack={() => setAppView('tasks')} />;
+    if (appView === 'portfolio') return <MobileStockPortfolioBauhaus authUser={authUser} authRole={authRole} onBack={() => setAppView('tasks')} />;
     if (appView === 'clients') return <MobileClientsView authUser={authUser} authRole={authRole} onBack={() => setAppView('tasks')} />;
     if (appView === 'notebook') return <MobileNotebookView onBack={() => setAppView('tasks')} />;
 

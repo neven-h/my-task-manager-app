@@ -5,14 +5,18 @@
  * as the desktop (TaskTracker.jsx) and iOS (IOSTaskTracker.jsx) versions.
  * UI-only state (sidebar, filter mode, search drawer) lives here as local state.
  * Each visual region is handled by a focused component in components/.
+ *
+ * Navigation uses ViewTransitionContainer for iOS-style push/pop animations
+ * and swipe-from-left-edge to go back.
  */
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { TaskProvider, useTaskContext } from '../context/TaskContext';
+import { FONT_STACK } from './theme';
 
 // Existing extracted views
 import MobileStatsView from './views/MobileStatsView';
 import MobileBankTransactionsView from './views/MobileBankTransactionsView';
-import MobileStockPortfolioView from './views/MobileStockPortfolioView';
+import MobileStockPortfolioBauhaus from './views/MobileStockPortfolioBauhaus';
 import MobileClientsView from './views/MobileClientsView';
 import MobileNotebookView from './views/MobileNotebookView';
 
@@ -28,8 +32,7 @@ import MobileSearchDrawer from './components/MobileSearchDrawer';
 import MobileTaskFormModal from './components/MobileTaskFormModal';
 import MobileBulkTaskModal from './components/MobileBulkTaskModal';
 import MobileShareTaskModal from './components/MobileShareTaskModal';
-
-const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
+import ViewTransitionContainer from './components/ViewTransitionContainer';
 
 const MobileTaskTrackerInner = () => {
     const { appView, setAppView, authUser, authRole } = useTaskContext();
@@ -39,14 +42,27 @@ const MobileTaskTrackerInner = () => {
     const [filterMode, setFilterMode] = useState('all');
     const [showSearchDrawer, setShowSearchDrawer] = useState(false);
 
-    // Alternate views
-    if (appView === 'stats') return <MobileStatsView authUser={authUser} authRole={authRole} onBack={() => setAppView('tasks')} />;
-    if (appView === 'transactions') return <MobileBankTransactionsView authUser={authUser} authRole={authRole} onBack={() => setAppView('tasks')} />;
-    if (appView === 'portfolio') return <MobileStockPortfolioView authUser={authUser} authRole={authRole} onBack={() => setAppView('tasks')} />;
-    if (appView === 'clients') return <MobileClientsView authUser={authUser} authRole={authRole} onBack={() => setAppView('tasks')} />;
-    if (appView === 'notebook') return <MobileNotebookView onBack={() => setAppView('tasks')} />;
+    const goHome = () => setAppView('tasks');
 
-    return (
+    // Determine which sub-view to render
+    const subViewContent = useMemo(() => {
+        switch (appView) {
+            case 'stats':
+                return <MobileStatsView authUser={authUser} authRole={authRole} onBack={goHome} />;
+            case 'transactions':
+                return <MobileBankTransactionsView authUser={authUser} authRole={authRole} onBack={goHome} />;
+            case 'portfolio':
+                return <MobileStockPortfolioBauhaus authUser={authUser} authRole={authRole} onBack={goHome} />;
+            case 'clients':
+                return <MobileClientsView authUser={authUser} authRole={authRole} onBack={goHome} />;
+            case 'notebook':
+                return <MobileNotebookView onBack={goHome} />;
+            default:
+                return null;
+        }
+    }, [appView, authUser, authRole]);
+
+    const homeContent = (
         <div style={{ minHeight: '100vh', background: '#fff', paddingBottom: '20px', fontFamily: FONT_STACK }}>
             <MobileStyles />
             <MobileHeader onMenuOpen={() => setShowSidebar(true)} />
@@ -55,6 +71,25 @@ const MobileTaskTrackerInner = () => {
             <MobileActiveFilterBanner />
             <MobileTaskList filterMode={filterMode} />
 
+            <MobileTaskFormModal />
+            <MobileBulkTaskModal />
+            <MobileShareTaskModal />
+        </div>
+    );
+
+    return (
+        <>
+            <MobileStyles />
+            <ViewTransitionContainer
+                currentView={appView}
+                homeView="tasks"
+                onBack={goHome}
+                homeContent={homeContent}
+            >
+                {subViewContent}
+            </ViewTransitionContainer>
+
+            {/* Sidebar and Search Drawer sit above transitions */}
             <MobileSidebar
                 isOpen={showSidebar}
                 onClose={() => setShowSidebar(false)}
@@ -64,11 +99,7 @@ const MobileTaskTrackerInner = () => {
                 isOpen={showSearchDrawer}
                 onClose={() => setShowSearchDrawer(false)}
             />
-
-            <MobileTaskFormModal />
-            <MobileBulkTaskModal />
-            <MobileShareTaskModal />
-        </div>
+        </>
     );
 };
 

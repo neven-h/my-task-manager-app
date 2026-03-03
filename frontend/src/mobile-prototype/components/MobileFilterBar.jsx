@@ -1,6 +1,6 @@
 import React from 'react';
+import { FONT_STACK } from '../theme';
 
-const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 const FILTERS = [
     { key: 'all', label: 'All Tasks' },
     { key: 'done', label: 'Completed Only' },

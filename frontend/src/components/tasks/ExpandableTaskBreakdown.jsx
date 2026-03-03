@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, Circle, CheckCircle } from 'lucide-react';
 
-const ExpandableTaskBreakdown = ({ 
-    tasks = [], 
-    activeCount, 
-    completedCount, 
+const ExpandableTaskBreakdown = ({
+    tasks = [],
+    activeCount,
+    completedCount,
     totalCount,
     variant = 'desktop'
 }) => {
@@ -16,12 +16,12 @@ const ExpandableTaskBreakdown = ({
 
     const isMobile = variant === 'mobile';
 
-    const containerStyle = isMobile 
+    const containerStyle = isMobile
         ? { background: '#fff', border: '3px solid #000', padding: '20px' }
         : { border: '3px solid #000', padding: '32px', background: '#fff' };
 
     const headerStyle = {
-        fontSize: isMobile ? '0.85rem' : '0.85rem',
+        fontSize: '0.85rem',
         fontWeight: 700,
         textTransform: 'uppercase',
         letterSpacing: isMobile ? 'normal' : '1px',

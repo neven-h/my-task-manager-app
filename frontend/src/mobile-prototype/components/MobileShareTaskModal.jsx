@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { X, Share2 } from 'lucide-react';
 import { useTaskContext } from '../../context/TaskContext';
+import { FONT_STACK } from '../theme';
 
-const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 
 const MobileShareTaskModal = () => {
     const { shareModal, closeShareModal, shareTask, loading } = useTaskContext();

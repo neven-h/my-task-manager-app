@@ -3,8 +3,8 @@ import { X } from 'lucide-react';
 import CustomAutocomplete from '../../components/CustomAutocomplete';
 import { useTaskContext } from '../../context/TaskContext';
 import storage, { STORAGE_KEYS } from '../../utils/storage';
+import { FONT_STACK } from '../theme';
 
-const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 const labelStyle = { display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' };
 
 const parseBulkTasks = (text) => {
