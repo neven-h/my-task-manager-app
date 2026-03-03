@@ -1,8 +1,9 @@
 import React from 'react';
 import { useTaskContext } from '../../context/TaskContext';
+import ExpandableTaskBreakdown from './ExpandableTaskBreakdown';
 
 const TaskStatsView = () => {
-    const { stats } = useTaskContext();
+    const { stats, tasks } = useTaskContext();
 
     return (
         <div style={{display: 'flex', flexDirection: 'column', gap: '32px'}}>
@@ -79,6 +80,14 @@ const TaskStatsView = () => {
                             </div>
                         </div>
                     </div>
+
+                    <ExpandableTaskBreakdown
+                        tasks={tasks}
+                        activeCount={stats?.overall?.uncompleted_tasks}
+                        completedCount={stats?.overall?.completed_tasks}
+                        totalCount={stats?.overall?.total_tasks}
+                        variant="desktop"
+                    />
                 </>
             )}
         </div>

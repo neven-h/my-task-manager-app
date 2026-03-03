@@ -2,17 +2,23 @@ import React, {useState, useEffect} from 'react';
 import { ArrowLeft } from 'lucide-react';
 import API_BASE from '../../config';
 import { getAuthHeaders } from '../../api.js';
+import ExpandableTaskBreakdown from '../../components/tasks/ExpandableTaskBreakdown';
 
 const MobileStatsView = ({authUser, authRole, onBack}) => {
     const [stats, setStats] = useState(null);
+    const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchStats = async () => {
+        const fetchData = async () => {
             try {
-                const response = await fetch(`${API_BASE}/stats`, { headers: getAuthHeaders() });
-                if (!response.ok) throw new Error(`Stats fetch failed: ${response.status}`);
-                const data = await response.json();
+                const [statsResponse, tasksResponse] = await Promise.all([
+                    fetch(`${API_BASE}/stats`, { headers: getAuthHeaders() }),
+                    fetch(`${API_BASE}/tasks`, { headers: getAuthHeaders() })
+                ]);
+                
+                if (!statsResponse.ok) throw new Error(`Stats fetch failed: ${statsResponse.status}`);
+                const data = await statsResponse.json();
                 const overall = data.overall || {};
                 const totalTasks = overall.total_tasks || 0;
                 const completedTasks = overall.completed_tasks || 0;
@@ -28,20 +34,25 @@ const MobileStatsView = ({authUser, authRole, onBack}) => {
                     by_client: data.by_client || [],
                     monthly: data.monthly || []
                 });
+
+                if (tasksResponse.ok) {
+                    const tasksData = await tasksResponse.json();
+                    setTasks(tasksData);
+                }
             } catch (err) {
-                console.error('Error fetching stats:', err);
+                console.error('Error fetching data:', err);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchStats();
+        fetchData();
     }, [authUser, authRole]);
 
     return (
         <div style={{minHeight: '100vh', background: '#fff', fontFamily: 'Inter, system-ui, sans-serif'}}>
             {/* Header */}
-            <div style={{background: '#fff', borderBottom: '3px solid #000', padding: '16px'}}>
+            <div style={{background: '#fff', borderBottom: '3px solid #000', padding: '16px', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)'}}>
                 <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px'}}>
                     <button onClick={onBack} style={{background: 'none', border: 'none', padding: '8px', margin: '-8px', cursor: 'pointer'}}>
                         <ArrowLeft size={24}/>
@@ -125,30 +136,13 @@ const MobileStatsView = ({authUser, authRole, onBack}) => {
                         )}
 
                         {/* Task Breakdown */}
-                        <div style={{background: '#fff', border: '3px solid #000', padding: '20px'}}>
-                            <h3 style={{
-                                fontSize: '0.85rem',
-                                fontWeight: 700,
-                                textTransform: 'uppercase',
-                                marginBottom: '16px'
-                            }}>
-                                Task Breakdown
-                            </h3>
-                            <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
-                                <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                                    <span>Active Tasks</span>
-                                    <span style={{fontWeight: 700}}>{stats.active_count || 0}</span>
-                                </div>
-                                <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                                    <span>Completed</span>
-                                    <span style={{fontWeight: 700}}>{stats.done_count || 0}</span>
-                                </div>
-                                <div style={{display: 'flex', justifyContent: 'space-between'}}>
-                                    <span>Total</span>
-                                    <span style={{fontWeight: 700}}>{stats.total_tasks || 0}</span>
-                                </div>
-                            </div>
-                        </div>
+                        <ExpandableTaskBreakdown
+                            tasks={tasks}
+                            activeCount={stats.active_count}
+                            completedCount={stats.done_count}
+                            totalCount={stats.total_tasks}
+                            variant="mobile"
+                        />
                     </>
                 ) : (
                     <div style={{textAlign: 'center', padding: '40px'}}>No stats available</div>
