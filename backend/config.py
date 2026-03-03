@@ -40,9 +40,9 @@ from helpers import (         # noqa: E402  (imports after load_dotenv intention
 from db import (              # noqa: E402
     DB_CONFIG,
     get_db_connection,
-    init_db,
     sanitize_db_name,
 )
+from db_schema import init_db  # noqa: E402
 from auth_utils import (      # noqa: E402
     IS_CI,
     JWT_SECRET_KEY,
