@@ -83,14 +83,11 @@ xcuserdata/
 DerivedData/
 swiftpm/
 frontend/ios/App/App.xcodeproj/project.xcworkspace/
-frontend/public/background-mobile.jpg
-rontend/public/background-*.jpg
+# All public assets (local only, never commit)
+frontend/public/
 
 # Xcode
 *.xcworkspace
 xcuserdata/
 DerivedData/
 swiftpm/
-frontend/public/background-mobile.jpg
-frontend/public/background-*.jpg
-frontend/public/background.jpg
