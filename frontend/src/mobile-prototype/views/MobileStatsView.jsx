@@ -1,162 +1,52 @@
-import React, {useState, useEffect, useMemo} from 'react';
-import { ArrowLeft, PieChart, Users, BarChart3, TrendingUp } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { ArrowLeft, PieChart, Users, BarChart3 } from 'lucide-react';
 import API_BASE from '../../config';
 import { getAuthHeaders } from '../../api.js';
 import { THEME, FONT_STACK, BAUHAUS } from '../theme';
 
+import StatCard from '../components/stats/StatCard';
+import PieChartSVG from '../components/stats/PieChartSVG';
+import HorizontalBar from '../components/stats/HorizontalBar';
+import BauhausSectionTitle from '../components/stats/BauhausSectionTitle';
+import ExpandableTaskBreakdown from '../../components/tasks/ExpandableTaskBreakdown';
+
 const PIE_COLORS = BAUHAUS.pieColors;
 
-const SectionTitle = ({ icon: Icon, children }) => (
-    <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        marginBottom: BAUHAUS.spacing.md,
-        paddingBottom: BAUHAUS.spacing.sm,
-        borderBottom: BAUHAUS.subCardBorder
-    }}>
-        {Icon && <Icon size={18} color={THEME.primary} />}
-        <h3 style={{
-            fontSize: BAUHAUS.labelFontSize,
-            fontWeight: BAUHAUS.labelWeight,
-            textTransform: 'uppercase',
-            margin: 0,
-            letterSpacing: '0.5px'
-        }}>
-            {children}
-        </h3>
-    </div>
-);
-
-const StatCard = ({ label, value, bg = BAUHAUS.cardBg, color = THEME.text, sub }) => (
-    <div style={{
-        border: BAUHAUS.cardBorder,
-        padding: BAUHAUS.spacing.lg,
-        background: bg,
-        textAlign: 'center'
-    }}>
-        <div style={{
-            fontSize: BAUHAUS.labelFontSize,
-            fontWeight: BAUHAUS.labelWeight,
-            textTransform: 'uppercase',
-            color: color === '#fff' ? 'rgba(255,255,255,0.8)' : THEME.muted,
-            marginBottom: BAUHAUS.spacing.sm
-        }}>
-            {label}
-        </div>
-        <div style={{ fontSize: '1.5rem', fontWeight: BAUHAUS.headingWeight, color }}>
-            {value}
-        </div>
-        {sub && (
-            <div style={{
-                fontSize: '0.75rem',
-                color: color === '#fff' ? 'rgba(255,255,255,0.7)' : THEME.muted,
-                marginTop: BAUHAUS.spacing.xs
-            }}>
-                {sub}
-            </div>
-        )}
-    </div>
-);
-
-const PieChartSVG = ({ data, colors }) => {
-    if (!data || data.length === 0) return null;
-    const total = data.reduce((s, d) => s + d.value, 0);
-    if (total === 0) return null;
-
-    let currentAngle = 0;
-    return (
-        <svg viewBox="0 0 200 200" style={{ width: '160px', height: '160px', flexShrink: 0 }}>
-            {data.map((item, idx) => {
-                const percentage = (item.value / total) * 100;
-                const angle = (percentage / 100) * 360;
-                const startAngle = currentAngle;
-                const endAngle = currentAngle + angle;
-                currentAngle = endAngle;
-                const startRad = (startAngle - 90) * (Math.PI / 180);
-                const endRad = (endAngle - 90) * (Math.PI / 180);
-                const x1 = 100 + 90 * Math.cos(startRad);
-                const y1 = 100 + 90 * Math.sin(startRad);
-                const x2 = 100 + 90 * Math.cos(endRad);
-                const y2 = 100 + 90 * Math.sin(endRad);
-                const largeArc = angle > 180 ? 1 : 0;
-                const pathData = `M 100 100 L ${x1} ${y1} A 90 90 0 ${largeArc} 1 ${x2} ${y2} Z`;
-                const midAngle = (startAngle + endAngle) / 2;
-                const midRad = (midAngle - 90) * (Math.PI / 180);
-                const labelX = 100 + 55 * Math.cos(midRad);
-                const labelY = 100 + 55 * Math.sin(midRad);
-                return (
-                    <g key={item.label}>
-                        <path d={pathData} fill={colors[idx % colors.length]} stroke="#000" strokeWidth="2" />
-                        {percentage > 8 && (
-                            <text x={labelX} y={labelY} textAnchor="middle" dominantBaseline="middle"
-                                  fill="#fff" fontSize="11" fontWeight="800"
-                                  style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
-                                {percentage.toFixed(0)}%
-                            </text>
-                        )}
-                    </g>
-                );
-            })}
-        </svg>
-    );
-};
-
-const HorizontalBar = ({ label, value, maxValue, color, suffix = '' }) => {
-    const pct = maxValue > 0 ? (value / maxValue) * 100 : 0;
-    return (
-        <div style={{ marginBottom: BAUHAUS.spacing.sm }}>
-            <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                marginBottom: BAUHAUS.spacing.xs,
-                fontSize: '0.75rem'
-            }}>
-                <span style={{ fontWeight: BAUHAUS.labelWeight, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                    {label}
-                </span>
-                <span style={{ fontWeight: BAUHAUS.headingWeight, flexShrink: 0, marginLeft: '8px' }}>
-                    {value}{suffix}
-                </span>
-            </div>
-            <div style={{ height: '8px', background: BAUHAUS.cardSecondaryBg, border: '1px solid #000' }}>
-                <div style={{
-                    height: '100%',
-                    width: `${Math.max(pct, 2)}%`,
-                    background: color,
-                    transition: 'width 0.3s ease'
-                }} />
-            </div>
-        </div>
-    );
-};
-
-const MobileStatsView = ({authUser, authRole, onBack}) => {
+const MobileStatsView = ({ authUser, authRole, onBack }) => {
     const [stats, setStats] = useState(null);
+    const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchStats = async () => {
+        const fetchData = async () => {
             try {
-                const response = await fetch(`${API_BASE}/stats`, { headers: getAuthHeaders() });
-                if (!response.ok) throw new Error(`Stats fetch failed: ${response.status}`);
-                const data = await response.json();
-                const overall = data.overall || {};
-                const totalTasks = overall.total_tasks || 0;
-                const completedTasks = overall.completed_tasks || 0;
-                const uncompletedTasks = overall.uncompleted_tasks || 0;
-                const totalDuration = overall.total_duration || 0;
-                setStats({
-                    total_tasks: totalTasks,
-                    done_count: completedTasks,
-                    active_count: uncompletedTasks,
-                    completion_rate: totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0,
-                    total_hours: totalDuration,
-                    total_revenue: overall.total_revenue,
-                    by_category: data.by_category || [],
-                    by_client: data.by_client || [],
-                    monthly: data.monthly || []
-                });
+                const [statsRes, tasksRes] = await Promise.all([
+                    fetch(`${API_BASE}/stats`, { headers: getAuthHeaders() }),
+                    fetch(`${API_BASE}/tasks`, { headers: getAuthHeaders() })
+                ]);
+
+                if (statsRes.ok) {
+                    const data = await statsRes.json();
+                    const overall = data.overall || {};
+                    const totalTasks = overall.total_tasks || 0;
+                    const completedTasks = overall.completed_tasks || 0;
+                    setStats({
+                        total_tasks: totalTasks,
+                        done_count: completedTasks,
+                        active_count: overall.uncompleted_tasks || 0,
+                        completion_rate: totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0,
+                        total_hours: overall.total_duration || 0,
+                        total_revenue: overall.total_revenue,
+                        by_category: data.by_category || [],
+                        by_client: data.by_client || [],
+                        monthly: data.monthly || []
+                    });
+                }
+
+                if (tasksRes.ok) {
+                    const tasksData = await tasksRes.json();
+                    setTasks(Array.isArray(tasksData) ? tasksData : tasksData.tasks || []);
+                }
             } catch (err) {
                 console.error('Error fetching stats:', err);
             } finally {
@@ -164,7 +54,7 @@ const MobileStatsView = ({authUser, authRole, onBack}) => {
             }
         };
 
-        fetchStats();
+        fetchData();
     }, [authUser, authRole]);
 
     const categoryChartData = useMemo(() => {
@@ -181,30 +71,30 @@ const MobileStatsView = ({authUser, authRole, onBack}) => {
     }, [stats?.monthly]);
 
     return (
-        <div style={{minHeight: '100vh', background: '#fff', fontFamily: FONT_STACK}}>
-            {/* Sticky Header */}
+        <div style={{ minHeight: '100vh', background: '#fff', fontFamily: FONT_STACK }}>
+            {/* Sticky Header — with safe-area-inset-top support */}
             <div style={{
                 background: '#fff',
                 borderBottom: BAUHAUS.cardBorder,
-                padding: BAUHAUS.spacing.lg,
+                padding: `max(${BAUHAUS.spacing.lg}, env(safe-area-inset-top)) ${BAUHAUS.spacing.lg} ${BAUHAUS.spacing.lg}`,
                 position: 'sticky',
                 top: 0,
                 zIndex: BAUHAUS.stickyHeaderZIndex
             }}>
-                <div style={{display: 'flex', alignItems: 'center', gap: BAUHAUS.spacing.md}}>
-                    <button onClick={onBack} style={{background: 'none', border: 'none', padding: '8px', margin: '-8px', cursor: 'pointer'}}>
-                        <ArrowLeft size={24}/>
+                <div style={{ display: 'flex', alignItems: 'center', gap: BAUHAUS.spacing.md }}>
+                    <button onClick={onBack} style={{ background: 'none', border: 'none', padding: '8px', margin: '-8px', cursor: 'pointer' }}>
+                        <ArrowLeft size={24} />
                     </button>
-                    <h1 style={{fontSize: BAUHAUS.headingFontSize, fontWeight: BAUHAUS.headingWeight, margin: 0, textTransform: 'uppercase'}}>
+                    <h1 style={{ fontSize: BAUHAUS.headingFontSize, fontWeight: BAUHAUS.headingWeight, margin: 0, textTransform: 'uppercase' }}>
                         STATS
                     </h1>
                 </div>
             </div>
 
             {loading ? (
-                <div style={{textAlign: 'center', padding: '60px 16px', color: THEME.muted}}>Loading stats...</div>
+                <div style={{ textAlign: 'center', padding: '60px 16px', color: THEME.muted }}>Loading stats...</div>
             ) : !stats ? (
-                <div style={{textAlign: 'center', padding: '60px 16px', color: THEME.muted}}>No stats available</div>
+                <div style={{ textAlign: 'center', padding: '60px 16px', color: THEME.muted }}>No stats available</div>
             ) : (
                 <>
                     {/* Summary Bar — Completion Rate Hero */}
@@ -217,41 +107,34 @@ const MobileStatsView = ({authUser, authRole, onBack}) => {
                         alignItems: 'center'
                     }}>
                         <div>
-                            <div style={{fontSize: BAUHAUS.labelFontSize, fontWeight: BAUHAUS.labelWeight, textTransform: 'uppercase', color: THEME.muted}}>
+                            <div style={{ fontSize: BAUHAUS.labelFontSize, fontWeight: BAUHAUS.labelWeight, textTransform: 'uppercase', color: THEME.muted }}>
                                 Completion Rate
                             </div>
-                            <div style={{fontSize: '2.5rem', fontWeight: BAUHAUS.headingWeight, lineHeight: 1}}>
+                            <div style={{ fontSize: '2.5rem', fontWeight: BAUHAUS.headingWeight, lineHeight: 1 }}>
                                 {stats.completion_rate?.toFixed(1) || 0}%
                             </div>
                         </div>
-                        <div style={{textAlign: 'right'}}>
-                            <div style={{fontSize: '0.85rem', color: THEME.muted}}>
+                        <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '0.85rem', color: THEME.muted }}>
                                 {stats.done_count || 0} of {stats.total_tasks || 0}
                             </div>
-                            <div style={{fontSize: BAUHAUS.labelFontSize, fontWeight: BAUHAUS.labelWeight, textTransform: 'uppercase', color: THEME.muted}}>
+                            <div style={{ fontSize: BAUHAUS.labelFontSize, fontWeight: BAUHAUS.labelWeight, textTransform: 'uppercase', color: THEME.muted }}>
                                 tasks completed
                             </div>
                         </div>
                     </div>
 
                     {/* Stat Cards Grid */}
-                    <div style={{padding: BAUHAUS.spacing.lg, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: BAUHAUS.spacing.md}}>
+                    <div style={{ padding: BAUHAUS.spacing.lg, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: BAUHAUS.spacing.md }}>
                         <StatCard label="Total Tasks" value={stats.total_tasks || 0} />
                         <StatCard label="Completed" value={stats.done_count || 0} />
-                        <StatCard
-                            label="Active"
-                            value={stats.active_count || 0}
-                            bg={THEME.secondary}
-                        />
-                        <StatCard
-                            label="Total Hours"
-                            value={`${(stats.total_hours || 0).toFixed(1)}h`}
-                        />
+                        <StatCard label="Active" value={stats.active_count || 0} bg={THEME.secondary} />
+                        <StatCard label="Total Hours" value={`${(stats.total_hours || 0).toFixed(1)}h`} />
                     </div>
 
                     {/* Revenue Card — Full Width */}
                     {stats.total_revenue !== undefined && (
-                        <div style={{padding: `0 ${BAUHAUS.spacing.lg} ${BAUHAUS.spacing.lg}`}}>
+                        <div style={{ padding: `0 ${BAUHAUS.spacing.lg} ${BAUHAUS.spacing.lg}` }}>
                             <StatCard
                                 label="Total Revenue"
                                 value={`₪${(stats.total_revenue || 0).toFixed(2)}`}
@@ -262,31 +145,25 @@ const MobileStatsView = ({authUser, authRole, onBack}) => {
                     )}
 
                     {/* Category Breakdown */}
-                    {stats.by_category && stats.by_category.length > 0 && (
+                    {stats.by_category?.length > 0 && (
                         <div style={{
                             margin: `0 ${BAUHAUS.spacing.lg} ${BAUHAUS.spacing.lg}`,
                             border: BAUHAUS.cardBorder,
                             padding: BAUHAUS.spacing.lg,
                             background: BAUHAUS.cardBg
                         }}>
-                            <SectionTitle icon={PieChart}>By Category (Top 5)</SectionTitle>
+                            <BauhausSectionTitle icon={PieChart}>By Category (Top 5)</BauhausSectionTitle>
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: BAUHAUS.spacing.md }}>
-                                {categoryChartData && (
-                                    <PieChartSVG data={categoryChartData} colors={PIE_COLORS} />
-                                )}
+                                {categoryChartData && <PieChartSVG data={categoryChartData} colors={PIE_COLORS} />}
                                 <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                    {(stats.by_category || [])
+                                    {stats.by_category
                                         .sort((a, b) => (b.task_count || 0) - (a.task_count || 0))
                                         .slice(0, 5)
                                         .map((cat, idx) => (
                                             <div key={cat.category || idx} style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: BAUHAUS.spacing.sm,
-                                                padding: '8px 12px',
-                                                border: BAUHAUS.subCardBorder,
-                                                background: BAUHAUS.cardSecondaryBg,
-                                                fontSize: '0.75rem'
+                                                display: 'flex', alignItems: 'center', gap: BAUHAUS.spacing.sm,
+                                                padding: '8px 12px', border: BAUHAUS.subCardBorder,
+                                                background: BAUHAUS.cardSecondaryBg, fontSize: '0.75rem'
                                             }}>
                                                 <div style={{
                                                     width: '12px', height: '12px',
@@ -312,26 +189,23 @@ const MobileStatsView = ({authUser, authRole, onBack}) => {
                     )}
 
                     {/* Client Breakdown */}
-                    {stats.by_client && stats.by_client.length > 0 && (
+                    {stats.by_client?.length > 0 && (
                         <div style={{
                             margin: `0 ${BAUHAUS.spacing.lg} ${BAUHAUS.spacing.lg}`,
                             border: BAUHAUS.cardBorder,
                             padding: BAUHAUS.spacing.lg,
                             background: BAUHAUS.cardBg
                         }}>
-                            <SectionTitle icon={Users}>By Client</SectionTitle>
+                            <BauhausSectionTitle icon={Users}>By Client</BauhausSectionTitle>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: BAUHAUS.spacing.sm }}>
                                 {stats.by_client
                                     .sort((a, b) => (b.task_count || 0) - (a.task_count || 0))
                                     .map((client, idx) => (
                                         <div key={client.client || idx} style={{
-                                            border: BAUHAUS.subCardBorder,
-                                            padding: '12px',
+                                            border: BAUHAUS.subCardBorder, padding: '12px',
                                             background: BAUHAUS.cardSecondaryBg,
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            gap: BAUHAUS.spacing.sm
+                                            display: 'flex', justifyContent: 'space-between',
+                                            alignItems: 'center', gap: BAUHAUS.spacing.sm
                                         }}>
                                             <div style={{ flex: 1, minWidth: 0 }}>
                                                 <div style={{ fontWeight: BAUHAUS.labelWeight, fontSize: '0.85rem', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -343,12 +217,7 @@ const MobileStatsView = ({authUser, authRole, onBack}) => {
                                                 </div>
                                             </div>
                                             {client.total_revenue != null && (
-                                                <div style={{
-                                                    fontWeight: BAUHAUS.headingWeight,
-                                                    fontSize: '0.9rem',
-                                                    color: THEME.primary,
-                                                    flexShrink: 0
-                                                }}>
+                                                <div style={{ fontWeight: BAUHAUS.headingWeight, fontSize: '0.9rem', color: THEME.primary, flexShrink: 0 }}>
                                                     ₪{(client.total_revenue || 0).toFixed(0)}
                                                 </div>
                                             )}
@@ -359,14 +228,14 @@ const MobileStatsView = ({authUser, authRole, onBack}) => {
                     )}
 
                     {/* Monthly Trends */}
-                    {stats.monthly && stats.monthly.length > 0 && (
+                    {stats.monthly?.length > 0 && (
                         <div style={{
                             margin: `0 ${BAUHAUS.spacing.lg} ${BAUHAUS.spacing.lg}`,
                             border: BAUHAUS.cardBorder,
                             padding: BAUHAUS.spacing.lg,
                             background: BAUHAUS.cardBg
                         }}>
-                            <SectionTitle icon={BarChart3}>Monthly Trends</SectionTitle>
+                            <BauhausSectionTitle icon={BarChart3}>Monthly Trends</BauhausSectionTitle>
                             <div style={{ display: 'flex', flexDirection: 'column' }}>
                                 {[...stats.monthly]
                                     .sort((a, b) => (b.month || '').localeCompare(a.month || ''))
@@ -390,6 +259,19 @@ const MobileStatsView = ({authUser, authRole, onBack}) => {
                                         );
                                     })}
                             </div>
+                        </div>
+                    )}
+
+                    {/* Task Breakdown — expandable active/completed lists */}
+                    {tasks.length > 0 && (
+                        <div style={{ padding: `0 ${BAUHAUS.spacing.lg} ${BAUHAUS.spacing.lg}` }}>
+                            <ExpandableTaskBreakdown
+                                tasks={tasks}
+                                activeCount={stats.active_count}
+                                completedCount={stats.done_count}
+                                totalCount={stats.total_tasks}
+                                variant="mobile"
+                            />
                         </div>
                     )}
 
