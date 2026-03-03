@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import LandingPage from './LandingPage';
-import LoginPage from './LoginPage';
-import SignUpPage from './SignUpPage';
-import ForgotPasswordPage from './ForgotPasswordPage';
-import ResetPasswordPage from './ResetPasswordPage';
-import TaskTracker from './TaskTracker';
-import IOSTaskTracker from './ios/IOSTaskTracker';
-import TwoFactorSetup from './TwoFactorSetup';
-import SettingsPage from './SettingsPage';
 import API_BASE from './config';
 import storage, { STORAGE_KEYS } from './utils/storage';
+
+const LandingPage = lazy(() => import('./LandingPage'));
+const LoginPage = lazy(() => import('./LoginPage'));
+const SignUpPage = lazy(() => import('./SignUpPage'));
+const ForgotPasswordPage = lazy(() => import('./ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./ResetPasswordPage'));
+const TaskTracker = lazy(() => import('./TaskTracker'));
+const IOSTaskTracker = lazy(() => import('./ios/IOSTaskTracker'));
+const TwoFactorSetup = lazy(() => import('./TwoFactorSetup'));
+const SettingsPage = lazy(() => import('./SettingsPage'));
 
 const App = () => {
   const navigate = useNavigate();
@@ -115,49 +116,63 @@ const App = () => {
     );
   }
 
+  const LoadingFallback = () => (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: '#f8f8f8'
+    }}>
+      <div style={{ fontWeight: 700, fontSize: '1.2rem' }}>Loading...</div>
+    </div>
+  );
+
   return (
-    <Routes>
-      {/* Public routes */}
-      <Route path="/" element={
-        authToken ? <Navigate to="/app" /> : <LandingPage onEnter={() => navigate('/login')} onSignUp={() => navigate('/signup')} />
-      } />
-      <Route path="/login" element={
-        authToken ? <Navigate to="/app" /> : <LoginPage onLogin={handleLogin} onBack={() => navigate('/')} />
-      } />
-      <Route path="/signup" element={
-        authToken ? <Navigate to="/app" /> : <SignUpPage />
-      } />
-      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route path="/reset-password" element={<ResetPasswordPage />} />
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        {/* Public routes */}
+        <Route path="/" element={
+          authToken ? <Navigate to="/app" /> : <LandingPage onEnter={() => navigate('/login')} onSignUp={() => navigate('/signup')} />
+        } />
+        <Route path="/login" element={
+          authToken ? <Navigate to="/app" /> : <LoginPage onLogin={handleLogin} onBack={() => navigate('/')} />
+        } />
+        <Route path="/signup" element={
+          authToken ? <Navigate to="/app" /> : <SignUpPage />
+        } />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-      {/* Protected routes */}
-      <Route path="/app" element={
-        authToken ? (
-          isMobile ? (
-            <IOSTaskTracker authToken={authToken} authUser={authUser} authRole={authRole} onLogout={handleLogout} />
+        {/* Protected routes */}
+        <Route path="/app" element={
+          authToken ? (
+            isMobile ? (
+              <IOSTaskTracker authToken={authToken} authUser={authUser} authRole={authRole} onLogout={handleLogout} />
+            ) : (
+              <TaskTracker authToken={authToken} authUser={authUser} authRole={authRole} onLogout={handleLogout} />
+            )
           ) : (
-            <TaskTracker authToken={authToken} authUser={authUser} authRole={authRole} onLogout={handleLogout} />
+            <Navigate to="/login" />
           )
-        ) : (
-          <Navigate to="/login" />
-        )
-      } />
+        } />
 
-      <Route path="/tasks" element={
-        authToken ? <Navigate to="/app" /> : <Navigate to="/login" />
-      } />
+        <Route path="/tasks" element={
+          authToken ? <Navigate to="/app" /> : <Navigate to="/login" />
+        } />
 
-      <Route path="/2fa-setup" element={
-        authToken ? <TwoFactorSetup /> : <Navigate to="/login" />
-      } />
+        <Route path="/2fa-setup" element={
+          authToken ? <TwoFactorSetup /> : <Navigate to="/login" />
+        } />
 
-      <Route path="/settings" element={
-        authToken ? <SettingsPage /> : <Navigate to="/login" />
-      } />
+        <Route path="/settings" element={
+          authToken ? <SettingsPage /> : <Navigate to="/login" />
+        } />
 
-      {/* Catch all */}
-      <Route path="*" element={<Navigate to="/" />} />
-    </Routes>
+        {/* Catch all */}
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+    </Suspense>
   );
 };
 
