@@ -93,11 +93,11 @@ Task Tracker Team"""
                 return jsonify({'message': success_message})
 
             except Exception as mail_error:
-                current_app.logger.error(f"Failed to send password reset email: {mail_error}")
+                current_app.logger.error('Failed to send password reset email: %s', mail_error, exc_info=True)
                 if DEBUG:
                     return jsonify({
                         'message': success_message,
-                        'debug_info': f'Email send failed: {mail_error}',
+                        'debug_info': 'Email send failed - see server logs',
                         'token': token,
                         'reset_url': reset_url
                     })
