@@ -112,7 +112,6 @@ Copy `.env.example` to `.env` and fill in:
 | `DATA_ENCRYPTION_KEY` | Fernet key for encrypting financial data |
 | `DB_HOST` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` | MySQL connection |
 | `FRONTEND_URL` | e.g. `http://localhost:5173` for local dev |
-| `USER_PITZ_PASSWORD` | *(optional)* password for built-in admin user |
 | `MAIL_USERNAME` / `MAIL_PASSWORD` | *(optional)* Gmail app password for password reset |
 | `CLOUDINARY_URL` | *(optional)* for file attachment uploads |
 
@@ -140,27 +139,59 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 
 ```
 ├── backend/
-│   ├── app.py              # Flask entry point
-│   ├── config.py           # App setup, CORS, extensions
-│   ├── auth_utils.py       # JWT helpers, decorators
-│   ├── db.py               # MySQL connection pool
-│   ├── crypto.py           # Field-level encryption
-│   ├── finance.py          # Yahoo Finance integration
-│   ├── helpers.py          # Shared utilities
+│   ├── app.py                      # Flask entry point
+│   ├── config.py                   # App setup, CORS, extensions, re-exports
+│   ├── auth_utils.py               # JWT helpers, decorators
+│   ├── db.py                       # MySQL connection pool
+│   ├── crypto.py                   # Field-level encryption
+│   ├── finance.py                  # Yahoo Finance integration
+│   ├── helpers.py                  # Shared utilities
+│   ├── add_performance_indexes.py  # DB index migration script
 │   ├── routes/
-│   │   ├── auth.py         # Login, signup, 2FA, password reset
-│   │   ├── tasks.py        # Task CRUD
-│   │   ├── transactions.py # Bank transaction management
-│   │   ├── portfolio.py    # Stock portfolio
-│   │   └── admin.py        # Admin endpoints
-│   └── requirements.txt
+│   │   ├── auth.py                 # Login, signup, 2FA, password reset
+│   │   ├── tasks.py                # Task CRUD
+│   │   ├── task_export.py          # CSV export
+│   │   ├── taxonomy.py             # Categories and tags
+│   │   ├── attachments.py          # File attachment management
+│   │   ├── transactions.py         # Bank transaction management
+│   │   ├── transaction_tabs.py     # Transaction tab management
+│   │   ├── transaction_query.py    # Transaction querying
+│   │   ├── portfolio.py            # Stock portfolio
+│   │   ├── portfolio_market.py     # Market data
+│   │   ├── portfolio_tabs.py       # Portfolio tab management
+│   │   ├── portfolio_yahoo.py      # Yahoo Finance import
+│   │   └── admin.py                # Admin endpoints
+│   ├── requirements.txt
+│   ├── Procfile                    # Gunicorn start command (Railway)
+│   ├── railway.toml                # Railway deploy config
+│   └── runtime.txt                 # Python version pin
 └── frontend/
     ├── src/
+    │   ├── index.jsx               # React entry point
     │   ├── App.jsx
-    │   ├── api.js
-    │   ├── pages/          # TaskTracker, BankTransactions, StockPortfolio, ...
-    │   ├── components/     # Shared UI components
-    │   └── mobile-prototype/  # Responsive mobile views
+    │   ├── api.js                  # Axios instance + API helpers
+    │   ├── config.js               # Frontend config
+    │   ├── TaskTracker.jsx
+    │   ├── BankTransactions.jsx
+    │   ├── StockPortfolio.jsx
+    │   ├── ClientsManagement.jsx
+    │   ├── SettingsPage.jsx
+    │   ├── LoginPage.jsx
+    │   ├── SignUpPage.jsx
+    │   ├── LandingPage.jsx
+    │   ├── ForgotPasswordPage.jsx
+    │   ├── ResetPasswordPage.jsx
+    │   ├── TwoFactorSetup.jsx
+    │   ├── components/
+    │   │   ├── tasks/              # Task UI components
+    │   │   ├── transactions/       # Transaction UI components
+    │   │   ├── portfolio/          # Portfolio UI components
+    │   │   └── ...                 # Shared UI components
+    │   ├── context/                # React context providers
+    │   ├── hooks/                  # Custom hooks
+    │   ├── utils/                  # Utility functions
+    │   ├── ios/                    # iOS-specific components and styles
+    │   └── mobile-prototype/       # Responsive mobile views
     └── package.json
 ```
 
