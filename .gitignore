@@ -93,3 +93,4 @@ DerivedData/
 swiftpm/
 frontend/public/background-mobile.jpg
 frontend/public/background-*.jpg
+frontend/public/background.jpg
