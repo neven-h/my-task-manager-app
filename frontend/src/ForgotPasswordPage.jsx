@@ -24,7 +24,14 @@ const ForgotPasswordPage = () => {
         body: JSON.stringify({ email: email.trim().toLowerCase() })
       });
 
-      const data = await response.json();
+      // Don't assume JSON (404 pages / proxies often return HTML)
+      const raw = await response.text();
+      let data = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        data = { error: raw || `Non-JSON response (status ${response.status})` };
+      }
 
       if (response.ok) {
         // If in development mode and token is returned, show it
@@ -33,14 +40,19 @@ const ForgotPasswordPage = () => {
             `${data.message}\n\nDevelopment Mode - Reset Link:\n${data.reset_url}\n\nToken: ${data.token}`
           );
         } else {
-          setMessage(data.message || 'If that email is registered, you will receive a password reset link shortly. Please check your inbox and spam folder.');
+          setMessage(
+            data.message ||
+              'If that email is registered, you will receive a password reset link shortly. Please check your inbox and spam folder.'
+          );
         }
       } else {
-        setError(data.error || 'Failed to send reset email');
+        setError(data.error || `Failed to send reset email (status ${response.status})`);
       }
     } catch (err) {
       console.error('Forgot password error:', err);
-      setError('Network error. Please try again.');
+      setError(
+        'Network/CORS error. Open DevTools → Console/Network and check the request details.'
+      );
     } finally {
       setLoading(false);
     }
@@ -53,13 +65,15 @@ const ForgotPasswordPage = () => {
 
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: '24px' }}>
-          <label style={{
-            display: 'block',
-            fontWeight: 700,
-            marginBottom: '8px',
-            textTransform: 'uppercase',
-            fontSize: '0.85rem'
-          }}>
+          <label
+            style={{
+              display: 'block',
+              fontWeight: 700,
+              marginBottom: '8px',
+              textTransform: 'uppercase',
+              fontSize: '0.85rem'
+            }}
+          >
             Email Address *
           </label>
           <input
@@ -99,7 +113,7 @@ const ForgotPasswordPage = () => {
         </button>
 
         <div style={{ textAlign: 'center' }}>
-          <Link 
+          <Link
             to="/login"
             style={{
               color: '#0066cc',

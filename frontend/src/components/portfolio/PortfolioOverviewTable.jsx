@@ -91,8 +91,10 @@ const PortfolioOverviewTable = ({ getStockSummary, stockPrices, priceLoading, on
                                     <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontSize: '0.9rem', color: colors.textLight }}>
                                         {stock.basePrice != null ? formatCurrencyWithCode(stock.basePrice, entryCurrency) : '-'}
                                     </td>
-                                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontFamily: 'Consolas, "Courier New", monospace', fontVariantNumeric: 'tabular-nums', fontSize: '0.95rem', color: growthValue !== null ? (isPositive ? colors.success : colors.accent) : colors.textLight, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.25rem' }}>
-                                        {growthValue !== null ? (<>{isPositive ? <TrendingUp size={16} /> : <TrendingDown size={16} />}{formatCurrencyWithCode(Math.abs(growthValue), entryCurrency)}</>) : '-'}
+                                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontFamily: 'Consolas, "Courier New", monospace', fontVariantNumeric: 'tabular-nums', fontSize: '0.95rem', color: growthValue !== null ? (isPositive ? colors.success : colors.accent) : colors.textLight }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.25rem' }}>
+                                            {growthValue !== null ? (<>{isPositive ? <TrendingUp size={16} /> : <TrendingDown size={16} />}{formatCurrencyWithCode(Math.abs(growthValue), entryCurrency)}</>) : '-'}
+                                        </div>
                                     </td>
                                     <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: '700', fontSize: '0.95rem', color: growth !== null ? (isPositive ? colors.success : colors.accent) : colors.textLight }}>
                                         {growth !== null ? (

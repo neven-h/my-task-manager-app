@@ -1,10 +1,111 @@
 from flask import Blueprint, request, jsonify, current_app
-from config import limiter, get_db_connection, validate_password
+from config import limiter, get_db_connection, validate_password, app, mail, FRONTEND_URL, DEBUG
 import bcrypt
-from datetime import datetime
+import secrets
+from datetime import datetime, timedelta
 from mysql.connector import Error
 
 auth_password_reset_bp = Blueprint('auth_password_reset', __name__)
+
+
+@auth_password_reset_bp.route('/api/auth/forgot-password', methods=['POST'])
+@limiter.limit("5 per minute")
+def forgot_password():
+    """Initiate password reset - sends email with reset link"""
+    try:
+        data = request.json
+        email = data.get('email', '').strip().lower()
+
+        if not email:
+            return jsonify({'error': 'Email is required'}), 400
+
+        # Always return success to prevent email enumeration
+        success_message = 'If that email is registered, you will receive a password reset link shortly.'
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # Look up user by email
+            cursor.execute("SELECT id, email, username FROM users WHERE email = %s", (email,))
+            user = cursor.fetchone()
+
+            if not user:
+                # Don't reveal that user doesn't exist
+                return jsonify({'message': success_message})
+
+            # Generate secure token
+            token = secrets.token_urlsafe(32)
+            expires_at = datetime.now() + timedelta(hours=1)
+
+            # Invalidate any existing tokens for this user
+            cursor.execute(
+                "UPDATE password_reset_tokens SET used = TRUE WHERE user_id = %s AND used = FALSE",
+                (user['id'],)
+            )
+
+            # Insert new token
+            cursor.execute("""
+                INSERT INTO password_reset_tokens (user_id, token, expires_at, used)
+                VALUES (%s, %s, %s, FALSE)
+            """, (user['id'], token, expires_at))
+            connection.commit()
+
+            reset_url = f"{FRONTEND_URL}/reset-password?token={token}"
+
+            # Check if email is configured
+            email_configured = bool(app.config.get('MAIL_USERNAME') and app.config.get('MAIL_PASSWORD'))
+
+            if not email_configured:
+                if DEBUG:
+                    # In debug mode, return the token directly for testing
+                    return jsonify({
+                        'message': success_message,
+                        'debug_info': 'Email not configured - showing token for testing',
+                        'token': token,
+                        'reset_url': reset_url
+                    })
+                else:
+                    current_app.logger.warning('Password reset requested but email not configured')
+                    return jsonify({'message': success_message})
+
+            # Send password reset email
+            try:
+                from flask_mail import Message
+                msg = Message(
+                    subject="Password Reset Request - Task Tracker",
+                    recipients=[user['email']],
+                    body=f"""Hello {user['username']},
+
+You requested a password reset for your Task Tracker account.
+
+Click the link below to reset your password:
+{reset_url}
+
+This link will expire in 1 hour.
+
+If you did not request this reset, please ignore this email.
+
+Best regards,
+Task Tracker Team"""
+                )
+                mail.send(msg)
+                current_app.logger.info(f"Password reset email sent to {email}")
+                return jsonify({'message': success_message})
+
+            except Exception as mail_error:
+                current_app.logger.error(f"Failed to send password reset email: {mail_error}")
+                if DEBUG:
+                    return jsonify({
+                        'message': success_message,
+                        'debug_info': f'Email send failed: {mail_error}',
+                        'token': token,
+                        'reset_url': reset_url
+                    })
+                return jsonify({'message': success_message})
+
+    except Exception as e:
+        current_app.logger.error('forgot_password error: %s', e, exc_info=True)
+        return jsonify({'error': 'An error occurred processing your request'}), 500
 
 
 @auth_password_reset_bp.route('/api/auth/verify-token', methods=['GET'])
