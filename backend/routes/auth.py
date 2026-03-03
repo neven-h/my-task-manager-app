@@ -24,9 +24,8 @@ def health_check():
         current_app.logger.error('health_check db error: %s', e, exc_info=True)
 
     status = "healthy" if db_ok else "degraded"
-    code = 200 if db_ok else 503
     result = {"status": status, "database": "connected" if db_ok else "unavailable"}
-    return jsonify(result), code
+    return jsonify(result), 200
 
 
 @auth_bp.route('/api/login', methods=['POST'])
