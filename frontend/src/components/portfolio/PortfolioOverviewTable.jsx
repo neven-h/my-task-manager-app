@@ -41,9 +41,9 @@ const PortfolioOverviewTable = ({ getStockSummary, stockPrices, priceLoading, on
                 <tbody>
                     {getStockSummary
                         .sort((a, b) => {
-                            const aTotal = (b.latestEntry.value_ils || 0) * (b.latestEntry.units || 1);
-                            const bTotal = (a.latestEntry.value_ils || 0) * (a.latestEntry.units || 1);
-                            return aTotal - bTotal;
+                            const aTotal = (a.latestEntry.value_ils || 0) * (a.latestEntry.units || 1);
+                            const bTotal = (b.latestEntry.value_ils || 0) * (b.latestEntry.units || 1);
+                            return bTotal - aTotal;
                         })
                         .map(stock => {
                             const entryCurrency = stock.latestEntry.currency || 'USD';

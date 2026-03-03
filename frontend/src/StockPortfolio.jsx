@@ -34,12 +34,8 @@ const StockPortfolio = ({ onBackToTasks }) => {
 
     const { entries, setEntries, summary, setSummary, stockNames,
         loading, setLoading, error, setError,
-        fetchEntries: _fetchEntries, fetchSummary: _fetchSummary, fetchStockNames: _fetchStockNames
+        fetchEntries, fetchSummary, fetchStockNames
     } = usePortfolioData();
-
-    const fetchEntries = (tabId) => _fetchEntries(tabId, activeTabId);
-    const fetchSummary = (tabId) => _fetchSummary(tabId, activeTabId);
-    const fetchStockNames = (tabId) => _fetchStockNames(tabId, activeTabId);
 
     const { handleSwitchTab, handleCreateFirstTab, initializeTabs } = usePortfolioTabs({
         setTabs, setActiveTabId, setEntries, setSummary, setError,
