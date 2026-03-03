@@ -1,14 +1,9 @@
 import React, {useState, useEffect, useMemo} from 'react';
-import { ArrowLeft, Edit2, Plus, Trash2, PieChart } from 'lucide-react';
+import { ArrowLeft, Edit2, Plus, Trash2, PieChart, X } from 'lucide-react';
 import API_BASE from '../../config';
 import { formatCurrency } from '../../utils/formatCurrency';
 import { getAuthHeaders } from '../../api.js';
-
-const THEME = {
-    bg: '#fff', primary: '#0000FF', secondary: '#FFD500', accent: '#FF0000',
-    text: '#000', muted: '#666', success: '#00AA00', border: '#000'
-};
-const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
+import { THEME, FONT_STACK, BAUHAUS } from '../theme';
 
 const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
     const [tabs, setTabs] = useState([]);
@@ -234,7 +229,7 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
         return { sortedCategories, totalAmount };
     }, [filteredTransactions]);
 
-    const PIE_COLORS = ['#0000FF', '#FF0000', '#FFD500', '#00AA00', '#FF6B35'];
+    const PIE_COLORS = BAUHAUS.pieColors;
 
     return (
         <div style={{minHeight: '100vh', background: '#fff', fontFamily: FONT_STACK}}>
@@ -307,22 +302,47 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
             </div>
 
             {/* Stats Cards */}
+            {/* Summary Bar */}
+            {stats && stats.by_type && (
+                <div style={{
+                    padding: '16px',
+                    background: BAUHAUS.cardSecondaryBg,
+                    borderBottom: BAUHAUS.cardBorder,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                }}>
+                    <div>
+                        <div style={{fontSize: BAUHAUS.labelFontSize, fontWeight: BAUHAUS.labelWeight, textTransform: 'uppercase', color: THEME.muted}}>
+                            Total
+                        </div>
+                        <div style={{fontSize: '1.5rem', fontWeight: 900}}>
+                            {formatCurrency(stats.by_type.reduce((s, t) => s + (Number(t.total_amount) || 0), 0))}
+                        </div>
+                    </div>
+                    <div style={{fontSize: BAUHAUS.labelFontSize, color: THEME.muted, fontWeight: BAUHAUS.labelWeight}}>
+                        {transactions.length} transactions
+                    </div>
+                </div>
+            )}
+
+            {/* Stats Cards */}
             {stats && stats.by_type && (
                 <div style={{padding: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
                     {stats.by_type.map(stat => (
                         <div key={stat.transaction_type} style={{
-                            border: '3px solid #000',
+                            border: BAUHAUS.cardBorder,
                             padding: '16px',
-                            background: '#fff',
+                            background: BAUHAUS.cardBg,
                             textAlign: 'center'
                         }}>
-                            <div style={{fontSize: '1.5rem', fontWeight: 900, marginBottom: '4px'}}>
+                            <div style={{fontSize: '1.5rem', fontWeight: BAUHAUS.headingWeight, marginBottom: '4px'}}>
                                 {formatCurrency(stat.total_amount || 0)}
                             </div>
-                            <div style={{fontSize: '0.75rem', color: THEME.muted, fontWeight: 700, textTransform: 'uppercase'}}>
-                                {stat.transaction_type === 'cash' ? '💵 Cash' : '💳 Credit'}
+                            <div style={{fontSize: BAUHAUS.labelFontSize, color: THEME.muted, fontWeight: BAUHAUS.labelWeight, textTransform: 'uppercase'}}>
+                                {stat.transaction_type === 'cash' ? 'Cash' : 'Credit'}
                             </div>
-                            <div style={{fontSize: '0.7rem', color: THEME.muted, marginTop: '4px'}}>
+                            <div style={{fontSize: '0.75rem', color: THEME.muted, marginTop: '4px'}}>
                                 {stat.transaction_count} transactions
                             </div>
                         </div>
@@ -336,14 +356,14 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
                 return (
                     <div style={{
                         margin: '0 16px 16px',
-                        border: '2px solid #000',
-                        padding: '12px',
-                        background: '#fff'
+                        border: BAUHAUS.cardBorder,
+                        padding: '16px',
+                        background: BAUHAUS.cardBg
                     }}>
                         <h2 style={{
                             margin: '0 0 10px 0',
-                            fontSize: '0.95rem',
-                            fontWeight: 800,
+                            fontSize: BAUHAUS.labelFontSize,
+                            fontWeight: BAUHAUS.labelWeight,
                             textTransform: 'uppercase',
                             display: 'flex',
                             alignItems: 'center',
@@ -397,9 +417,9 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
                                             display: 'flex',
                                             alignItems: 'center',
                                             gap: '8px',
-                                            padding: '6px 8px',
-                                            border: '1px solid #000',
-                                            background: '#f8f8f8',
+                                            padding: '8px 12px',
+                                            border: BAUHAUS.subCardBorder,
+                                            background: BAUHAUS.cardSecondaryBg,
                                             fontSize: '0.75rem'
                                         }}>
                                             <div style={{
@@ -432,20 +452,22 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
                         style={{
                             flex: 1,
                             minWidth: '100px',
-                            padding: '10px',
-                            border: '2px solid #000',
-                            fontSize: '0.9rem'
+                            padding: BAUHAUS.inputPadding,
+                            border: BAUHAUS.inputBorder,
+                            fontSize: '0.9rem',
+                            borderRadius: 0
                         }}
                     />
                     <select
                         value={typeFilter}
                         onChange={(e) => setTypeFilter(e.target.value)}
                         style={{
-                            padding: '10px',
-                            border: '2px solid #000',
+                            padding: BAUHAUS.inputPadding,
+                            border: BAUHAUS.inputBorder,
                             fontSize: '0.9rem',
-                            fontWeight: 700,
-                            minWidth: '100px'
+                            fontWeight: BAUHAUS.labelWeight,
+                            minWidth: '100px',
+                            borderRadius: 0
                         }}
                     >
                         <option value="all">All Types</option>
@@ -456,11 +478,12 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
                         value={selectedMonth}
                         onChange={(e) => setSelectedMonth(e.target.value)}
                         style={{
-                            padding: '10px',
-                            border: '2px solid #000',
+                            padding: BAUHAUS.inputPadding,
+                            border: BAUHAUS.inputBorder,
                             fontSize: '0.9rem',
-                            fontWeight: 700,
-                            minWidth: '100px'
+                            fontWeight: BAUHAUS.labelWeight,
+                            minWidth: '100px',
+                            borderRadius: 0
                         }}
                         title="Month"
                     >
@@ -491,10 +514,10 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
                         <div
                             key={transaction.id}
                             style={{
-                                border: '2px solid #000',
-                                padding: '6px 10px',
-                                marginBottom: '6px',
-                                background: '#fff'
+                                border: BAUHAUS.cardBorder,
+                                padding: '12px 16px',
+                                marginBottom: '8px',
+                                background: BAUHAUS.cardBg
                             }}
                         >
                             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px'}}>
@@ -539,28 +562,38 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
                                             setShowAddForm(true);
                                         }}
                                         style={{
-                                            padding: '5px',
-                                            border: '2px solid #000',
-                                            background: '#fff',
-                                            color: THEME.text,
-                                            cursor: 'pointer'
+                                            padding: '8px',
+                                            border: BAUHAUS.subCardBorder,
+                                            background: THEME.primary,
+                                            color: '#fff',
+                                            cursor: 'pointer',
+                                            minWidth: '36px',
+                                            minHeight: '36px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
                                         }}
                                         title="Edit"
                                     >
-                                        <Edit2 size={12}/>
+                                        <Edit2 size={14}/>
                                     </button>
                                     <button
                                         onClick={() => handleDeleteTransaction(transaction.id)}
                                         style={{
-                                            padding: '5px',
-                                            border: '2px solid #000',
+                                            padding: '8px',
+                                            border: BAUHAUS.subCardBorder,
                                             background: THEME.accent,
                                             color: '#fff',
-                                            cursor: 'pointer'
+                                            cursor: 'pointer',
+                                            minWidth: '36px',
+                                            minHeight: '36px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
                                         }}
                                         title="Delete"
                                     >
-                                        <Trash2 size={12}/>
+                                        <Trash2 size={14}/>
                                     </button>
                                 </div>
                             </div>
@@ -586,12 +619,12 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
                     position: 'fixed',
                     bottom: '20px',
                     right: '20px',
-                    width: '64px',
-                    height: '64px',
+                    width: BAUHAUS.fabSize,
+                    height: BAUHAUS.fabSize,
                     borderRadius: '50%',
                     background: THEME.primary,
-                    border: '3px solid #000',
-                    boxShadow: '4px 4px 0px #000',
+                    border: BAUHAUS.fabBorder,
+                    boxShadow: BAUHAUS.fabShadow,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -625,14 +658,16 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
                 >
                     <div style={{
                         width: '100%',
-                        maxHeight: '80vh',
+                        maxHeight: '90vh',
                         background: '#fff',
-                        borderRadius: '16px 16px 0 0',
-                        padding: '20px',
-                        overflowY: 'auto'
+                        borderRadius: BAUHAUS.modalRadius,
+                        padding: BAUHAUS.spacing.xl,
+                        overflowY: 'auto',
+                        WebkitOverflowScrolling: 'touch',
+                        paddingBottom: 'max(20px, env(safe-area-inset-bottom))'
                     }}>
-                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
-                            <h2 style={{fontSize: '1.3rem', fontWeight: 900, margin: 0, textTransform: 'uppercase'}}>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: BAUHAUS.spacing.xl}}>
+                            <h2 style={{fontSize: BAUHAUS.headingFontSize, fontWeight: BAUHAUS.headingWeight, margin: 0, textTransform: 'uppercase'}}>
                                 {editingTransaction ? 'Edit Transaction' : 'New Transaction'}
                             </h2>
                             <button onClick={() => {
@@ -645,29 +680,29 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
 
                         <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
                             <div>
-                                <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
+                                <label style={{display: 'block', marginBottom: '8px', fontWeight: BAUHAUS.labelWeight, fontSize: BAUHAUS.labelFontSize, textTransform: 'uppercase'}}>
                                     Date
                                 </label>
                                 <input
                                     type="date"
                                     value={newTransaction.transaction_date}
                                     onChange={(e) => setNewTransaction({...newTransaction, transaction_date: e.target.value})}
-                                    style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
+                                    style={{width: '100%', padding: BAUHAUS.inputPadding, border: BAUHAUS.inputBorder, fontSize: BAUHAUS.inputFontSize, borderRadius: 0}}
                                 />
                             </div>
                             <div>
-                                <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
+                                <label style={{display: 'block', marginBottom: '8px', fontWeight: BAUHAUS.labelWeight, fontSize: BAUHAUS.labelFontSize, textTransform: 'uppercase'}}>
                                     Description
                                 </label>
                                 <input
                                     type="text"
                                     value={newTransaction.description}
                                     onChange={(e) => setNewTransaction({...newTransaction, description: e.target.value})}
-                                    style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
+                                    style={{width: '100%', padding: BAUHAUS.inputPadding, border: BAUHAUS.inputBorder, fontSize: BAUHAUS.inputFontSize, borderRadius: 0}}
                                 />
                             </div>
                             <div>
-                                <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
+                                <label style={{display: 'block', marginBottom: '8px', fontWeight: BAUHAUS.labelWeight, fontSize: BAUHAUS.labelFontSize, textTransform: 'uppercase'}}>
                                     Amount
                                 </label>
                                 <input
@@ -675,17 +710,17 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
                                     step="0.01"
                                     value={newTransaction.amount}
                                     onChange={(e) => setNewTransaction({...newTransaction, amount: e.target.value})}
-                                    style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
+                                    style={{width: '100%', padding: BAUHAUS.inputPadding, border: BAUHAUS.inputBorder, fontSize: BAUHAUS.inputFontSize, borderRadius: 0}}
                                 />
                             </div>
                             <div>
-                                <label style={{display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase'}}>
+                                <label style={{display: 'block', marginBottom: '8px', fontWeight: BAUHAUS.labelWeight, fontSize: BAUHAUS.labelFontSize, textTransform: 'uppercase'}}>
                                     Type
                                 </label>
                                 <select
                                     value={newTransaction.transaction_type}
                                     onChange={(e) => setNewTransaction({...newTransaction, transaction_type: e.target.value})}
-                                    style={{width: '100%', padding: '12px', border: '3px solid #000', fontSize: '1rem'}}
+                                    style={{width: '100%', padding: BAUHAUS.inputPadding, border: BAUHAUS.inputBorder, fontSize: BAUHAUS.inputFontSize, borderRadius: 0}}
                                 >
                                     <option value="credit">Credit</option>
                                     <option value="cash">Cash</option>
@@ -700,9 +735,9 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
                                     style={{
                                         flex: 1,
                                         padding: '14px',
-                                        border: '3px solid #000',
-                                        background: '#fff',
-                                        fontWeight: 700,
+                                        border: BAUHAUS.cardBorder,
+                                        background: BAUHAUS.cardBg,
+                                        fontWeight: BAUHAUS.labelWeight,
                                         fontSize: '0.9rem',
                                         cursor: 'pointer'
                                     }}
@@ -715,10 +750,10 @@ const MobileBankTransactionsView = ({authUser, authRole, onBack}) => {
                                     style={{
                                         flex: 1,
                                         padding: '14px',
-                                        border: '3px solid #000',
+                                        border: BAUHAUS.cardBorder,
                                         background: THEME.primary,
                                         color: '#fff',
-                                        fontWeight: 700,
+                                        fontWeight: BAUHAUS.labelWeight,
                                         fontSize: '0.9rem',
                                         cursor: 'pointer',
                                         opacity: (loading || !newTransaction.description || !newTransaction.amount) ? 0.5 : 1

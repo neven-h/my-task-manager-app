@@ -1,12 +1,30 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Menu } from 'lucide-react';
-
-const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
+import { FONT_STACK, IOS_BLEND } from '../theme';
 
 const MobileHeader = ({ onMenuOpen }) => {
+    const [scrolled, setScrolled] = useState(false);
+
+    const handleScroll = useCallback(() => {
+        setScrolled(window.scrollY > 0);
+    }, []);
+
+    useEffect(() => {
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [handleScroll]);
+
     return (
-        <div style={{ position: 'sticky', top: 0, zIndex: 100, background: '#fff', borderBottom: '4px solid #000' }}>
-            <div style={{ height: '12px', width: '100%', background: '#F8B4D9' }} />
+        <div style={{
+            position: 'sticky',
+            top: 0,
+            zIndex: 100,
+            background: '#fff',
+            borderBottom: `${IOS_BLEND.headerBorderWidth} solid #000`,
+            boxShadow: scrolled ? '0 2px 8px rgba(0,0,0,0.1)' : 'none',
+            transition: 'box-shadow 0.2s ease'
+        }}>
+            <div style={{ height: IOS_BLEND.accentBarHeight, width: '100%', background: IOS_BLEND.accentBarColor }} />
             <div style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h1 style={{
                     fontFamily: FONT_STACK, fontSize: 'clamp(1.25rem, 4vw, 1.75rem)',
@@ -17,7 +35,17 @@ const MobileHeader = ({ onMenuOpen }) => {
                 </h1>
                 <button
                     onClick={onMenuOpen}
-                    style={{ background: '#fff', border: '3px solid #000', padding: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    style={{
+                        background: '#fff',
+                        border: '3px solid #000',
+                        padding: '10px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minWidth: IOS_BLEND.minTapTarget,
+                        minHeight: IOS_BLEND.minTapTarget
+                    }}
                     aria-label="Menu"
                 >
                     <Menu size={24} color="#000" />

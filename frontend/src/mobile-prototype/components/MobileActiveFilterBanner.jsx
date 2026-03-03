@@ -1,8 +1,8 @@
 import React from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { useTaskContext } from '../../context/TaskContext';
+import { FONT_STACK } from '../theme';
 
-const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 
 const MobileActiveFilterBanner = () => {
     const { hasActiveFilters, clearFilters } = useTaskContext();
