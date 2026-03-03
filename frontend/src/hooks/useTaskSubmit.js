@@ -1,0 +1,95 @@
+import { useCallback } from 'react';
+import API_BASE from '../config';
+import { getAuthHeaders } from '../api.js';
+
+const useTaskSubmit = ({ setLoading, setError, loadTasks, fetchStats, fetchClients }) => {
+    const submitTask = useCallback(async (formData, editingTask) => {
+        try {
+            setLoading(true);
+            const url = editingTask ? `${API_BASE}/tasks/${editingTask.id}` : `${API_BASE}/tasks`;
+            const { attachments, newAttachments, removedAttachmentIds, ...payload } = formData;
+
+            const response = await fetch(url, {
+                method: editingTask ? 'PUT' : 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.error || 'Failed to save task');
+            }
+
+            const responseData = await response.json().catch(() => ({}));
+            const taskId = editingTask ? editingTask.id : responseData.id;
+
+            if (taskId) {
+                for (const { file, name } of (newAttachments || [])) {
+                    const fd = new FormData();
+                    fd.append('file', file, name || file.name || `image-${Date.now()}.png`);
+                    const upRes = await fetch(`${API_BASE}/tasks/${taskId}/attachments`, { method: 'POST', headers: getAuthHeaders(false), body: fd });
+                    if (!upRes.ok) { const upErr = await upRes.json().catch(() => ({})); throw new Error(upErr.error || 'Failed to upload attachment'); }
+                }
+                for (const attId of (removedAttachmentIds || [])) {
+                    await fetch(`${API_BASE}/tasks/${taskId}/attachments/${attId}`, { method: 'DELETE', headers: getAuthHeaders() });
+                }
+            }
+
+            await loadTasks();
+            await fetchStats();
+            await fetchClients();
+            setError(null);
+            return true;
+        } catch (err) {
+            setError(err.message);
+            return false;
+        } finally {
+            setLoading(false);
+        }
+    }, [loadTasks, fetchStats, fetchClients, setLoading, setError]);
+
+    const submitBulkTasks = useCallback(async (taskTitles, categories, client, taskDate, taskTime) => {
+        const tasks = taskTitles.map(title => ({
+            title, description: '', categories: categories.length > 0 ? categories : [],
+            client: client || '', task_date: taskDate, task_time: taskTime || '',
+            duration: '', status: 'uncompleted', tags: [], notes: ''
+        }));
+        try {
+            setLoading(true);
+            await Promise.all(tasks.map(task => fetch(`${API_BASE}/tasks`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(task) })));
+            await loadTasks();
+            await fetchStats();
+            await fetchClients();
+            setError(null);
+            return true;
+        } catch {
+            setError('Failed to create bulk tasks');
+            return false;
+        } finally {
+            setLoading(false);
+        }
+    }, [loadTasks, fetchStats, fetchClients, setLoading, setError]);
+
+    const shareTask = useCallback(async (taskId, email) => {
+        if (!email.trim()) { alert('Please enter an email address'); return false; }
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) { alert('Please enter a valid email address'); return false; }
+        try {
+            setLoading(true);
+            const response = await fetch(`${API_BASE}/tasks/${taskId}/share`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ email: email.trim() }) });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Failed to share task');
+            alert(`Task shared successfully with ${email}!`);
+            return true;
+        } catch (err) {
+            alert(err.message);
+            return false;
+        } finally {
+            setLoading(false);
+        }
+    }, [setLoading]);
+
+    return { submitTask, submitBulkTasks, shareTask };
+};
+
+export default useTaskSubmit;
