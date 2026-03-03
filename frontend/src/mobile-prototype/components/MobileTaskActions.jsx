@@ -1,8 +1,8 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
 import { useTaskContext } from '../../context/TaskContext';
+import { FONT_STACK } from '../theme';
 
-const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 
 const MobileTaskActions = () => {
     const { openNewTaskForm, setShowBulkInput, tasks, loading } = useTaskContext();

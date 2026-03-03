@@ -6,8 +6,8 @@ import API_BASE from '../../config';
 import sanitizeUrl from '../../utils/sanitizeUrl';
 import storage, { STORAGE_KEYS } from '../../utils/storage';
 import MobileDiscardConfirm from './MobileDiscardConfirm';
+import { FONT_STACK } from '../theme';
 
-const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 const labelStyle = { display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' };
 
 const defaultFormData = () => ({

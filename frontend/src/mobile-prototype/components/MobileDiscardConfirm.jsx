@@ -1,6 +1,6 @@
 import React from 'react';
+import { FONT_STACK } from '../theme';
 
-const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 
 const MobileDiscardConfirm = ({ isOpen, isEditing, onKeepEditing, onDiscard }) => {
     if (!isOpen) return null;

@@ -3,8 +3,7 @@ import { CheckCircle, Circle, Edit2, Copy, Share2, CalendarPlus, Calendar, Clock
 import { useTaskContext } from '../../context/TaskContext';
 import useSwipeGesture from '../../ios/hooks/useSwipeGesture';
 import { downloadICS } from '../../utils/generateICS';
-
-const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
+import { FONT_STACK, IOS_BLEND } from '../theme';
 
 const MobileTaskCard = ({ task }) => {
     const {
@@ -34,7 +33,7 @@ const MobileTaskCard = ({ task }) => {
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
                     <button
                         onClick={() => toggleTaskStatus(task.id)}
-                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', minWidth: '32px', minHeight: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        style={{ background: 'none', border: 'none', padding: '6px', cursor: 'pointer', minWidth: IOS_BLEND.minTapTarget, minHeight: IOS_BLEND.minTapTarget, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '-6px' }}
                     >
                         {isCompleted
                             ? <CheckCircle size={32} color="#FFD500" fill="#FFD500" />
@@ -51,17 +50,17 @@ const MobileTaskCard = ({ task }) => {
                         </h3>
                     </div>
 
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                        <button onClick={() => openEditTaskForm(task)} style={{ background: 'none', border: 'none', padding: '8px', cursor: 'pointer' }} aria-label="Edit task">
+                    <div style={{ display: 'flex', gap: '2px' }}>
+                        <button onClick={() => openEditTaskForm(task)} style={{ background: 'none', border: 'none', padding: '12px', cursor: 'pointer', minWidth: IOS_BLEND.minTapTarget, minHeight: IOS_BLEND.minTapTarget, display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-label="Edit task">
                             <Edit2 size={20} color="#0000FF" />
                         </button>
-                        <button onClick={() => duplicateTask(task.id)} style={{ background: 'none', border: 'none', padding: '8px', cursor: 'pointer' }} aria-label="Duplicate task">
+                        <button onClick={() => duplicateTask(task.id)} style={{ background: 'none', border: 'none', padding: '12px', cursor: 'pointer', minWidth: IOS_BLEND.minTapTarget, minHeight: IOS_BLEND.minTapTarget, display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-label="Duplicate task">
                             <Copy size={20} color="#FFD500" />
                         </button>
-                        <button onClick={() => openShareModal(task)} style={{ background: 'none', border: 'none', padding: '8px', cursor: 'pointer' }} aria-label="Share task">
+                        <button onClick={() => openShareModal(task)} style={{ background: 'none', border: 'none', padding: '12px', cursor: 'pointer', minWidth: IOS_BLEND.minTapTarget, minHeight: IOS_BLEND.minTapTarget, display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-label="Share task">
                             <Share2 size={20} color="#FF0000" />
                         </button>
-                        <button onClick={() => downloadICS(task)} style={{ background: 'none', border: 'none', padding: '8px', cursor: 'pointer' }} aria-label="Add to Calendar">
+                        <button onClick={() => downloadICS(task)} style={{ background: 'none', border: 'none', padding: '12px', cursor: 'pointer', minWidth: IOS_BLEND.minTapTarget, minHeight: IOS_BLEND.minTapTarget, display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-label="Add to Calendar">
                             <CalendarPlus size={20} color="#FFD500" />
                         </button>
                     </div>

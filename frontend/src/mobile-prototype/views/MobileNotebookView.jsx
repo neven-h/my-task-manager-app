@@ -1,12 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Bold, Italic, Strikethrough } from 'lucide-react';
 import storage, { STORAGE_KEYS } from '../../utils/storage';
+import { THEME, FONT_STACK } from '../theme';
 
-const THEME = {
-    bg: '#fff', primary: '#0000FF', secondary: '#FFD500', accent: '#FF0000',
-    text: '#000', muted: '#666', border: '#000'
-};
-const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 
 const MobileNotebookView = ({ onBack }) => {
     const editorRef = useRef(null);
