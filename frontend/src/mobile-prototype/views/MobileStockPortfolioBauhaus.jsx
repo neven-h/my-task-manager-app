@@ -14,8 +14,14 @@ import MobileStockPortfolioForm from '../components/portfolio/MobileStockPortfol
 import MobilePortfolioDraftDialog from '../components/portfolio/MobilePortfolioDraftDialog';
 
 const THEME = {
-    bg: '#fff', primary: '#0000FF', secondary: '#FFD500', accent: '#FF0000',
-    text: '#000', muted: '#666', success: '#00AA00', border: '#000'
+    bg: '#ffffff',
+    primary: '#0000FF',
+    secondary: '#FFD500',
+    accent: '#FF0000',
+    text: '#000000',
+    muted: '#8E8E93',
+    success: '#34C759',
+    border: 'rgba(0,0,0,0.08)'
 };
 const FONT_STACK = "'Inter', 'Helvetica Neue', Calibri, sans-serif";
 
@@ -52,8 +58,12 @@ const MobileStockPortfolioBauhaus = ({ authUser, authRole, onBack }) => {
     }, [form.showForm]);
 
     const headerStyle = {
-        background: '#fff', borderBottom: '3px solid #000', padding: '16px',
-        position: 'sticky', top: 0, zIndex: 100
+        background: '#ffffff',
+        borderBottom: '1px solid rgba(0,0,0,0.08)',
+        padding: '12px 16px',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100
     };
     const backButtonStyle = {
         background: 'none',
@@ -70,7 +80,7 @@ const MobileStockPortfolioBauhaus = ({ authUser, authRole, onBack }) => {
     // };
 
     return (
-        <div style={{ minHeight: '100vh', background: '#fff', fontFamily: FONT_STACK }}>
+        <div style={{ minHeight: '100vh', background: '#ffffff', fontFamily: FONT_STACK }}>
             <MobileStockPortfolioHeader onBack={onBack} tabs={tabs} activeTabId={activeTabId} setActiveTabId={setActiveTabId} handleCreateTab={handleCreateTab} theme={THEME} headerStyle={headerStyle} backButtonStyle={backButtonStyle} />
             <MobileStockSummaryCards summary={summary} summaryDisplayCurrency={summaryDisplayCurrency} setSummaryDisplayCurrency={setSummaryDisplayCurrency} theme={THEME} fontStack={FONT_STACK} />
             <div style={{ padding: '0 16px 16px' }}>
@@ -82,9 +92,24 @@ const MobileStockPortfolioBauhaus = ({ authUser, authRole, onBack }) => {
 
             <button
                 onClick={form.openNewEntryForm}
-                style={{ position: 'fixed', bottom: '20px', right: '20px', width: '64px', height: '64px', borderRadius: '50%', background: THEME.primary, border: '3px solid #000', boxShadow: '4px 4px 0px #000', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 90 }}
+                style={{
+                    position: 'fixed',
+                    bottom: '24px',
+                    right: '24px',
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '28px',
+                    background: THEME.primary,
+                    border: 'none',
+                    boxShadow: '0 6px 16px rgba(0,0,0,0.15)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    zIndex: 90
+                }}
             >
-                <Plus size={32} color="#fff" strokeWidth={3} />
+                <Plus size={24} color="#fff" strokeWidth={2} />
             </button>
 
             <MobileStockPortfolioForm showForm={form.showForm} editingEntry={form.editingEntry} formData={form.formData} setFormData={form.setFormData} stockNames={stockNames} loading={loading} onClose={form.handleCloseForm} onSave={handleSaveEntry} theme={THEME} />

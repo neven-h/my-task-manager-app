@@ -31,7 +31,7 @@ const MobileSidebar = ({ isOpen, onClose, onOpenSearch }) => {
 
     const handleClose = () => {
         setClosing(true);
-        setTimeout(() => { setClosing(false); onClose(); }, 300);
+        setTimeout(() => { setClosing(false); onClose(); }, 260);
     };
 
     const handleUpload = async (e) => {
@@ -74,10 +74,10 @@ const MobileSidebar = ({ isOpen, onClose, onOpenSearch }) => {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    background: 'rgba(0,0,0,0.32)',
+                    background: 'rgba(0,0,0,0.28)',
                     zIndex: 300,
                     opacity: isVisible ? 1 : 0,
-                    transition: `opacity 300ms ${SPRING}`
+                    transition: `opacity 260ms ${SPRING}`
                 }}
                 onClick={handleClose}
             />
@@ -99,23 +99,24 @@ const MobileSidebar = ({ isOpen, onClose, onOpenSearch }) => {
                     fontFamily: FONT_STACK,
                     paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
                     transform: isVisible ? 'translateX(0)' : 'translateX(100%)',
-                    transition: `transform 300ms ${SPRING}`
+                    transition: `transform 260ms ${SPRING}`
                 }}
             >
                 {/* Header */}
                 <div
                     style={{
-                        padding: '24px 20px 18px',
+                        padding: '20px 20px 14px',
                         display: 'flex',
                         justifyContent: 'space-between',
-                        alignItems: 'center'
+                        alignItems: 'center',
+                        borderBottom: '1px solid rgba(0,0,0,0.06)'
                     }}
                 >
                     <div>
                         <h2
                             style={{
-                                fontSize: '1.35rem',
-                                fontWeight: 800,
+                                fontSize: '1.25rem',
+                                fontWeight: 700,
                                 margin: 0,
                                 letterSpacing: '-0.01em'
                             }}
@@ -131,48 +132,48 @@ const MobileSidebar = ({ isOpen, onClose, onOpenSearch }) => {
                     <button
                         onClick={handleClose}
                         style={{
-                            background: 'rgba(0,0,0,0.05)',
+                            background: 'rgba(0,0,0,0.04)',
                             border: 'none',
                             borderRadius: '12px',
-                            width: '36px',
-                            height: '36px',
+                            width: '32px',
+                            height: '32px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             cursor: 'pointer'
                         }}
                     >
-                        <X size={18} />
+                        <X size={18} style={{ opacity: 0.75 }} />
                     </button>
                 </div>
 
-                <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
                     <MobileSection>
                         <MobileRow onClick={() => { openNewTaskForm(); handleClose(); }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <Plus size={18} />
+                                <Plus size={18} style={{ opacity: 0.75 }} />
                                 <span style={{ fontWeight: 600 }}>New Task</span>
                             </div>
                         </MobileRow>
 
                         <MobileRow onClick={async () => { await fetchTasks(); handleClose(); }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <RefreshCw size={18} />
+                                <RefreshCw size={18} style={{ opacity: 0.75 }} />
                                 <span style={{ fontWeight: 600 }}>Refresh</span>
                             </div>
                         </MobileRow>
 
                         <MobileRow onClick={() => { onOpenSearch(); handleClose(); }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <Search size={18} />
+                                <Search size={18} style={{ opacity: 0.75 }} />
                                 <span style={{ fontWeight: 600 }}>Search</span>
                             </div>
                         </MobileRow>
 
                         <MobileRow showDivider={false} onClick={() => nav('notebook')}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <BookOpen size={18} />
+                                <BookOpen size={18} style={{ opacity: 0.75 }} />
                                 <span style={{ fontWeight: 600 }}>Notebook</span>
                             </div>
                         </MobileRow>
@@ -182,14 +183,14 @@ const MobileSidebar = ({ isOpen, onClose, onOpenSearch }) => {
                         <MobileSection>
                             <MobileRow onClick={() => nav('transactions')}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <DollarSign size={18} />
+                                    <DollarSign size={18} style={{ opacity: 0.75 }} />
                                     <span style={{ fontWeight: 600 }}>Bank Transactions</span>
                                 </div>
                             </MobileRow>
 
                             <MobileRow showDivider={false} onClick={() => uploadRef.current?.click()}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <Upload size={18} />
+                                    <Upload size={18} style={{ opacity: 0.75 }} />
                                     <span style={{ fontWeight: 600 }}>Upload File</span>
                                 </div>
                             </MobileRow>
@@ -208,7 +209,7 @@ const MobileSidebar = ({ isOpen, onClose, onOpenSearch }) => {
                         <MobileSection>
                             <MobileRow showDivider={false} onClick={() => nav('portfolio')}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <TrendingUp size={18} />
+                                    <TrendingUp size={18} style={{ opacity: 0.75 }} />
                                     <span style={{ fontWeight: 600 }}>Stock Portfolio</span>
                                 </div>
                             </MobileRow>
@@ -219,7 +220,7 @@ const MobileSidebar = ({ isOpen, onClose, onOpenSearch }) => {
                         <MobileSection>
                             <MobileRow showDivider={false} onClick={() => nav('clients')}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                    <Users size={18} />
+                                    <Users size={18} style={{ opacity: 0.75 }} />
                                     <span style={{ fontWeight: 600 }}>Clients</span>
                                 </div>
                             </MobileRow>
@@ -229,14 +230,14 @@ const MobileSidebar = ({ isOpen, onClose, onOpenSearch }) => {
                     <MobileSection>
                         <MobileRow onClick={() => nav('stats')}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <BarChart3 size={18} />
+                                <BarChart3 size={18} style={{ opacity: 0.75 }} />
                                 <span style={{ fontWeight: 600 }}>View Stats</span>
                             </div>
                         </MobileRow>
 
                         <MobileRow showDivider={false} onClick={() => { exportToCSV(); handleClose(); }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <Download size={18} />
+                                <Download size={18} style={{ opacity: 0.75 }} />
                                 <span style={{ fontWeight: 600 }}>Export CSV</span>
                             </div>
                         </MobileRow>
@@ -245,7 +246,7 @@ const MobileSidebar = ({ isOpen, onClose, onOpenSearch }) => {
                     <MobileSection>
                         <MobileRow onClick={() => { navigate('/settings'); handleClose(); }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <Settings size={18} />
+                                <Settings size={18} style={{ opacity: 0.75 }} />
                                 <span style={{ fontWeight: 600 }}>Settings</span>
                             </div>
                         </MobileRow>
@@ -256,7 +257,7 @@ const MobileSidebar = ({ isOpen, onClose, onOpenSearch }) => {
                             style={{ color: '#d11a2a' }}
                         >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <LogOut size={18} />
+                                <LogOut size={18} style={{ opacity: 0.75 }} />
                                 <span style={{ fontWeight: 600 }}>Logout</span>
                             </div>
                         </MobileRow>
