@@ -19,7 +19,7 @@ const SettingsHeader = () => {
                     position: 'absolute',
                     top: '20px',
                     left: '20px',
-                    background: 'rgba(239, 224, 114, 0.1)',
+                    background: 'rgba(239, 229, 114, 0.1)',
                     border: 'none',
                     color: '#667eea',
                     padding: '8px',
