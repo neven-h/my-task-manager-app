@@ -30,7 +30,7 @@ const SettingsPage = () => {
                     width: '90%',
                     textAlign: 'center'
                 }}>
-                    <Shield size={48} color="#667eea" style={{ marginBottom: '20px' }} />
+                    <Shield size={48} color="#eff5d5" style={{ marginBottom: '20px' }} />
                     <h2>Loading Settings...</h2>
                 </div>
             </div>

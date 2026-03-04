@@ -83,6 +83,7 @@ xcuserdata/
 DerivedData/
 swiftpm/
 frontend/ios/App/App.xcodeproj/project.xcworkspace/
+
 # All public assets (local only, never commit)
 frontend/public/
 
