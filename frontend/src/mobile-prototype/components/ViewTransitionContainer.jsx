@@ -152,6 +152,8 @@ const ViewTransitionContainer = ({
                     width: '100%',
                     minHeight: '100vh',
                     background: '#fff',
+                    // Hide completely when fully behind sub-view — browser skips paint/layout
+                    display: (showSubView && !transitioning && !isActive) ? 'none' : undefined,
                     willChange: isActive || transitioning ? 'transform, opacity' : undefined,
                     transform: isActive ? gestureBgTransform : (!showSubView ? undefined : (transitioning ? undefined : 'translateX(-30%)')),
                     opacity: isActive ? gestureBgOpacity : (!showSubView ? 1 : (transitioning ? undefined : 0.6)),

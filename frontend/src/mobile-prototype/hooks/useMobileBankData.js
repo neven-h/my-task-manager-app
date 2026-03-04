@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import API_BASE from '../../config';
 import { getAuthHeaders } from '../../api.js';
 
@@ -10,19 +10,10 @@ const useMobileBankData = (activeTabId) => {
     const [selectedMonth, setSelectedMonth] = useState('all');
     const [stats, setStats] = useState(null);
 
-    useEffect(() => {
-        if (activeTabId === null) return;
-        setSelectedMonth('all');
-        fetchMonths();
-        fetchStats();
-    }, [activeTabId]);
+    // Cache per tabId to make tab switches instant
+    const cacheRef = useRef({}); // { [tabId]: { transactions, months, stats } }
 
-    useEffect(() => {
-        if (activeTabId === null) return;
-        fetchTransactions();
-    }, [activeTabId, selectedMonth]);
-
-    const formatMonthYear = (monthYear) => {
+    const formatMonthYear = useCallback((monthYear) => {
         if (monthYear == null || monthYear === '' || monthYear === 'all') return 'All';
         const str = typeof monthYear === 'string' ? monthYear : (monthYear.month_year || '');
         if (!str || str === 'all') return 'All';
@@ -30,9 +21,35 @@ const useMobileBankData = (activeTabId) => {
         if (parts.length < 2) return str;
         const d = new Date(Number(parts[0]), Number(parts[1]) - 1);
         return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-    };
+    }, []);
 
-    const fetchMonths = async () => {
+    const fetchTransactions = useCallback(async () => {
+        // Skip loading spinner if we already have cached data for this tab+month
+        const isAllMonths = selectedMonth === 'all';
+        const hasCached = isAllMonths && !!cacheRef.current[activeTabId]?.transactions;
+        if (!hasCached) setLoading(true);
+        try {
+            const path = isAllMonths
+                ? `${API_BASE}/transactions/all?tab_id=${activeTabId}`
+                : `${API_BASE}/transactions/${selectedMonth}?tab_id=${activeTabId}`;
+            const response = await fetch(path, { headers: getAuthHeaders() });
+            const data = await response.json();
+            const result = Array.isArray(data) ? data : [];
+            setTransactions(result);
+            setError(!response.ok ? (data?.error || 'Failed to load transactions') : null);
+            // Update cache (covers both initial load and post-mutation refresh)
+            if (isAllMonths) {
+                cacheRef.current[activeTabId] = { ...cacheRef.current[activeTabId], transactions: result };
+            }
+        } catch (err) {
+            setError('Failed to load transactions');
+            setTransactions([]);
+        } finally {
+            setLoading(false);
+        }
+    }, [activeTabId, selectedMonth]);
+
+    const fetchMonths = useCallback(async () => {
         try {
             const response = await fetch(`${API_BASE}/transactions/months?tab_id=${activeTabId}`, { headers: getAuthHeaders() });
             const data = await response.json();
@@ -41,39 +58,46 @@ const useMobileBankData = (activeTabId) => {
                 : [];
             setAvailableMonths(list);
             setSelectedMonth('all');
+            cacheRef.current[activeTabId] = { ...cacheRef.current[activeTabId], months: list };
         } catch (err) {
             console.error('Error fetching months:', err);
             setAvailableMonths([]);
         }
-    };
+    }, [activeTabId]);
 
-    const fetchTransactions = async () => {
-        try {
-            setLoading(true);
-            const path = selectedMonth === 'all'
-                ? `${API_BASE}/transactions/all?tab_id=${activeTabId}`
-                : `${API_BASE}/transactions/${selectedMonth}?tab_id=${activeTabId}`;
-            const response = await fetch(path, { headers: getAuthHeaders() });
-            const data = await response.json();
-            setTransactions(Array.isArray(data) ? data : []);
-            setError(!response.ok ? (data?.error || 'Failed to load transactions') : null);
-        } catch (err) {
-            setError('Failed to load transactions');
-            setTransactions([]);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchStats = async () => {
+    const fetchStats = useCallback(async () => {
         try {
             const response = await fetch(`${API_BASE}/transactions/stats?tab_id=${activeTabId}`, { headers: getAuthHeaders() });
             const data = await response.json();
             setStats(data);
+            cacheRef.current[activeTabId] = { ...cacheRef.current[activeTabId], stats: data };
         } catch (err) {
             console.error('Error fetching stats:', err);
         }
-    };
+    }, [activeTabId]);
+
+    useEffect(() => {
+        if (activeTabId === null) return;
+        setSelectedMonth('all');
+        // Pre-populate from cache immediately so there's no blank/loading flash
+        const cached = cacheRef.current[activeTabId];
+        if (cached) {
+            if (cached.transactions) setTransactions(cached.transactions);
+            if (cached.months) setAvailableMonths(cached.months);
+            if (cached.stats) setStats(cached.stats);
+        } else {
+            setTransactions([]);
+            setAvailableMonths([]);
+            setStats(null);
+        }
+        fetchMonths();
+        fetchStats();
+    }, [activeTabId, fetchMonths, fetchStats]);
+
+    useEffect(() => {
+        if (activeTabId === null) return;
+        fetchTransactions();
+    }, [activeTabId, selectedMonth, fetchTransactions]);
 
     return {
         transactions, setTransactions,
