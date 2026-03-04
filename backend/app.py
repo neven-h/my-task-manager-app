@@ -10,6 +10,7 @@ from routes.auth import auth_bp
 from routes.auth_account import auth_account_bp
 from routes.auth_delete import auth_delete_bp
 from routes.auth_password import auth_password_bp
+from routes.auth_forgot_password import auth_forgot_password_bp
 from routes.auth_password_reset import auth_password_reset_bp
 from routes.auth_2fa import auth_2fa_bp
 from routes.auth_2fa_manage import auth_2fa_manage_bp
@@ -52,6 +53,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(auth_account_bp)
 app.register_blueprint(auth_delete_bp)
 app.register_blueprint(auth_password_bp)
+app.register_blueprint(auth_forgot_password_bp)
 app.register_blueprint(auth_password_reset_bp)
 app.register_blueprint(auth_2fa_bp)
 app.register_blueprint(auth_2fa_manage_bp)
