@@ -6,7 +6,7 @@ const MobileStyles = () => (
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
 
         * { -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
-        body { font-family: ${FONT_STACK}; }
+        html, body { background: #fff; font-family: ${FONT_STACK}; }
 
         .mobile-btn {
           border: 1px solid rgba(0,0,0,0.2); border-radius: 10px; background: #fff;

@@ -10,7 +10,8 @@ const IOSStyles = () => (
           overscroll-behavior: none;
         }
 
-        body {
+        html, body {
+          background: #fff;
           font-family: ${FONT_STACK};
         }
 

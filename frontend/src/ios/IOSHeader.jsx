@@ -7,13 +7,15 @@ const IOSHeader = ({ onMenuOpen }) => (
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        background: '#fff',
-        borderBottom: '4px solid #000'
+        background: '#F8B4D9',
+        borderBottom: '4px solid #000',
+        paddingTop: 'env(safe-area-inset-top, 0px)'
     }}>
-        {/* Top bar: solid pink */}
+        {/* Top bar: solid pink — also covers the safe-area gap on notched phones */}
         <div style={{ height: '12px', width: '100%', background: '#F8B4D9' }} />
         <div style={{
             padding: '16px',
+            background: '#fff',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center'
