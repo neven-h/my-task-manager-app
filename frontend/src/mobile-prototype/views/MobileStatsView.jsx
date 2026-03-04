@@ -14,30 +14,31 @@ const MobileStatsView = ({ authUser, authRole, onBack }) => {
     return (
         <div style={{ minHeight: '100vh', background: '#fff', fontFamily: FONT_STACK }}>
             <div style={{
-                background: '#fff', borderBottom: BAUHAUS.cardBorder,
-                padding: `max(${BAUHAUS.spacing.lg}, env(safe-area-inset-top)) ${BAUHAUS.spacing.lg} ${BAUHAUS.spacing.lg}`,
-                position: 'sticky', top: 0, zIndex: BAUHAUS.stickyHeaderZIndex
+                background: '#fff',
+                borderBottom: '1px solid rgba(0,0,0,0.08)',
+                paddingLeft: BAUHAUS.spacing.lg,
+                paddingRight: BAUHAUS.spacing.lg,
+                paddingBottom: BAUHAUS.spacing.lg,
+                paddingTop: `calc(env(safe-area-inset-top, 0px) + ${BAUHAUS.spacing.lg})`,
+                position: 'sticky',
+                top: 0,
+                zIndex: BAUHAUS.stickyHeaderZIndex
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: BAUHAUS.spacing.md }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr 44px', alignItems: 'center' }}>
                     <button
-  onClick={onBack}
-  style={{
-    background: 'none',
-    border: 'none',
-    padding: '12px',
-    minWidth: '44px',
-    minHeight: '44px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    cursor: 'pointer'
-  }}
->
-                        <ArrowLeft size={24} />
+                        onClick={onBack}
+                        style={{
+                            background: 'none', border: 'none', padding: '10px',
+                            minWidth: '44px', minHeight: '44px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                        }}
+                    >
+                        <ArrowLeft size={22} />
                     </button>
-                    <h1 style={{ fontSize: BAUHAUS.headingFontSize, fontWeight: BAUHAUS.headingWeight, margin: 0, textTransform: 'uppercase' }}>
-                        STATS
+                    <h1 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, textAlign: 'center', justifySelf: 'center' }}>
+                        Stats
                     </h1>
+                    <div />
                 </div>
             </div>
 
@@ -48,18 +49,18 @@ const MobileStatsView = ({ authUser, authRole, onBack }) => {
             ) : (
                 <>
                     <div style={{
-                        padding: BAUHAUS.spacing.xl, background: BAUHAUS.cardSecondaryBg,
-                        borderBottom: BAUHAUS.cardBorder, display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                        padding: BAUHAUS.spacing.xl, background: '#fff',
+                        borderBottom: '0.5px solid rgba(0,0,0,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                     }}>
                         <div>
-                            <div style={{ fontSize: BAUHAUS.labelFontSize, fontWeight: BAUHAUS.labelWeight, textTransform: 'uppercase', color: THEME.muted }}>Completion Rate</div>
-                            <div style={{ fontSize: '2.5rem', fontWeight: BAUHAUS.headingWeight, lineHeight: 1 }}>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 500, color: THEME.muted, marginBottom: 2 }}>Completion Rate</div>
+                            <div style={{ fontSize: '2.5rem', fontWeight: 700, lineHeight: 1, color: '#000' }}>
                                 {stats.completion_rate?.toFixed(1) || 0}%
                             </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
                             <div style={{ fontSize: '0.85rem', color: THEME.muted }}>{stats.done_count || 0} of {stats.total_tasks || 0}</div>
-                            <div style={{ fontSize: BAUHAUS.labelFontSize, fontWeight: BAUHAUS.labelWeight, textTransform: 'uppercase', color: THEME.muted }}>tasks completed</div>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 400, color: THEME.muted }}>tasks completed</div>
                         </div>
                     </div>
 

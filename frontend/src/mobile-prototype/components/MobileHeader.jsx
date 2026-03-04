@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Menu } from 'lucide-react';
-import { FONT_STACK, IOS_BLEND } from '../theme';
+import { FONT_STACK, IOS_BLEND, THEME } from '../theme';
 
 const MobileHeader = ({ onMenuOpen }) => {
     const [scrolled, setScrolled] = useState(false);
@@ -19,37 +19,44 @@ const MobileHeader = ({ onMenuOpen }) => {
             position: 'sticky',
             top: 0,
             zIndex: 100,
-            background: IOS_BLEND.accentBarColor,
-            borderBottom: `${IOS_BLEND.headerBorderWidth} solid #000`,
-            boxShadow: scrolled ? '0 2px 8px rgba(0,0,0,0.1)' : 'none',
+            background: '#fff',
+            borderBottom: '1px solid rgba(0,0,0,0.08)',
+            boxShadow: scrolled ? '0 2px 8px rgba(0,0,0,0.08)' : 'none',
             transition: 'box-shadow 0.2s ease',
             paddingTop: 'env(safe-area-inset-top, 0px)'
         }}>
-            <div style={{ height: IOS_BLEND.accentBarHeight, width: '100%', background: IOS_BLEND.accentBarColor }} />
-            <div style={{ padding: '16px', background: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h1 style={{
-                    fontFamily: FONT_STACK, fontSize: 'clamp(1.25rem, 4vw, 1.75rem)',
-                    fontWeight: 900, margin: 0, letterSpacing: '-1px',
-                    textTransform: 'uppercase', color: '#000'
-                }}>
-                    TASK TRACKER
-                </h1>
+            <div style={{ padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                    <h1 style={{
+                        fontFamily: FONT_STACK,
+                        fontSize: 'clamp(1.25rem, 4vw, 1.6rem)',
+                        fontWeight: 700,
+                        margin: 0,
+                        letterSpacing: '-0.5px',
+                        color: '#000'
+                    }}>
+                        Task Tracker
+                    </h1>
+                    <div style={{ height: 2, width: 28, background: THEME.primary, marginTop: 4, borderRadius: 1 }} />
+                </div>
                 <button
                     onClick={onMenuOpen}
                     style={{
-                        background: '#fff',
-                        border: '3px solid #000',
-                        padding: '10px',
+                        background: 'rgba(0,0,0,0.06)',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: IOS_BLEND.minTapTarget,
+                        height: IOS_BLEND.minTapTarget,
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        minWidth: IOS_BLEND.minTapTarget,
-                        minHeight: IOS_BLEND.minTapTarget
+                        transition: 'background 150ms ease',
+                        flexShrink: 0
                     }}
                     aria-label="Menu"
                 >
-                    <Menu size={24} color="#000" />
+                    <Menu size={22} color="#000" />
                 </button>
             </div>
         </div>
