@@ -56,8 +56,18 @@ const MobileStockPortfolioBauhaus = ({ authUser, authRole, onBack }) => {
         position: 'sticky', top: 0, zIndex: 100
     };
     const backButtonStyle = {
-        background: 'none', border: 'none', padding: '8px', margin: '-8px', cursor: 'pointer'
-    };
+        background: 'none',
+        border: 'none',
+        padding: '12px',
+        minWidth: '44px',
+        minHeight: '44px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer'
+      };
+    // const backButtonStyle = {
+    // };
 
     return (
         <div style={{ minHeight: '100vh', background: '#fff', fontFamily: FONT_STACK }}>
