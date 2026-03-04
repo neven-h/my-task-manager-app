@@ -19,7 +19,7 @@ const SettingsPage = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                background: 'linear-gradient(135deg, #efcdd1 0%, #eff5d5 100%)',
                 fontFamily: 'Inter, sans-serif'
             }}>
                 <div style={{

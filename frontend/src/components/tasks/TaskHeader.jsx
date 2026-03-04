@@ -114,7 +114,7 @@ const TaskHeader = ({ showSidebar, setShowSidebar, setShowMobileMenu, setShowMob
                     )}
                     {/* Clients - for admin and limited users (not shared) */}
                     {!isSharedUser && (
-                        <button className="btn btn-green" onClick={() => setAppView('clients')} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
+                        <button className="btn btn-yellow" onClick={() => setAppView('clients')} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
                             <Tag size={16}
                                  style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>
                             Clients
@@ -122,7 +122,7 @@ const TaskHeader = ({ showSidebar, setShowSidebar, setShowMobileMenu, setShowMob
                     )}
                     {/* Stock Portfolio - for all users */}
                     {(isAdmin || isSharedUser || isLimitedUser) && (
-                        <button className="btn btn-yellow" onClick={() => setAppView('portfolio')} style={{background: '#FFD500', color: '#000', border: '2px solid #000', whiteSpace: 'nowrap', flexShrink: 0}}>
+                        <button className="btn btn-green" onClick={() => setAppView('portfolio')} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
                             <BarChart3 size={16}
                                        style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>
                             Portfolio
