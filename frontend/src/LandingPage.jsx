@@ -1,12 +1,15 @@
 import React from 'react';
 import { Globe, Lock, Sparkles, UserPlus } from 'lucide-react';
 
+const BG_URL = import.meta.env.VITE_BG_URL || '/background.jpg';
+const BG_MOBILE_URL = import.meta.env.VITE_BG_MOBILE_URL || '/background-mobile.jpg';
+
 const LandingPage = ({ onEnter, onSignUp }) => {
   const isMobile = window.innerWidth <= 768;
   return (
     <div style={{
       minHeight: '100vh',
-      background: isMobile ? 'url(/background-mobile.jpg)' : 'url(/background.jpg)',
+      background: isMobile ? `url(${BG_MOBILE_URL})` : `url(${BG_URL})`,
       backgroundSize: 'cover',
       backgroundPosition: isMobile ? 'center center' : '20% 50%',
       backgroundRepeat: 'no-repeat',
