@@ -9,7 +9,7 @@
  * Navigation uses ViewTransitionContainer for iOS-style push/pop animations
  * and swipe-from-left-edge to go back.
  */
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { TaskProvider, useTaskContext } from '../context/TaskContext';
 import { FONT_STACK } from './theme';
 
@@ -34,8 +34,14 @@ import MobileBulkTaskModal from './components/MobileBulkTaskModal';
 import MobileShareTaskModal from './components/MobileShareTaskModal';
 import ViewTransitionContainer from './components/ViewTransitionContainer';
 
+import storage from '../core/storage';
+
 const MobileTaskTrackerInner = () => {
     const { appView, setAppView, authUser, authRole } = useTaskContext();
+
+    useEffect(() => {
+        storage.init();
+    }, []);
 
     // UI-only state lives in the shell, not in context
     const [showSidebar, setShowSidebar] = useState(false);

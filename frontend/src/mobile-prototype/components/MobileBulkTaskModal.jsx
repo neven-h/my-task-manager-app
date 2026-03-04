@@ -2,8 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { X } from 'lucide-react';
 import CustomAutocomplete from '../../components/CustomAutocomplete';
 import { useTaskContext } from '../../context/TaskContext';
-import storage, { STORAGE_KEYS } from '../../utils/storage';
+import storage from '../../core/storage';
 import { FONT_STACK } from '../theme';
+
+const STORAGE_KEY = 'MOBILE_BULK_DRAFT';
 
 const labelStyle = { display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' };
 
@@ -30,15 +32,23 @@ const MobileBulkTaskModal = () => {
     const [bulkClient, setBulkClient] = useState('');
 
     useEffect(() => {
-        if (showBulkInput) {
-            const draft = storage.get(STORAGE_KEYS.MOBILE_BULK_DRAFT) || '';
+        if (!showBulkInput) return;
+
+        const loadDraft = async () => {
+            const draft = await storage.get(STORAGE_KEY);
             if (draft && !bulkText) setBulkText(draft);
-        }
+        };
+
+        loadDraft();
     }, [showBulkInput]);
 
     useEffect(() => {
         if (!showBulkInput || !bulkText) return;
-        const timer = setTimeout(() => storage.set(STORAGE_KEYS.MOBILE_BULK_DRAFT, bulkText), 1000);
+
+        const timer = setTimeout(() => {
+            storage.set(STORAGE_KEY, bulkText);
+        }, 1000);
+
         return () => clearTimeout(timer);
     }, [bulkText, showBulkInput]);
 
@@ -51,14 +61,14 @@ const MobileBulkTaskModal = () => {
         const ok = await submitBulkTasks(titles, bulkCategory, bulkClient, today, time);
         if (ok) {
             setBulkText(''); setBulkCategory([]); setBulkClient('');
-            storage.remove(STORAGE_KEYS.MOBILE_BULK_DRAFT);
+            await storage.remove(STORAGE_KEY);
             setShowBulkInput(false);
         }
     }, [bulkText, bulkCategory, bulkClient, submitBulkTasks, setShowBulkInput]);
 
     const handleCancel = () => {
         setBulkText(''); setBulkCategory([]); setBulkClient('');
-        storage.remove(STORAGE_KEYS.MOBILE_BULK_DRAFT);
+        storage.remove(STORAGE_KEY);
         setShowBulkInput(false);
     };
 

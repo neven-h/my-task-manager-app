@@ -5,7 +5,8 @@ import { useTaskContext } from '../../context/TaskContext';
 import { FONT_STACK, IOS_BLEND } from '../theme';
 import API_BASE from '../../config';
 import { getAuthHeaders } from '../../api.js';
-import { SectionTitle, GroupedItem } from './SidebarHelpers';
+import MobileSection from '../../mobile/design/MobileSection';
+import MobileRow from '../../mobile/design/MobileRow';
 
 const SPRING = 'cubic-bezier(0.22,1,0.36,1)';
 
@@ -57,7 +58,7 @@ const MobileSidebar = ({ isOpen, onClose, onOpenSearch }) => {
             <div
                 style={{
                     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.4)', zIndex: 300,
+                    background: 'rgba(0,0,0,0.32)', zIndex: 300,
                     opacity: isVisible ? 1 : 0,
                     transition: `opacity 300ms ${SPRING}`
                 }}
@@ -69,8 +70,8 @@ const MobileSidebar = ({ isOpen, onClose, onOpenSearch }) => {
                 style={{
                     position: 'fixed', top: 0, right: 0, bottom: 0,
                     width: IOS_BLEND.sidebarWidth, maxWidth: IOS_BLEND.sidebarMaxWidth,
-                    background: '#f2f2f7',
-                    boxShadow: '-8px 0 24px rgba(0,0,0,0.12)',
+                    background: '#ffffff',
+                    boxShadow: '-12px 0 32px rgba(0,0,0,0.14)',
                     zIndex: 301, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
                     fontFamily: FONT_STACK,
                     paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
@@ -79,72 +80,158 @@ const MobileSidebar = ({ isOpen, onClose, onOpenSearch }) => {
                 }}
             >
                 {/* Header */}
-                <div style={{ padding: '20px 20px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div
+                    style={{
+                        padding: '24px 20px 18px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                    }}
+                >
                     <div>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: '0 0 4px 0' }}>Menu</h2>
-                        {isAdmin && <p style={{ fontSize: '0.8rem', color: '#666', margin: 0 }}>{authUser} (admin)</p>}
+                        <h2
+                            style={{
+                                fontSize: '1.35rem',
+                                fontWeight: 800,
+                                margin: 0,
+                                letterSpacing: '-0.01em'
+                            }}
+                        >
+                            Menu
+                        </h2>
+                        {isAdmin && (
+                            <p style={{ fontSize: '0.75rem', color: '#666', margin: '4px 0 0 0' }}>
+                                {authUser} · admin
+                            </p>
+                        )}
                     </div>
-                    <button onClick={handleClose} style={{ background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginTop: '4px' }}>
-                        <X size={16} />
+                    <button
+                        onClick={handleClose}
+                        style={{
+                            background: 'rgba(0,0,0,0.05)',
+                            border: 'none',
+                            borderRadius: '12px',
+                            width: '36px',
+                            height: '36px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        <X size={18} />
                     </button>
                 </div>
 
                 <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    <div>
-                        <SectionTitle>Quick Actions</SectionTitle>
-                        <div className="ios-grouped-section">
-                            <GroupedItem icon={Plus} label="New Task" color="#0000FF" onClick={() => { openNewTaskForm(); handleClose(); }} />
-                            <GroupedItem icon={RefreshCw} label="Refresh" onClick={async () => { await fetchTasks(); handleClose(); }} />
-                            <GroupedItem icon={Search} label="Search" badge={hasActiveFilters}
-                                onClick={() => { onOpenSearch(); setClosing(true); setTimeout(() => { setClosing(false); }, 300); }} />
-                            <GroupedItem icon={BookOpen} label="Notebook" onClick={() => nav('notebook')} />
-                        </div>
-                    </div>
+
+                    <MobileSection>
+                        <MobileRow onClick={() => { openNewTaskForm(); handleClose(); }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <Plus size={18} />
+                                <span style={{ fontWeight: 600 }}>New Task</span>
+                            </div>
+                        </MobileRow>
+
+                        <MobileRow onClick={async () => { await fetchTasks(); handleClose(); }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <RefreshCw size={18} />
+                                <span style={{ fontWeight: 600 }}>Refresh</span>
+                            </div>
+                        </MobileRow>
+
+                        <MobileRow onClick={() => { onOpenSearch(); handleClose(); }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <Search size={18} />
+                                <span style={{ fontWeight: 600 }}>Search</span>
+                            </div>
+                        </MobileRow>
+
+                        <MobileRow showDivider={false} onClick={() => nav('notebook')}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <BookOpen size={18} />
+                                <span style={{ fontWeight: 600 }}>Notebook</span>
+                            </div>
+                        </MobileRow>
+                    </MobileSection>
 
                     {showFinance && (
-                        <div>
-                            <SectionTitle>Bank Transactions</SectionTitle>
-                            <div className="ios-grouped-section">
-                                <GroupedItem icon={DollarSign} label="View Transactions" onClick={() => nav('transactions')} />
-                                <GroupedItem icon={Upload} label="Upload File" onClick={() => uploadRef.current?.click()} />
-                                <input ref={uploadRef} type="file" accept=".csv,.xlsx,.xls" style={{ display: 'none' }} onChange={handleUpload} />
-                            </div>
-                        </div>
+                        <MobileSection>
+                            <MobileRow onClick={() => nav('transactions')}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <DollarSign size={18} />
+                                    <span style={{ fontWeight: 600 }}>Bank Transactions</span>
+                                </div>
+                            </MobileRow>
+
+                            <MobileRow showDivider={false} onClick={() => uploadRef.current?.click()}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <Upload size={18} />
+                                    <span style={{ fontWeight: 600 }}>Upload File</span>
+                                </div>
+                            </MobileRow>
+                            <input ref={uploadRef} type="file" accept=".csv,.xlsx,.xls" style={{ display: 'none' }} onChange={handleUpload} />
+                        </MobileSection>
                     )}
 
                     {showFinance && (
-                        <div>
-                            <SectionTitle>Stock Portfolio</SectionTitle>
-                            <div className="ios-grouped-section">
-                                <GroupedItem icon={TrendingUp} label="View Portfolio" onClick={() => nav('portfolio')} />
-                            </div>
-                        </div>
+                        <MobileSection>
+                            <MobileRow showDivider={false} onClick={() => nav('portfolio')}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <TrendingUp size={18} />
+                                    <span style={{ fontWeight: 600 }}>Stock Portfolio</span>
+                                </div>
+                            </MobileRow>
+                        </MobileSection>
                     )}
 
                     {showFinance && (
-                        <div>
-                            <SectionTitle>Clients</SectionTitle>
-                            <div className="ios-grouped-section">
-                                <GroupedItem icon={Users} label="Manage Clients" onClick={() => nav('clients')} />
-                            </div>
-                        </div>
+                        <MobileSection>
+                            <MobileRow showDivider={false} onClick={() => nav('clients')}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <Users size={18} />
+                                    <span style={{ fontWeight: 600 }}>Clients</span>
+                                </div>
+                            </MobileRow>
+                        </MobileSection>
                     )}
 
-                    <div>
-                        <SectionTitle>Analytics</SectionTitle>
-                        <div className="ios-grouped-section">
-                            <GroupedItem icon={BarChart3} label="View Stats" onClick={() => nav('stats')} />
-                            <GroupedItem icon={Download} label="Export CSV" onClick={() => { exportToCSV(); handleClose(); }} />
-                        </div>
-                    </div>
+                    <MobileSection>
+                        <MobileRow onClick={() => nav('stats')}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <BarChart3 size={18} />
+                                <span style={{ fontWeight: 600 }}>View Stats</span>
+                            </div>
+                        </MobileRow>
 
-                    <div>
-                        <SectionTitle>Account</SectionTitle>
-                        <div className="ios-grouped-section">
-                            <GroupedItem icon={Settings} label="Settings" onClick={() => { navigate('/settings'); handleClose(); }} />
-                            <GroupedItem icon={LogOut} label="Logout" destructive onClick={() => { handleClose(); if (onLogout) onLogout(); }} />
-                        </div>
-                    </div>
+                        <MobileRow showDivider={false} onClick={() => { exportToCSV(); handleClose(); }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <Download size={18} />
+                                <span style={{ fontWeight: 600 }}>Export CSV</span>
+                            </div>
+                        </MobileRow>
+                    </MobileSection>
+
+                    <MobileSection>
+                        <MobileRow onClick={() => { navigate('/settings'); handleClose(); }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <Settings size={18} />
+                                <span style={{ fontWeight: 600 }}>Settings</span>
+                            </div>
+                        </MobileRow>
+
+                        <MobileRow
+                            showDivider={false}
+                            onClick={() => { handleClose(); if (onLogout) onLogout(); }}
+                            style={{ color: '#d11a2a' }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <LogOut size={18} />
+                                <span style={{ fontWeight: 600 }}>Logout</span>
+                            </div>
+                        </MobileRow>
+                    </MobileSection>
+
                 </div>
             </div>
         </>
