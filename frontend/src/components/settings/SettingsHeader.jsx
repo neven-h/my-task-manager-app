@@ -21,7 +21,7 @@ const SettingsHeader = () => {
                     left: '20px',
                     background: 'rgba(102, 126, 234, 0.1)',
                     border: 'none',
-                    color: '#667eea',
+                    color: '#FAF9F6',
                     padding: '8px',
                     borderRadius: '8px',
                     cursor: 'pointer',
