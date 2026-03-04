@@ -14,9 +14,10 @@ const MobileSidebar = ({ isOpen, onClose, onOpenSearch }) => {
     const navigate = useNavigate();
     const {
         authUser, isAdmin, isSharedUser, isLimitedUser, onLogout,
-        setAppView, openNewTaskForm, fetchTasks, tasks,
+        setAppView, openNewTaskForm, fetchTasks,
         hasActiveFilters, exportToCSV
     } = useTaskContext();
+
     const uploadRef = useRef(null);
     const [closing, setClosing] = useState(false);
 
@@ -36,15 +37,26 @@ const MobileSidebar = ({ isOpen, onClose, onOpenSearch }) => {
     const handleUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
+
         const fd = new FormData();
         fd.append('file', file);
         fd.append('transaction_type', 'credit');
+
         try {
-            const res = await fetch(`${API_BASE}/transactions/upload`, { method: 'POST', headers: getAuthHeaders(false), body: fd });
+            const res = await fetch(`${API_BASE}/transactions/upload`, {
+                method: 'POST',
+                headers: getAuthHeaders(false),
+                body: fd
+            });
+
             const data = await res.json().catch(() => null);
+
             if (res.ok) alert(`Successfully uploaded ${data?.transaction_count || '0'} transactions!`);
             else alert(`Error: ${data?.error || 'Upload failed'}`);
-        } catch (err) { alert(`Error uploading file: ${err?.message || err}`); }
+        } catch (err) {
+            alert(`Error uploading file: ${err?.message || err}`);
+        }
+
         handleClose();
         e.target.value = '';
     };
@@ -57,8 +69,13 @@ const MobileSidebar = ({ isOpen, onClose, onOpenSearch }) => {
             {/* Backdrop */}
             <div
                 style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.32)', zIndex: 300,
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0,0,0,0.32)',
+                    zIndex: 300,
                     opacity: isVisible ? 1 : 0,
                     transition: `opacity 300ms ${SPRING}`
                 }}
@@ -68,11 +85,17 @@ const MobileSidebar = ({ isOpen, onClose, onOpenSearch }) => {
             {/* Panel */}
             <div
                 style={{
-                    position: 'fixed', top: 0, right: 0, bottom: 0,
-                    width: IOS_BLEND.sidebarWidth, maxWidth: IOS_BLEND.sidebarMaxWidth,
+                    position: 'fixed',
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    width: IOS_BLEND.sidebarWidth,
+                    maxWidth: IOS_BLEND.sidebarMaxWidth,
                     background: '#ffffff',
                     boxShadow: '-12px 0 32px rgba(0,0,0,0.14)',
-                    zIndex: 301, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+                    zIndex: 301,
+                    overflowY: 'auto',
+                    WebkitOverflowScrolling: 'touch',
                     fontFamily: FONT_STACK,
                     paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
                     transform: isVisible ? 'translateX(0)' : 'translateX(100%)',
@@ -170,7 +193,14 @@ const MobileSidebar = ({ isOpen, onClose, onOpenSearch }) => {
                                     <span style={{ fontWeight: 600 }}>Upload File</span>
                                 </div>
                             </MobileRow>
-                            <input ref={uploadRef} type="file" accept=".csv,.xlsx,.xls" style={{ display: 'none' }} onChange={handleUpload} />
+
+                            <input
+                                ref={uploadRef}
+                                type="file"
+                                accept=".csv,.xlsx,.xls"
+                                style={{ display: 'none' }}
+                                onChange={handleUpload}
+                            />
                         </MobileSection>
                     )}
 
