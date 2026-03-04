@@ -9,10 +9,9 @@ const LandingPage = ({ onEnter, onSignUp }) => {
   return (
     <div style={{
       minHeight: '100vh',
-      background: isMobile ? `url(${BG_MOBILE_URL})` : `url(${BG_URL})`,
-      backgroundSize: 'cover',
-      backgroundPosition: isMobile ? 'center center' : '20% 50%',
-      backgroundRepeat: 'no-repeat',
+      background: isMobile
+        ? `url(${BG_MOBILE_URL}) center/cover no-repeat, linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)`
+        : `url(${BG_URL}) 20% 50%/cover no-repeat, linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)`,
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
