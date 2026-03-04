@@ -1,6 +1,8 @@
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { THEME, BAUHAUS } from '../../theme';
+import { THEME } from '../../theme';
+
+const SPRING = 'cubic-bezier(0.22,1,0.36,1)';
 
 const MobileBankHeader = ({
     onBack,
@@ -13,33 +15,30 @@ const MobileBankHeader = ({
     return (
         <div style={{
             background: '#fff',
-            borderBottom: '3px solid #000',
-            padding: '16px',
+            borderBottom: '1px solid rgba(0,0,0,0.08)',
+            paddingLeft: '16px',
+            paddingRight: '16px',
+            paddingBottom: '16px',
             paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)',
             position: 'sticky',
             top: 0,
             zIndex: 100
         }}>
-            <div style={{display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px'}}>
+            <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr 44px', alignItems: 'center', marginBottom: '12px' }}>
                 <button
                     onClick={onBack}
                     style={{
-                        background: 'none',
-                        border: 'none',
-                        padding: '12px',
-                        cursor: 'pointer',
-                        minWidth: '44px',
-                        minHeight: '44px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
+                        background: 'none', border: 'none', padding: '10px',
+                        cursor: 'pointer', minWidth: '44px', minHeight: '44px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}
                 >
-                    <ArrowLeft size={24}/>
+                    <ArrowLeft size={22} />
                 </button>
-                <h1 style={{fontSize: '1.75rem', fontWeight: 900, margin: 0, textTransform: 'uppercase'}}>
-                    BANK TRANSACTIONS
+                <h1 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, textAlign: 'center', justifySelf: 'center' }}>
+                    Bank Transactions
                 </h1>
+                <div />
             </div>
 
             {tabsLoading ? (
@@ -48,40 +47,45 @@ const MobileBankHeader = ({
                 </div>
             ) : tabs.length > 0 ? (
                 <div style={{
-                    display: 'flex',
-                    gap: '8px',
-                    overflowX: 'auto',
-                    paddingBottom: '4px',
-                    minHeight: '44px',
-                    alignItems: 'center'
+                    display: 'flex', gap: '8px',
+                    overflowX: 'auto', paddingBottom: '2px',
+                    minHeight: '40px', alignItems: 'center',
+                    WebkitOverflowScrolling: 'touch'
                 }}>
-                    {tabs.map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTabId(Number(tab.id))}
-                            style={{
-                                padding: '8px 16px',
-                                border: '3px solid #000',
-                                background: Number(activeTabId) === Number(tab.id) ? THEME.primary : '#fff',
-                                color: Number(activeTabId) === Number(tab.id) ? '#fff' : '#000',
-                                fontWeight: 700,
-                                fontSize: '0.85rem',
-                                whiteSpace: 'nowrap',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            {tab.name}
-                        </button>
-                    ))}
+                    {tabs.map(tab => {
+                        const isActive = Number(activeTabId) === Number(tab.id);
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTabId(Number(tab.id))}
+                                style={{
+                                    padding: '7px 16px',
+                                    border: 'none',
+                                    borderRadius: 20,
+                                    background: isActive ? THEME.primary : 'rgba(0,0,0,0.06)',
+                                    color: isActive ? '#fff' : '#555',
+                                    fontWeight: isActive ? 600 : 500,
+                                    fontSize: '0.85rem',
+                                    whiteSpace: 'nowrap',
+                                    cursor: 'pointer',
+                                    flexShrink: 0,
+                                    transition: `background 200ms ${SPRING}, color 200ms ${SPRING}`
+                                }}
+                            >
+                                {tab.name}
+                            </button>
+                        );
+                    })}
                     <button
                         type="button"
                         onClick={handleCreateTab}
                         style={{
-                            padding: '8px 16px',
-                            border: '3px solid #000',
-                            background: THEME.secondary,
-                            color: '#000',
-                            fontWeight: 700,
+                            padding: '7px 16px',
+                            border: 'none',
+                            borderRadius: 20,
+                            background: 'rgba(0,0,0,0.06)',
+                            color: '#555',
+                            fontWeight: 500,
                             fontSize: '0.85rem',
                             whiteSpace: 'nowrap',
                             cursor: 'pointer',
@@ -92,7 +96,7 @@ const MobileBankHeader = ({
                     </button>
                 </div>
             ) : (
-                <div style={{padding: '8px 0', color: THEME.muted, fontSize: '0.85rem'}}>
+                <div style={{ padding: '8px 0', color: THEME.muted, fontSize: '0.85rem' }}>
                     No tabs yet. Create one below.
                 </div>
             )}

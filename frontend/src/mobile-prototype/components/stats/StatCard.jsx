@@ -1,23 +1,23 @@
 import React from 'react';
 import { THEME, BAUHAUS } from '../../theme';
 
-const StatCard = ({ label, value, bg = BAUHAUS.cardBg, color = THEME.text, sub }) => (
+const StatCard = ({ label, value, bg = '#fff', color = THEME.text, sub }) => (
     <div style={{
-        border: BAUHAUS.cardBorder,
+        borderRadius: 16,
         padding: BAUHAUS.spacing.lg,
         background: bg,
-        textAlign: 'center'
+        textAlign: 'center',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.06)'
     }}>
         <div style={{
             fontSize: BAUHAUS.labelFontSize,
-            fontWeight: BAUHAUS.labelWeight,
-            textTransform: 'uppercase',
+            fontWeight: 500,
             color: color === '#fff' ? 'rgba(255,255,255,0.8)' : THEME.muted,
             marginBottom: BAUHAUS.spacing.sm
         }}>
             {label}
         </div>
-        <div style={{ fontSize: '1.5rem', fontWeight: BAUHAUS.headingWeight, color }}>
+        <div style={{ fontSize: '1.5rem', fontWeight: 700, color }}>
             {value}
         </div>
         {sub && (

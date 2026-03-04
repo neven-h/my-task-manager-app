@@ -26,11 +26,14 @@ const MobileStockPortfolioHeader = ({
                 aria-label="Back"
                 style={{
                     ...(backButtonStyle || {}),
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
                     width: '44px',
                     height: '44px',
                     minWidth: '44px',
                     minHeight: '44px',
-                    padding: 0,
+                    padding: '12px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center'

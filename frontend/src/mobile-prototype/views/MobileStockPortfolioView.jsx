@@ -52,9 +52,15 @@ const MobileStockPortfolioView = ({ authUser, authRole, onBack }) => {
     }, [form.showForm]);
 
     const headerStyle = {
-        background: '#fff', borderBottom: '3px solid #000', padding: '16px',
+        background: '#fff',
+        borderBottom: '3px solid #000',
+        paddingLeft: '16px',
+        paddingRight: '16px',
+        paddingBottom: '16px',
         paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)',
-        position: 'sticky', top: 0, zIndex: 100
+        position: 'sticky',
+        top: 0,
+        zIndex: 100
     };
     const backButtonStyle = {
         background: 'none', border: 'none', padding: '12px', cursor: 'pointer',

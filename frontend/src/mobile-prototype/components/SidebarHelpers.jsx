@@ -4,11 +4,9 @@ import { FONT_STACK } from '../theme';
 
 export const SectionTitle = ({ children }) => (
     <h3 style={{
-        fontSize: '0.7rem',
-        fontWeight: 900,
-        textTransform: 'uppercase',
-        letterSpacing: '1px',
-        marginBottom: '8px',
+        fontSize: '0.72rem',
+        fontWeight: 600,
+        margin: '0 0 8px 0',
         color: '#999',
         fontFamily: FONT_STACK,
         paddingLeft: '4px'
@@ -36,7 +34,7 @@ export const GroupedItem = ({ icon: Icon, label, onClick, badge, color, destruct
         <span style={{ flex: 1 }}>{label}</span>
         {badge && (
             <span style={{
-                background: '#FF0000',
+                background: '#FF3B30',
                 borderRadius: '50%',
                 width: '8px',
                 height: '8px',

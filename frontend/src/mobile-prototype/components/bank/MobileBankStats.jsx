@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { PieChart } from 'lucide-react';
 import { formatCurrency } from '../../../utils/formatCurrency';
 import { THEME, BAUHAUS } from '../../theme';
+import AnimatedNumber from '../AnimatedNumber';
 
 const MobileBankStats = ({ stats, transactions, chartData, PIE_COLORS }) => {
     const pieSlices = useMemo(() => {
@@ -29,7 +30,7 @@ const MobileBankStats = ({ stats, transactions, chartData, PIE_COLORS }) => {
                 const labelX = 100 + 55 * Math.cos(midRad);
                 const labelY = 100 + 55 * Math.sin(midRad);
                 label = (
-                    <text key={`lbl-${category}`} x={labelX} y={labelY} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize="11" fontWeight="800" style={{textShadow: '0 1px 2px rgba(0,0,0,0.8)'}}>
+                    <text key={`lbl-${category}`} x={labelX} y={labelY} textAnchor="middle" dominantBaseline="middle" fill="#fff" fontSize="11" fontWeight="700">
                         {percentage.toFixed(0)}%
                     </text>
                 );
@@ -38,49 +39,57 @@ const MobileBankStats = ({ stats, transactions, chartData, PIE_COLORS }) => {
         });
     }, [chartData, PIE_COLORS]);
 
+    const totalAmount = stats?.by_type
+        ? stats.by_type.reduce((s, t) => s + (Number(t.total_amount) || 0), 0)
+        : 0;
+
     return (
         <>
             {/* Summary Bar */}
             {stats && stats.by_type && (
                 <div style={{
-                    padding: '16px',
-                    background: BAUHAUS.cardSecondaryBg,
-                    borderBottom: BAUHAUS.cardBorder,
+                    padding: '16px 20px',
+                    background: '#fff',
+                    borderBottom: '0.5px solid rgba(0,0,0,0.08)',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center'
                 }}>
                     <div>
-                        <div style={{fontSize: BAUHAUS.labelFontSize, fontWeight: BAUHAUS.labelWeight, textTransform: 'uppercase', color: THEME.muted}}>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 500, color: THEME.muted, marginBottom: 2 }}>
                             Total
                         </div>
-                        <div style={{fontSize: '1.5rem', fontWeight: 900}}>
-                            {formatCurrency(stats.by_type.reduce((s, t) => s + (Number(t.total_amount) || 0), 0))}
+                        <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#000' }}>
+                            <AnimatedNumber value={totalAmount} formatter={formatCurrency} />
                         </div>
                     </div>
-                    <div style={{fontSize: BAUHAUS.labelFontSize, color: THEME.muted, fontWeight: BAUHAUS.labelWeight}}>
+                    <div style={{ fontSize: '0.8rem', color: THEME.muted, fontWeight: 400 }}>
                         {transactions.length} transactions
                     </div>
                 </div>
             )}
 
-            {/* Stats Cards */}
+            {/* Stat Cards */}
             {stats && stats.by_type && (
-                <div style={{padding: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px'}}>
+                <div style={{ padding: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     {stats.by_type.map(stat => (
                         <div key={stat.transaction_type} style={{
-                            border: BAUHAUS.cardBorder,
+                            borderRadius: 16,
                             padding: '16px',
-                            background: BAUHAUS.cardBg,
-                            textAlign: 'center'
+                            background: '#fff',
+                            textAlign: 'center',
+                            boxShadow: '0 1px 4px rgba(0,0,0,0.06)'
                         }}>
-                            <div style={{fontSize: '1.5rem', fontWeight: BAUHAUS.headingWeight, marginBottom: '4px'}}>
-                                {formatCurrency(stat.total_amount || 0)}
+                            <div style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '4px', color: '#000' }}>
+                                <AnimatedNumber
+                                    value={Number(stat.total_amount) || 0}
+                                    formatter={formatCurrency}
+                                />
                             </div>
-                            <div style={{fontSize: BAUHAUS.labelFontSize, color: THEME.muted, fontWeight: BAUHAUS.labelWeight, textTransform: 'uppercase'}}>
+                            <div style={{ fontSize: BAUHAUS.labelFontSize, color: THEME.muted, fontWeight: 500 }}>
                                 {stat.transaction_type === 'cash' ? 'Cash' : 'Credit'}
                             </div>
-                            <div style={{fontSize: '0.75rem', color: THEME.muted, marginTop: '4px'}}>
+                            <div style={{ fontSize: '0.72rem', color: THEME.muted, marginTop: '4px' }}>
                                 {stat.transaction_count} transactions
                             </div>
                         </div>
@@ -90,49 +99,44 @@ const MobileBankStats = ({ stats, transactions, chartData, PIE_COLORS }) => {
 
             {/* Expense Distribution */}
             {pieSlices && (
-                <div style={{margin: '0 16px 16px', border: BAUHAUS.cardBorder, padding: '16px', background: BAUHAUS.cardBg}}>
-                    <h2 style={{
-                        margin: '0 0 10px 0',
-                        fontSize: BAUHAUS.labelFontSize,
-                        fontWeight: BAUHAUS.labelWeight,
-                        textTransform: 'uppercase',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
+                <div style={{ margin: '0 16px 16px', borderRadius: 16, padding: '16px', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                        marginBottom: 12, paddingBottom: 10,
+                        borderBottom: '1px solid rgba(0,0,0,0.06)'
                     }}>
-                        <PieChart size={20} color={THEME.primary} />
-                        Expense distribution (top 5)
-                    </h2>
-                    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px'}}>
-                        <svg viewBox="0 0 200 200" style={{width: '160px', height: '160px', flexShrink: 0}}>
+                        <PieChart size={16} color={THEME.primary} />
+                        <h2 style={{ margin: 0, fontSize: '0.82rem', fontWeight: 600, color: '#000' }}>
+                            Expense distribution (top 5)
+                        </h2>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                        <svg viewBox="0 0 200 200" style={{ width: '160px', height: '160px', flexShrink: 0 }}>
                             {pieSlices.map(({ category, idx, pathData, label }) => (
                                 <g key={category}>
-                                    <path d={pathData} fill={PIE_COLORS[idx % PIE_COLORS.length]} stroke="#000" strokeWidth="2" />
+                                    <path d={pathData} fill={PIE_COLORS[idx % PIE_COLORS.length]} stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" />
                                     {label}
                                 </g>
                             ))}
                         </svg>
-                        <div style={{width: '100%', display: 'flex', flexDirection: 'column', gap: '6px'}}>
-                            {pieSlices.map(({ category, data, idx, percentage }) => (
+                        <div style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
+                            {pieSlices.map(({ category, data, idx, percentage }, i) => (
                                 <div key={category} style={{
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '8px',
-                                    padding: '8px 12px',
-                                    border: BAUHAUS.subCardBorder,
-                                    background: BAUHAUS.cardSecondaryBg,
-                                    fontSize: '0.75rem'
+                                    padding: '9px 4px',
+                                    borderBottom: i < pieSlices.length - 1 ? '0.5px solid rgba(0,0,0,0.07)' : 'none',
+                                    fontSize: '0.78rem'
                                 }}>
                                     <div style={{
-                                        width: '12px',
-                                        height: '12px',
+                                        width: '10px', height: '10px',
                                         background: PIE_COLORS[idx % PIE_COLORS.length],
-                                        border: '1px solid #000',
-                                        flexShrink: 0
+                                        borderRadius: 3, flexShrink: 0
                                     }} />
-                                    <span style={{flex: 1, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{category}</span>
-                                    <span style={{fontWeight: 800}}>{formatCurrency(data.total)}</span>
-                                    <span style={{color: THEME.muted}}>{percentage.toFixed(0)}%</span>
+                                    <span style={{ flex: 1, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{category}</span>
+                                    <span style={{ fontWeight: 600 }}>{formatCurrency(data.total)}</span>
+                                    <span style={{ color: THEME.muted, minWidth: 28, textAlign: 'right' }}>{percentage.toFixed(0)}%</span>
                                 </div>
                             ))}
                         </div>
