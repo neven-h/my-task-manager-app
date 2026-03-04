@@ -45,3 +45,11 @@ def init_users_tables(cursor, connection):
         except Error as e:
             if 'Duplicate column' not in str(e):
                 print(f"2FA column migration note: {e}")
+
+    # Migrate password_reset_tokens: add 'used' column if missing
+    try:
+        cursor.execute("ALTER TABLE password_reset_tokens ADD COLUMN used BOOLEAN DEFAULT FALSE")
+        print("Added used column to password_reset_tokens")
+    except Error as e:
+        if 'Duplicate column' not in str(e):
+            print(f"password_reset_tokens migration note: {e}")
