@@ -28,7 +28,7 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
     } = data;
 
     const filterData = useTaskFilters();
-    const { filters, setFilters, taskViewMode, setTaskViewMode, debouncedFilters, buildFilterParams } = filterData;
+    const { filters, setFilters, taskViewMode, setTaskViewMode, debouncedFilters, buildFilterParams, hasActiveFilters, clearFilters } = filterData;
 
     const [appView, setAppView] = useState('tasks');
     const [view, setView] = useState('list');
@@ -106,12 +106,12 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
     const openShareModal = useCallback((task) => setShareModalState({ isOpen: true, sharingTask: task }), []);
     const closeShareModal = useCallback(() => setShareModalState({ isOpen: false, sharingTask: null }), []);
 
-    const value = {
+    const value = useMemo(() => ({
         authToken, authRole, authUser, isAdmin, isSharedUser, isLimitedUser, onLogout,
         tasks, allCategories, allTags, clients, stats, loading, error, setError,
         completedTasks, uncompletedTasks,
         filters, setFilters, taskViewMode, setTaskViewMode, buildFilterParams,
-        hasActiveFilters: filterData.hasActiveFilters, clearFilters: filterData.clearFilters,
+        hasActiveFilters, clearFilters,
         appView, setAppView, view, setView,
         fetchTasks: loadTasks, fetchStats, fetchClients, fetchCategories, fetchTags,
         deleteTask, toggleTaskStatus, duplicateTask, createCategory, createTag,
@@ -122,7 +122,24 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
         showBulkInput, setShowBulkInput,
         shareModal: shareModalState, openShareModal, closeShareModal,
         rtlEnabled, setRtlEnabled,
-    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }), [
+        authToken, authRole, authUser, onLogout,
+        tasks, allCategories, allTags, clients, stats, loading, error, setError,
+        completedTasks, uncompletedTasks,
+        filters, setFilters, taskViewMode, setTaskViewMode, buildFilterParams,
+        hasActiveFilters, clearFilters,
+        appView, setAppView, view, setView,
+        loadTasks, fetchStats, fetchClients, fetchCategories, fetchTags,
+        deleteTask, toggleTaskStatus, duplicateTask, createCategory, createTag,
+        submitTask, submitBulkTasks, shareTask,
+        exportToCSV, exportHoursReport, importHoursReport,
+        getCategoryLabel, getStatusColor, getStatusLabel,
+        formModalState, openNewTaskForm, openEditTaskForm, closeFormModal,
+        showBulkInput,
+        shareModalState, openShareModal, closeShareModal,
+        rtlEnabled, setRtlEnabled,
+    ]);
 
     return <TaskContext.Provider value={value}>{children}</TaskContext.Provider>;
 };

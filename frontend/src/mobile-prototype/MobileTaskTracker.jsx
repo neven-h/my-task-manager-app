@@ -9,7 +9,7 @@
  * Navigation uses ViewTransitionContainer for iOS-style push/pop animations
  * and swipe-from-left-edge to go back.
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { TaskProvider, useTaskContext } from '../context/TaskContext';
 import { FONT_STACK } from './theme';
 
@@ -62,10 +62,12 @@ const MobileTaskTrackerInner = () => {
         }
     }, [appView, authUser, authRole]);
 
-    const homeContent = (
+    const openSidebar = useCallback(() => setShowSidebar(true), []);
+
+    const homeContent = useMemo(() => (
         <div style={{ minHeight: '100vh', background: '#fff', paddingBottom: '20px', fontFamily: FONT_STACK }}>
             <MobileStyles />
-            <MobileHeader onMenuOpen={() => setShowSidebar(true)} />
+            <MobileHeader onMenuOpen={openSidebar} />
             <MobileTaskActions />
             <MobileFilterBar filterMode={filterMode} setFilterMode={setFilterMode} />
             <MobileActiveFilterBanner />
@@ -75,11 +77,10 @@ const MobileTaskTrackerInner = () => {
             <MobileBulkTaskModal />
             <MobileShareTaskModal />
         </div>
-    );
+    ), [filterMode, openSidebar]);
 
     return (
         <>
-            <MobileStyles />
             <ViewTransitionContainer
                 currentView={appView}
                 homeView="tasks"

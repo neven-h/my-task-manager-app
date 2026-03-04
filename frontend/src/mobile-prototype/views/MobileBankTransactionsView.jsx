@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react';
 import { THEME, FONT_STACK, BAUHAUS } from '../theme';
 import useMobileBankTabs from '../hooks/useMobileBankTabs';
 import useMobileBankData from '../hooks/useMobileBankData';
+import useDebounce from '../../hooks/useDebounce';
 import useMobileBankCRUD from '../hooks/useMobileBankCRUD';
 import useMobileBankFilters from '../hooks/useMobileBankFilters';
 import MobileBankHeader from '../components/bank/MobileBankHeader';
@@ -34,9 +35,10 @@ const MobileBankTransactionsView = ({ authUser, authRole, onBack }) => {
     const [newTransaction, setNewTransaction] = useState({ ...EMPTY_TRANSACTION });
     const [searchTerm, setSearchTerm] = useState('');
     const [typeFilter, setTypeFilter] = useState('all');
+    const debouncedSearchTerm = useDebounce(searchTerm, 150);
 
     const { filteredTransactions, chartData, PIE_COLORS } =
-        useMobileBankFilters(transactions, typeFilter, searchTerm);
+        useMobileBankFilters(transactions, typeFilter, debouncedSearchTerm);
 
     const { handleSaveTransaction, handleDeleteTransaction } = useMobileBankCRUD({
         activeTabId, editingTransaction, newTransaction,

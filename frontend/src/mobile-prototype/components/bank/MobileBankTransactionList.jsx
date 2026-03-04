@@ -117,4 +117,4 @@ const MobileBankTransactionList = ({
     );
 };
 
-export default MobileBankTransactionList;
+export default React.memo(MobileBankTransactionList);
