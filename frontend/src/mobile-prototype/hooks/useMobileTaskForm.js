@@ -14,7 +14,7 @@ const defaultFormData = () => ({
 const useMobileTaskForm = () => {
     const {
         formModal, closeFormModal, submitTask, deleteTask,
-        allCategories, allTags, clients, loading, isAdmin
+        allCategories, allTags, clients, loading, isAdmin, error
     } = useTaskContext();
     const { isOpen, editingTask } = formModal;
 
@@ -23,6 +23,14 @@ const useMobileTaskForm = () => {
     const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
     const formChangeTimeoutRef = useRef(null);
     const fileInputRef = useRef(null);
+    // After a successful save, bypass the discard dialog if the modal hasn't
+    // closed yet (e.g. due to a React batching edge-case on slow devices).
+    const wasSavedRef = useRef(false);
+
+    // Reset wasSaved flag whenever the modal opens fresh.
+    useEffect(() => {
+        if (isOpen) wasSavedRef.current = false;
+    }, [isOpen]);
 
     useEffect(() => {
         if (!isOpen) return;
@@ -78,8 +86,13 @@ const useMobileTaskForm = () => {
     }, [formData, editingTask]);
 
     const handleClose = () => {
-        if (hasUnsavedChanges()) setShowDiscardConfirm(true);
-        else closeFormModal();
+        // If we already saved successfully, don't warn about unsaved changes —
+        // the modal just hasn't animated away yet.
+        if (wasSavedRef.current || !hasUnsavedChanges()) {
+            closeFormModal();
+        } else {
+            setShowDiscardConfirm(true);
+        }
     };
 
     const confirmDiscard = () => {
@@ -91,6 +104,20 @@ const useMobileTaskForm = () => {
     const handleSave = async () => {
         const success = await submitTask(formData, editingTask);
         if (success) {
+            wasSavedRef.current = true;
+            storage.remove(STORAGE_KEYS.MOBILE_TASK_DRAFT);
+            closeFormModal();
+        }
+        // If success is false, the error is visible via the `error` field
+        // returned from this hook and shown in the modal.
+    };
+
+    // Convenience: mark the task complete and save in one tap.
+    const handleMarkComplete = async () => {
+        const completedData = { ...formData, status: 'completed' };
+        const success = await submitTask(completedData, editingTask);
+        if (success) {
+            wasSavedRef.current = true;
             storage.remove(STORAGE_KEYS.MOBILE_TASK_DRAFT);
             closeFormModal();
         }
@@ -122,9 +149,10 @@ const useMobileTaskForm = () => {
     return {
         isOpen, editingTask, formData, setFormData, tagInput, setTagInput,
         showDiscardConfirm, setShowDiscardConfirm, fileInputRef,
-        handleClose, confirmDiscard, handleSave, update, toggleCategory, addTag, addAttachment,
+        handleClose, confirmDiscard, handleSave, handleMarkComplete,
+        update, toggleCategory, addTag, addAttachment,
         visibleAttachments, allCategories, allTags, clients, loading, isAdmin, deleteTask,
-        closeFormModal, apiBase: API_BASE
+        closeFormModal, apiBase: API_BASE, error
     };
 };
 

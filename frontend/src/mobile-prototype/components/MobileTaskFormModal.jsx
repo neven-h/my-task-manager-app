@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Plus, Trash2, Paperclip } from 'lucide-react';
+import { X, Plus, Trash2, Paperclip, CheckCircle } from 'lucide-react';
 import CustomAutocomplete from '../../components/CustomAutocomplete';
 import useMobileTaskForm from '../hooks/useMobileTaskForm';
 import MobileDiscardConfirm from './MobileDiscardConfirm';
@@ -12,12 +12,16 @@ const MobileTaskFormModal = () => {
     const {
         isOpen, editingTask, formData, setFormData, tagInput, setTagInput,
         showDiscardConfirm, setShowDiscardConfirm, fileInputRef,
-        handleClose, confirmDiscard, handleSave, update, toggleCategory, addTag, addAttachment,
+        handleClose, confirmDiscard, handleSave, handleMarkComplete,
+        update, toggleCategory, addTag, addAttachment,
         visibleAttachments, allCategories, allTags, clients, loading, isAdmin, deleteTask,
-        closeFormModal, apiBase
+        closeFormModal, apiBase, error
     } = useMobileTaskForm();
 
     if (!isOpen) return null;
+
+    const isEditing = !!editingTask;
+    const isUncompleted = formData.status === 'uncompleted';
 
     return (
         <>
@@ -27,12 +31,19 @@ const MobileTaskFormModal = () => {
             >
                 <div style={{ width: '100%', height: '94vh', maxHeight: '94vh', background: '#fff', borderRadius: '16px 16px 0 0', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 -4px 20px rgba(0,0,0,0.3)', paddingBottom: 'env(safe-area-inset-bottom, 0)' }}>
                     {/* Header */}
-                    <div style={{ flexShrink: 0, padding: '16px 20px', paddingTop: 'max(16px, env(safe-area-inset-top, 0))', borderBottom: '1px solid rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', zIndex: 1 }}>
-                        <h2 style={{ fontSize: '1.3rem', fontWeight: 900, margin: 0, textTransform: 'uppercase', fontFamily: FONT_STACK }}>
-                            {editingTask ? 'Edit Task' : 'New Task'}
+                    <div style={{ flexShrink: 0, padding: '16px 20px', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)', borderBottom: '1px solid rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', zIndex: 1 }}>
+                        <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, fontFamily: FONT_STACK }}>
+                            {isEditing ? 'Edit Task' : 'New Task'}
                         </h2>
-                        <button onClick={handleClose} style={{ background: 'none', border: 'none', padding: '8px', cursor: 'pointer' }}><X size={28} /></button>
+                        <button onClick={handleClose} style={{ background: 'none', border: 'none', padding: '8px', cursor: 'pointer' }}><X size={24} /></button>
                     </div>
+
+                    {/* Error banner — shown when the last save attempt failed */}
+                    {error && (
+                        <div style={{ flexShrink: 0, background: '#FFF0F0', borderBottom: '1px solid #FFCCCC', padding: '10px 20px', fontSize: '0.85rem', color: '#CC0000', fontWeight: 600 }}>
+                            ⚠ {error}
+                        </div>
+                    )}
 
                     {/* Body */}
                     <div style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '16px', paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 24px))', scrollPaddingBottom: '120px' }}>
@@ -138,21 +149,44 @@ const MobileTaskFormModal = () => {
                                 </label>
                             </div>
                         )}
-                        <div style={{ display: 'flex', gap: '12px' }}>
+
+                        {/* Primary actions row */}
+                        <div style={{ display: 'flex', gap: '12px', marginBottom: '10px' }}>
                             <button onClick={handleClose} className="mobile-btn" style={{ flex: 1 }} disabled={loading}>Cancel</button>
                             <button onClick={handleSave} className="mobile-btn mobile-btn-primary" style={{ flex: 1 }} disabled={loading || !formData.title.trim()}>
-                                {loading ? 'Saving...' : (editingTask ? 'Update' : 'Create')}
+                                {loading ? 'Saving…' : (isEditing ? 'Update' : 'Create')}
                             </button>
                         </div>
-                        {editingTask && (
-                            <button onClick={() => { deleteTask(editingTask.id); closeFormModal(); }} className="mobile-btn mobile-btn-accent" style={{ width: '100%', marginTop: '12px' }} disabled={loading}>
+
+                        {/* Mark as Completed — shown when editing an uncompleted task */}
+                        {isEditing && isUncompleted && (
+                            <button
+                                onClick={handleMarkComplete}
+                                disabled={loading || !formData.title.trim()}
+                                style={{
+                                    width: '100%', marginBottom: '10px',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                    padding: '14px', borderRadius: '12px', border: 'none', cursor: 'pointer',
+                                    background: '#34C759', color: '#fff',
+                                    fontSize: '1rem', fontWeight: 600, fontFamily: FONT_STACK,
+                                    opacity: (loading || !formData.title.trim()) ? 0.5 : 1
+                                }}
+                            >
+                                <CheckCircle size={20} />
+                                Mark as Completed
+                            </button>
+                        )}
+
+                        {/* Danger zone */}
+                        {isEditing && (
+                            <button onClick={() => { deleteTask(editingTask.id); closeFormModal(); }} className="mobile-btn mobile-btn-accent" style={{ width: '100%' }} disabled={loading}>
                                 <Trash2 size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} /> Delete Task
                             </button>
                         )}
                     </div>
                 </div>
             </div>
-            <MobileDiscardConfirm isOpen={showDiscardConfirm} isEditing={!!editingTask} onKeepEditing={() => setShowDiscardConfirm(false)} onDiscard={confirmDiscard} />
+            <MobileDiscardConfirm isOpen={showDiscardConfirm} isEditing={isEditing} onKeepEditing={() => setShowDiscardConfirm(false)} onDiscard={confirmDiscard} />
         </>
     );
 };

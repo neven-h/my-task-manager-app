@@ -9,7 +9,7 @@ const SPRING = 'cubic-bezier(0.22,1,0.36,1)';
 
 const MobileTaskCard = ({ task }) => {
     const {
-        toggleTaskStatus, openEditTaskForm, duplicateTask, openShareModal, deleteTask
+        toggleTaskStatus, openEditTaskForm, duplicateTask, openShareModal, deleteTask, allCategories
     } = useTaskContext();
 
     const [isPressed, setIsPressed] = useState(false);
@@ -122,16 +122,19 @@ const MobileTaskCard = ({ task }) => {
                     {/* Categories */}
                     {task.categories && task.categories.length > 0 && (
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '10px', marginLeft: '38px' }}>
-                            {task.categories.map(cat => (
-                                <span key={cat.id} style={{
-                                    borderRadius: 100, padding: '3px 10px',
-                                    fontSize: '0.72rem', fontWeight: 600,
-                                    background: cat.color || '#f0f0f0',
-                                    color: '#000'
-                                }}>
-                                    {cat.label}
-                                </span>
-                            ))}
+                            {task.categories.map(catId => {
+                                const cat = allCategories.find(c => c.id === catId);
+                                return (
+                                    <span key={catId} style={{
+                                        borderRadius: 100, padding: '3px 10px',
+                                        fontSize: '0.72rem', fontWeight: 600,
+                                        background: cat?.color || '#f0f0f0',
+                                        color: '#000'
+                                    }}>
+                                        {cat?.label || catId}
+                                    </span>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
