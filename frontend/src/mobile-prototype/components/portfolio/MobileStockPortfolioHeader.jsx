@@ -17,8 +17,9 @@ const MobileStockPortfolioHeader = ({
                 display: 'grid',
                 gridTemplateColumns: '44px 1fr 44px',
                 alignItems: 'center',
-                columnGap: '12px',
-                marginBottom: '12px'
+                columnGap: '8px',
+                paddingTop: '4px',
+                paddingBottom: '8px'
             }}
         >
             <button
@@ -31,12 +32,10 @@ const MobileStockPortfolioHeader = ({
                     cursor: 'pointer',
                     width: '44px',
                     height: '44px',
-                    minWidth: '44px',
-                    minHeight: '44px',
-                    padding: '12px',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    WebkitTapHighlightColor: 'transparent'
                 }}
             >
                 <ArrowLeft size={24} />
@@ -44,12 +43,13 @@ const MobileStockPortfolioHeader = ({
 
             <h1
                 style={{
-                    fontSize: '1.75rem',
-                    fontWeight: 900,
+                    fontSize: '1.2rem',
+                    fontWeight: 600,
                     margin: 0,
-                    textTransform: 'uppercase',
+                    textTransform: 'none',
                     textAlign: 'center',
-                    justifySelf: 'center'
+                    justifySelf: 'center',
+                    letterSpacing: '-0.3px'
                 }}
             >
                 STOCK PORTFOLIO
@@ -61,11 +61,10 @@ const MobileStockPortfolioHeader = ({
         {tabs.length > 0 ? (
             <div style={{
                 display: 'flex',
-                gap: '8px',
+                gap: '6px',
                 overflowX: 'auto',
+                paddingTop: '6px',
                 paddingBottom: '4px',
-                minHeight: '44px',
-                alignItems: 'center',
                 WebkitOverflowScrolling: 'touch'
             }}>
                 {tabs.map(tab => (
@@ -73,15 +72,17 @@ const MobileStockPortfolioHeader = ({
                         key={tab.id}
                         onClick={() => setActiveTabId(Number(tab.id))}
                         style={{
-                            padding: '8px 16px',
-                            border: '3px solid #000',
-                            background: Number(activeTabId) === Number(tab.id) ? theme.primary : '#fff',
+                            padding: '6px 14px',
+                            borderRadius: '10px',
+                            border: 'none',
+                            background: Number(activeTabId) === Number(tab.id) ? '#0000FF' : '#f2f2f7',
                             color: Number(activeTabId) === Number(tab.id) ? '#fff' : '#000',
-                            fontWeight: 700,
-                            fontSize: '0.85rem',
+                            fontWeight: 500,
+                            fontSize: '0.8rem',
                             whiteSpace: 'nowrap',
                             cursor: 'pointer',
-                            flexShrink: 0
+                            flexShrink: 0,
+                            transition: 'background 200ms ease, transform 150ms ease'
                         }}
                     >
                         {tab.name}
@@ -91,12 +92,13 @@ const MobileStockPortfolioHeader = ({
                     type="button"
                     onClick={handleCreateTab}
                     style={{
-                        padding: '8px 16px',
-                        border: '3px solid #000',
-                        background: theme.secondary,
+                        padding: '6px 14px',
+                        borderRadius: '10px',
+                        border: 'none',
+                        background: '#e5e5ea',
                         color: '#000',
-                        fontWeight: 700,
-                        fontSize: '0.85rem',
+                        fontWeight: 500,
+                        fontSize: '0.8rem',
                         whiteSpace: 'nowrap',
                         cursor: 'pointer',
                         flexShrink: 0
