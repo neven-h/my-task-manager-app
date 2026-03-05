@@ -82,12 +82,47 @@ const TaskFilterPanel = () => {
                            onChange={(e) => setFilters({...filters, dateEnd: e.target.value})}/>
                 </div>
                 <div>
-                    <label style={{
-                        display: 'block',
-                        marginBottom: '8px',
-                        fontWeight: 700,
-                        fontSize: '0.85rem'
-                    }}>Tags</label>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <label style={{ fontWeight: 700, fontSize: '0.85rem', margin: 0 }}>Tags</label>
+                        {allTags.length > 0 && (
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setFilters(f => ({ ...f, tags: allTags.map(t => t.name) }))}
+                                    title="Select all tags"
+                                    style={{
+                                        padding: '2px 8px',
+                                        border: '1.5px solid #000',
+                                        background: '#fff',
+                                        fontSize: '0.72rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        fontFamily: '"Inter", sans-serif',
+                                        letterSpacing: '0.3px',
+                                    }}
+                                >
+                                    All
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setFilters(f => ({ ...f, tags: [] }))}
+                                    title="Clear all tag filters"
+                                    style={{
+                                        padding: '2px 8px',
+                                        border: '1.5px solid #000',
+                                        background: '#fff',
+                                        fontSize: '0.72rem',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        fontFamily: '"Inter", sans-serif',
+                                        letterSpacing: '0.3px',
+                                    }}
+                                >
+                                    None
+                                </button>
+                            </div>
+                        )}
+                    </div>
                     {allTags.length === 0 ? (
                         <div style={{fontSize: '0.8rem', color: '#64748b'}}>No tags yet</div>
                     ) : (
