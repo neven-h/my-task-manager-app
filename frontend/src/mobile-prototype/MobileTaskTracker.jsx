@@ -43,14 +43,12 @@ const MobileTaskTrackerInner = () => {
         storage.init();
     }, []);
 
-    // UI-only state lives in the shell, not in context
     const [showSidebar, setShowSidebar] = useState(false);
     const [filterMode, setFilterMode] = useState('all');
     const [showSearchDrawer, setShowSearchDrawer] = useState(false);
 
     const goHome = () => setAppView('tasks');
 
-    // Determine which sub-view to render
     const subViewContent = useMemo(() => {
         switch (appView) {
             case 'stats':
@@ -96,7 +94,6 @@ const MobileTaskTrackerInner = () => {
                 {subViewContent}
             </ViewTransitionContainer>
 
-            {/* Sidebar and Search Drawer sit above transitions */}
             <MobileSidebar
                 isOpen={showSidebar}
                 onClose={() => setShowSidebar(false)}
