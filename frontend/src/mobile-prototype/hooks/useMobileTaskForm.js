@@ -61,15 +61,20 @@ const useMobileTaskForm = () => {
     const hasUnsavedChanges = useCallback(() => {
         const attachmentChanged = (formData.newAttachments?.length > 0) || (formData.removedAttachmentIds?.length > 0);
         if (editingTask) {
+            const originalCatIds = (editingTask.categories || []).map(c => typeof c === 'object' ? c.id : c).sort();
+            const formCatIds = [...(formData.categories || [])].sort();
+            const originalTagNames = (editingTask.tags || []).map(t => typeof t === 'object' ? t.name : t).sort();
+            const formTagNames = [...(formData.tags || [])].sort();
+
             return formData.title !== editingTask.title ||
                 formData.description !== (editingTask.description || '') ||
-                JSON.stringify(formData.categories) !== JSON.stringify(editingTask.categories || []) ||
+                JSON.stringify(formCatIds) !== JSON.stringify(originalCatIds) ||
                 formData.client !== (editingTask.client || '') ||
                 formData.task_date !== editingTask.task_date ||
                 formData.task_time !== (editingTask.task_time || '') ||
                 formData.duration !== (editingTask.duration || '') ||
                 formData.status !== editingTask.status ||
-                JSON.stringify(formData.tags) !== JSON.stringify(editingTask.tags || []) ||
+                JSON.stringify(formTagNames) !== JSON.stringify(originalTagNames) ||
                 formData.notes !== (editingTask.notes || '') ||
                 formData.shared !== (editingTask.shared || false) ||
                 attachmentChanged;

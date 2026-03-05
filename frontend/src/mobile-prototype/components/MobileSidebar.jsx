@@ -84,11 +84,21 @@ const MobileSidebar = ({ isOpen, onClose, onOpenSearch }) => {
     const fd = new FormData();
     fd.append('file', file);
     fd.append('transaction_type', 'credit');
-    await fetch(`${API_BASE}/transactions/upload`, {
-      method: 'POST',
-      headers: getAuthHeaders(false),
-      body: fd
-    });
+    try {
+      const res = await fetch(`${API_BASE}/transactions/upload`, {
+        method: 'POST',
+        headers: getAuthHeaders(false),
+        body: fd
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok) {
+        alert(`Successfully uploaded ${data?.transaction_count || '0'} transactions!`);
+      } else {
+        alert(`Error: ${data?.error || 'Upload failed'}`);
+      }
+    } catch (err) {
+      alert(`Error uploading file: ${err?.message || err}`);
+    }
     handleClose();
     e.target.value = '';
   };
