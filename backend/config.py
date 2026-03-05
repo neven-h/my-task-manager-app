@@ -100,13 +100,6 @@ ALLOWED_FRONTEND_ORIGINS = [o for o in _origins if not (o in _seen or _seen.add(
 
 CORS(app, origins=ALLOWED_FRONTEND_ORIGINS, supports_credentials=True, max_age=3600)
 
-# CORS(app, resources={
-#     r"/api/*": {
-#         "origins": [FRONTEND_URL],
-#         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-#         "allow_headers": ["Content-Type", "Authorization"]
-#     }
-# })
 
 # ==================== RATE LIMITING ====================
 

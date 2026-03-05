@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { TaskProvider, useTaskContext } from '../context/TaskContext';
 
-// Existing mobile views (unchanged)
-import MobileStatsView from '../mobile-prototype/views/MobileStatsView';
-import MobileBankTransactionsView from '../mobile-prototype/views/MobileBankTransactionsView';
-import MobileStockPortfolioBauhaus from '../mobile-prototype/views/MobileStockPortfolioBauhaus';
-import MobileClientsView from '../mobile-prototype/views/MobileClientsView';
-import MobileNotebookView from '../mobile-prototype/views/MobileNotebookView';
+// Mobile views
+import MobileStatsView from '../mobile/views/MobileStatsView';
+import MobileBankTransactionsView from '../mobile/views/MobileBankTransactionsView';
+import MobileStockPortfolioBauhaus from '../mobile/views/MobileStockPortfolioBauhaus';
+import MobileClientsView from '../mobile/views/MobileClientsView';
+import MobileNotebookView from '../mobile/views/MobileNotebookView';
 
 // iOS components
 import IOSStyles from './IOSStyles';
