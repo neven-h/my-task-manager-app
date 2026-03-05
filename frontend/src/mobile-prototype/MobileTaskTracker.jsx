@@ -1,119 +1,174 @@
-/**
- * MobileTaskTracker — thin shell component.
- *
- * Uses the shared TaskProvider from context/TaskContext.jsx — the same data layer
- * as the desktop (TaskTracker.jsx) and iOS (IOSTaskTracker.jsx) versions.
- * UI-only state (sidebar, filter mode, search drawer) lives here as local state.
- * Each visual region is handled by a focused component in components/.
- *
- * Navigation uses ViewTransitionContainer for iOS-style push/pop animations
- * and swipe-from-left-edge to go back.
- */
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { TaskProvider, useTaskContext } from '../context/TaskContext';
-import { FONT_STACK } from './theme';
+import React, { useEffect, useState } from 'react';
+import {
+    Plus,
+    RefreshCw,
+    Search,
+    BookOpen,
+    DollarSign,
+    TrendingUp,
+    Users,
+    BarChart3,
+    Download,
+    Settings,
+    LogOut,
+    Upload
+} from 'lucide-react';
+import { useTaskContext } from '../../context/TaskContext';
+import API_BASE from '../../config';
+import { getAuthHeaders } from '../../api.js';
 
-// Existing extracted views
-import MobileStatsView from './views/MobileStatsView';
-import MobileBankTransactionsView from './views/MobileBankTransactionsView';
-import MobileStockPortfolioBauhaus from './views/MobileStockPortfolioBauhaus';
-import MobileClientsView from './views/MobileClientsView';
-import MobileNotebookView from './views/MobileNotebookView';
+const SPRING = 'cubic-bezier(0.22,1,0.36,1)';
 
-// Focused components
-import MobileStyles from './components/MobileStyles';
-import MobileHeader from './components/MobileHeader';
-import MobileTaskActions from './components/MobileTaskActions';
-import MobileFilterBar from './components/MobileFilterBar';
-import MobileActiveFilterBanner from './components/MobileActiveFilterBanner';
-import MobileTaskList from './components/MobileTaskList';
-import MobileSidebar from './components/MobileSidebar';
-import MobileSearchDrawer from './components/MobileSearchDrawer';
-import MobileTaskFormModal from './components/MobileTaskFormModal';
-import MobileBulkTaskModal from './components/MobileBulkTaskModal';
-import MobileShareTaskModal from './components/MobileShareTaskModal';
-import ViewTransitionContainer from './components/ViewTransitionContainer';
+const Row = ({ icon: Icon, label, onClick, destructive }) => (
+    <button
+        onClick={onClick}
+        style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+            padding: '14px 4px',
+            background: 'none',
+            border: 'none',
+            borderBottom: '1px solid rgba(0,0,0,0.06)',
+            fontSize: '1rem',
+            fontWeight: 500,
+            color: destructive ? '#FF3B30' : '#000',
+            cursor: 'pointer'
+        }}
+    >
+        <Icon size={20} />
+        {label}
+    </button>
+);
 
-import storage from '../core/storage';
+const MobileSidebar = ({ isOpen, onClose, onOpenSearch }) => {
+    const {
+        isAdmin,
+        isSharedUser,
+        isLimitedUser,
+        onLogout,
+        setAppView,
+        openNewTaskForm,
+        fetchTasks,
+        exportToCSV
+    } = useTaskContext();
 
-const MobileTaskTrackerInner = () => {
-    const { appView, setAppView, authUser, authRole } = useTaskContext();
+    const [closing, setClosing] = useState(false);
 
     useEffect(() => {
-        storage.init();
-    }, []);
+        if (isOpen) setClosing(false);
+    }, [isOpen]);
 
-    // UI-only state lives in the shell, not in context
-    const [showSidebar, setShowSidebar] = useState(false);
-    const [filterMode, setFilterMode] = useState('all');
-    const [showSearchDrawer, setShowSearchDrawer] = useState(false);
+    if (!isOpen && !closing) return null;
 
-    const goHome = () => setAppView('tasks');
+    const handleClose = () => {
+        setClosing(true);
+        setTimeout(() => {
+            setClosing(false);
+            onClose();
+        }, 260);
+    };
 
-    // Determine which sub-view to render
-    const subViewContent = useMemo(() => {
-        switch (appView) {
-            case 'stats':
-                return <MobileStatsView authUser={authUser} authRole={authRole} onBack={goHome} />;
-            case 'transactions':
-                return <MobileBankTransactionsView authUser={authUser} authRole={authRole} onBack={goHome} />;
-            case 'portfolio':
-                return <MobileStockPortfolioBauhaus authUser={authUser} authRole={authRole} onBack={goHome} />;
-            case 'clients':
-                return <MobileClientsView authUser={authUser} authRole={authRole} onBack={goHome} />;
-            case 'notebook':
-                return <MobileNotebookView onBack={goHome} />;
-            default:
-                return null;
-        }
-    }, [appView, authUser, authRole]);
+    const nav = (view) => {
+        setAppView(view);
+        handleClose();
+    };
 
-    const openSidebar = useCallback(() => setShowSidebar(true), []);
+    const showFinance = isAdmin || isSharedUser || isLimitedUser;
+    const visible = isOpen && !closing;
 
-    const homeContent = useMemo(() => (
-        <div style={{ minHeight: '100vh', background: '#fff', paddingBottom: '20px', fontFamily: FONT_STACK }}>
-            <MobileStyles />
-            <MobileHeader onMenuOpen={openSidebar} />
-            <MobileTaskActions />
-            <MobileFilterBar filterMode={filterMode} setFilterMode={setFilterMode} />
-            <MobileActiveFilterBanner />
-            <MobileTaskList filterMode={filterMode} />
-
-            <MobileTaskFormModal />
-            <MobileBulkTaskModal />
-            <MobileShareTaskModal />
-        </div>
-    ), [filterMode, openSidebar]);
+    const handleUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('transaction_type', 'credit');
+        await fetch(`${API_BASE}/transactions/upload`, {
+            method: 'POST',
+            headers: getAuthHeaders(false),
+            body: fd
+        });
+        handleClose();
+        e.target.value = '';
+    };
 
     return (
         <>
-            <ViewTransitionContainer
-                currentView={appView}
-                homeView="tasks"
-                onBack={goHome}
-                homeContent={homeContent}
-            >
-                {subViewContent}
-            </ViewTransitionContainer>
+            {/* Backdrop */}
+            <div
+                onClick={handleClose}
+                style={{
+                    position: 'fixed',
+                    inset: 0,
+                    background: 'rgba(0,0,0,0.35)',
+                    backdropFilter: 'blur(4px)',
+                    opacity: visible ? 1 : 0,
+                    transition: `opacity 260ms ${SPRING}`,
+                    zIndex: 300
+                }}
+            />
 
-            {/* Sidebar and Search Drawer sit above transitions */}
-            <MobileSidebar
-                isOpen={showSidebar}
-                onClose={() => setShowSidebar(false)}
-                onOpenSearch={() => { setShowSearchDrawer(true); setShowSidebar(false); }}
-            />
-            <MobileSearchDrawer
-                isOpen={showSearchDrawer}
-                onClose={() => setShowSearchDrawer(false)}
-            />
+            {/* Bottom Sheet */}
+            <div
+                style={{
+                    position: 'fixed',
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: '#fff',
+                    borderTopLeftRadius: '20px',
+                    borderTopRightRadius: '20px',
+                    boxShadow: '0 -8px 24px rgba(0,0,0,0.12)',
+                    transform: visible ? 'translateY(0)' : 'translateY(100%)',
+                    transition: `transform 260ms ${SPRING}`,
+                    zIndex: 301,
+                    maxHeight: '85vh',
+                    overflowY: 'auto',
+                    paddingBottom: 'env(safe-area-inset-bottom)'
+                }}
+            >
+                {/* Grabber */}
+                <div
+                    style={{
+                        width: '40px',
+                        height: '5px',
+                        background: 'rgba(0,0,0,0.2)',
+                        borderRadius: '3px',
+                        margin: '10px auto 16px'
+                    }}
+                />
+
+                <div style={{ padding: '0 20px 24px' }}>
+                    <Row icon={Plus} label="New Task" onClick={() => { openNewTaskForm(); handleClose(); }} />
+                    <Row icon={RefreshCw} label="Refresh" onClick={async () => { await fetchTasks(); handleClose(); }} />
+                    <Row icon={Search} label="Search" onClick={() => { onOpenSearch(); handleClose(); }} />
+                    <Row icon={BookOpen} label="Notebook" onClick={() => nav('notebook')} />
+
+                    {showFinance && (
+                        <>
+                            <Row icon={DollarSign} label="Transactions" onClick={() => nav('transactions')} />
+                            <Row icon={Upload} label="Upload Transactions" onClick={() => document.getElementById('tx-upload')?.click()} />
+                            <input
+                                id="tx-upload"
+                                type="file"
+                                accept=".csv,.xlsx,.xls"
+                                style={{ display: 'none' }}
+                                onChange={handleUpload}
+                            />
+                            <Row icon={TrendingUp} label="Portfolio" onClick={() => nav('portfolio')} />
+                            <Row icon={Users} label="Clients" onClick={() => nav('clients')} />
+                        </>
+                    )}
+
+                    <Row icon={BarChart3} label="Stats" onClick={() => nav('stats')} />
+                    <Row icon={Download} label="Export CSV" onClick={() => { exportToCSV(); handleClose(); }} />
+                    <Row icon={Settings} label="Settings" onClick={() => { handleClose(); window.location.href = '/settings'; }} />
+                    <Row icon={LogOut} label="Logout" destructive onClick={() => { handleClose(); onLogout && onLogout(); }} />
+                </div>
+            </div>
         </>
     );
 };
 
-const MobileTaskTracker = ({ authToken, authRole, authUser, onLogout }) => (
-    <TaskProvider authToken={authToken} authRole={authRole} authUser={authUser} onLogout={onLogout}>
-        <MobileTaskTrackerInner />
-    </TaskProvider>
-);
-
-export default MobileTaskTracker;
+export default MobileSidebar;
