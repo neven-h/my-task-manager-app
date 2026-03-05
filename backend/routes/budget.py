@@ -24,10 +24,11 @@ def get_budget_entries(payload):
         with get_db_connection() as conn:
             cursor = conn.cursor(dictionary=True)
             where, params = _owner_filter(user_role, username)
-            cursor.execute(
-                f"SELECT * FROM budget_entries WHERE 1=1{where} ORDER BY entry_date ASC, id ASC",
-                params
-            )
+            sql = "SELECT * FROM budget_entries WHERE 1=1"
+            if where:
+                sql += where
+            sql += " ORDER BY entry_date ASC, id ASC"
+            cursor.execute(sql, params)
             entries = cursor.fetchall()
             # Convert Decimal → float and date → str for JSON serialisation
             for e in entries:
@@ -113,8 +114,9 @@ def update_budget_entry(payload, entry_id):
                 return jsonify({'error': 'Access denied'}), 403
 
             fields, params = [], []
+            allowed_cols = {'type', 'description', 'amount', 'entry_date', 'category', 'notes'}
             for col in ('type', 'description', 'amount', 'entry_date', 'category', 'notes'):
-                if col in data:
+                if col in data and col in allowed_cols:
                     val = data[col]
                     if col == 'amount':
                         val = float(val)
