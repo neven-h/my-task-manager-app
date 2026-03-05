@@ -1,6 +1,9 @@
 """Budget entries — predicted incomes and outcomes for freelancer cash-flow planning."""
+import logging
 from flask import Blueprint, request, jsonify
 from config import get_db_connection, token_required
+
+logger = logging.getLogger(__name__)
 
 budget_bp = Blueprint('budget', __name__)
 
@@ -41,7 +44,8 @@ def get_budget_entries(payload):
                     e['updated_at'] = str(e['updated_at'])
         return jsonify(entries)
     except Exception as exc:
-        return jsonify({'error': str(exc)}), 500
+        logger.exception(exc)
+        return jsonify({'error': 'An internal error occurred'}), 500
 
 
 # ── POST create entry ─────────────────────────────────────────────────────────
@@ -91,7 +95,8 @@ def create_budget_entry(payload):
             entry['updated_at'] = str(entry['updated_at'])
         return jsonify(entry), 201
     except Exception as exc:
-        return jsonify({'error': str(exc)}), 500
+        logger.exception(exc)
+        return jsonify({'error': 'An internal error occurred'}), 500
 
 
 # ── PUT update entry ──────────────────────────────────────────────────────────
@@ -145,7 +150,8 @@ def update_budget_entry(payload, entry_id):
             updated['updated_at'] = str(updated['updated_at'])
         return jsonify(updated)
     except Exception as exc:
-        return jsonify({'error': str(exc)}), 500
+        logger.exception(exc)
+        return jsonify({'error': 'An internal error occurred'}), 500
 
 
 # ── DELETE entry ──────────────────────────────────────────────────────────────
@@ -169,4 +175,5 @@ def delete_budget_entry(payload, entry_id):
             conn.commit()
         return jsonify({'success': True})
     except Exception as exc:
-        return jsonify({'error': str(exc)}), 500
+        logger.exception(exc)
+        return jsonify({'error': 'An internal error occurred'}), 500
