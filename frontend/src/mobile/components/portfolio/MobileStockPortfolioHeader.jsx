@@ -35,7 +35,8 @@ const MobileStockPortfolioHeader = ({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    WebkitTapHighlightColor: 'transparent'
+                    WebkitTapHighlightColor: 'transparent',
+                    color: '#007AFF',
                 }}
             >
                 <ArrowLeft size={24} />
@@ -43,16 +44,15 @@ const MobileStockPortfolioHeader = ({
 
             <h1
                 style={{
-                    fontSize: '1.2rem',
-                    fontWeight: 600,
+                    fontSize: '1.1rem',
+                    fontWeight: 700,
                     margin: 0,
-                    textTransform: 'none',
                     textAlign: 'center',
                     justifySelf: 'center',
-                    letterSpacing: '-0.3px'
+                    letterSpacing: '-0.3px',
                 }}
             >
-                STOCK PORTFOLIO
+                Stock Portfolio
             </h1>
 
             <div style={{ width: '44px', height: '44px' }} />
@@ -75,7 +75,7 @@ const MobileStockPortfolioHeader = ({
                             padding: '6px 14px',
                             borderRadius: '10px',
                             border: 'none',
-                            background: Number(activeTabId) === Number(tab.id) ? '#0000FF' : '#f2f2f7',
+                            background: Number(activeTabId) === Number(tab.id) ? '#007AFF' : '#f2f2f7',
                             color: Number(activeTabId) === Number(tab.id) ? '#fff' : '#000',
                             fontWeight: 500,
                             fontSize: '0.8rem',

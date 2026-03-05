@@ -14,10 +14,10 @@ import MobileStockPortfolioForm from '../components/portfolio/MobileStockPortfol
 import MobilePortfolioDraftDialog from '../components/portfolio/MobilePortfolioDraftDialog';
 
 const THEME = {
-    bg: '#ffffff',
-    primary: '#0000FF',
-    secondary: '#FFD500',
-    accent: '#FF0000',
+    bg: '#F2F2F7',
+    primary: '#007AFF',
+    secondary: '#34C759',
+    accent: '#FF3B30',
     text: '#000000',
     muted: '#8E8E93',
     success: '#34C759',
@@ -58,15 +58,17 @@ const MobileStockPortfolioBauhaus = ({ authUser, authRole, onBack }) => {
     }, [form.showForm]);
 
     const headerStyle = {
-        background: '#ffffff',
-        borderBottom: '1px solid rgba(0,0,0,0.08)',
+        background: 'rgba(242,242,247,0.95)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderBottom: '0.5px solid rgba(60,60,67,0.12)',
         paddingLeft: '16px',
         paddingRight: '16px',
         paddingBottom: '8px',
-        paddingTop: 'max(8px, env(safe-area-inset-top))',
+        paddingTop: 'calc(env(safe-area-inset-top, 0px) + 14px)',
         position: 'sticky',
         top: 0,
-        zIndex: 100
+        zIndex: 100,
     };
     const backButtonStyle = {
         background: 'none',
@@ -80,7 +82,7 @@ const MobileStockPortfolioBauhaus = ({ authUser, authRole, onBack }) => {
     };
 
     return (
-        <div style={{ minHeight: '100vh', background: '#ffffff', fontFamily: FONT_STACK }}>
+        <div style={{ minHeight: '100vh', background: THEME.bg, fontFamily: FONT_STACK, paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}>
             <MobileStockPortfolioHeader onBack={onBack} tabs={tabs} activeTabId={activeTabId} setActiveTabId={setActiveTabId} handleCreateTab={handleCreateTab} theme={THEME} headerStyle={headerStyle} backButtonStyle={backButtonStyle} />
             <MobileStockSummaryCards summary={summary} summaryDisplayCurrency={summaryDisplayCurrency} setSummaryDisplayCurrency={setSummaryDisplayCurrency} theme={THEME} fontStack={FONT_STACK} />
             <div style={{ padding: '0 16px 16px' }}>
@@ -94,7 +96,7 @@ const MobileStockPortfolioBauhaus = ({ authUser, authRole, onBack }) => {
                 onClick={form.openNewEntryForm}
                 style={{
                     position: 'fixed',
-                    bottom: '24px',
+                    bottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
                     right: '24px',
                     width: '56px',
                     height: '56px',
