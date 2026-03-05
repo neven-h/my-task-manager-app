@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Filter, Menu, DollarSign, Tag, BarChart3, Settings, LogOut } from 'lucide-react';
+import { Filter, Menu, DollarSign, Tag, BarChart3, Settings, LogOut, PiggyBank } from 'lucide-react';
 import { useTaskContext } from '../../context/TaskContext';
 
 const TaskHeader = ({ showSidebar, setShowSidebar, setShowMobileMenu, setShowMobileSidebar }) => {
@@ -126,6 +126,13 @@ const TaskHeader = ({ showSidebar, setShowSidebar, setShowMobileMenu, setShowMob
                             <BarChart3 size={16}
                                        style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>
                             Portfolio
+                        </button>
+                    )}
+                    {/* Budget */}
+                    {!isSharedUser && (
+                        <button className="btn btn-green" onClick={() => setAppView('budget')} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
+                            <PiggyBank size={16} style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>
+                            Budget
                         </button>
                     )}
                     {/* Stats button */}

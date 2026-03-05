@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
+import CategoryDeleteButton from './CategoryDeleteButton';
 
-const TaskCategorySection = ({ allCategories, selectedCategories, loading, onToggle, onCreate }) => {
+const TaskCategorySection = ({ allCategories, selectedCategories, loading, onToggle, onCreate, onDelete }) => {
     const [showAddForm, setShowAddForm] = useState(false);
     const [name, setName] = useState('');
     const [color, setColor] = useState('#0d6efd');
     const [icon, setIcon] = useState('📁');
+    const [hoveredId, setHoveredId] = useState(null);
 
     const handleCreate = async () => {
         const ok = await onCreate(name, color, icon);
@@ -43,14 +45,35 @@ const TaskCategorySection = ({ allCategories, selectedCategories, loading, onTog
             )}
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                {allCategories.map(cat => (
-                    <div key={cat.id}
-                        className={`category-pill ${selectedCategories.includes(cat.id) ? 'selected' : ''}`}
-                        onClick={() => onToggle(cat.id)}
-                        style={{ backgroundColor: selectedCategories.includes(cat.id) ? (cat.color || '#0d6efd') : undefined }}>
-                        {cat.icon} {cat.label}
-                    </div>
-                ))}
+                {allCategories.map(cat => {
+                    const isSelected = selectedCategories.includes(cat.id);
+                    const isHovered = hoveredId === cat.id;
+                    return (
+                        <div
+                            key={cat.id}
+                            style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                            onMouseEnter={() => setHoveredId(cat.id)}
+                            onMouseLeave={() => setHoveredId(null)}
+                        >
+                            <div
+                                className={`category-pill ${isSelected ? 'selected' : ''}`}
+                                onClick={() => onToggle(cat.id)}
+                                style={{ backgroundColor: isSelected ? (cat.color || '#0d6efd') : undefined }}
+                            >
+                                {cat.icon} {cat.label}
+                            </div>
+
+                            {/* Delete button — visible on hover (desktop only) */}
+                            {onDelete && isHovered && (
+                                <CategoryDeleteButton
+                                    category={cat}
+                                    onDelete={onDelete}
+                                    disabled={loading}
+                                />
+                            )}
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );

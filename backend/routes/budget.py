@@ -1,0 +1,170 @@
+"""Budget entries — predicted incomes and outcomes for freelancer cash-flow planning."""
+from flask import Blueprint, request, jsonify
+from config import get_db_connection, token_required
+
+budget_bp = Blueprint('budget', __name__)
+
+
+def _owner_filter(user_role, username):
+    """Return (where_clause, params) for owner-scoped queries."""
+    if user_role == 'admin':
+        return '', []
+    return ' AND owner = %s', [username]
+
+
+# ── GET all entries ───────────────────────────────────────────────────────────
+
+@budget_bp.route('/api/budget', methods=['GET'])
+@token_required
+def get_budget_entries(payload):
+    username = payload.get('username')
+    user_role = payload.get('role', 'limited')
+
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            where, params = _owner_filter(user_role, username)
+            cursor.execute(
+                f"SELECT * FROM budget_entries WHERE 1=1{where} ORDER BY entry_date ASC, id ASC",
+                params
+            )
+            entries = cursor.fetchall()
+            # Convert Decimal → float and date → str for JSON serialisation
+            for e in entries:
+                e['amount'] = float(e['amount'])
+                if e.get('entry_date'):
+                    e['entry_date'] = str(e['entry_date'])
+                if e.get('created_at'):
+                    e['created_at'] = str(e['created_at'])
+                if e.get('updated_at'):
+                    e['updated_at'] = str(e['updated_at'])
+        return jsonify(entries)
+    except Exception as exc:
+        return jsonify({'error': str(exc)}), 500
+
+
+# ── POST create entry ─────────────────────────────────────────────────────────
+
+@budget_bp.route('/api/budget', methods=['POST'])
+@token_required
+def create_budget_entry(payload):
+    username = payload.get('username')
+    data = request.get_json() or {}
+
+    entry_type = data.get('type')
+    description = (data.get('description') or '').strip()
+    amount = data.get('amount')
+    entry_date = data.get('entry_date')
+
+    if entry_type not in ('income', 'outcome'):
+        return jsonify({'error': 'type must be "income" or "outcome"'}), 400
+    if not description:
+        return jsonify({'error': 'description is required'}), 400
+    try:
+        amount = float(amount)
+        if amount <= 0:
+            raise ValueError()
+    except (TypeError, ValueError):
+        return jsonify({'error': 'amount must be a positive number'}), 400
+    if not entry_date:
+        return jsonify({'error': 'entry_date is required'}), 400
+
+    category = (data.get('category') or '').strip() or None
+    notes = (data.get('notes') or '').strip() or None
+
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute(
+                """INSERT INTO budget_entries (type, description, amount, entry_date, category, notes, owner)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
+                (entry_type, description, amount, entry_date, category, notes, username)
+            )
+            conn.commit()
+            new_id = cursor.lastrowid
+            cursor.execute("SELECT * FROM budget_entries WHERE id = %s", (new_id,))
+            entry = cursor.fetchone()
+            entry['amount'] = float(entry['amount'])
+            entry['entry_date'] = str(entry['entry_date'])
+            entry['created_at'] = str(entry['created_at'])
+            entry['updated_at'] = str(entry['updated_at'])
+        return jsonify(entry), 201
+    except Exception as exc:
+        return jsonify({'error': str(exc)}), 500
+
+
+# ── PUT update entry ──────────────────────────────────────────────────────────
+
+@budget_bp.route('/api/budget/<int:entry_id>', methods=['PUT'])
+@token_required
+def update_budget_entry(payload, entry_id):
+    username = payload.get('username')
+    user_role = payload.get('role', 'limited')
+    data = request.get_json() or {}
+
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM budget_entries WHERE id = %s", (entry_id,))
+            entry = cursor.fetchone()
+            if not entry:
+                return jsonify({'error': 'Entry not found'}), 404
+            if user_role != 'admin' and entry.get('owner') != username:
+                return jsonify({'error': 'Access denied'}), 403
+
+            fields, params = [], []
+            for col in ('type', 'description', 'amount', 'entry_date', 'category', 'notes'):
+                if col in data:
+                    val = data[col]
+                    if col == 'amount':
+                        val = float(val)
+                    elif col == 'description':
+                        val = (val or '').strip()
+                    elif col in ('category', 'notes'):
+                        val = (val or '').strip() or None
+                    fields.append(f"{col} = %s")
+                    params.append(val)
+
+            if not fields:
+                return jsonify({'error': 'No fields to update'}), 400
+
+            params.append(entry_id)
+            cursor.execute(
+                f"UPDATE budget_entries SET {', '.join(fields)} WHERE id = %s",
+                params
+            )
+            conn.commit()
+
+            cursor.execute("SELECT * FROM budget_entries WHERE id = %s", (entry_id,))
+            updated = cursor.fetchone()
+            updated['amount'] = float(updated['amount'])
+            updated['entry_date'] = str(updated['entry_date'])
+            updated['created_at'] = str(updated['created_at'])
+            updated['updated_at'] = str(updated['updated_at'])
+        return jsonify(updated)
+    except Exception as exc:
+        return jsonify({'error': str(exc)}), 500
+
+
+# ── DELETE entry ──────────────────────────────────────────────────────────────
+
+@budget_bp.route('/api/budget/<int:entry_id>', methods=['DELETE'])
+@token_required
+def delete_budget_entry(payload, entry_id):
+    username = payload.get('username')
+    user_role = payload.get('role', 'limited')
+
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM budget_entries WHERE id = %s", (entry_id,))
+            entry = cursor.fetchone()
+            if not entry:
+                return jsonify({'error': 'Entry not found'}), 404
+            if user_role != 'admin' and entry.get('owner') != username:
+                return jsonify({'error': 'Access denied'}), 403
+            cursor.execute("DELETE FROM budget_entries WHERE id = %s", (entry_id,))
+            conn.commit()
+        return jsonify({'success': True})
+    except Exception as exc:
+        return jsonify({'error': str(exc)}), 500

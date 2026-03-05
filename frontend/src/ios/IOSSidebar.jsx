@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
     Plus, RefreshCw, Search, BookOpen, DollarSign, Upload,
     TrendingUp, Users, BarChart3, Download, Settings, LogOut,
-    ChevronRight
+    ChevronRight, PiggyBank
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import API_BASE from '../config';
@@ -241,6 +241,8 @@ const IOSSidebar = ({ isOpen, onClose, onOpenSearch }) => {
                                 onClick={() => nav('transactions')} showDivider />
                             <Row icon={TrendingUp} iconBg="#5856D6" label="Portfolio"
                                 onClick={() => nav('portfolio')} showDivider />
+                            <Row icon={PiggyBank}  iconBg="#34C759" label="Budget"
+                                onClick={() => nav('budget')} showDivider />
                             <Row icon={Users}      iconBg="#FF9F0A" label="Clients"
                                 onClick={() => nav('clients')} showDivider />
                             <Row icon={Upload}     iconBg="#007AFF" label="Upload Transactions" isAction

@@ -11,7 +11,7 @@ const emptyForm = () => ({
 });
 
 const useTaskFormModal = () => {
-    const { formModal, closeFormModal, allCategories, allTags, clients, loading, setError, createCategory, createTag, submitTask } = useTaskContext();
+    const { formModal, closeFormModal, allCategories, allTags, clients, loading, setError, createCategory, deleteCategory, createTag, submitTask } = useTaskContext();
     const { isOpen, editingTask } = formModal;
 
     const [formData, setFormData] = useState(emptyForm);
@@ -116,7 +116,7 @@ const useTaskFormModal = () => {
     return {
         isOpen, editingTask, formData, setFormData, tagInput, setTagInput,
         showExitConfirm, setShowExitConfirm,
-        allCategories, allTags, clients, loading, createCategory,
+        allCategories, allTags, clients, loading, createCategory, deleteCategory,
         attemptClose, handleDiscard, handleSubmit, update, addTag, handlePasteImage,
         closeFormModal
     };

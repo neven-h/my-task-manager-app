@@ -80,3 +80,22 @@ def init_misc_tables(cursor, connection):
     except Error as e:
         if 'Duplicate column' not in str(e):
             print(f"Clients owner column migration note: {e}")
+
+    # ── budget_entries ────────────────────────────────────────────────────────
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS budget_entries (
+            id          INT AUTO_INCREMENT PRIMARY KEY,
+            type        ENUM('income','outcome') NOT NULL,
+            description VARCHAR(500) NOT NULL,
+            amount      DECIMAL(12,2) NOT NULL,
+            entry_date  DATE NOT NULL,
+            category    VARCHAR(100),
+            notes       TEXT,
+            owner       VARCHAR(255),
+            created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_budget_owner (owner),
+            INDEX idx_budget_date  (entry_date)
+        )
+    """)
+    print("budget_entries table ready")
