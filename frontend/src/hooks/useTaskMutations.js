@@ -27,6 +27,25 @@ const useTaskMutations = (setError, setLoading, fetchCategories, fetchTags) => {
         }
     }, [setError, setLoading, fetchCategories]);
 
+    const deleteCategory = useCallback(async (categoryId) => {
+        try {
+            setLoading(true);
+            const response = await fetch(`${API_BASE}/categories/${categoryId}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders(),
+            });
+            if (response.ok) { await fetchCategories(); return true; }
+            const errorData = await response.json();
+            setError(`Failed to delete category: ${errorData.error || 'Unknown error'}`);
+            return false;
+        } catch (err) {
+            setError(`Failed to delete category: ${err.message}`);
+            return false;
+        } finally {
+            setLoading(false);
+        }
+    }, [setError, setLoading, fetchCategories]);
+
     const createTag = useCallback(async (tagName, owner) => {
         try {
             const response = await fetch(`${API_BASE}/tags`, {
@@ -82,7 +101,7 @@ const useTaskMutations = (setError, setLoading, fetchCategories, fetchTags) => {
         }
     }, [setError]);
 
-    return { createCategory, createTag, deleteTask, duplicateTask, toggleTaskStatus };
+    return { createCategory, deleteCategory, createTag, deleteTask, duplicateTask, toggleTaskStatus };
 };
 
 export default useTaskMutations;

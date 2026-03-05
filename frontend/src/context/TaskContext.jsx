@@ -22,7 +22,7 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
         tasks, setTasks, allCategories, allTags, clients, stats,
         loading, setLoading, error, setError,
         fetchCategories, fetchTags, fetchClients, fetchTasks: fetchTasksRaw, fetchStats,
-        createCategory: createCategoryRaw, createTag: createTagRaw,
+        createCategory: createCategoryRaw, deleteCategory: deleteCategoryRaw, createTag: createTagRaw,
         deleteTask: deleteTaskRaw, duplicateTask: duplicateTaskRaw, toggleTaskStatus: toggleTaskStatusRaw,
         exportToCSV: exportToCSVRaw, exportHoursReport: exportHoursReportRaw, importHoursReport: importHoursReportRaw
     } = data;
@@ -91,6 +91,7 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
     const duplicateTask = useCallback(async (id) => { if (await duplicateTaskRaw(id)) { await loadTasks(); await fetchStats(); } }, [duplicateTaskRaw, loadTasks, fetchStats]);
     const toggleTaskStatus = useCallback(async (id) => { if (await toggleTaskStatusRaw(id)) { await loadTasks(); await fetchStats(); } }, [toggleTaskStatusRaw, loadTasks, fetchStats]);
     const createCategory = useCallback((name, color, icon) => createCategoryRaw(name, color, icon, authUser), [createCategoryRaw, authUser]);
+    const deleteCategory = useCallback((categoryId) => deleteCategoryRaw(categoryId), [deleteCategoryRaw]);
     const createTag = useCallback((tagName) => createTagRaw(tagName, authUser), [createTagRaw, authUser]);
     const exportToCSV = useCallback(async () => exportToCSVRaw(buildFilterParams()), [buildFilterParams, exportToCSVRaw]);
     const exportHoursReport = useCallback(async () => exportHoursReportRaw(buildFilterParams()), [buildFilterParams, exportHoursReportRaw]);
@@ -114,7 +115,7 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
         hasActiveFilters, clearFilters,
         appView, setAppView, view, setView,
         fetchTasks: loadTasks, fetchStats, fetchClients, fetchCategories, fetchTags,
-        deleteTask, toggleTaskStatus, duplicateTask, createCategory, createTag,
+        deleteTask, toggleTaskStatus, duplicateTask, createCategory, deleteCategory, createTag,
         submitTask, submitBulkTasks, shareTask,
         exportToCSV, exportHoursReport, importHoursReport,
         getCategoryLabel, getStatusColor, getStatusLabel,
@@ -131,7 +132,7 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
         hasActiveFilters, clearFilters,
         appView, setAppView, view, setView,
         loadTasks, fetchStats, fetchClients, fetchCategories, fetchTags,
-        deleteTask, toggleTaskStatus, duplicateTask, createCategory, createTag,
+        deleteTask, toggleTaskStatus, duplicateTask, createCategory, deleteCategory, createTag,
         submitTask, submitBulkTasks, shareTask,
         exportToCSV, exportHoursReport, importHoursReport,
         getCategoryLabel, getStatusColor, getStatusLabel,
