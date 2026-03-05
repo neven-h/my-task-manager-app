@@ -100,10 +100,6 @@ ALLOWED_FRONTEND_ORIGINS = [o for o in _origins if not (o in _seen or _seen.add(
 
 CORS(app, origins=ALLOWED_FRONTEND_ORIGINS, supports_credentials=True, max_age=3600)
 
-<<<<<<< HEAD
-
-=======
->>>>>>> parent of 9668f60 (edited timeout to 60 sec)
 # ==================== RATE LIMITING ====================
 
 limiter = Limiter(
