@@ -1,144 +1,171 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { X, Plus, RefreshCw, Search, BookOpen, DollarSign, Upload, TrendingUp, Users, BarChart3, Download, Settings, LogOut } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import {
+  Plus,
+  RefreshCw,
+  Search,
+  BookOpen,
+  DollarSign,
+  TrendingUp,
+  Users,
+  BarChart3,
+  Download,
+  Settings,
+  LogOut,
+  Upload
+} from 'lucide-react';
 import { useTaskContext } from '../../context/TaskContext';
-import { FONT_STACK, IOS_BLEND } from '../theme';
 import API_BASE from '../../config';
 import { getAuthHeaders } from '../../api.js';
-import { SectionTitle, GroupedItem } from './SidebarHelpers';
+
+const SPRING = 'cubic-bezier(0.22,1,0.36,1)';
+
+const Row = ({ icon: Icon, label, onClick, destructive }) => (
+  <button
+    onClick={onClick}
+    style={{
+      width: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '14px',
+      padding: '16px 4px',
+      background: 'none',
+      border: 'none',
+      borderBottom: '1px solid rgba(0,0,0,0.06)',
+      fontSize: '1rem',
+      fontWeight: 500,
+      color: destructive ? '#FF3B30' : '#000',
+      cursor: 'pointer'
+    }}
+  >
+    <Icon size={20} />
+    {label}
+  </button>
+);
 
 const MobileSidebar = ({ isOpen, onClose, onOpenSearch }) => {
-    const navigate = useNavigate();
-    const {
-        authUser, isAdmin, isSharedUser, isLimitedUser, onLogout,
-        setAppView, openNewTaskForm, fetchTasks, tasks,
-        hasActiveFilters, exportToCSV
-    } = useTaskContext();
-    const uploadRef = useRef(null);
-    const [closing, setClosing] = useState(false);
+  const {
+    isAdmin,
+    isSharedUser,
+    isLimitedUser,
+    onLogout,
+    setAppView,
+    openNewTaskForm,
+    fetchTasks,
+    exportToCSV
+  } = useTaskContext();
 
-    useEffect(() => {
-        if (isOpen) setClosing(false);
-    }, [isOpen]);
+  const [closing, setClosing] = useState(false);
 
-    if (!isOpen && !closing) return null;
+  useEffect(() => {
+    if (isOpen) setClosing(false);
+  }, [isOpen]);
 
-    const nav = (view) => { setAppView(view); handleClose(); };
+  if (!isOpen && !closing) return null;
 
-    const handleClose = () => {
-        setClosing(true);
-        setTimeout(() => { setClosing(false); onClose(); }, 300);
-    };
+  const handleClose = () => {
+    setClosing(true);
+    setTimeout(() => {
+      setClosing(false);
+      onClose();
+    }, 260);
+  };
 
-    const handleUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const fd = new FormData();
-        fd.append('file', file);
-        fd.append('transaction_type', 'credit');
-        try {
-            const res = await fetch(`${API_BASE}/transactions/upload`, { method: 'POST', headers: getAuthHeaders(false), body: fd });
-            const data = await res.json().catch(() => null);
-            if (res.ok) alert(`Successfully uploaded ${data?.transaction_count || '0'} transactions!`);
-            else alert(`Error: ${data?.error || 'Upload failed'}`);
-        } catch (err) { alert(`Error uploading file: ${err?.message || err}`); }
-        handleClose();
-        e.target.value = '';
-    };
+  const nav = (view) => {
+    setAppView(view);
+    handleClose();
+  };
 
-    const showFinance = isAdmin || isSharedUser || isLimitedUser;
+  const showFinance = isAdmin || isSharedUser || isLimitedUser;
+  const visible = isOpen && !closing;
 
-    return (
-        <>
-            <div
-                style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.4)', zIndex: 300,
-                    opacity: closing ? 0 : 1, transition: 'opacity 0.3s ease'
-                }}
-                onClick={handleClose}
-            />
-            <div
-                className={closing ? 'sidebar-slide-out' : 'sidebar-slide-in'}
-                style={{
-                    position: 'fixed', top: 0, right: 0, bottom: 0,
-                    width: IOS_BLEND.sidebarWidth, maxWidth: IOS_BLEND.sidebarMaxWidth,
-                    background: '#f2f2f7', borderLeft: '3px solid #000',
-                    zIndex: 301, overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-                    fontFamily: FONT_STACK,
-                    paddingBottom: 'max(24px, env(safe-area-inset-bottom))'
-                }}
-            >
-                <div style={{ padding: '20px 20px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                        <h2 style={{ fontSize: '1.5rem', fontWeight: 900, margin: '0 0 4px 0', textTransform: 'uppercase' }}>Menu</h2>
-                        {isAdmin && <p style={{ fontSize: '0.8rem', color: '#666', margin: 0 }}>{authUser} (admin)</p>}
-                    </div>
-                    <button onClick={handleClose} style={{ background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: '50%', width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', marginTop: '4px' }}>
-                        <X size={16} />
-                    </button>
-                </div>
+  const handleUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('transaction_type', 'credit');
+    await fetch(`${API_BASE}/transactions/upload`, {
+      method: 'POST',
+      headers: getAuthHeaders(false),
+      body: fd
+    });
+    handleClose();
+    e.target.value = '';
+  };
 
-                <div style={{ padding: '0 16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    <div>
-                        <SectionTitle>Quick Actions</SectionTitle>
-                        <div className="ios-grouped-section">
-                            <GroupedItem icon={Plus} label="New Task" color="#0000FF" onClick={() => { openNewTaskForm(); handleClose(); }} />
-                            <GroupedItem icon={RefreshCw} label="Refresh" onClick={async () => { await fetchTasks(); handleClose(); }} />
-                            <GroupedItem icon={Search} label="Search" badge={hasActiveFilters}
-                                onClick={() => { onOpenSearch(); setClosing(true); setTimeout(() => { setClosing(false); }, 300); }} />
-                            <GroupedItem icon={BookOpen} label="Notebook" onClick={() => nav('notebook')} />
-                        </div>
-                    </div>
+  return (
+    <>
+      <div
+        onClick={handleClose}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.35)',
+          backdropFilter: 'blur(4px)',
+          opacity: visible ? 1 : 0,
+          transition: `opacity 260ms ${SPRING}`,
+          zIndex: 300
+        }}
+      />
 
-                    {showFinance && (
-                        <div>
-                            <SectionTitle>Bank Transactions</SectionTitle>
-                            <div className="ios-grouped-section">
-                                <GroupedItem icon={DollarSign} label="View Transactions" onClick={() => nav('transactions')} />
-                                <GroupedItem icon={Upload} label="Upload File" onClick={() => uploadRef.current?.click()} />
-                                <input ref={uploadRef} type="file" accept=".csv,.xlsx,.xls" style={{ display: 'none' }} onChange={handleUpload} />
-                            </div>
-                        </div>
-                    )}
+      <div
+        style={{
+          position: 'fixed',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: '#fff',
+          borderTopLeftRadius: '20px',
+          borderTopRightRadius: '20px',
+          boxShadow: '0 -8px 24px rgba(0,0,0,0.12)',
+          transform: visible ? 'translateY(0)' : 'translateY(100%)',
+          transition: `transform 260ms ${SPRING}`,
+          zIndex: 301,
+          maxHeight: '85vh',
+          overflowY: 'auto',
+          paddingBottom: 'env(safe-area-inset-bottom)'
+        }}
+      >
+        <div
+          style={{
+            width: '40px',
+            height: '5px',
+            background: 'rgba(0,0,0,0.2)',
+            borderRadius: '3px',
+            margin: '10px auto 16px'
+          }}
+        />
 
-                    {showFinance && (
-                        <div>
-                            <SectionTitle>Stock Portfolio</SectionTitle>
-                            <div className="ios-grouped-section">
-                                <GroupedItem icon={TrendingUp} label="View Portfolio" onClick={() => nav('portfolio')} />
-                            </div>
-                        </div>
-                    )}
+        <div style={{ padding: '0 20px 24px' }}>
+          <Row icon={Plus} label="New Task" onClick={() => { openNewTaskForm(); handleClose(); }} />
+          <Row icon={RefreshCw} label="Refresh" onClick={async () => { await fetchTasks(); handleClose(); }} />
+          <Row icon={Search} label="Search" onClick={() => { onOpenSearch(); handleClose(); }} />
+          <Row icon={BookOpen} label="Notebook" onClick={() => nav('notebook')} />
 
-                    {showFinance && (
-                        <div>
-                            <SectionTitle>Clients</SectionTitle>
-                            <div className="ios-grouped-section">
-                                <GroupedItem icon={Users} label="Manage Clients" onClick={() => nav('clients')} />
-                            </div>
-                        </div>
-                    )}
+          {showFinance && (
+            <>
+              <Row icon={DollarSign} label="Transactions" onClick={() => nav('transactions')} />
+              <Row icon={Upload} label="Upload Transactions" onClick={() => document.getElementById('tx-upload')?.click()} />
+              <input
+                id="tx-upload"
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                style={{ display: 'none' }}
+                onChange={handleUpload}
+              />
+              <Row icon={TrendingUp} label="Portfolio" onClick={() => nav('portfolio')} />
+              <Row icon={Users} label="Clients" onClick={() => nav('clients')} />
+            </>
+          )}
 
-                    <div>
-                        <SectionTitle>Analytics</SectionTitle>
-                        <div className="ios-grouped-section">
-                            <GroupedItem icon={BarChart3} label="View Stats" onClick={() => nav('stats')} />
-                            <GroupedItem icon={Download} label="Export CSV" onClick={() => { exportToCSV(); handleClose(); }} />
-                        </div>
-                    </div>
-
-                    <div>
-                        <SectionTitle>Account</SectionTitle>
-                        <div className="ios-grouped-section">
-                            <GroupedItem icon={Settings} label="Settings" onClick={() => { navigate('/settings'); handleClose(); }} />
-                            <GroupedItem icon={LogOut} label="Logout" destructive onClick={() => { handleClose(); if (onLogout) onLogout(); }} />
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </>
-    );
+          <Row icon={BarChart3} label="Stats" onClick={() => nav('stats')} />
+          <Row icon={Download} label="Export CSV" onClick={() => { exportToCSV(); handleClose(); }} />
+          <Row icon={Settings} label="Settings" onClick={() => { handleClose(); window.location.href = '/settings'; }} />
+          <Row icon={LogOut} label="Logout" destructive onClick={() => { handleClose(); onLogout && onLogout(); }} />
+        </div>
+      </div>
+    </>
+  );
 };
 
 export default MobileSidebar;
