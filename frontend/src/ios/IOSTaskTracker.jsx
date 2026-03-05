@@ -7,6 +7,7 @@ import MobileBankTransactionsView from '../mobile/views/MobileBankTransactionsVi
 import MobileStockPortfolioBauhaus from '../mobile/views/MobileStockPortfolioBauhaus';
 import MobileClientsView from '../mobile/views/MobileClientsView';
 import MobileNotebookView from '../mobile/views/MobileNotebookView';
+import MobileBudgetView from '../mobile/views/MobileBudgetView';
 
 // iOS components
 import IOSStyles from './IOSStyles';
@@ -35,6 +36,7 @@ const IOSTaskTrackerInner = () => {
     if (appView === 'portfolio') return <MobileStockPortfolioBauhaus authUser={authUser} authRole={authRole} onBack={() => setAppView('tasks')} />;
     if (appView === 'clients') return <MobileClientsView authUser={authUser} authRole={authRole} onBack={() => setAppView('tasks')} />;
     if (appView === 'notebook') return <MobileNotebookView onBack={() => setAppView('tasks')} />;
+    if (appView === 'budget')   return <MobileBudgetView   onBack={() => setAppView('tasks')} />;
 
     return (
         <div style={{ minHeight: '100vh', background: THEME.bg, paddingBottom: '20px', fontFamily: FONT_STACK }}>
