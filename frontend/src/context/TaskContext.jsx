@@ -47,7 +47,7 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
 
     useEffect(() => {
         const savedView = storage.get(STORAGE_KEYS.LAST_ACTIVE_VIEW);
-        if (savedView && ['tasks', 'transactions', 'clients', 'portfolio', 'stats', 'notebook'].includes(savedView)) {
+        if (savedView && ['tasks', 'transactions', 'clients', 'portfolio', 'stats', 'notebook', 'budget'].includes(savedView)) {
             setAppView(savedView);
         }
     }, []);
