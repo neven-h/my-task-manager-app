@@ -189,3 +189,32 @@ def add_security_headers(response):
     response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
 
     return response
+
+
+# ==================== GLOBAL ERROR HANDLERS ====================
+# These are required so that Flask-CORS (which runs via after_request) can
+# add Access-Control-Allow-Origin headers to error responses.
+# Without explicit handlers, Flask bypasses after_request for uncaught
+# exceptions and rate-limit (429) responses, so the browser's CORS
+# preflight fails with "No 'Access-Control-Allow-Origin' header present".
+
+from flask import jsonify as _jsonify  # noqa: E402 (import after app creation)
+
+
+@app.errorhandler(429)
+def handle_rate_limit(e):
+    """Return JSON 429 so Flask-CORS can attach CORS headers."""
+    return _jsonify({'error': 'Too many requests. Please wait a moment and try again.'}), 429
+
+
+@app.errorhandler(404)
+def handle_not_found(e):
+    """Return JSON 404 so Flask-CORS can attach CORS headers."""
+    return _jsonify({'error': 'The requested resource was not found.'}), 404
+
+
+@app.errorhandler(500)
+def handle_internal_error(e):
+    """Return JSON 500 so Flask-CORS can attach CORS headers."""
+    app.logger.exception('Unhandled server error')
+    return _jsonify({'error': 'An internal server error occurred.'}), 500
