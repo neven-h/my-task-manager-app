@@ -83,11 +83,9 @@ export function downloadICS(task) {
     const ics = generateICS(task);
     const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    // Open without forcing a download so iOS opens Calendar app directly
-    // and macOS/Windows invoke the system calendar handler
     const a = document.createElement('a');
     a.href = url;
-    // No a.download — let the browser/OS handle the .ics MIME type natively
+    a.download = `${task.title.replace(/[^a-z0-9]/gi, '_')}.ics`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

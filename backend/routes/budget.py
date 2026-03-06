@@ -1,6 +1,9 @@
 """Budget entries — predicted incomes and outcomes for freelancer cash-flow planning."""
+import logging
 from flask import Blueprint, request, jsonify
 from config import get_db_connection, token_required
+
+logger = logging.getLogger(__name__)
 
 budget_bp = Blueprint('budget', __name__)
 
@@ -24,10 +27,11 @@ def get_budget_entries(payload):
         with get_db_connection() as conn:
             cursor = conn.cursor(dictionary=True)
             where, params = _owner_filter(user_role, username)
-            cursor.execute(
-                f"SELECT * FROM budget_entries WHERE 1=1{where} ORDER BY entry_date ASC, id ASC",
-                params
-            )
+            sql = "SELECT * FROM budget_entries WHERE 1=1"
+            if where:
+                sql += where
+            sql += " ORDER BY entry_date ASC, id ASC"
+            cursor.execute(sql, params)
             entries = cursor.fetchall()
             # Convert Decimal → float and date → str for JSON serialisation
             for e in entries:
@@ -40,7 +44,8 @@ def get_budget_entries(payload):
                     e['updated_at'] = str(e['updated_at'])
         return jsonify(entries)
     except Exception as exc:
-        return jsonify({'error': str(exc)}), 500
+        logger.exception('Failed to get budget entries')
+        return jsonify({'error': 'An internal error occurred'}), 500
 
 
 # ── POST create entry ─────────────────────────────────────────────────────────
@@ -90,7 +95,8 @@ def create_budget_entry(payload):
             entry['updated_at'] = str(entry['updated_at'])
         return jsonify(entry), 201
     except Exception as exc:
-        return jsonify({'error': str(exc)}), 500
+        logger.exception('Failed to create budget entry')
+        return jsonify({'error': 'An internal error occurred'}), 500
 
 
 # ── PUT update entry ──────────────────────────────────────────────────────────
@@ -113,8 +119,9 @@ def update_budget_entry(payload, entry_id):
                 return jsonify({'error': 'Access denied'}), 403
 
             fields, params = [], []
+            allowed_cols = {'type', 'description', 'amount', 'entry_date', 'category', 'notes'}
             for col in ('type', 'description', 'amount', 'entry_date', 'category', 'notes'):
-                if col in data:
+                if col in data and col in allowed_cols:
                     val = data[col]
                     if col == 'amount':
                         val = float(val)
@@ -143,7 +150,8 @@ def update_budget_entry(payload, entry_id):
             updated['updated_at'] = str(updated['updated_at'])
         return jsonify(updated)
     except Exception as exc:
-        return jsonify({'error': str(exc)}), 500
+        logger.exception('Failed to update budget entry')
+        return jsonify({'error': 'An internal error occurred'}), 500
 
 
 # ── DELETE entry ──────────────────────────────────────────────────────────────
@@ -167,4 +175,5 @@ def delete_budget_entry(payload, entry_id):
             conn.commit()
         return jsonify({'success': True})
     except Exception as exc:
-        return jsonify({'error': str(exc)}), 500
+        logger.exception('Failed to delete budget entry')
+        return jsonify({'error': 'An internal error occurred'}), 500
