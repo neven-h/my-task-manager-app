@@ -124,6 +124,9 @@ app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True').lower() == 'true'
 app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', os.getenv('MAIL_USERNAME'))
+# Socket timeout (seconds) — prevents gunicorn worker from being killed by a
+# hanging SMTP connection before the inner exception handler can catch the error
+app.config['MAIL_TIMEOUT'] = int(os.getenv('MAIL_TIMEOUT', 10))
 mail = Mail(app)
 
 # ==================== CLOUDINARY ====================
