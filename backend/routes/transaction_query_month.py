@@ -89,18 +89,49 @@ def get_transactions_by_month(payload, month_year):
 @transaction_query_month_bp.route('/api/transactions/descriptions', methods=['GET'])
 @token_required
 def get_all_descriptions(payload):
-    """Get all unique transaction descriptions"""
+    """Get all unique transaction descriptions scoped to the requesting user's tab."""
     try:
+        username = payload['username']
+        user_role = payload['role']
+        tab_id = request.args.get('tab_id')
+
         with get_db_connection() as connection:
             cursor = connection.cursor()
 
-            cursor.execute("""
-                           SELECT DISTINCT description
-                           FROM bank_transactions
-                           WHERE description IS NOT NULL
-                             AND description != ''
-                           ORDER BY description
-                           """)
+            if user_role == 'admin':
+                # Admins may pass an optional tab_id; without it they see nothing
+                # (prevents accidental dump of the whole table)
+                if tab_id:
+                    cursor.execute("""
+                        SELECT DISTINCT bt.description
+                        FROM bank_transactions bt
+                        WHERE bt.tab_id = %s
+                          AND bt.description IS NOT NULL
+                          AND bt.description != ''
+                        ORDER BY bt.description
+                    """, (tab_id,))
+                else:
+                    return jsonify([])
+            else:
+                # Non-admin: tab_id is required; verify tab ownership
+                if not tab_id:
+                    return jsonify({'error': 'tab_id is required'}), 400
+
+                cursor.execute(
+                    "SELECT id FROM transaction_tabs WHERE id = %s AND owner = %s",
+                    (tab_id, username)
+                )
+                if not cursor.fetchone():
+                    return jsonify({'error': 'Tab not found or access denied'}), 404
+
+                cursor.execute("""
+                    SELECT DISTINCT bt.description
+                    FROM bank_transactions bt
+                    WHERE bt.tab_id = %s
+                      AND bt.description IS NOT NULL
+                      AND bt.description != ''
+                    ORDER BY bt.description
+                """, (tab_id,))
 
             descriptions = [row[0] for row in cursor.fetchall()]
             return jsonify(descriptions)

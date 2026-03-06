@@ -69,7 +69,6 @@ def create_portfolio_entry(payload):
                     except (TypeError, ValueError):
                         pass
                 values_list.append(parsed_units)
-                print(f"DEBUG: CREATE - units_val={units_val}, parsed_units={parsed_units}")
 
             query = f"""
                 INSERT INTO stock_portfolio
@@ -167,7 +166,6 @@ def update_portfolio_entry(payload, entry_id):
                         pass
                 set_clauses.append('units = %s')
                 values_list.append(parsed_units)
-                print(f"DEBUG: UPDATE - units_val={units_val}, parsed_units={parsed_units}")
 
             values_list.append(entry_id)  # For WHERE clause
 

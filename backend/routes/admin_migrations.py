@@ -44,7 +44,8 @@ def migrate_encrypt_transactions(payload):
                     decrypt_field(trans['amount'])
                     already_encrypted_count += 1
                     continue
-                except:
+                except Exception:
+                    # Decryption failed → data is still plaintext; encrypt it now
                     encrypted_account = encrypt_field(trans['account_number'] or '')
                     encrypted_description = encrypt_field(trans['description'])
                     encrypted_amount = encrypt_field(str(trans['amount']))

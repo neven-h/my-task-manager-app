@@ -40,7 +40,17 @@ def adopt_orphaned_transactions(payload, tab_id):
                     return jsonify({'error': 'Access denied'}), 403
 
             cursor = connection.cursor()
-            cursor.execute("UPDATE bank_transactions SET tab_id = %s WHERE tab_id IS NULL", (tab_id,))
+            # Scope adoption to transactions uploaded by this user (or all if admin)
+            if user_role == 'admin':
+                cursor.execute(
+                    "UPDATE bank_transactions SET tab_id = %s WHERE tab_id IS NULL",
+                    (tab_id,)
+                )
+            else:
+                cursor.execute(
+                    "UPDATE bank_transactions SET tab_id = %s WHERE tab_id IS NULL AND uploaded_by = %s",
+                    (tab_id, username)
+                )
             adopted_count = cursor.rowcount
             connection.commit()
             return jsonify({'message': f'{adopted_count} transactions assigned to tab', 'count': adopted_count})

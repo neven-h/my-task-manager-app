@@ -1,7 +1,11 @@
+import logging
+
 from flask import Blueprint, request, jsonify, current_app
 from config import get_db_connection, token_required, DEBUG, app, mail, FRONTEND_URL
 from mysql.connector import Error
 from email.utils import parseaddr
+
+logger = logging.getLogger(__name__)
 
 tasks_share_bp = Blueprint('tasks_share', __name__)
 
@@ -75,12 +79,12 @@ Task Tracker Team"""
                 mail.send(msg)
                 return jsonify({'success': True, 'message': f'Task shared successfully with {email}'})
             except Exception as mail_error:
-                print(f"Email sending failed: {mail_error}")
+                logger.error('share_task: email send failed: %s', mail_error, exc_info=True)
                 if DEBUG:
                     return jsonify({'success': True, 'message': f'Email service error (debug mode). Task "{task["title"]}" would be shared with {email}'})
                 else:
                     return jsonify({'error': 'Failed to send email. Please try again later.'}), 503
 
     except Exception as e:
-        print(f"Share task error: {e}")
+        logger.error('share_task error: %s', e, exc_info=True)
         return jsonify({'error': 'Failed to share task'}), 500

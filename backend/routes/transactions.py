@@ -49,14 +49,6 @@ def upload_transactions(payload):
             for idx, row in df.iterrows():
                 desc_value = str(row['description'])
 
-                # Debug first transaction
-                if idx == 0:
-                    print(f"[FIRST TRANSACTION DEBUG]", flush=True)
-                    print(f"  Description value: {desc_value}", flush=True)
-                    print(f"  Description type: {type(desc_value)}", flush=True)
-                    print(f"  Description bytes: {desc_value.encode('utf-8').hex()}", flush=True)
-                    print(f"  Description repr: {repr(desc_value)}", flush=True)
-
                 transactions.append({
                     'account_number': str(row['account_number']) if pd.notna(row['account_number']) else '',
                     'transaction_date': row['transaction_date'].strftime('%Y-%m-%d'),
@@ -77,16 +69,6 @@ def upload_transactions(payload):
                 'normalizer_profile': df.attrs.get('normalizer_profile'),
                 'normalizer_confidence': df.attrs.get('normalizer_confidence'),
             }
-
-            # Debug the JSON response
-            if transactions:
-                print(f"[JSON RESPONSE DEBUG]", flush=True)
-                print(f"  First transaction description: {transactions[0]['description']}", flush=True)
-                import json
-                json_str = json.dumps(transactions[0], ensure_ascii=False)
-                print(f"  First transaction JSON: {json_str}", flush=True)
-                print(f"  JSON bytes: {json_str.encode('utf-8').hex()}", flush=True)
-                print(f"{'=' * 60}\n", flush=True)
 
             return jsonify(response_data)
 
@@ -122,6 +104,16 @@ def save_transactions(payload):
             return jsonify({'error': 'tab_id is required - select a tab first'}), 400
 
         with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+
+            # Ownership check: verify the tab belongs to the requesting user
+            cursor.execute(
+                "SELECT id FROM transaction_tabs WHERE id = %s AND owner = %s",
+                (tab_id, username)
+            )
+            if not cursor.fetchone():
+                return jsonify({'error': 'Tab not found or access denied'}), 404
+
             cursor = connection.cursor()
 
             query = """
