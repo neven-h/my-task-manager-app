@@ -44,7 +44,7 @@ def get_budget_entries(payload):
                     e['updated_at'] = str(e['updated_at'])
         return jsonify(entries)
     except Exception as exc:
-        logger.exception(exc)
+        logger.exception('Failed to get budget entries')
         return jsonify({'error': 'An internal error occurred'}), 500
 
 
@@ -95,7 +95,7 @@ def create_budget_entry(payload):
             entry['updated_at'] = str(entry['updated_at'])
         return jsonify(entry), 201
     except Exception as exc:
-        logger.exception(exc)
+        logger.exception('Failed to create budget entry')
         return jsonify({'error': 'An internal error occurred'}), 500
 
 
@@ -150,7 +150,7 @@ def update_budget_entry(payload, entry_id):
             updated['updated_at'] = str(updated['updated_at'])
         return jsonify(updated)
     except Exception as exc:
-        logger.exception(exc)
+        logger.exception('Failed to update budget entry')
         return jsonify({'error': 'An internal error occurred'}), 500
 
 
@@ -175,5 +175,5 @@ def delete_budget_entry(payload, entry_id):
             conn.commit()
         return jsonify({'success': True})
     except Exception as exc:
-        logger.exception(exc)
+        logger.exception('Failed to delete budget entry')
         return jsonify({'error': 'An internal error occurred'}), 500
