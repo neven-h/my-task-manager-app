@@ -16,7 +16,7 @@ const TaskFormModal = () => {
     const {
         isOpen, editingTask, formData, tagInput, setTagInput,
         showExitConfirm, setShowExitConfirm,
-        allCategories, allTags, clients, loading, createCategory,
+        allCategories, allTags, clients, loading, createCategory, deleteCategory,
         attemptClose, handleDiscard, handleSubmit, update, addTag, handlePasteImage,
         closeFormModal
     } = useTaskFormModal();
@@ -65,6 +65,7 @@ const TaskFormModal = () => {
                                 loading={loading}
                                 onToggle={(id) => update('categories', formData.categories.includes(id) ? formData.categories.filter(c => c !== id) : [...formData.categories, id])}
                                 onCreate={createCategory}
+                                onDelete={deleteCategory}
                             />
                             <CustomAutocomplete label="Client" placeholder="Client..." value={formData.client}
                                 onChange={(value) => update('client', value)}

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { TaskProvider, useTaskContext } from '../context/TaskContext';
 
-// Existing mobile views (unchanged)
-import MobileStatsView from '../mobile-prototype/views/MobileStatsView';
-import MobileBankTransactionsView from '../mobile-prototype/views/MobileBankTransactionsView';
-import MobileStockPortfolioBauhaus from '../mobile-prototype/views/MobileStockPortfolioBauhaus';
-import MobileClientsView from '../mobile-prototype/views/MobileClientsView';
-import MobileNotebookView from '../mobile-prototype/views/MobileNotebookView';
+// Mobile views
+import MobileStatsView from '../mobile/views/MobileStatsView';
+import MobileBankTransactionsView from '../mobile/views/MobileBankTransactionsView';
+import MobileStockPortfolioBauhaus from '../mobile/views/MobileStockPortfolioBauhaus';
+import MobileClientsView from '../mobile/views/MobileClientsView';
+import MobileNotebookView from '../mobile/views/MobileNotebookView';
+import MobileBudgetView from '../mobile/views/MobileBudgetView';
 
 // iOS components
 import IOSStyles from './IOSStyles';
@@ -20,8 +21,45 @@ import IOSSearchDrawer from './IOSSearchDrawer';
 import IOSTaskFormModal from './IOSTaskFormModal';
 import IOSBulkTaskModal from './IOSBulkTaskModal';
 import IOSShareTaskModal from './IOSShareTaskModal';
+import useSwipeBack from './hooks/useSwipeBack';
 
 import { THEME, FONT_STACK } from './theme';
+
+const SPRING = 'cubic-bezier(0.22,1,0.36,1)';
+
+/**
+ * Wraps any full-page view with an iOS-style edge-swipe-back gesture.
+ * Swipe right from the left edge → slides the view off to the right → calls onBack.
+ * Releasing before the threshold snaps the view back with a spring animation.
+ */
+const SwipeBackView = ({ onBack, children }) => {
+    const { dragX, handlers } = useSwipeBack({ onBack });
+    const releasing = dragX === 0; // transition only during snap-back (not while dragging)
+
+    return (
+        <div style={{ position: 'relative', overflow: 'hidden', minHeight: '100vh' }} {...handlers}>
+            {/* Depth gradient that appears on the left as the view slides away */}
+            <div style={{
+                position: 'fixed',
+                top: 0, bottom: 0, left: 0,
+                width: `${dragX}px`,
+                background: 'linear-gradient(to right, rgba(0,0,0,0.10), transparent)',
+                pointerEvents: 'none',
+                zIndex: 9999,
+                transition: releasing ? `width 300ms ${SPRING}` : 'none',
+            }} />
+
+            {/* The view itself — translates right as the user drags */}
+            <div style={{
+                transform: `translateX(${dragX}px)`,
+                transition: releasing ? `transform 300ms ${SPRING}` : 'none',
+                willChange: 'transform',
+            }}>
+                {children}
+            </div>
+        </div>
+    );
+};
 
 const IOSTaskTrackerInner = () => {
     const { appView, setAppView, authUser, authRole, error, setError } = useTaskContext();
@@ -29,12 +67,25 @@ const IOSTaskTrackerInner = () => {
     const [filterMode, setFilterMode] = useState('all');
     const [showSearchDrawer, setShowSearchDrawer] = useState(false);
 
-    // Alternate views
-    if (appView === 'stats') return <MobileStatsView authUser={authUser} authRole={authRole} onBack={() => setAppView('tasks')} />;
-    if (appView === 'transactions') return <MobileBankTransactionsView authUser={authUser} authRole={authRole} onBack={() => setAppView('tasks')} />;
-    if (appView === 'portfolio') return <MobileStockPortfolioBauhaus authUser={authUser} authRole={authRole} onBack={() => setAppView('tasks')} />;
-    if (appView === 'clients') return <MobileClientsView authUser={authUser} authRole={authRole} onBack={() => setAppView('tasks')} />;
-    if (appView === 'notebook') return <MobileNotebookView onBack={() => setAppView('tasks')} />;
+    const goBack = () => setAppView('tasks');
+
+    // Alternate full-page views — all get swipe-back navigation
+    const altViews = {
+        stats:        <MobileStatsView authUser={authUser} authRole={authRole} onBack={goBack} />,
+        transactions: <MobileBankTransactionsView authUser={authUser} authRole={authRole} onBack={goBack} />,
+        portfolio:    <MobileStockPortfolioBauhaus authUser={authUser} authRole={authRole} onBack={goBack} />,
+        clients:      <MobileClientsView authUser={authUser} authRole={authRole} onBack={goBack} />,
+        notebook:     <MobileNotebookView onBack={goBack} />,
+        budget:       <MobileBudgetView onBack={goBack} />,
+    };
+
+    if (altViews[appView]) {
+        return (
+            <SwipeBackView onBack={goBack}>
+                {altViews[appView]}
+            </SwipeBackView>
+        );
+    }
 
     return (
         <div style={{ minHeight: '100vh', background: THEME.bg, paddingBottom: '20px', fontFamily: FONT_STACK }}>

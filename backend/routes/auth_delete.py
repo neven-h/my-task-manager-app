@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app
-from config import get_db_connection, token_required, USERS
+from config import get_db_connection, token_required, USERS, limiter
 from mysql.connector import Error
 import bcrypt
 
@@ -7,6 +7,7 @@ auth_delete_bp = Blueprint('auth_delete', __name__)
 
 
 @auth_delete_bp.route('/api/auth/delete-account', methods=['POST'])
+@limiter.limit("3 per minute")
 @token_required
 def delete_account(payload):
     """Delete user account permanently"""

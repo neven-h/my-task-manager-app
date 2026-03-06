@@ -68,7 +68,7 @@ const YahooPortfolioSection = ({ colors, authUser, defaultExpanded = false }) =>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', color: colors.text, textTransform: 'uppercase', letterSpacing: '0.3px', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <Briefcase size={28} color={colors.primary} />
-                    My Yahoo Finance Portfolio
+                    Yahoo Finance Portfolio
                 </h2>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <button onClick={() => setShowImportForm(!showImportForm)} style={{ padding: '0.5rem 1rem', background: colors.primary, color: '#fff', border: `2px solid ${colors.border}`, cursor: 'pointer', fontWeight: '700', fontSize: '0.85rem', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>

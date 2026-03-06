@@ -3,6 +3,7 @@ import { AlertCircle, X } from 'lucide-react';
 import BankTransactions from './BankTransactions';
 import ClientsManagement from './ClientsManagement';
 import StockPortfolio from './StockPortfolio';
+import Budget from './Budget';
 import './TaskTracker.css';
 
 import { TaskProvider, useTaskContext } from './context/TaskContext';
@@ -33,6 +34,9 @@ const TaskTrackerInner = () => {
     }
     if (appView === 'portfolio') {
         return <StockPortfolio onBackToTasks={() => setAppView('tasks')} />;
+    }
+    if (appView === 'budget') {
+        return <Budget onBackToTasks={() => setAppView('tasks')} />;
     }
 
     return (

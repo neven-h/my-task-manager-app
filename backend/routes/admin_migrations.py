@@ -163,6 +163,29 @@ def migrate_database(payload):
                 current_app.logger.error('admin migrate-db yahoo_portfolio error: %s', e, exc_info=True)
                 return jsonify({'error': 'Failed to create yahoo_portfolio table'}), 500
 
+            try:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS budget_entries (
+                        id          INT AUTO_INCREMENT PRIMARY KEY,
+                        type        ENUM('income','outcome') NOT NULL,
+                        description VARCHAR(500) NOT NULL,
+                        amount      DECIMAL(12,2) NOT NULL,
+                        entry_date  DATE NOT NULL,
+                        category    VARCHAR(100),
+                        notes       TEXT,
+                        owner       VARCHAR(255),
+                        created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                        INDEX idx_budget_owner (owner),
+                        INDEX idx_budget_date  (entry_date)
+                    )
+                """)
+                connection.commit()
+                migrations_applied.append('budget_entries_table')
+            except Exception as e:
+                current_app.logger.error('admin migrate-db budget_entries error: %s', e, exc_info=True)
+                return jsonify({'error': 'Failed to create budget_entries table'}), 500
+
             return jsonify({
                 'message': 'Migration completed successfully',
                 'migrations_applied': migrations_applied

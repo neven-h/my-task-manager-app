@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from config import (
     get_db_connection, USERS,
-    verify_jwt_token, token_required,
+    token_required, limiter, validate_password,
 )
 from mysql.connector import Error
 import bcrypt
@@ -10,20 +10,12 @@ auth_account_bp = Blueprint('auth_account', __name__)
 
 
 @auth_account_bp.route('/api/auth/user-info', methods=['GET'])
-def get_user_info():
+@token_required
+def get_user_info(payload):
     """Get user information including email - requires authentication"""
     try:
-        # Verify JWT token from Authorization header
-        token = request.headers.get('Authorization')
-        if not token:
-            return jsonify({'error': 'Authentication required'}), 401
-        
-        token_result = verify_jwt_token(token)
-        if not token_result['valid']:
-            return jsonify({'error': token_result.get('error', 'Invalid token')}), 401
-        
         # Get username from token payload - users can only access their own info
-        authenticated_username = token_result['payload'].get('username')
+        authenticated_username = payload.get('username')
         requested_username = request.args.get('username')
         
         # If no username provided, use the authenticated user's username
@@ -67,6 +59,7 @@ def get_user_info():
 
 
 @auth_account_bp.route('/api/auth/change-password', methods=['POST'])
+@limiter.limit("5 per minute")
 @token_required
 def change_password(payload):
     """Change user password"""
@@ -79,8 +72,9 @@ def change_password(payload):
         if not current_password or not new_password:
             return jsonify({'error': 'All fields are required'}), 400
 
-        if len(new_password) < 8:
-            return jsonify({'error': 'New password must be at least 8 characters'}), 400
+        is_valid, pwd_error = validate_password(new_password)
+        if not is_valid:
+            return jsonify({'error': pwd_error}), 400
 
         # Check if this is a hardcoded user (cannot change password)
         if username in USERS:

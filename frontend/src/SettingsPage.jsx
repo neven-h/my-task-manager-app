@@ -19,7 +19,7 @@ const SettingsPage = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                background: 'linear-gradient(135deg, #efcdd1 0%, #eff5d5 100%)',
+                background: '#F2F2F7',
                 fontFamily: 'Inter, sans-serif'
             }}>
                 <div style={{
@@ -30,7 +30,7 @@ const SettingsPage = () => {
                     width: '90%',
                     textAlign: 'center'
                 }}>
-                    <Shield size={48} color="#eff5d5" style={{ marginBottom: '20px' }} />
+                    <Shield size={48} color="#667eea" style={{ marginBottom: '20px' }} />
                     <h2>Loading Settings...</h2>
                 </div>
             </div>
@@ -40,7 +40,7 @@ const SettingsPage = () => {
     return (
         <div style={{
             minHeight: '100vh',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: '#F2F2F7',
             padding: '40px 20px',
             fontFamily: 'Inter, sans-serif'
         }}>
