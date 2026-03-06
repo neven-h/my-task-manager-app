@@ -87,6 +87,14 @@ def add_manual_transaction(payload):
         with get_db_connection() as connection:
             cursor = connection.cursor()
 
+            # Ownership check: verify the tab belongs to the requesting user
+            cursor.execute(
+                "SELECT id FROM transaction_tabs WHERE id = %s AND owner = %s",
+                (tab_id, username)
+            )
+            if not cursor.fetchone():
+                return jsonify({'error': 'Tab not found or access denied'}), 404
+
             # Encrypt sensitive fields
             encrypted_account = encrypt_field(data.get('account_number', ''))
             encrypted_description = encrypt_field(data['description'])

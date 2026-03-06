@@ -164,8 +164,10 @@ def serve_task_attachment(payload, attachment_id):
             return jsonify({'error': 'Attachment not found'}), 404
         if row.get('cloudinary_url'):
             return redirect(row['cloudinary_url'])
-        upload_dir = current_app.config.get('TASK_ATTACHMENTS_FOLDER', TASK_ATTACHMENTS_FOLDER)
-        path = os.path.join(upload_dir, row['stored_filename'])
+        upload_dir = os.path.realpath(current_app.config.get('TASK_ATTACHMENTS_FOLDER', TASK_ATTACHMENTS_FOLDER))
+        path = os.path.realpath(os.path.join(upload_dir, row['stored_filename']))
+        if not path.startswith(upload_dir + os.sep):
+            return jsonify({'error': 'File not found'}), 404
         if not os.path.isfile(path):
             return jsonify({'error': 'File not found'}), 404
         return send_file(

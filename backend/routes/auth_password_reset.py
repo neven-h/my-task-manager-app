@@ -25,12 +25,8 @@ def verify_reset_token():
             """, (token,))
             token_data = cursor.fetchone()
 
-            if not token_data:
-                return jsonify({'valid': False, 'error': 'Invalid token'})
-            if token_data['used']:
-                return jsonify({'valid': False, 'error': 'Token already used'})
-            if datetime.now() > token_data['expires_at']:
-                return jsonify({'valid': False, 'error': 'Token expired'})
+            if not token_data or token_data['used'] or datetime.now() > token_data['expires_at']:
+                return jsonify({'valid': False, 'error': 'Invalid or expired token'})
 
             return jsonify({'valid': True, 'username': token_data['username']})
 
@@ -64,12 +60,8 @@ def reset_password():
             """, (token,))
             token_data = cursor.fetchone()
 
-            if not token_data:
-                return jsonify({'error': 'Invalid token'}), 400
-            if token_data['used']:
-                return jsonify({'error': 'Token already used'}), 400
-            if datetime.now() > token_data['expires_at']:
-                return jsonify({'error': 'Token expired'}), 400
+            if not token_data or token_data['used'] or datetime.now() > token_data['expires_at']:
+                return jsonify({'error': 'Invalid or expired token'}), 400
 
             password_hash = bcrypt.hashpw(
                 new_password.encode('utf-8'), bcrypt.gensalt()

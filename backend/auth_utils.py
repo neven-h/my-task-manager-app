@@ -15,6 +15,16 @@ from flask import request, jsonify
 
 IS_CI = os.getenv('CI', 'false').lower() == 'true' or os.getenv('GITHUB_ACTIONS') == 'true'
 
+# Safety guard: refuse to start with CI credentials in a production environment
+_flask_env = os.getenv('FLASK_ENV', '').lower()
+_railway_env = os.getenv('RAILWAY_ENVIRONMENT', '').lower()
+if IS_CI and (_flask_env == 'production' or _railway_env == 'production'):
+    raise RuntimeError(
+        "IS_CI is True but environment indicates production "
+        "(FLASK_ENV or RAILWAY_ENVIRONMENT=production). "
+        "Refusing to start with a hardcoded CI JWT secret."
+    )
+
 if IS_CI:
     JWT_SECRET_KEY = 'ci-jwt-key-not-for-production'
 else:
