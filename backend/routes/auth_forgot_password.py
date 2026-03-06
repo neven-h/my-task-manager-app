@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app
 from config import limiter, get_db_connection, app, mail, FRONTEND_URL, DEBUG
+import hashlib
 import secrets
 from datetime import datetime, timedelta
 
@@ -32,6 +33,7 @@ def forgot_password():
                 return jsonify({'message': success_msg})
 
             token = secrets.token_urlsafe(32)
+            token_hash = hashlib.sha256(token.encode()).hexdigest()
             expires_at = datetime.now() + timedelta(hours=1)
 
             # Invalidate any existing tokens for this user
@@ -39,9 +41,10 @@ def forgot_password():
                 "UPDATE password_reset_tokens SET used = TRUE WHERE user_id = %s AND used = FALSE",
                 (user['id'],)
             )
+            # Store the SHA-256 hash — raw token is only sent in the email link
             cursor.execute(
                 "INSERT INTO password_reset_tokens (user_id, token, expires_at, used) VALUES (%s, %s, %s, FALSE)",
-                (user['id'], token, expires_at)
+                (user['id'], token_hash, expires_at)
             )
             connection.commit()
 
