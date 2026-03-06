@@ -19,6 +19,17 @@ def update_transaction(payload, transaction_id):
         with get_db_connection() as connection:
             cursor = connection.cursor()
 
+            # Ownership check: non-admin users can only update transactions in their own tabs
+            if user_role != 'admin':
+                cursor.execute(
+                    "SELECT bt.id FROM bank_transactions bt "
+                    "JOIN transaction_tabs tt ON bt.tab_id = tt.id "
+                    "WHERE bt.id = %s AND tt.owner = %s",
+                    (transaction_id, username)
+                )
+                if not cursor.fetchone():
+                    return jsonify({'error': 'Transaction not found or access denied'}), 404
+
             # Encrypt sensitive fields
             encrypted_account = encrypt_field(data.get('account_number', ''))
             encrypted_description = encrypt_field(data['description'])
@@ -75,6 +86,14 @@ def add_manual_transaction(payload):
 
         with get_db_connection() as connection:
             cursor = connection.cursor()
+
+            # Ownership check: verify the tab belongs to the requesting user
+            cursor.execute(
+                "SELECT id FROM transaction_tabs WHERE id = %s AND owner = %s",
+                (tab_id, username)
+            )
+            if not cursor.fetchone():
+                return jsonify({'error': 'Tab not found or access denied'}), 404
 
             # Encrypt sensitive fields
             encrypted_account = encrypt_field(data.get('account_number', ''))

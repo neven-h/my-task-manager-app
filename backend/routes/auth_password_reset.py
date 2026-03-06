@@ -1,3 +1,5 @@
+import hashlib
+
 from flask import Blueprint, request, jsonify, current_app
 from config import limiter, get_db_connection, validate_password
 import bcrypt
@@ -15,6 +17,8 @@ def verify_reset_token():
         if not token:
             return jsonify({'valid': False, 'error': 'Token is required'}), 400
 
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
             cursor.execute("""
@@ -22,15 +26,11 @@ def verify_reset_token():
                 FROM password_reset_tokens t
                 JOIN users u ON t.user_id = u.id
                 WHERE t.token = %s
-            """, (token,))
+            """, (token_hash,))
             token_data = cursor.fetchone()
 
-            if not token_data:
-                return jsonify({'valid': False, 'error': 'Invalid token'})
-            if token_data['used']:
-                return jsonify({'valid': False, 'error': 'Token already used'})
-            if datetime.now() > token_data['expires_at']:
-                return jsonify({'valid': False, 'error': 'Token expired'})
+            if not token_data or token_data['used'] or datetime.now() > token_data['expires_at']:
+                return jsonify({'valid': False, 'error': 'Invalid or expired token'})
 
             return jsonify({'valid': True, 'username': token_data['username']})
 
@@ -55,21 +55,19 @@ def reset_password():
         if not is_valid:
             return jsonify({'error': error_msg}), 400
 
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
             cursor.execute("""
                 SELECT t.id, t.user_id, t.expires_at, t.used
                 FROM password_reset_tokens t
                 WHERE t.token = %s
-            """, (token,))
+            """, (token_hash,))
             token_data = cursor.fetchone()
 
-            if not token_data:
-                return jsonify({'error': 'Invalid token'}), 400
-            if token_data['used']:
-                return jsonify({'error': 'Token already used'}), 400
-            if datetime.now() > token_data['expires_at']:
-                return jsonify({'error': 'Token expired'}), 400
+            if not token_data or token_data['used'] or datetime.now() > token_data['expires_at']:
+                return jsonify({'error': 'Invalid or expired token'}), 400
 
             password_hash = bcrypt.hashpw(
                 new_password.encode('utf-8'), bcrypt.gensalt()

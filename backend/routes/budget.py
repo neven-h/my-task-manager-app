@@ -115,7 +115,7 @@ def update_budget_entry(payload, entry_id):
             entry = cursor.fetchone()
             if not entry:
                 return jsonify({'error': 'Entry not found'}), 404
-            if user_role != 'admin' and entry.get('owner') != username:
+            if user_role != 'admin' and (not username or entry.get('owner') != username):
                 return jsonify({'error': 'Access denied'}), 403
 
             fields, params = [], []
@@ -169,7 +169,7 @@ def delete_budget_entry(payload, entry_id):
             entry = cursor.fetchone()
             if not entry:
                 return jsonify({'error': 'Entry not found'}), 404
-            if user_role != 'admin' and entry.get('owner') != username:
+            if user_role != 'admin' and (not username or entry.get('owner') != username):
                 return jsonify({'error': 'Access denied'}), 403
             cursor.execute("DELETE FROM budget_entries WHERE id = %s", (entry_id,))
             conn.commit()
