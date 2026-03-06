@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app
-from config import get_db_connection, token_required
+from config import get_db_connection, token_required, limiter
 from mysql.connector import Error
 import bcrypt
 
@@ -7,6 +7,7 @@ auth_2fa_manage_bp = Blueprint('auth_2fa_manage', __name__)
 
 
 @auth_2fa_manage_bp.route('/api/auth/2fa/disable', methods=['POST'])
+@limiter.limit("5 per minute")
 @token_required
 def disable_2fa(payload):
     """Disable 2FA (requires password verification)"""

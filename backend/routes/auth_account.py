@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from config import (
     get_db_connection, USERS,
-    verify_jwt_token, token_required,
+    verify_jwt_token, token_required, limiter,
 )
 from mysql.connector import Error
 import bcrypt
@@ -67,6 +67,7 @@ def get_user_info():
 
 
 @auth_account_bp.route('/api/auth/change-password', methods=['POST'])
+@limiter.limit("5 per minute")
 @token_required
 def change_password(payload):
     """Change user password"""

@@ -16,6 +16,7 @@ auth_2fa_bp = Blueprint('auth_2fa', __name__)
 # ================================
 
 @auth_2fa_bp.route('/api/auth/2fa/setup', methods=['POST'])
+@limiter.limit("10 per minute")
 @token_required
 def setup_2fa(payload):
     """Generate a new 2FA secret and QR code for user to scan"""
@@ -87,6 +88,7 @@ def setup_2fa(payload):
 
 
 @auth_2fa_bp.route('/api/auth/2fa/enable', methods=['POST'])
+@limiter.limit("5 per minute")
 @token_required
 def enable_2fa(payload):
     """Enable 2FA after user verifies the code"""

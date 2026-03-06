@@ -49,13 +49,9 @@ def forgot_password():
         email_configured = bool(app.config.get('MAIL_USERNAME') and app.config.get('MAIL_PASSWORD'))
 
         if not email_configured:
-            if DEBUG:
-                return jsonify({
-                    'message': success_msg,
-                    'debug_info': 'Email not configured - showing token for testing',
-                    'token': token, 'reset_url': reset_url
-                })
             current_app.logger.warning('Password reset requested but email not configured')
+            if DEBUG:
+                current_app.logger.debug('Password reset URL (debug only, email not configured): %s', reset_url)
             return jsonify({'message': success_msg})
 
         try:
@@ -78,11 +74,7 @@ def forgot_password():
         except Exception as mail_error:
             current_app.logger.error('Failed to send reset email: %s', mail_error, exc_info=True)
             if DEBUG:
-                return jsonify({
-                    'message': success_msg,
-                    'debug_info': 'Email send failed - see server logs',
-                    'token': token, 'reset_url': reset_url
-                })
+                current_app.logger.debug('Reset URL (debug only, email send failed): %s', reset_url)
             return jsonify({'message': success_msg})
 
     except Exception as e:

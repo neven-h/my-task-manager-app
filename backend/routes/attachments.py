@@ -28,9 +28,18 @@ def _attachment_to_json(row):
 @token_required
 def get_task_attachments(payload, task_id):
     """List attachments for a task."""
+    username = payload.get('username')
+    user_role = payload.get('role', 'limited')
     try:
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
+            # Verify task exists and requester has access
+            if user_role == 'admin':
+                cursor.execute("SELECT id FROM tasks WHERE id = %s", (task_id,))
+            else:
+                cursor.execute("SELECT id FROM tasks WHERE id = %s AND created_by = %s", (task_id, username))
+            if not cursor.fetchone():
+                return jsonify({'error': 'Task not found'}), 404
             cursor.execute(
                 "SELECT id, filename, content_type, file_size, cloudinary_url FROM task_attachments WHERE task_id = %s ORDER BY id",
                 (task_id,)
@@ -46,6 +55,8 @@ def get_task_attachments(payload, task_id):
 @token_required
 def upload_task_attachment(payload, task_id):
     """Upload a file or image attachment for a task."""
+    username = payload.get('username')
+    user_role = payload.get('role', 'limited')
     try:
         if 'file' not in request.files:
             return jsonify({'error': 'No file provided'}), 400
@@ -55,10 +66,13 @@ def upload_task_attachment(payload, task_id):
         if not allowed_task_attachment(file.filename):
             return jsonify({'error': 'File type not allowed for task attachments'}), 400
 
-        # Ensure task exists
+        # Ensure task exists and requester has access
         with get_db_connection() as connection:
             cursor = connection.cursor()
-            cursor.execute("SELECT id FROM tasks WHERE id = %s", (task_id,))
+            if user_role == 'admin':
+                cursor.execute("SELECT id FROM tasks WHERE id = %s", (task_id,))
+            else:
+                cursor.execute("SELECT id FROM tasks WHERE id = %s AND created_by = %s", (task_id, username))
             if not cursor.fetchone():
                 return jsonify({'error': 'Task not found'}), 404
 
@@ -126,13 +140,25 @@ def upload_task_attachment(payload, task_id):
 @token_required
 def serve_task_attachment(payload, attachment_id):
     """Serve an attachment file by id."""
+    username = payload.get('username')
+    user_role = payload.get('role', 'limited')
     try:
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
-            cursor.execute(
-                "SELECT stored_filename, filename, content_type, cloudinary_url FROM task_attachments WHERE id = %s",
-                (attachment_id,)
-            )
+            if user_role == 'admin':
+                cursor.execute(
+                    "SELECT ta.stored_filename, ta.filename, ta.content_type, ta.cloudinary_url "
+                    "FROM task_attachments ta WHERE ta.id = %s",
+                    (attachment_id,)
+                )
+            else:
+                cursor.execute(
+                    "SELECT ta.stored_filename, ta.filename, ta.content_type, ta.cloudinary_url "
+                    "FROM task_attachments ta "
+                    "JOIN tasks t ON ta.task_id = t.id "
+                    "WHERE ta.id = %s AND t.created_by = %s",
+                    (attachment_id, username)
+                )
             row = cursor.fetchone()
         if not row:
             return jsonify({'error': 'Attachment not found'}), 404
@@ -157,9 +183,18 @@ def serve_task_attachment(payload, attachment_id):
 @token_required
 def delete_task_attachment(payload, task_id, attachment_id):
     """Delete an attachment."""
+    username = payload.get('username')
+    user_role = payload.get('role', 'limited')
     try:
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
+            # Verify task ownership before allowing deletion
+            if user_role == 'admin':
+                cursor.execute("SELECT id FROM tasks WHERE id = %s", (task_id,))
+            else:
+                cursor.execute("SELECT id FROM tasks WHERE id = %s AND created_by = %s", (task_id, username))
+            if not cursor.fetchone():
+                return jsonify({'error': 'Task not found'}), 404
             cursor.execute(
                 "SELECT stored_filename, cloudinary_public_id, content_type FROM task_attachments WHERE id = %s AND task_id = %s",
                 (attachment_id, task_id)
