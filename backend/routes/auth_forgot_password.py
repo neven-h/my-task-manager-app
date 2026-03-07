@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, current_app
 from config import limiter, get_db_connection, app, mail, FRONTEND_URL, DEBUG
 import hashlib
 import secrets
+import socket
 import threading
 from datetime import datetime, timedelta
 
@@ -80,6 +81,9 @@ def forgot_password():
             send_error = []
 
             def _send():
+                # Give every socket op in this thread a hard 25 s deadline
+                # so gunicorn never has to kill the whole worker process.
+                socket.setdefaulttimeout(25)
                 try:
                     with app.app_context():
                         app.logger.info(
@@ -93,7 +97,9 @@ def forgot_password():
                         app.logger.info('SMTP: password reset email delivered to %s', user['email'])
                 except Exception as exc:
                     send_error.append(exc)
-                    app.logger.error('SMTP: send failed — %s', exc, exc_info=True)
+                    app.logger.error('SMTP: send failed — %s: %s', type(exc).__name__, exc, exc_info=True)
+                finally:
+                    socket.setdefaulttimeout(None)
 
             t = threading.Thread(target=_send, daemon=True)
             t.start()
