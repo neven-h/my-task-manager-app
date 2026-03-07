@@ -17,7 +17,7 @@ _cache_lock = threading.Lock()
 # ==================== STOCK INFO CACHE ====================
 
 _stock_cache = {}
-CACHE_TTL_SECONDS = 300  # 5 minutes
+CACHE_TTL_SECONDS = 900  # 15 minutes
 
 
 def _get_cached_stock_info(ticker_symbol):

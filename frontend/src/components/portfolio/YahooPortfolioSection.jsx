@@ -32,14 +32,21 @@ const YahooPortfolioSection = ({ colors, authUser, defaultExpanded = false }) =>
         }
     }, [authUser]);
 
-    useEffect(() => { if (authUser) fetchYahooHoldings(); }, [authUser, fetchYahooHoldings]);
+    // Only fetch when the section is actually expanded — avoids a wasted round-trip on every page open
+    const [hasFetchedOnce, setHasFetchedOnce] = useState(false);
+    useEffect(() => {
+        if (authUser && showYahooPortfolio && !hasFetchedOnce) {
+            fetchYahooHoldings();
+            setHasFetchedOnce(true);
+        }
+    }, [authUser, showYahooPortfolio, hasFetchedOnce, fetchYahooHoldings]);
 
     useEffect(() => {
-        if (yahooHoldings.length > 0) {
+        if (yahooHoldings.length > 0 && showYahooPortfolio) {
             const interval = setInterval(fetchYahooHoldings, 60000);
             return () => clearInterval(interval);
         }
-    }, [yahooHoldings.length, fetchYahooHoldings]);
+    }, [yahooHoldings.length, showYahooPortfolio, fetchYahooHoldings]);
 
     const handleImported = async (msg) => {
         setSuccess(msg);
