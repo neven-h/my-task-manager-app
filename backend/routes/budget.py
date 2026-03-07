@@ -17,23 +17,34 @@ _CREATE_BUDGET_TABLE_SQL = """
         category    VARCHAR(100),
         notes       TEXT,
         owner       VARCHAR(255),
+        tab_id      INT,
         created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        INDEX idx_budget_owner (owner),
-        INDEX idx_budget_date  (entry_date)
+        INDEX idx_budget_owner  (owner),
+        INDEX idx_budget_date   (entry_date),
+        INDEX idx_budget_tab    (tab_id)
     )
 """
 
 
 def _ensure_table(conn):
-    """Guarantee budget_entries exists — runs CREATE TABLE IF NOT EXISTS.
+    """Guarantee budget_entries exists with all required columns.
 
     Called at the top of every handler so the table is always present even
     if init_db() failed silently on startup (e.g. transient DB connection
-    error during Railway deploy).
+    error during Railway deploy).  Also adds tab_id if the table predates
+    the budget-tabs feature.
     """
+    from mysql.connector import Error as MySQLError
     cursor = conn.cursor()
     cursor.execute(_CREATE_BUDGET_TABLE_SQL)
+    # Migration: add tab_id if the table was created before this column existed
+    try:
+        cursor.execute("ALTER TABLE budget_entries ADD COLUMN tab_id INT")
+        cursor.execute("ALTER TABLE budget_entries ADD INDEX idx_budget_tab (tab_id)")
+    except MySQLError as e:
+        if 'Duplicate column' not in str(e) and 'Duplicate key' not in str(e):
+            logger.warning('budget_entries tab_id migration note: %s', e)
     cursor.close()
 
 
@@ -105,16 +116,17 @@ def create_budget_entry(payload):
         return jsonify({'error': 'entry_date is required'}), 400
 
     category = (data.get('category') or '').strip() or None
-    notes = (data.get('notes') or '').strip() or None
+    notes    = (data.get('notes')    or '').strip() or None
+    tab_id   = data.get('tab_id') or None
 
     try:
         with get_db_connection() as conn:
             _ensure_table(conn)
             cursor = conn.cursor(dictionary=True)
             cursor.execute(
-                """INSERT INTO budget_entries (type, description, amount, entry_date, category, notes, owner)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s)""",
-                (entry_type, description, amount, entry_date, category, notes, username)
+                """INSERT INTO budget_entries (type, description, amount, entry_date, category, notes, owner, tab_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                (entry_type, description, amount, entry_date, category, notes, username, tab_id)
             )
             conn.commit()
             new_id = cursor.lastrowid
@@ -151,8 +163,8 @@ def update_budget_entry(payload, entry_id):
                 return jsonify({'error': 'Access denied'}), 403
 
             fields, params = [], []
-            allowed_cols = {'type', 'description', 'amount', 'entry_date', 'category', 'notes'}
-            for col in ('type', 'description', 'amount', 'entry_date', 'category', 'notes'):
+            allowed_cols = {'type', 'description', 'amount', 'entry_date', 'category', 'notes', 'tab_id'}
+            for col in ('type', 'description', 'amount', 'entry_date', 'category', 'notes', 'tab_id'):
                 if col in data and col in allowed_cols:
                     val = data[col]
                     if col == 'amount':
