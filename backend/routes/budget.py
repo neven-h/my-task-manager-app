@@ -7,6 +7,35 @@ logger = logging.getLogger(__name__)
 
 budget_bp = Blueprint('budget', __name__)
 
+_CREATE_BUDGET_TABLE_SQL = """
+    CREATE TABLE IF NOT EXISTS budget_entries (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        type        ENUM('income','outcome') NOT NULL,
+        description VARCHAR(500) NOT NULL,
+        amount      DECIMAL(12,2) NOT NULL,
+        entry_date  DATE NOT NULL,
+        category    VARCHAR(100),
+        notes       TEXT,
+        owner       VARCHAR(255),
+        created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        INDEX idx_budget_owner (owner),
+        INDEX idx_budget_date  (entry_date)
+    )
+"""
+
+
+def _ensure_table(conn):
+    """Guarantee budget_entries exists — runs CREATE TABLE IF NOT EXISTS.
+
+    Called at the top of every handler so the table is always present even
+    if init_db() failed silently on startup (e.g. transient DB connection
+    error during Railway deploy).
+    """
+    cursor = conn.cursor()
+    cursor.execute(_CREATE_BUDGET_TABLE_SQL)
+    cursor.close()
+
 
 def _owner_filter(user_role, username):
     """Return (where_clause, params) for owner-scoped queries."""
@@ -25,6 +54,7 @@ def get_budget_entries(payload):
 
     try:
         with get_db_connection() as conn:
+            _ensure_table(conn)
             cursor = conn.cursor(dictionary=True)
             where, params = _owner_filter(user_role, username)
             sql = "SELECT * FROM budget_entries WHERE 1=1"
@@ -79,6 +109,7 @@ def create_budget_entry(payload):
 
     try:
         with get_db_connection() as conn:
+            _ensure_table(conn)
             cursor = conn.cursor(dictionary=True)
             cursor.execute(
                 """INSERT INTO budget_entries (type, description, amount, entry_date, category, notes, owner)
@@ -110,6 +141,7 @@ def update_budget_entry(payload, entry_id):
 
     try:
         with get_db_connection() as conn:
+            _ensure_table(conn)
             cursor = conn.cursor(dictionary=True)
             cursor.execute("SELECT * FROM budget_entries WHERE id = %s", (entry_id,))
             entry = cursor.fetchone()
@@ -164,6 +196,7 @@ def delete_budget_entry(payload, entry_id):
 
     try:
         with get_db_connection() as conn:
+            _ensure_table(conn)
             cursor = conn.cursor(dictionary=True)
             cursor.execute("SELECT * FROM budget_entries WHERE id = %s", (entry_id,))
             entry = cursor.fetchone()
