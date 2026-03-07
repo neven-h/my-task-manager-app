@@ -82,23 +82,39 @@ def forgot_password():
             def _send():
                 try:
                     with app.app_context():
+                        app.logger.info(
+                            'SMTP: connecting to %s:%s (tls=%s, user=%s)',
+                            app.config.get('MAIL_SERVER'),
+                            app.config.get('MAIL_PORT'),
+                            app.config.get('MAIL_USE_TLS'),
+                            app.config.get('MAIL_USERNAME'),
+                        )
                         mail.send(msg)
+                        app.logger.info('SMTP: password reset email delivered to %s', user['email'])
                 except Exception as exc:
                     send_error.append(exc)
+                    app.logger.error('SMTP: send failed — %s', exc, exc_info=True)
 
             t = threading.Thread(target=_send, daemon=True)
             t.start()
             t.join(timeout=10)
 
             if t.is_alive():
-                # Thread still blocked on SMTP — return now, email may arrive later
-                current_app.logger.warning('Password reset email to %s timed out after 10 s', email)
+                # Thread still blocked on SMTP after 10 s — return now.
+                # The daemon thread keeps running; if SMTP eventually succeeds
+                # the "delivered" log line will appear in Railway logs.
+                current_app.logger.warning(
+                    'SMTP: still connecting after 10 s (server=%s port=%s) — '
+                    'returning success response now; email may arrive late',
+                    app.config.get('MAIL_SERVER'),
+                    app.config.get('MAIL_PORT'),
+                )
             elif send_error:
-                current_app.logger.error('Failed to send reset email: %s', send_error[0], exc_info=send_error[0])
+                current_app.logger.error('SMTP: reset email to %s failed: %s', user['email'], send_error[0])
                 if DEBUG:
                     current_app.logger.debug('Reset URL (debug only, email send failed): %s', reset_url)
             else:
-                current_app.logger.info("Password reset email sent to %s", email)
+                current_app.logger.info("SMTP: password reset email sent to %s", email)
 
             return jsonify({'message': success_msg})
         except Exception as mail_error:
