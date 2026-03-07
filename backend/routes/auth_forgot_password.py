@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, current_app
 from config import limiter, get_db_connection, app, mail, FRONTEND_URL, DEBUG
 import hashlib
 import secrets
+import threading
 from datetime import datetime, timedelta
 
 auth_forgot_password_bp = Blueprint('auth_forgot_password', __name__)
@@ -71,8 +72,34 @@ def forgot_password():
                     "Best regards,\nTask Tracker Team"
                 )
             )
-            mail.send(msg)
-            current_app.logger.info("Password reset email sent to %s", email)
+
+            # Flask-Mail 0.10.0 has no timeout support — mail.send() can block
+            # indefinitely and get killed by gunicorn's 30 s worker timeout.
+            # Run the send in a daemon thread with a 10 s join so the HTTP
+            # response is always returned promptly regardless of SMTP latency.
+            send_error = []
+
+            def _send():
+                try:
+                    with app.app_context():
+                        mail.send(msg)
+                except Exception as exc:
+                    send_error.append(exc)
+
+            t = threading.Thread(target=_send, daemon=True)
+            t.start()
+            t.join(timeout=10)
+
+            if t.is_alive():
+                # Thread still blocked on SMTP — return now, email may arrive later
+                current_app.logger.warning('Password reset email to %s timed out after 10 s', email)
+            elif send_error:
+                current_app.logger.error('Failed to send reset email: %s', send_error[0], exc_info=send_error[0])
+                if DEBUG:
+                    current_app.logger.debug('Reset URL (debug only, email send failed): %s', reset_url)
+            else:
+                current_app.logger.info("Password reset email sent to %s", email)
+
             return jsonify({'message': success_msg})
         except Exception as mail_error:
             current_app.logger.error('Failed to send reset email: %s', mail_error, exc_info=True)
