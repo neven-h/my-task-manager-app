@@ -1,9 +1,11 @@
 from flask import Blueprint, request, jsonify, current_app
-from config import limiter, get_db_connection, app, mail, FRONTEND_URL, DEBUG
+from config import limiter, get_db_connection, app, FRONTEND_URL, DEBUG
 import hashlib
 import secrets
-import socket
+import smtplib
 import threading
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from datetime import datetime, timedelta
 
 auth_forgot_password_bp = Blueprint('auth_forgot_password', __name__)
@@ -59,75 +61,72 @@ def forgot_password():
                 current_app.logger.debug('Password reset URL (debug only, email not configured): %s', reset_url)
             return jsonify({'message': success_msg})
 
-        try:
-            from flask_mail import Message
-            msg = Message(
-                subject="Password Reset Request - Task Tracker",
-                recipients=[user['email']],
-                body=(
-                    f"Hello {user['username']},\n\n"
-                    "You requested a password reset for your Task Tracker account.\n\n"
-                    f"Click the link below to reset your password:\n{reset_url}\n\n"
-                    "This link will expire in 1 hour.\n\n"
-                    "If you did not request this reset, please ignore this email.\n\n"
-                    "Best regards,\nTask Tracker Team"
+        # Build the MIME message once, outside the thread
+        smtp_user = app.config.get('MAIL_USERNAME', '')
+        smtp_password = app.config.get('MAIL_PASSWORD', '')
+        smtp_server = app.config.get('MAIL_SERVER', 'smtp.gmail.com')
+        smtp_port = int(app.config.get('MAIL_PORT', 465))
+        use_ssl = app.config.get('MAIL_USE_SSL', True)
+        use_tls = app.config.get('MAIL_USE_TLS', False)
+
+        mime_msg = MIMEMultipart()
+        mime_msg['From'] = smtp_user
+        mime_msg['To'] = user['email']
+        mime_msg['Subject'] = 'Password Reset Request - Task Tracker'
+        mime_msg.attach(MIMEText(
+            f"Hello {user['username']},\n\n"
+            "You requested a password reset for your Task Tracker account.\n\n"
+            f"Click the link below to reset your password:\n{reset_url}\n\n"
+            "This link will expire in 1 hour.\n\n"
+            "If you did not request this reset, please ignore this email.\n\n"
+            "Best regards,\nTask Tracker Team",
+            'plain'
+        ))
+
+        # smtplib has a native timeout param unlike Flask-Mail 0.10.0.
+        # Run in a daemon thread so the HTTP response is never blocked > 16 s.
+        send_error = []
+
+        def _send():
+            try:
+                current_app.logger.info(
+                    'SMTP: connecting to %s:%s (ssl=%s tls=%s user=%s)',
+                    smtp_server, smtp_port, use_ssl, use_tls, smtp_user,
                 )
+                if use_ssl:
+                    conn = smtplib.SMTP_SSL(smtp_server, smtp_port, timeout=15)
+                else:
+                    conn = smtplib.SMTP(smtp_server, smtp_port, timeout=15)
+                    if use_tls:
+                        conn.starttls()
+                with conn:
+                    conn.login(smtp_user, smtp_password)
+                    conn.send_message(mime_msg)
+                current_app.logger.info('SMTP: delivered to %s', user['email'])
+            except Exception as exc:
+                send_error.append(exc)
+                current_app.logger.error(
+                    'SMTP: failed — %s: %s', type(exc).__name__, exc, exc_info=True
+                )
+
+        t = threading.Thread(target=_send, daemon=True)
+        t.start()
+        t.join(timeout=16)   # smtplib timeout is 15 s; give 1 s of margin
+
+        if t.is_alive():
+            current_app.logger.warning(
+                'SMTP: thread still alive after 16 s (server=%s port=%s) — '
+                'check Railway application logs for the eventual result',
+                smtp_server, smtp_port,
             )
-
-            # Flask-Mail 0.10.0 has no timeout support — mail.send() can block
-            # indefinitely and get killed by gunicorn's 30 s worker timeout.
-            # Run the send in a daemon thread with a 10 s join so the HTTP
-            # response is always returned promptly regardless of SMTP latency.
-            send_error = []
-
-            def _send():
-                # Give every socket op in this thread a hard 25 s deadline
-                # so gunicorn never has to kill the whole worker process.
-                socket.setdefaulttimeout(25)
-                try:
-                    with app.app_context():
-                        app.logger.info(
-                            'SMTP: connecting to %s:%s (tls=%s, user=%s)',
-                            app.config.get('MAIL_SERVER'),
-                            app.config.get('MAIL_PORT'),
-                            app.config.get('MAIL_USE_TLS'),
-                            app.config.get('MAIL_USERNAME'),
-                        )
-                        mail.send(msg)
-                        app.logger.info('SMTP: password reset email delivered to %s', user['email'])
-                except Exception as exc:
-                    send_error.append(exc)
-                    app.logger.error('SMTP: send failed — %s: %s', type(exc).__name__, exc, exc_info=True)
-                finally:
-                    socket.setdefaulttimeout(None)
-
-            t = threading.Thread(target=_send, daemon=True)
-            t.start()
-            t.join(timeout=10)
-
-            if t.is_alive():
-                # Thread still blocked on SMTP after 10 s — return now.
-                # The daemon thread keeps running; if SMTP eventually succeeds
-                # the "delivered" log line will appear in Railway logs.
-                current_app.logger.warning(
-                    'SMTP: still connecting after 10 s (server=%s port=%s) — '
-                    'returning success response now; email may arrive late',
-                    app.config.get('MAIL_SERVER'),
-                    app.config.get('MAIL_PORT'),
-                )
-            elif send_error:
-                current_app.logger.error('SMTP: reset email to %s failed: %s', user['email'], send_error[0])
-                if DEBUG:
-                    current_app.logger.debug('Reset URL (debug only, email send failed): %s', reset_url)
-            else:
-                current_app.logger.info("SMTP: password reset email sent to %s", email)
-
-            return jsonify({'message': success_msg})
-        except Exception as mail_error:
-            current_app.logger.error('Failed to send reset email: %s', mail_error, exc_info=True)
+        elif send_error:
+            current_app.logger.error(
+                'SMTP: reset email to %s failed: %s', user['email'], send_error[0]
+            )
             if DEBUG:
-                current_app.logger.debug('Reset URL (debug only, email send failed): %s', reset_url)
-            return jsonify({'message': success_msg})
+                current_app.logger.debug('Reset URL (debug only): %s', reset_url)
+
+        return jsonify({'message': success_msg})
 
     except Exception as e:
         current_app.logger.error('forgot_password error: %s', e, exc_info=True)
