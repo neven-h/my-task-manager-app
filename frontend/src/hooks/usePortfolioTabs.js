@@ -24,9 +24,7 @@ const usePortfolioTabs = ({ setTabs, setActiveTabId, setEntries, setSummary, set
     const handleSwitchTab = useCallback(async (tabId) => {
         setActiveTabId(tabId);
         storage.set(STORAGE_KEYS.ACTIVE_PORTFOLIO_TAB, String(tabId));
-        await fetchEntries(tabId);
-        await fetchSummary(tabId);
-        await fetchStockNames(tabId);
+        await Promise.all([fetchEntries(tabId), fetchSummary(tabId), fetchStockNames(tabId)]);
     }, [setActiveTabId, fetchEntries, fetchSummary, fetchStockNames]);
 
     const handleCreateFirstTab = useCallback(async (newTabName, setNewTabName) => {
@@ -43,9 +41,7 @@ const usePortfolioTabs = ({ setTabs, setActiveTabId, setEntries, setSummary, set
                 const updatedTabs = await fetchTabs();
                 setActiveTabId(data.id);
                 storage.set(STORAGE_KEYS.ACTIVE_PORTFOLIO_TAB, String(data.id));
-                await fetchEntries(data.id);
-                await fetchSummary(data.id);
-                await fetchStockNames(data.id);
+                await Promise.all([fetchEntries(data.id), fetchSummary(data.id), fetchStockNames(data.id)]);
                 return updatedTabs;
             } else {
                 setError(data.error || 'Failed to create tab');
@@ -73,9 +69,7 @@ const usePortfolioTabs = ({ setTabs, setActiveTabId, setEntries, setSummary, set
         setActiveTabId(tabIdToUse);
         storage.set(STORAGE_KEYS.ACTIVE_PORTFOLIO_TAB, String(tabIdToUse));
 
-        await fetchEntries(tabIdToUse);
-        await fetchSummary(tabIdToUse);
-        await fetchStockNames(tabIdToUse);
+        await Promise.all([fetchEntries(tabIdToUse), fetchSummary(tabIdToUse), fetchStockNames(tabIdToUse)]);
     }, [fetchTabs, setActiveTabId, fetchEntries, fetchSummary, fetchStockNames]);
 
     return { fetchTabs, handleSwitchTab, handleCreateFirstTab, initializeTabs };

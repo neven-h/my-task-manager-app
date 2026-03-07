@@ -3,6 +3,7 @@ from config import (
     get_db_connection, token_required,
     _fetch_stock_info_robust, _yahoo_search_tickers,
 )
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from mysql.connector import Error
 from datetime import datetime
 import yfinance as yf
@@ -158,12 +159,11 @@ def get_watchlist_prices(payload):
             if not tickers:
                 return jsonify({'prices': []})
 
-            # Fetch prices for all tickers using robust method
-            results = []
-            for ticker in tickers:
+            # Fetch prices for all tickers in parallel
+            def _fetch_price(ticker):
                 try:
                     info = _fetch_stock_info_robust(ticker)
-                    results.append({
+                    return {
                         'ticker': ticker,
                         'name': info.get('longName', ticker),
                         'currentPrice': info.get('currentPrice'),
@@ -173,24 +173,27 @@ def get_watchlist_prices(payload):
                         'currency': info.get('currency', 'USD'),
                         'marketState': info.get('marketState', 'UNKNOWN'),
                         'exchange': info.get('exchange', ''),
-                        'error': None
-                    })
+                        'error': None,
+                    }
                 except Exception as e:
-                    current_app.logger.error('portfolio_market watchlist price error for %s: %s', ticker, e, exc_info=True)
+                    current_app.logger.error('portfolio_market watchlist price error for %s: %s', ticker, e)
                     error_str = str(e).lower()
-                    is_rate_limit = '429' in error_str or 'too many requests' in error_str or 'rate limit' in error_str
-                    results.append({
-                        'ticker': ticker,
-                        'name': ticker,
-                        'currentPrice': None,
-                        'previousClose': None,
-                        'change': None,
-                        'changePercent': None,
-                        'currency': None,
-                        'marketState': None,
-                        'exchange': None,
-                        'error': 'Rate limit exceeded' if is_rate_limit else 'Failed to fetch price'
-                    })
+                    is_rl = '429' in error_str or 'too many requests' in error_str or 'rate limit' in error_str
+                    return {
+                        'ticker': ticker, 'name': ticker,
+                        'currentPrice': None, 'previousClose': None,
+                        'change': None, 'changePercent': None,
+                        'currency': None, 'marketState': None, 'exchange': None,
+                        'error': 'Rate limit exceeded' if is_rl else 'Failed to fetch price',
+                    }
+
+            results_map = {}
+            with ThreadPoolExecutor(max_workers=min(len(tickers), 10)) as executor:
+                future_to_ticker = {executor.submit(_fetch_price, t): t for t in tickers}
+                for future in as_completed(future_to_ticker):
+                    r = future.result()
+                    results_map[r['ticker']] = r
+            results = [results_map[t] for t in tickers if t in results_map]
 
             return jsonify({
                 'prices': results,
