@@ -49,10 +49,12 @@ const useSecuritySettings = () => {
     const fetchUserInfo = async () => {
         try {
             setLoading(true);
-            const twoFaResponse = await fetch(`${API_BASE}/auth/2fa/status?username=${username}`, { headers: getAuthHeaders() });
+            const [twoFaResponse, userResponse] = await Promise.all([
+                fetch(`${API_BASE}/auth/2fa/status?username=${username}`, { headers: getAuthHeaders() }),
+                fetch(`${API_BASE}/auth/user-info?username=${username}`, { headers: getAuthHeaders() }),
+            ]);
             const twoFaData = await twoFaResponse.json();
             setTwoFactorEnabled(Boolean(twoFaData.enabled));
-            const userResponse = await fetch(`${API_BASE}/auth/user-info?username=${username}`, { headers: getAuthHeaders() });
             if (userResponse.ok) {
                 const userData = await userResponse.json();
                 setUserEmail(userData.email || '');

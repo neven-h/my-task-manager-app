@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, current_app
 from config import (
     _fetch_stock_info_robust, _yahoo_search_tickers,
 )
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 import yfinance as yf
 from yfinance.exceptions import YFRateLimitError
@@ -146,11 +147,11 @@ def get_multiple_stock_prices():
         if len(tickers) > 50:
             return jsonify({'error': 'Maximum 50 tickers allowed per request'}), 400
 
-        results = []
-        for ticker in tickers:
+        def _fetch_one(ticker):
+            t = ticker.strip().upper()
             try:
-                info = _fetch_stock_info_robust(ticker.strip().upper())
-                results.append({
+                info = _fetch_stock_info_robust(t)
+                return {
                     'ticker': ticker,
                     'name': info.get('longName', ticker),
                     'currentPrice': info.get('currentPrice'),
@@ -160,42 +161,33 @@ def get_multiple_stock_prices():
                     'currency': info.get('currency', 'USD'),
                     'marketState': info.get('marketState', 'UNKNOWN'),
                     'exchange': info.get('exchange', ''),
-                    'error': None
-                })
-            except ValueError as e:
-                error_msg = str(e)
-                is_rate_limit = 'rate limit' in error_msg.lower() or 'rate limited' in error_msg.lower()
-                current_app.logger.error('portfolio_market batch price ValueError for %s: %s', ticker, e, exc_info=True)
-                results.append({
-                    'ticker': ticker,
-                    'name': ticker,
-                    'currentPrice': None,
-                    'previousClose': None,
-                    'change': None,
-                    'changePercent': None,
-                    'currency': None,
-                    'marketState': None,
-                    'exchange': None,
-                    'error': 'Rate limit exceeded' if is_rate_limit else 'Failed to fetch price',
-                    'rateLimited': is_rate_limit
-                })
+                    'error': None,
+                }
             except Exception as e:
                 error_str = str(e).lower()
-                is_rate_limit = '429' in error_str or 'too many requests' in error_str or 'rate limit' in error_str
-                current_app.logger.error('portfolio_market batch price error for %s: %s', ticker, e, exc_info=True)
-                results.append({
+                is_rl = '429' in error_str or 'too many requests' in error_str or 'rate limit' in error_str
+                current_app.logger.error('portfolio_market batch price error for %s: %s', t, e)
+                return {
                     'ticker': ticker,
                     'name': ticker,
-                    'currentPrice': None,
-                    'previousClose': None,
-                    'change': None,
-                    'changePercent': None,
-                    'currency': None,
-                    'marketState': None,
-                    'exchange': None,
-                    'error': 'Rate limit exceeded' if is_rate_limit else 'Failed to fetch price',
-                    'rateLimited': is_rate_limit
-                })
+                    'currentPrice': None, 'previousClose': None,
+                    'change': None, 'changePercent': None,
+                    'currency': None, 'marketState': None, 'exchange': None,
+                    'error': 'Rate limit exceeded' if is_rl else 'Failed to fetch price',
+                    'rateLimited': is_rl,
+                }
+
+        # Fetch all tickers in parallel — N×2 s → ~2 s regardless of count
+        max_workers = min(len(tickers), 10)
+        results_map = {}
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_ticker = {executor.submit(_fetch_one, t): t for t in tickers}
+            for future in as_completed(future_to_ticker):
+                result = future.result()
+                results_map[result['ticker']] = result
+
+        # Preserve original order
+        results = [results_map[t] for t in tickers if t in results_map]
 
         return jsonify({
             'prices': results,
