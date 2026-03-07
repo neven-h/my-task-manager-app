@@ -119,14 +119,14 @@ limiter = Limiter(
 # ==================== MAIL ====================
 
 app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.gmail.com')
-app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
-app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'True').lower() == 'true'
+# Port 465 + SSL is faster and more reliable from cloud providers than
+# port 587 + STARTTLS (no upgrade handshake, fewer firewall issues).
+app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 465))
+app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'False').lower() == 'true'
+app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'True').lower() == 'true'
 app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', os.getenv('MAIL_USERNAME'))
-# Socket timeout (seconds) — prevents gunicorn worker from being killed by a
-# hanging SMTP connection before the inner exception handler can catch the error
-app.config['MAIL_TIMEOUT'] = int(os.getenv('MAIL_TIMEOUT', 10))
 mail = Mail(app)
 
 # ==================== CLOUDINARY ====================
