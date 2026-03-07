@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { ArrowLeft, TrendingUp, TrendingDown, Scale, Plus, Edit2, Trash2, Check, X } from 'lucide-react';
 import useBudget from './hooks/useBudget';
+import useBudgetTabs from './hooks/useBudgetTabs';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -193,24 +194,35 @@ const EntryRow = ({ entry, cutoff, onEdit, onDelete, loading }) => {
 // ── Main component ────────────────────────────────────────────────────────────
 
 const Budget = ({ onBackToTasks }) => {
-    const { entries, loading, error, fetchEntries, createEntry, updateEntry, deleteEntry,
-        totalIncome, totalOutcome, balance } = useBudget();
+    const { entries, loading, error, fetchEntries, createEntry, updateEntry, deleteEntry } = useBudget();
+    const { tabs, fetchTabs, createTab, deleteTab } = useBudgetTabs();
 
-    const [cutoff, setCutoff] = useState(today());
-    const [typeFilter, setTypeFilter] = useState('all');   // 'all' | 'income' | 'outcome'
-    const [showForm, setShowForm] = useState(false);
-    const [editingEntry, setEditingEntry] = useState(null); // entry obj or null
-    const [formInitial, setFormInitial] = useState(emptyForm('income'));
+    const [cutoff, setCutoff]             = useState(today());
+    const [typeFilter, setTypeFilter]     = useState('all');
+    const [activeTabId, setActiveTabId]   = useState(null);   // null = All
+    const [showForm, setShowForm]         = useState(false);
+    const [editingEntry, setEditingEntry] = useState(null);
+    const [formInitial, setFormInitial]   = useState(emptyForm('income'));
+    const [newTabName, setNewTabName]     = useState('');
+    const [addingTab, setAddingTab]       = useState(false);
+    const [confirmDeleteTab, setConfirmDeleteTab] = useState(null);
 
-    useEffect(() => { fetchEntries(); }, [fetchEntries]);
+    useEffect(() => { fetchEntries(); fetchTabs(); }, [fetchEntries, fetchTabs]);
 
-    const income = totalIncome(cutoff);
-    const outcome = totalOutcome(cutoff);
-    const net = balance(cutoff);
+    // Filter entries by the active tab (null = show all)
+    const tabEntries = useMemo(() =>
+        activeTabId === null
+            ? entries
+            : entries.filter(e => e.tab_id === activeTabId),
+        [entries, activeTabId]);
+
+    const income  = useMemo(() => tabEntries.filter(e => e.type === 'income'  && e.entry_date <= cutoff).reduce((s, e) => s + e.amount, 0), [tabEntries, cutoff]);
+    const outcome = useMemo(() => tabEntries.filter(e => e.type === 'outcome' && e.entry_date <= cutoff).reduce((s, e) => s + e.amount, 0), [tabEntries, cutoff]);
+    const net     = income - outcome;
 
     const visibleEntries = useMemo(() =>
-        entries.filter(e => typeFilter === 'all' || e.type === typeFilter),
-        [entries, typeFilter]);
+        tabEntries.filter(e => typeFilter === 'all' || e.type === typeFilter),
+        [tabEntries, typeFilter]);
 
     const openAdd = (type) => {
         setEditingEntry(null);
@@ -237,12 +249,25 @@ const Budget = ({ onBackToTasks }) => {
             const ok = await updateEntry(editingEntry.id, data);
             if (ok) { setShowForm(false); setEditingEntry(null); }
         } else {
-            const ok = await createEntry(data);
+            const ok = await createEntry({ ...data, tab_id: activeTabId });
             if (ok) { setShowForm(false); }
         }
     };
 
     const handleCancel = () => { setShowForm(false); setEditingEntry(null); };
+
+    const handleAddTab = async () => {
+        const name = newTabName.trim();
+        if (!name) return;
+        const tab = await createTab(name);
+        if (tab) { setNewTabName(''); setAddingTab(false); setActiveTabId(tab.id); }
+    };
+
+    const handleDeleteTab = async (tabId) => {
+        const ok = await deleteTab(tabId);
+        if (ok && activeTabId === tabId) setActiveTabId(null);
+        setConfirmDeleteTab(null);
+    };
 
     const filterBtnStyle = (active) => ({
         padding: '5px 16px', border: '1.5px solid ' + (active ? '#007AFF' : 'rgba(0,0,0,0.15)'),
@@ -276,6 +301,93 @@ const Budget = ({ onBackToTasks }) => {
                         + Expense
                     </button>
                 </div>
+            </div>
+
+            {/* ── Tab bar ── */}
+            <div style={{
+                background: '#fff',
+                borderBottom: '0.5px solid rgba(0,0,0,0.1)',
+                padding: '0 20px',
+                display: 'flex', alignItems: 'center', gap: 4,
+                overflowX: 'auto',
+            }}>
+                {/* "All" tab */}
+                <button
+                    type="button"
+                    onClick={() => setActiveTabId(null)}
+                    style={{
+                        padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
+                        fontSize: '0.88rem', fontWeight: activeTabId === null ? 700 : 500,
+                        color: activeTabId === null ? '#007AFF' : '#555',
+                        borderBottom: activeTabId === null ? '2px solid #007AFF' : '2px solid transparent',
+                        whiteSpace: 'nowrap', flexShrink: 0,
+                    }}>
+                    All
+                </button>
+
+                {/* Named tabs */}
+                {tabs.map(tab => (
+                    <div key={tab.id} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                        <button
+                            type="button"
+                            onClick={() => setActiveTabId(tab.id)}
+                            style={{
+                                padding: '10px 12px 10px 16px', border: 'none', background: 'none', cursor: 'pointer',
+                                fontSize: '0.88rem', fontWeight: activeTabId === tab.id ? 700 : 500,
+                                color: activeTabId === tab.id ? '#007AFF' : '#555',
+                                borderBottom: activeTabId === tab.id ? '2px solid #007AFF' : '2px solid transparent',
+                                whiteSpace: 'nowrap',
+                            }}>
+                            {tab.name}
+                        </button>
+                        {confirmDeleteTab === tab.id ? (
+                            <>
+                                <button type="button" onClick={() => handleDeleteTab(tab.id)}
+                                    style={{ background: '#FF3B30', color: '#fff', border: 'none', borderRadius: 4, padding: '2px 8px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', marginRight: 2 }}>
+                                    Delete?
+                                </button>
+                                <button type="button" onClick={() => setConfirmDeleteTab(null)}
+                                    style={{ background: 'none', border: 'none', color: '#8E8E93', cursor: 'pointer', fontSize: '0.8rem', padding: '2px 4px' }}>
+                                    ✕
+                                </button>
+                            </>
+                        ) : (
+                            <button type="button" onClick={() => setConfirmDeleteTab(tab.id)}
+                                title="Delete tab"
+                                style={{ background: 'none', border: 'none', color: '#C7C7CC', cursor: 'pointer', fontSize: '0.75rem', padding: '2px 4px', lineHeight: 1 }}>
+                                ✕
+                            </button>
+                        )}
+                    </div>
+                ))}
+
+                {/* Add tab */}
+                {addingTab ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 0', flexShrink: 0 }}>
+                        <input
+                            autoFocus
+                            value={newTabName}
+                            onChange={e => setNewTabName(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') handleAddTab(); if (e.key === 'Escape') { setAddingTab(false); setNewTabName(''); } }}
+                            placeholder="Tab name…"
+                            style={{ padding: '4px 8px', borderRadius: 6, border: '1.5px solid #007AFF', fontSize: '0.82rem', width: 120, outline: 'none' }}
+                        />
+                        <button type="button" onClick={handleAddTab}
+                            style={{ padding: '4px 10px', border: 'none', borderRadius: 6, background: '#007AFF', color: '#fff', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
+                            Add
+                        </button>
+                        <button type="button" onClick={() => { setAddingTab(false); setNewTabName(''); }}
+                            style={{ background: 'none', border: 'none', color: '#8E8E93', cursor: 'pointer', fontSize: '0.9rem' }}>
+                            ✕
+                        </button>
+                    </div>
+                ) : (
+                    <button type="button" onClick={() => setAddingTab(true)}
+                        title="Add tab"
+                        style={{ padding: '10px 10px', border: 'none', background: 'none', cursor: 'pointer', color: '#007AFF', fontSize: '1.1rem', flexShrink: 0 }}>
+                        +
+                    </button>
+                )}
             </div>
 
             <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>

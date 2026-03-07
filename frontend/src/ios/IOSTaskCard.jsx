@@ -3,7 +3,7 @@ import { CheckCircle, Circle, Edit2, Copy, Share2, CalendarPlus, Calendar, Clock
 import { useTaskContext } from '../context/TaskContext';
 import useSwipeGesture from './hooks/useSwipeGesture';
 import { THEME, FONT_STACK } from './theme';
-import { downloadICS } from '../utils/generateICS';
+import { openInCalendar } from '../utils/generateICS';
 
 const IOSTaskCard = ({ task }) => {
     const { toggleTaskStatus, deleteTask, duplicateTask, openEditTaskForm, openShareModal } = useTaskContext();
@@ -124,9 +124,9 @@ const IOSTaskCard = ({ task }) => {
                             aria-label="Share task">
                             <Share2 size={18} color="#8E8E93" />
                         </button>
-                        <button onClick={() => downloadICS(task)}
+                        <button onClick={() => openInCalendar(task)}
                             style={{ background: 'none', border: 'none', padding: '6px', cursor: 'pointer', borderRadius: 8 }}
-                            aria-label="Add to Calendar">
+                            aria-label="Add to Google Calendar">
                             <CalendarPlus size={18} color={THEME.accent} />
                         </button>
                     </div>

@@ -91,3 +91,30 @@ export function downloadICS(task) {
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+/**
+ * Open a pre-filled Google Calendar "new event" page in a new tab.
+ * Works on desktop (browser → GCal web) and mobile (opens GCal app
+ * or GCal mobile web). No file is downloaded.
+ */
+export function openInCalendar(task) {
+    let dates;
+    if (task.task_time) {
+        const start = formatDateTime(task.task_date, task.task_time);
+        const end   = addHoursToDateTime(task.task_date, task.task_time, task.duration || 1);
+        dates = `${start}/${end}`;
+    } else {
+        const start = formatDate(task.task_date);
+        const end   = nextDay(task.task_date);
+        dates = `${start}/${end}`;
+    }
+
+    let desc = task.description || '';
+    if (task.notes) desc += (desc ? '\n\nNotes: ' : 'Notes: ') + task.notes;
+
+    const params = new URLSearchParams({ action: 'TEMPLATE', text: task.title || '', dates });
+    if (desc)        params.set('details',  desc);
+    if (task.client) params.set('location', task.client);
+
+    window.open(`https://calendar.google.com/calendar/render?${params}`, '_blank');
+}
