@@ -52,24 +52,39 @@ const usePortfolioTabs = ({ setTabs, setActiveTabId, setEntries, setSummary, set
     }, [fetchTabs, setActiveTabId, setError, fetchEntries, fetchSummary, fetchStockNames]);
 
     const initializeTabs = useCallback(async () => {
-        const fetchedTabs = await fetchTabs();
+        // Optimistic: start loading data for the cached tab ID immediately,
+        // in parallel with fetching the tab list — eliminates 1 sequential round-trip
+        const savedTabId = storage.get(STORAGE_KEYS.ACTIVE_PORTFOLIO_TAB);
+        const cachedTabId = savedTabId && savedTabId !== 'null' ? parseInt(savedTabId) : null;
+
+        const parallelFetches = [fetchTabs()];
+        if (cachedTabId) {
+            setActiveTabId(cachedTabId);
+            parallelFetches.push(
+                fetchEntries(cachedTabId),
+                fetchSummary(cachedTabId),
+                fetchStockNames(cachedTabId),
+            );
+        }
+
+        const [fetchedTabs] = await Promise.all(parallelFetches);
 
         if (!fetchedTabs || fetchedTabs.length === 0) {
             setActiveTabId(null);
             return;
         }
 
-        const savedTabId = storage.get(STORAGE_KEYS.ACTIVE_PORTFOLIO_TAB);
-        let tabIdToUse = savedTabId && savedTabId !== 'null' ? parseInt(savedTabId) : null;
-
-        if (!tabIdToUse || !fetchedTabs.find(t => t.id === tabIdToUse)) {
-            tabIdToUse = fetchedTabs[0].id;
-        }
+        // Confirm the cached tab is still valid; fall back to first tab if not
+        const validTab = cachedTabId && fetchedTabs.find(t => t.id === cachedTabId);
+        const tabIdToUse = validTab ? cachedTabId : fetchedTabs[0].id;
 
         setActiveTabId(tabIdToUse);
         storage.set(STORAGE_KEYS.ACTIVE_PORTFOLIO_TAB, String(tabIdToUse));
 
-        await Promise.all([fetchEntries(tabIdToUse), fetchSummary(tabIdToUse), fetchStockNames(tabIdToUse)]);
+        // Only re-fetch if we had to switch to a different tab than what we pre-loaded
+        if (tabIdToUse !== cachedTabId) {
+            await Promise.all([fetchEntries(tabIdToUse), fetchSummary(tabIdToUse), fetchStockNames(tabIdToUse)]);
+        }
     }, [fetchTabs, setActiveTabId, fetchEntries, fetchSummary, fetchStockNames]);
 
     return { fetchTabs, handleSwitchTab, handleCreateFirstTab, initializeTabs };
