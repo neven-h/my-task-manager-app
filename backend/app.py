@@ -2,8 +2,11 @@
 Task Manager App - Main entry point.
 Registers all route blueprints and initializes the database.
 """
+import logging
 import os
 from config import app, init_db
+
+_logger = logging.getLogger(__name__)
 
 # Import route blueprints
 from routes.auth import auth_bp
@@ -96,10 +99,12 @@ app.register_blueprint(admin_migrations_bp)
 # Initialize database on import (works with gunicorn)
 try:
     init_db()
-    print("\u2713 Database initialized successfully")
-except Exception as e:
-    print(f"\u26a0 Warning: Database initialization failed: {e}")
-    print("\u26a0 App will start but database operations will fail until MySQL is configured")
+    _logger.info("Database initialized successfully")
+except Exception:
+    _logger.error(
+        "Database initialization failed — app will start but DB operations may fail",
+        exc_info=True,
+    )
 
 
 if __name__ == '__main__':
