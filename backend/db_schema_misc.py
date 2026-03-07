@@ -1,5 +1,9 @@
 """Schema initialization for tags, categories, and clients tables."""
+import logging
+
 from mysql.connector import Error
+
+logger = logging.getLogger(__name__)
 
 
 def init_misc_tables(cursor, connection):
@@ -16,10 +20,10 @@ def init_misc_tables(cursor, connection):
 
     try:
         cursor.execute("ALTER TABLE tags ADD COLUMN owner VARCHAR(255)")
-        print("Added owner column to tags table")
+        logger.info("Added owner column to tags table")
     except Error as e:
         if 'Duplicate column' not in str(e):
-            print(f"Tags owner column migration note: {e}")
+            logger.warning("Tags owner column migration note: %s", e)
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS categories_master (
@@ -35,10 +39,10 @@ def init_misc_tables(cursor, connection):
 
     try:
         cursor.execute("ALTER TABLE categories_master ADD COLUMN owner VARCHAR(255)")
-        print("Added owner column to categories_master table")
+        logger.info("Added owner column to categories_master table")
     except Error as e:
         if 'Duplicate column' not in str(e):
-            print(f"Categories owner column migration note: {e}")
+            logger.warning("Categories owner column migration note: %s", e)
 
     cursor.execute("SELECT COUNT(*) FROM categories_master")
     if cursor.fetchone()[0] == 0:
@@ -59,7 +63,7 @@ def init_misc_tables(cursor, connection):
             INSERT INTO categories_master (category_id, label, color, icon)
             VALUES (%s, %s, %s, %s)
         """, default_categories)
-        print("Inserted default categories")
+        logger.info("Inserted default categories")
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS clients (
@@ -76,26 +80,30 @@ def init_misc_tables(cursor, connection):
 
     try:
         cursor.execute("ALTER TABLE clients ADD COLUMN owner VARCHAR(255)")
-        print("Added owner column to clients table")
+        logger.info("Added owner column to clients table")
     except Error as e:
         if 'Duplicate column' not in str(e):
-            print(f"Clients owner column migration note: {e}")
+            logger.warning("Clients owner column migration note: %s", e)
 
     # ── budget_entries ────────────────────────────────────────────────────────
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS budget_entries (
-            id          INT AUTO_INCREMENT PRIMARY KEY,
-            type        ENUM('income','outcome') NOT NULL,
-            description VARCHAR(500) NOT NULL,
-            amount      DECIMAL(12,2) NOT NULL,
-            entry_date  DATE NOT NULL,
-            category    VARCHAR(100),
-            notes       TEXT,
-            owner       VARCHAR(255),
-            created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            INDEX idx_budget_owner (owner),
-            INDEX idx_budget_date  (entry_date)
-        )
-    """)
-    print("budget_entries table ready")
+    try:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS budget_entries (
+                id          INT AUTO_INCREMENT PRIMARY KEY,
+                type        ENUM('income','outcome') NOT NULL,
+                description VARCHAR(500) NOT NULL,
+                amount      DECIMAL(12,2) NOT NULL,
+                entry_date  DATE NOT NULL,
+                category    VARCHAR(100),
+                notes       TEXT,
+                owner       VARCHAR(255),
+                created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                INDEX idx_budget_owner (owner),
+                INDEX idx_budget_date  (entry_date)
+            )
+        """)
+        logger.info("budget_entries table ready")
+    except Error as e:
+        logger.error("Failed to create budget_entries table: %s", e, exc_info=True)
+        raise
