@@ -1,9 +1,13 @@
 from flask import Blueprint, request, jsonify, current_app
 from config import limiter, get_db_connection, app, FRONTEND_URL, DEBUG
 import hashlib
+import os
 import secrets
 import smtplib
 import threading
+import urllib.request
+import urllib.error
+import json as _json
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from datetime import datetime, timedelta
@@ -53,15 +57,51 @@ def forgot_password():
             connection.commit()
 
         reset_url = f"{FRONTEND_URL}/reset-password?token={token}"
-        email_configured = bool(app.config.get('MAIL_USERNAME') and app.config.get('MAIL_PASSWORD'))
 
-        if not email_configured:
-            current_app.logger.warning('Password reset requested but email not configured')
-            if DEBUG:
-                current_app.logger.debug('Password reset URL (debug only, email not configured): %s', reset_url)
+        email_body = (
+            f"Hello {user['username']},\n\n"
+            "You requested a password reset for your Task Tracker account.\n\n"
+            f"Click the link below to reset your password:\n{reset_url}\n\n"
+            "This link will expire in 1 hour.\n\n"
+            "If you did not request this reset, please ignore this email.\n\n"
+            "Best regards,\nTask Tracker Team"
+        )
+
+        # ── Option 1: Resend HTTP API (preferred on Railway — bypasses SMTP block) ──
+        resend_api_key = os.environ.get('RESEND_API_KEY', '').strip()
+        if resend_api_key:
+            payload = _json.dumps({
+                'from': 'Task Tracker <noreply@drpitz.club>',
+                'to': [user['email']],
+                'subject': 'Password Reset Request - Task Tracker',
+                'text': email_body,
+            }).encode()
+            req = urllib.request.Request(
+                'https://api.resend.com/emails',
+                data=payload,
+                headers={
+                    'Authorization': f'Bearer {resend_api_key}',
+                    'Content-Type': 'application/json',
+                },
+                method='POST',
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    current_app.logger.info(
+                        'Resend: delivered to %s (status %s)', user['email'], resp.status
+                    )
+            except urllib.error.HTTPError as exc:
+                body = exc.read().decode(errors='replace')
+                current_app.logger.error(
+                    'Resend: HTTP %s — %s', exc.code, body, exc_info=True
+                )
+            except Exception as exc:
+                current_app.logger.error(
+                    'Resend: failed — %s: %s', type(exc).__name__, exc, exc_info=True
+                )
             return jsonify({'message': success_msg})
 
-        # Build the MIME message once, outside the thread
+        # ── Option 2: SMTP fallback (for local dev; Railway blocks SMTP ports) ──
         smtp_user = app.config.get('MAIL_USERNAME', '')
         smtp_password = app.config.get('MAIL_PASSWORD', '')
         smtp_server = app.config.get('MAIL_SERVER', 'smtp.gmail.com')
@@ -69,22 +109,20 @@ def forgot_password():
         use_ssl = app.config.get('MAIL_USE_SSL', True)
         use_tls = app.config.get('MAIL_USE_TLS', False)
 
+        if not (smtp_user and smtp_password):
+            current_app.logger.warning(
+                'Password reset requested but neither RESEND_API_KEY nor SMTP credentials configured'
+            )
+            if DEBUG:
+                current_app.logger.debug('Reset URL (debug only): %s', reset_url)
+            return jsonify({'message': success_msg})
+
         mime_msg = MIMEMultipart()
         mime_msg['From'] = smtp_user
         mime_msg['To'] = user['email']
         mime_msg['Subject'] = 'Password Reset Request - Task Tracker'
-        mime_msg.attach(MIMEText(
-            f"Hello {user['username']},\n\n"
-            "You requested a password reset for your Task Tracker account.\n\n"
-            f"Click the link below to reset your password:\n{reset_url}\n\n"
-            "This link will expire in 1 hour.\n\n"
-            "If you did not request this reset, please ignore this email.\n\n"
-            "Best regards,\nTask Tracker Team",
-            'plain'
-        ))
+        mime_msg.attach(MIMEText(email_body, 'plain'))
 
-        # smtplib has a native timeout param unlike Flask-Mail 0.10.0.
-        # Run in a daemon thread so the HTTP response is never blocked > 16 s.
         send_error = []
 
         def _send():
@@ -111,20 +149,17 @@ def forgot_password():
 
         t = threading.Thread(target=_send, daemon=True)
         t.start()
-        t.join(timeout=16)   # smtplib timeout is 15 s; give 1 s of margin
+        t.join(timeout=16)
 
         if t.is_alive():
             current_app.logger.warning(
-                'SMTP: thread still alive after 16 s (server=%s port=%s) — '
-                'check Railway application logs for the eventual result',
+                'SMTP: thread still alive after 16 s (server=%s port=%s)',
                 smtp_server, smtp_port,
             )
         elif send_error:
             current_app.logger.error(
                 'SMTP: reset email to %s failed: %s', user['email'], send_error[0]
             )
-            if DEBUG:
-                current_app.logger.debug('Reset URL (debug only): %s', reset_url)
 
         return jsonify({'message': success_msg})
 
