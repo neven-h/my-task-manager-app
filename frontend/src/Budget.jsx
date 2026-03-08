@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { TrendingUp, TrendingDown, Scale, Edit2, Trash2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Scale, Edit2, Trash2, Copy } from 'lucide-react';
 import useBudget from './hooks/useBudget';
 import useBudgetTabs from './hooks/useBudgetTabs';
 
@@ -147,7 +147,7 @@ const EntryForm = ({ initial, onSave, onCancel, loading }) => {
 };
 
 // ── EntryRow ───────────────────────────────────────────────────────────────────
-const EntryRow = ({ entry, cutoff, onEdit, onDelete, loading }) => {
+const EntryRow = ({ entry, cutoff, onEdit, onDuplicate, onDelete, loading }) => {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const isPast = entry.entry_date <= cutoff;
     const isIncome = entry.type === 'income';
@@ -206,6 +206,11 @@ const EntryRow = ({ entry, cutoff, onEdit, onDelete, loading }) => {
                             title="Edit">
                             <Edit2 size={14} />
                         </button>
+                        <button type="button" onClick={() => onDuplicate(entry)}
+                            style={{ background: 'none', border: 'none', padding: '3px 6px', cursor: 'pointer', color: SYS.light }}
+                            title="Duplicate">
+                            <Copy size={14} />
+                        </button>
                         <button type="button" onClick={() => setConfirmDelete(true)}
                             style={{ background: 'none', border: 'none', padding: '3px 6px', cursor: 'pointer', color: SYS.light }}
                             title="Delete">
@@ -252,6 +257,20 @@ const Budget = ({ onBackToTasks }) => {
     const openAdd = (type) => {
         setEditingEntry(null);
         setFormInitial(emptyForm(type));
+        setShowForm(true);
+        setTimeout(() => document.getElementById('budget-form')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+    };
+
+    const openDuplicate = (entry) => {
+        setEditingEntry(null);
+        setFormInitial({
+            type: entry.type,
+            description: entry.description,
+            amount: String(entry.amount),
+            entry_date: today(),
+            category: entry.category || '',
+            notes: entry.notes || '',
+        });
         setShowForm(true);
         setTimeout(() => document.getElementById('budget-form')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
     };
@@ -513,6 +532,7 @@ const Budget = ({ onBackToTasks }) => {
                                 entry={e}
                                 cutoff={cutoff}
                                 onEdit={openEdit}
+                                onDuplicate={openDuplicate}
                                 onDelete={deleteEntry}
                                 loading={loading}
                             />
