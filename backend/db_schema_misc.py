@@ -44,8 +44,8 @@ def init_misc_tables(cursor, connection):
         if 'Duplicate column' not in str(e):
             logger.warning("Categories owner column migration note: %s", e)
 
-    cursor.execute("SELECT COUNT(*) FROM categories_master")
-    if cursor.fetchone()[0] == 0:
+    cursor.execute("SELECT COUNT(*) AS cnt FROM categories_master")
+    if cursor.fetchone()['cnt'] == 0:
         default_categories = [
             ('insurance', 'Insurance Lawsuits', '#0d6efd', '⚖️'),
             ('emails', 'Email Management', '#6610f2', '📧'),
