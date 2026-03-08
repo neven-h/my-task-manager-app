@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API_BASE from '../config';
+import { getAuthHeaders } from '../api.js';
 import storage, { STORAGE_KEYS } from '../utils/storage';
 
 const useTwoFactorSetup = () => {
@@ -30,7 +31,7 @@ const useTwoFactorSetup = () => {
             const timeoutId = setTimeout(() => controller.abort(), 15000);
             const response = await fetch(`${API_BASE}/auth/2fa/setup`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify({ username }),
                 signal: controller.signal
             });
@@ -70,7 +71,7 @@ const useTwoFactorSetup = () => {
             setLoading(true);
             const response = await fetch(`${API_BASE}/auth/2fa/enable`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify({ username, code: verificationCode })
             });
             const data = await response.json();
