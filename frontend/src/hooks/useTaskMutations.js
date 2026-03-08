@@ -4,28 +4,23 @@ import { getAuthHeaders } from '../api.js';
 
 const useTaskMutations = (setError, setLoading, fetchCategories, fetchTags) => {
     const createCategory = useCallback(async (name, color, icon, owner) => {
-        if (!name.trim()) { setError('Category name is required'); return false; }
+        if (!name.trim()) { return 'Category name is required'; }
         try {
             setLoading(true);
-            setError(null);
             const response = await fetch(`${API_BASE}/categories`, {
                 method: 'POST',
                 headers: getAuthHeaders(),
                 body: JSON.stringify({ id: name.toLowerCase().replace(/\s+/g, '-'), label: name, color, icon, owner })
             });
-            if (response.ok) { await fetchCategories(); return true; }
+            if (response.ok) { await fetchCategories(); return null; }
             const errorData = await response.json();
-            console.error('Failed to create category:', errorData);
-            setError(`Failed to create category: ${errorData.error || 'Unknown error'}`);
-            return false;
+            return errorData.error || 'Failed to create category';
         } catch (err) {
-            console.error('Error creating category:', err);
-            setError(`Failed to create category: ${err.message}`);
-            return false;
+            return err.message || 'Failed to create category';
         } finally {
             setLoading(false);
         }
-    }, [setError, setLoading, fetchCategories]);
+    }, [setLoading, fetchCategories]);
 
     const deleteCategory = useCallback(async (categoryId) => {
         try {

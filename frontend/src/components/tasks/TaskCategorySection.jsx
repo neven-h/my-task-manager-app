@@ -8,10 +8,16 @@ const TaskCategorySection = ({ allCategories, selectedCategories, loading, onTog
     const [color, setColor] = useState('#0d6efd');
     const [icon, setIcon] = useState('📁');
     const [hoveredId, setHoveredId] = useState(null);
+    const [createError, setCreateError] = useState('');
 
     const handleCreate = async () => {
-        const ok = await onCreate(name, color, icon);
-        if (ok) { setName(''); setColor('#0d6efd'); setIcon('📁'); setShowAddForm(false); }
+        setCreateError('');
+        const err = await onCreate(name, color, icon);
+        if (!err) {
+            setName(''); setColor('#0d6efd'); setIcon('📁'); setShowAddForm(false);
+        } else {
+            setCreateError(err);
+        }
     };
 
     return (
@@ -28,16 +34,21 @@ const TaskCategorySection = ({ allCategories, selectedCategories, loading, onTog
             {showAddForm && (
                 <div style={{ padding: '12px', background: '#f8fafc', borderRadius: '8px', marginBottom: '12px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '8px', marginBottom: '8px' }}>
-                        <input type="text" placeholder="Category name..." value={name} onChange={(e) => setName(e.target.value)} style={{ fontSize: '0.9rem' }} />
+                        <input type="text" placeholder="Category name..." value={name} onChange={(e) => { setName(e.target.value); setCreateError(''); }} style={{ fontSize: '0.9rem' }} />
                         <input type="text" placeholder="Icon" value={icon} onChange={(e) => setIcon(e.target.value)} style={{ width: '60px', fontSize: '0.9rem', textAlign: 'center' }} />
                         <input type="color" value={color} onChange={(e) => setColor(e.target.value)} style={{ width: '50px' }} />
                     </div>
+                    {createError && (
+                        <div style={{ color: '#FF0000', fontWeight: 700, fontSize: '0.82rem', marginBottom: '8px', padding: '6px 10px', border: '2px solid #FF0000', background: '#fff0f0' }}>
+                            {createError}
+                        </div>
+                    )}
                     <div style={{ display: 'flex', gap: '8px' }}>
                         <button type="button" onClick={handleCreate} disabled={loading || !name.trim()} className="btn btn-primary"
                             style={{ padding: '6px 16px', fontSize: '0.85rem', flex: 1, opacity: (loading || !name.trim()) ? 0.5 : 1, cursor: (loading || !name.trim()) ? 'not-allowed' : 'pointer' }}>
                             {loading ? 'Creating...' : 'Create'}
                         </button>
-                        <button type="button" onClick={() => { setShowAddForm(false); setName(''); setColor('#0d6efd'); setIcon('📁'); }} disabled={loading} className="btn btn-white" style={{ padding: '6px 16px', fontSize: '0.85rem' }}>
+                        <button type="button" onClick={() => { setShowAddForm(false); setName(''); setColor('#0d6efd'); setIcon('📁'); setCreateError(''); }} disabled={loading} className="btn btn-white" style={{ padding: '6px 16px', fontSize: '0.85rem' }}>
                             Cancel
                         </button>
                     </div>
