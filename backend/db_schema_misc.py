@@ -25,6 +25,20 @@ def init_misc_tables(cursor, connection):
         if 'Duplicate column' not in str(e):
             logger.warning("Tags owner column migration note: %s", e)
 
+    # Migrate: drop global UNIQUE on name, add per-owner UNIQUE (name, owner)
+    try:
+        cursor.execute("ALTER TABLE tags DROP INDEX name")
+        logger.info("tags: dropped global unique index on name")
+    except Error as e:
+        if "Can't DROP" not in str(e):
+            logger.warning("Tags drop index note: %s", e)
+    try:
+        cursor.execute("ALTER TABLE tags ADD UNIQUE KEY uniq_tag_owner (name, owner)")
+        logger.info("tags: added per-owner unique constraint")
+    except Error as e:
+        if 'Duplicate key name' not in str(e):
+            logger.warning("Tags add unique note: %s", e)
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS categories_master (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -43,6 +57,20 @@ def init_misc_tables(cursor, connection):
     except Error as e:
         if 'Duplicate column' not in str(e):
             logger.warning("Categories owner column migration note: %s", e)
+
+    # Migrate: drop global UNIQUE on category_id, add per-owner UNIQUE (category_id, owner)
+    try:
+        cursor.execute("ALTER TABLE categories_master DROP INDEX category_id")
+        logger.info("categories_master: dropped global unique index on category_id")
+    except Error as e:
+        if "Can't DROP" not in str(e):
+            logger.warning("Categories drop index note: %s", e)
+    try:
+        cursor.execute("ALTER TABLE categories_master ADD UNIQUE KEY uniq_cat_owner (category_id, owner)")
+        logger.info("categories_master: added per-owner unique constraint")
+    except Error as e:
+        if 'Duplicate key name' not in str(e):
+            logger.warning("Categories add unique note: %s", e)
 
     cursor.execute("SELECT COUNT(*) AS cnt FROM categories_master")
     if cursor.fetchone()['cnt'] == 0:
@@ -84,6 +112,20 @@ def init_misc_tables(cursor, connection):
     except Error as e:
         if 'Duplicate column' not in str(e):
             logger.warning("Clients owner column migration note: %s", e)
+
+    # Migrate: drop global UNIQUE on name, add per-owner UNIQUE (name, owner)
+    try:
+        cursor.execute("ALTER TABLE clients DROP INDEX name")
+        logger.info("clients: dropped global unique index on name")
+    except Error as e:
+        if "Can't DROP" not in str(e):
+            logger.warning("Clients drop index note: %s", e)
+    try:
+        cursor.execute("ALTER TABLE clients ADD UNIQUE KEY uniq_client_owner (name, owner)")
+        logger.info("clients: added per-owner unique constraint")
+    except Error as e:
+        if 'Duplicate key name' not in str(e):
+            logger.warning("Clients add unique note: %s", e)
 
     # ── budget_entries ────────────────────────────────────────────────────────
     try:

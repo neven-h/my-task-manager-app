@@ -70,7 +70,7 @@ def manage_clients_list(payload):
         try:
             data = request.json
             name = data.get('name', '').strip()
-            owner = username if user_role != 'admin' else None
+            owner = username
 
             if not name:
                 return jsonify({'error': 'Client name is required'}), 400
