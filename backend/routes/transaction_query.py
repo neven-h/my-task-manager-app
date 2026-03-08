@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify, current_app
 from config import get_db_connection, token_required, decrypt_field, log_bank_transaction_access
 from mysql.connector import Error
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 transaction_query_bp = Blueprint('transaction_query', __name__)
 
@@ -43,49 +45,55 @@ def get_transaction_months(payload):
             cursor.execute(query, params)
             rows = cursor.fetchall()
 
-            # Decrypt amounts and aggregate by month
-            month_data = {}
-            for row in rows:
-                my = row['month_year']
-                if my not in month_data:
-                    month_data[my] = {
-                        'month_year': my,
-                        'transaction_count': 0,
-                        'total_amount': 0.0,
-                        'start_date': row['transaction_date'],
-                        'end_date': row['transaction_date'],
-                        'last_upload': row['upload_date']
-                    }
-                month_data[my]['transaction_count'] += 1
-                try:
-                    decrypted = decrypt_field(row['amount'])
-                    month_data[my]['total_amount'] += float(decrypted) if decrypted else 0.0
-                except (ValueError, TypeError):
-                    pass
-                # Track min/max dates
-                if row['transaction_date']:
-                    if not month_data[my]['start_date'] or row['transaction_date'] < month_data[my]['start_date']:
-                        month_data[my]['start_date'] = row['transaction_date']
-                    if not month_data[my]['end_date'] or row['transaction_date'] > month_data[my]['end_date']:
-                        month_data[my]['end_date'] = row['transaction_date']
-                if row['upload_date']:
-                    if not month_data[my]['last_upload'] or row['upload_date'] > month_data[my]['last_upload']:
-                        month_data[my]['last_upload'] = row['upload_date']
+        # Decrypt amounts in parallel, then aggregate by month
+        def _decrypt_row_amount(row):
+            try:
+                decrypted = decrypt_field(row['amount'])
+                amount = float(decrypted) if decrypted else 0.0
+            except (ValueError, TypeError):
+                amount = 0.0
+            return row['month_year'], amount, row['transaction_date'], row['upload_date']
 
-            # Convert to sorted list
-            months = sorted(month_data.values(), key=lambda x: x['month_year'], reverse=True)
+        workers = min(len(rows), 8) if rows else 1
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            decrypted_rows = list(ex.map(_decrypt_row_amount, rows)) if rows else []
 
-            for month in months:
-                if month['total_amount']:
-                    month['total_amount'] = float(month['total_amount'])
-                if month['start_date']:
-                    month['start_date'] = month['start_date'].isoformat()
-                if month['end_date']:
-                    month['end_date'] = month['end_date'].isoformat()
-                if month['last_upload']:
-                    month['last_upload'] = month['last_upload'].isoformat()
+        month_data = {}
+        for my, amount, trans_date, upload_date in decrypted_rows:
+            if my not in month_data:
+                month_data[my] = {
+                    'month_year': my,
+                    'transaction_count': 0,
+                    'total_amount': 0.0,
+                    'start_date': trans_date,
+                    'end_date': trans_date,
+                    'last_upload': upload_date,
+                }
+            month_data[my]['transaction_count'] += 1
+            month_data[my]['total_amount'] += amount
+            if trans_date:
+                if not month_data[my]['start_date'] or trans_date < month_data[my]['start_date']:
+                    month_data[my]['start_date'] = trans_date
+                if not month_data[my]['end_date'] or trans_date > month_data[my]['end_date']:
+                    month_data[my]['end_date'] = trans_date
+            if upload_date:
+                if not month_data[my]['last_upload'] or upload_date > month_data[my]['last_upload']:
+                    month_data[my]['last_upload'] = upload_date
 
-            return jsonify(months)
+        # Convert to sorted list
+        months = sorted(month_data.values(), key=lambda x: x['month_year'], reverse=True)
+
+        for month in months:
+            if month['total_amount']:
+                month['total_amount'] = float(month['total_amount'])
+            if month['start_date']:
+                month['start_date'] = month['start_date'].isoformat()
+            if month['end_date']:
+                month['end_date'] = month['end_date'].isoformat()
+            if month['last_upload']:
+                month['last_upload'] = month['last_upload'].isoformat()
+
+        return jsonify(months)
 
     except Error as e:
         current_app.logger.error('transaction_query db error: %s', e, exc_info=True)
@@ -138,34 +146,37 @@ def get_all_transactions(payload):
             cursor.execute(query, params)
             transactions = cursor.fetchall()
 
-            # Decrypt sensitive fields and convert types
-            for trans in transactions:
-                # Decrypt sensitive fields
-                trans['account_number'] = decrypt_field(trans['account_number'])
-                trans['description'] = decrypt_field(trans['description'])
-                trans['amount'] = decrypt_field(trans['amount'])
+        # Decrypt 3 fields per row in parallel — big win for large datasets
+        def _decrypt_transaction(trans):
+            trans['account_number'] = decrypt_field(trans['account_number'])
+            trans['description'] = decrypt_field(trans['description'])
+            trans['amount'] = decrypt_field(trans['amount'])
+            if trans['transaction_date']:
+                trans['transaction_date'] = trans['transaction_date'].isoformat()
+            if trans['amount']:
+                try:
+                    trans['amount'] = float(trans['amount'])
+                except (ValueError, TypeError):
+                    trans['amount'] = 0.0
+            if trans['upload_date']:
+                trans['upload_date'] = trans['upload_date'].isoformat()
+            if not trans.get('transaction_type'):
+                trans['transaction_type'] = 'credit'
+            return trans
 
-                # Convert types after decryption
-                if trans['transaction_date']:
-                    trans['transaction_date'] = trans['transaction_date'].isoformat()
-                if trans['amount']:
-                    try:
-                        trans['amount'] = float(trans['amount'])
-                    except (ValueError, TypeError):
-                        trans['amount'] = 0.0
-                if trans['upload_date']:
-                    trans['upload_date'] = trans['upload_date'].isoformat()
-                if not trans.get('transaction_type'):
-                    trans['transaction_type'] = 'credit'
+        if transactions:
+            workers = min(len(transactions), 8)
+            with ThreadPoolExecutor(max_workers=workers) as ex:
+                transactions = list(ex.map(_decrypt_transaction, transactions))
 
-            # Audit log
-            log_bank_transaction_access(
-                username=username,
-                action='VIEW_ALL',
-                transaction_ids=f"Count: {len(transactions)}"
-            )
+        # Audit log in background — don't open a second DB connection on the hot path
+        threading.Thread(
+            target=log_bank_transaction_access,
+            kwargs=dict(username=username, action='VIEW_ALL', transaction_ids=f"Count: {len(transactions)}"),
+            daemon=True,
+        ).start()
 
-            return jsonify(transactions)
+        return jsonify(transactions)
 
     except Error as e:
         current_app.logger.error('transaction_query db error: %s', e, exc_info=True)

@@ -60,21 +60,44 @@ def forgot_password():
 
         email_body = (
             f"Hello {user['username']},\n\n"
-            "You requested a password reset for your Task Tracker account.\n\n"
+            "You requested a password reset for your Dr. Pitz club account.\n\n"
             f"Click the link below to reset your password:\n{reset_url}\n\n"
             "This link will expire in 1 hour.\n\n"
             "If you did not request this reset, please ignore this email.\n\n"
-            "Best regards,\nTask Tracker Team"
+            "Best regards,\nDr. Pitz club Team"
         )
+
+        email_html = f"""<!DOCTYPE html>
+<html>
+<body style="font-family:Arial,sans-serif;color:#333;max-width:600px;margin:0 auto;padding:20px;">
+  <h2 style="color:#1a1a2e;">Password Reset Request</h2>
+  <p>Hello {user['username']},</p>
+  <p>You requested a password reset for your <strong>Dr. Pitz club</strong> account.</p>
+  <p style="margin:24px 0;">
+    <a href="{reset_url}"
+       style="background:#0d6efd;color:#fff;padding:12px 28px;text-decoration:none;border-radius:6px;font-weight:bold;display:inline-block;">
+      Reset Password
+    </a>
+  </p>
+  <p style="font-size:0.85em;color:#666;">
+    Or copy this link into your browser:<br>
+    <a href="{reset_url}" style="color:#0d6efd;word-break:break-all;">{reset_url}</a>
+  </p>
+  <p style="font-size:0.85em;color:#999;">This link expires in 1 hour. If you did not request a reset, ignore this email.</p>
+  <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
+  <p style="font-size:0.8em;color:#aaa;">Dr. Pitz club Team</p>
+</body>
+</html>"""
 
         # ── Option 1: Resend HTTP API (preferred on Railway — bypasses SMTP block) ──
         resend_api_key = os.environ.get('RESEND_API_KEY', '').strip()
         if resend_api_key:
             payload = _json.dumps({
-                'from': 'Task Tracker <noreply@drpitz.club>',
+                'from': 'Dr. Pitz club <noreply@drpitz.club>',
                 'to': [user['email']],
-                'subject': 'Password Reset Request - Task Tracker',
+                'subject': 'Password Reset Request - Dr. Pitz club',
                 'text': email_body,
+                'html': email_html,
             }).encode()
             req = urllib.request.Request(
                 'https://api.resend.com/emails',

@@ -1,10 +1,21 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { ArrowLeft, TrendingUp, TrendingDown, Scale, Plus, Edit2, Trash2, Check, X } from 'lucide-react';
+import { TrendingUp, TrendingDown, Scale, Edit2, Trash2 } from 'lucide-react';
 import useBudget from './hooks/useBudget';
 import useBudgetTabs from './hooks/useBudgetTabs';
 
-// ── helpers ───────────────────────────────────────────────────────────────────
+// ── system palette (matches bank/portfolio design) ─────────────────────────────
+const SYS = {
+    primary:   '#0000FF',
+    success:   '#00AA00',
+    accent:    '#FF0000',
+    secondary: '#FFD500',
+    bg:        '#fff',
+    text:      '#000',
+    light:     '#666',
+    border:    '#000',
+};
 
+// ── helpers ────────────────────────────────────────────────────────────────────
 const today = () => new Date().toISOString().split('T')[0];
 
 const fmt = (n) =>
@@ -19,28 +30,30 @@ const emptyForm = (type = 'income') => ({
     notes: '',
 });
 
-// ── sub-components ────────────────────────────────────────────────────────────
-
+// ── SummaryCard ────────────────────────────────────────────────────────────────
 const SummaryCard = ({ icon: Icon, label, amount, color, sub }) => (
     <div style={{
         flex: '1 1 180px',
-        background: '#fff',
-        borderRadius: 16,
-        padding: '20px 24px',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.08)',
-        display: 'flex', flexDirection: 'column', gap: 4,
+        background: SYS.bg,
+        border: `3px solid ${SYS.border}`,
+        padding: '16px 20px',
+        display: 'flex', flexDirection: 'column', gap: 6,
     }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#8E8E93', fontSize: '0.78rem', fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            <Icon size={14} color={color} />
+        <div style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            color: SYS.light, fontSize: '0.72rem', fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '0.6px',
+        }}>
+            <Icon size={13} color={color} />
             {label}
         </div>
-        <div style={{ fontSize: '1.6rem', fontWeight: 700, color, lineHeight: 1.2 }}>
+        <div style={{ fontSize: '1.6rem', fontWeight: 800, color, lineHeight: 1.15 }}>
             {sub}{fmt(amount)}
         </div>
     </div>
 );
 
-// Inline add/edit form
+// ── EntryForm ──────────────────────────────────────────────────────────────────
 const EntryForm = ({ initial, onSave, onCancel, loading }) => {
     const [form, setForm] = useState(initial);
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -52,44 +65,51 @@ const EntryForm = ({ initial, onSave, onCancel, loading }) => {
     };
 
     const inputStyle = {
-        width: '100%', padding: '8px 10px', borderRadius: 8,
-        border: '1px solid rgba(0,0,0,0.18)', fontSize: '0.9rem',
-        fontFamily: 'inherit', boxSizing: 'border-box',
+        width: '100%', padding: '8px 10px',
+        border: `2px solid ${SYS.border}`, fontSize: '0.88rem',
+        fontFamily: 'inherit', boxSizing: 'border-box', background: '#fff',
+        outline: 'none',
     };
 
     return (
         <form onSubmit={handleSubmit} style={{
-            background: '#F2F2F7', borderRadius: 12, padding: '16px 20px',
+            background: '#F5F5F5',
+            border: `3px solid ${SYS.border}`,
+            padding: '16px 20px',
             display: 'flex', flexDirection: 'column', gap: 10,
+            marginBottom: 20,
         }}>
             {/* Type toggle */}
             <div style={{ display: 'flex', gap: 8 }}>
-                {['income', 'outcome'].map(t => (
+                {[['income', '↑ INCOME'], ['outcome', '↓ EXPENSE']].map(([t, label]) => (
                     <button key={t} type="button"
                         onClick={() => set('type', t)}
                         style={{
-                            flex: 1, padding: '8px 0', borderRadius: 8,
-                            border: '1.5px solid ' + (form.type === t ? (t === 'income' ? '#34C759' : '#FF3B30') : 'rgba(0,0,0,0.15)'),
-                            background: form.type === t ? (t === 'income' ? '#34C759' : '#FF3B30') : '#fff',
-                            color: form.type === t ? '#fff' : '#555',
-                            fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer',
-                            textTransform: 'capitalize',
+                            flex: 1, padding: '8px 0',
+                            border: `2px solid ${SYS.border}`,
+                            background: form.type === t
+                                ? (t === 'income' ? SYS.success : SYS.accent)
+                                : '#fff',
+                            color: form.type === t ? '#fff' : SYS.text,
+                            fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer',
+                            letterSpacing: '0.5px',
                         }}>
-                        {t === 'income' ? '↑ Income' : '↓ Expense'}
+                        {label}
                     </button>
                 ))}
             </div>
 
-            {/* Description + Amount side by side */}
+            {/* Description + Amount */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
                 <input required style={inputStyle} placeholder="Description *"
                     value={form.description} onChange={e => set('description', e.target.value)} />
-                <input required type="number" min="0.01" step="0.01" style={{ ...inputStyle, width: 120 }}
+                <input required type="number" min="0.01" step="0.01"
+                    style={{ ...inputStyle, width: 120 }}
                     placeholder="Amount *"
                     value={form.amount} onChange={e => set('amount', e.target.value)} />
             </div>
 
-            {/* Date + Category side by side */}
+            {/* Date + Category */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 <input required type="date" style={inputStyle}
                     value={form.entry_date} onChange={e => set('entry_date', e.target.value)} />
@@ -105,11 +125,20 @@ const EntryForm = ({ initial, onSave, onCancel, loading }) => {
             {/* Actions */}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button type="button" onClick={onCancel}
-                    style={{ padding: '8px 18px', border: '1px solid rgba(0,0,0,0.15)', borderRadius: 8, background: '#fff', cursor: 'pointer', fontSize: '0.85rem' }}>
+                    style={{
+                        padding: '8px 20px', border: `2px solid ${SYS.border}`,
+                        background: '#fff', cursor: 'pointer', fontSize: '0.8rem',
+                        fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px',
+                    }}>
                     Cancel
                 </button>
                 <button type="submit" disabled={loading}
-                    style={{ padding: '8px 18px', border: 'none', borderRadius: 8, background: '#007AFF', color: '#fff', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, opacity: loading ? 0.6 : 1 }}>
+                    style={{
+                        padding: '8px 20px', border: `2px solid ${SYS.border}`,
+                        background: SYS.primary, color: '#fff', cursor: 'pointer',
+                        fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase',
+                        letterSpacing: '0.4px', opacity: loading ? 0.6 : 1,
+                    }}>
                     {loading ? 'Saving…' : 'Save'}
                 </button>
             </div>
@@ -117,44 +146,43 @@ const EntryForm = ({ initial, onSave, onCancel, loading }) => {
     );
 };
 
-// Single entry row
+// ── EntryRow ───────────────────────────────────────────────────────────────────
 const EntryRow = ({ entry, cutoff, onEdit, onDelete, loading }) => {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const isPast = entry.entry_date <= cutoff;
     const isIncome = entry.type === 'income';
-    const amountColor = isIncome ? '#34C759' : '#FF3B30';
+    const amountColor = isIncome ? SYS.success : SYS.accent;
     const sign = isIncome ? '+' : '−';
 
     return (
         <div style={{
             display: 'flex', alignItems: 'center', gap: 12,
-            padding: '12px 16px',
-            borderBottom: '0.5px solid rgba(0,0,0,0.08)',
-            opacity: isPast ? 1 : 0.45,
-            transition: 'opacity 180ms',
+            padding: '10px 16px',
+            borderBottom: `1px solid ${SYS.border}`,
+            opacity: isPast ? 1 : 0.4,
         }}>
-            {/* Type indicator dot */}
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: amountColor, flexShrink: 0 }} />
+            {/* Type indicator */}
+            <div style={{ width: 8, height: 8, background: amountColor, flexShrink: 0 }} />
 
             {/* Date */}
-            <div style={{ fontSize: '0.8rem', color: '#8E8E93', width: 70, flexShrink: 0 }}>
+            <div style={{ fontSize: '0.78rem', color: SYS.light, width: 68, flexShrink: 0, fontWeight: 600 }}>
                 {new Date(entry.entry_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
             </div>
 
             {/* Description + category */}
             <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 500, fontSize: '0.92rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {entry.description}
                 </div>
                 {(entry.category || entry.notes) && (
-                    <div style={{ fontSize: '0.75rem', color: '#8E8E93', marginTop: 2 }}>
+                    <div style={{ fontSize: '0.74rem', color: SYS.light, marginTop: 2 }}>
                         {[entry.category, entry.notes].filter(Boolean).join(' · ')}
                     </div>
                 )}
             </div>
 
             {/* Amount */}
-            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: amountColor, flexShrink: 0 }}>
+            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: amountColor, flexShrink: 0 }}>
                 {sign}{fmt(entry.amount)}
             </div>
 
@@ -163,26 +191,25 @@ const EntryRow = ({ entry, cutoff, onEdit, onDelete, loading }) => {
                 {confirmDelete ? (
                     <>
                         <button type="button" onClick={() => { setConfirmDelete(false); onDelete(entry.id); }}
-                            title="Confirm delete"
-                            style={{ padding: '4px 10px', border: 'none', borderRadius: 6, background: '#FF3B30', color: '#fff', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>
+                            style={{ padding: '3px 10px', border: `2px solid ${SYS.border}`, background: SYS.accent, color: '#fff', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', textTransform: 'uppercase' }}>
                             Delete?
                         </button>
                         <button type="button" onClick={() => setConfirmDelete(false)}
-                            style={{ padding: '4px 8px', border: '1px solid rgba(0,0,0,0.15)', borderRadius: 6, background: '#fff', fontSize: '0.75rem', cursor: 'pointer' }}>
+                            style={{ padding: '3px 8px', border: `2px solid ${SYS.border}`, background: '#fff', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 700 }}>
                             ✕
                         </button>
                     </>
                 ) : (
                     <>
                         <button type="button" onClick={() => onEdit(entry)}
-                            style={{ background: 'none', border: 'none', padding: '4px 6px', cursor: 'pointer', color: '#8E8E93', borderRadius: 6 }}
+                            style={{ background: 'none', border: 'none', padding: '3px 6px', cursor: 'pointer', color: SYS.light }}
                             title="Edit">
-                            <Edit2 size={15} />
+                            <Edit2 size={14} />
                         </button>
                         <button type="button" onClick={() => setConfirmDelete(true)}
-                            style={{ background: 'none', border: 'none', padding: '4px 6px', cursor: 'pointer', color: '#8E8E93', borderRadius: 6 }}
+                            style={{ background: 'none', border: 'none', padding: '3px 6px', cursor: 'pointer', color: SYS.light }}
                             title="Delete">
-                            <Trash2 size={15} />
+                            <Trash2 size={14} />
                         </button>
                     </>
                 )}
@@ -191,15 +218,14 @@ const EntryRow = ({ entry, cutoff, onEdit, onDelete, loading }) => {
     );
 };
 
-// ── Main component ────────────────────────────────────────────────────────────
-
+// ── Main component ─────────────────────────────────────────────────────────────
 const Budget = ({ onBackToTasks }) => {
     const { entries, loading, error, fetchEntries, createEntry, updateEntry, deleteEntry } = useBudget();
     const { tabs, fetchTabs, createTab, deleteTab } = useBudgetTabs();
 
     const [cutoff, setCutoff]             = useState(today());
     const [typeFilter, setTypeFilter]     = useState('all');
-    const [activeTabId, setActiveTabId]   = useState(null);   // null = All
+    const [activeTabId, setActiveTabId]   = useState(null);
     const [showForm, setShowForm]         = useState(false);
     const [editingEntry, setEditingEntry] = useState(null);
     const [formInitial, setFormInitial]   = useState(emptyForm('income'));
@@ -209,7 +235,6 @@ const Budget = ({ onBackToTasks }) => {
 
     useEffect(() => { fetchEntries(); fetchTabs(); }, [fetchEntries, fetchTabs]);
 
-    // Filter entries by the active tab (null = show all)
     const tabEntries = useMemo(() =>
         activeTabId === null
             ? entries
@@ -250,7 +275,7 @@ const Budget = ({ onBackToTasks }) => {
             if (ok) { setShowForm(false); setEditingEntry(null); }
         } else {
             const ok = await createEntry({ ...data, tab_id: activeTabId });
-            if (ok) { setShowForm(false); }
+            if (ok) setShowForm(false);
         }
     };
 
@@ -269,35 +294,58 @@ const Budget = ({ onBackToTasks }) => {
         setConfirmDeleteTab(null);
     };
 
-    const filterBtnStyle = (active) => ({
-        padding: '5px 16px', border: '1.5px solid ' + (active ? '#007AFF' : 'rgba(0,0,0,0.15)'),
-        borderRadius: 20, background: active ? '#007AFF' : '#fff',
-        color: active ? '#fff' : '#555', fontSize: '0.8rem', fontWeight: 600,
-        cursor: 'pointer',
+    // ── shared button styles ───────────────────────────────────────────────────
+    const filterBtn = (active, color = SYS.primary) => ({
+        padding: '5px 16px',
+        border: `2px solid ${SYS.border}`,
+        background: active ? color : '#fff',
+        color: active ? '#fff' : SYS.text,
+        fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer',
+        textTransform: 'uppercase', letterSpacing: '0.4px',
     });
 
     return (
-        <div style={{ minHeight: '100vh', background: '#F2F2F7', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+        <div style={{ minHeight: '100vh', background: SYS.bg, fontFamily: 'inherit' }}>
+
             {/* ── Header ── */}
             <div style={{
-                background: '#fff',
-                borderBottom: '0.5px solid rgba(0,0,0,0.1)',
-                padding: '16px 24px',
+                background: SYS.bg,
+                borderBottom: `3px solid ${SYS.border}`,
+                padding: '14px 24px',
                 display: 'flex', alignItems: 'center', gap: 16,
                 position: 'sticky', top: 0, zIndex: 10,
             }}>
                 <button onClick={onBackToTasks}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#007AFF', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.9rem', padding: 0 }}>
-                    <ArrowLeft size={18} /> Tasks
+                    style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        color: SYS.primary, fontWeight: 700, fontSize: '0.85rem',
+                        textTransform: 'uppercase', letterSpacing: '0.4px', padding: 0,
+                    }}>
+                    ← Tasks
                 </button>
-                <h1 style={{ flex: 1, margin: 0, fontSize: '1.15rem', fontWeight: 700, textAlign: 'center' }}>Budget Planner</h1>
+                <h1 style={{
+                    flex: 1, margin: 0, fontSize: '1.2rem', fontWeight: 800,
+                    textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.5px',
+                }}>
+                    Budget Planner
+                </h1>
                 <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => openAdd('income')}
-                        style={{ padding: '7px 14px', border: 'none', borderRadius: 8, background: '#34C759', color: '#fff', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' }}>
+                        style={{
+                            padding: '7px 14px', border: `2px solid ${SYS.border}`,
+                            background: SYS.success, color: '#fff',
+                            fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer',
+                            textTransform: 'uppercase', letterSpacing: '0.4px',
+                        }}>
                         + Income
                     </button>
                     <button onClick={() => openAdd('outcome')}
-                        style={{ padding: '7px 14px', border: 'none', borderRadius: 8, background: '#FF3B30', color: '#fff', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer' }}>
+                        style={{
+                            padding: '7px 14px', border: `2px solid ${SYS.border}`,
+                            background: SYS.accent, color: '#fff',
+                            fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer',
+                            textTransform: 'uppercase', letterSpacing: '0.4px',
+                        }}>
                         + Expense
                     </button>
                 </div>
@@ -305,37 +353,34 @@ const Budget = ({ onBackToTasks }) => {
 
             {/* ── Tab bar ── */}
             <div style={{
-                background: '#fff',
-                borderBottom: '0.5px solid rgba(0,0,0,0.1)',
+                background: SYS.bg,
+                borderBottom: `3px solid ${SYS.border}`,
                 padding: '0 20px',
-                display: 'flex', alignItems: 'center', gap: 4,
+                display: 'flex', alignItems: 'center', gap: 0,
                 overflowX: 'auto',
             }}>
                 {/* "All" tab */}
-                <button
-                    type="button"
-                    onClick={() => setActiveTabId(null)}
+                <button type="button" onClick={() => setActiveTabId(null)}
                     style={{
-                        padding: '10px 16px', border: 'none', background: 'none', cursor: 'pointer',
-                        fontSize: '0.88rem', fontWeight: activeTabId === null ? 700 : 500,
-                        color: activeTabId === null ? '#007AFF' : '#555',
-                        borderBottom: activeTabId === null ? '2px solid #007AFF' : '2px solid transparent',
+                        padding: '10px 18px', border: 'none', background: 'none', cursor: 'pointer',
+                        fontSize: '0.82rem', fontWeight: 700,
+                        color: activeTabId === null ? SYS.primary : SYS.text,
+                        borderBottom: activeTabId === null ? `3px solid ${SYS.primary}` : '3px solid transparent',
+                        textTransform: 'uppercase', letterSpacing: '0.4px',
                         whiteSpace: 'nowrap', flexShrink: 0,
                     }}>
                     All
                 </button>
 
-                {/* Named tabs */}
                 {tabs.map(tab => (
                     <div key={tab.id} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                        <button
-                            type="button"
-                            onClick={() => setActiveTabId(tab.id)}
+                        <button type="button" onClick={() => setActiveTabId(tab.id)}
                             style={{
-                                padding: '10px 12px 10px 16px', border: 'none', background: 'none', cursor: 'pointer',
-                                fontSize: '0.88rem', fontWeight: activeTabId === tab.id ? 700 : 500,
-                                color: activeTabId === tab.id ? '#007AFF' : '#555',
-                                borderBottom: activeTabId === tab.id ? '2px solid #007AFF' : '2px solid transparent',
+                                padding: '10px 14px 10px 18px', border: 'none', background: 'none', cursor: 'pointer',
+                                fontSize: '0.82rem', fontWeight: 700,
+                                color: activeTabId === tab.id ? SYS.primary : SYS.text,
+                                borderBottom: activeTabId === tab.id ? `3px solid ${SYS.primary}` : '3px solid transparent',
+                                textTransform: 'uppercase', letterSpacing: '0.4px',
                                 whiteSpace: 'nowrap',
                             }}>
                             {tab.name}
@@ -343,18 +388,18 @@ const Budget = ({ onBackToTasks }) => {
                         {confirmDeleteTab === tab.id ? (
                             <>
                                 <button type="button" onClick={() => handleDeleteTab(tab.id)}
-                                    style={{ background: '#FF3B30', color: '#fff', border: 'none', borderRadius: 4, padding: '2px 8px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', marginRight: 2 }}>
+                                    style={{ background: SYS.accent, color: '#fff', border: `2px solid ${SYS.border}`, padding: '2px 8px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', marginRight: 2, textTransform: 'uppercase' }}>
                                     Delete?
                                 </button>
                                 <button type="button" onClick={() => setConfirmDeleteTab(null)}
-                                    style={{ background: 'none', border: 'none', color: '#8E8E93', cursor: 'pointer', fontSize: '0.8rem', padding: '2px 4px' }}>
+                                    style={{ background: 'none', border: 'none', color: SYS.light, cursor: 'pointer', fontSize: '0.8rem', padding: '2px 4px', fontWeight: 700 }}>
                                     ✕
                                 </button>
                             </>
                         ) : (
                             <button type="button" onClick={() => setConfirmDeleteTab(tab.id)}
                                 title="Delete tab"
-                                style={{ background: 'none', border: 'none', color: '#C7C7CC', cursor: 'pointer', fontSize: '0.75rem', padding: '2px 4px', lineHeight: 1 }}>
+                                style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: '0.75rem', padding: '2px 4px', lineHeight: 1, fontWeight: 700 }}>
                                 ✕
                             </button>
                         )}
@@ -363,95 +408,102 @@ const Budget = ({ onBackToTasks }) => {
 
                 {/* Add tab */}
                 {addingTab ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 0', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 0 6px 8px', flexShrink: 0 }}>
                         <input
                             autoFocus
                             value={newTabName}
                             onChange={e => setNewTabName(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter') handleAddTab(); if (e.key === 'Escape') { setAddingTab(false); setNewTabName(''); } }}
                             placeholder="Tab name…"
-                            style={{ padding: '4px 8px', borderRadius: 6, border: '1.5px solid #007AFF', fontSize: '0.82rem', width: 120, outline: 'none' }}
+                            style={{ padding: '4px 8px', border: `2px solid ${SYS.border}`, fontSize: '0.8rem', width: 120, outline: 'none', fontFamily: 'inherit' }}
                         />
                         <button type="button" onClick={handleAddTab}
-                            style={{ padding: '4px 10px', border: 'none', borderRadius: 6, background: '#007AFF', color: '#fff', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
+                            style={{ padding: '4px 10px', border: `2px solid ${SYS.border}`, background: SYS.primary, color: '#fff', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', textTransform: 'uppercase' }}>
                             Add
                         </button>
                         <button type="button" onClick={() => { setAddingTab(false); setNewTabName(''); }}
-                            style={{ background: 'none', border: 'none', color: '#8E8E93', cursor: 'pointer', fontSize: '0.9rem' }}>
+                            style={{ background: 'none', border: 'none', color: SYS.light, cursor: 'pointer', fontSize: '0.9rem', fontWeight: 700 }}>
                             ✕
                         </button>
                     </div>
                 ) : (
                     <button type="button" onClick={() => setAddingTab(true)}
                         title="Add tab"
-                        style={{ padding: '10px 10px', border: 'none', background: 'none', cursor: 'pointer', color: '#007AFF', fontSize: '1.1rem', flexShrink: 0 }}>
+                        style={{ padding: '10px 12px', border: 'none', background: 'none', cursor: 'pointer', color: SYS.primary, fontSize: '1.2rem', flexShrink: 0, fontWeight: 700 }}>
                         +
                     </button>
                 )}
             </div>
 
-            <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px 20px' }}>
+            <div style={{ maxWidth: 920, margin: '0 auto', padding: '24px 20px' }}>
 
                 {/* ── Error ── */}
                 {error && (
-                    <div style={{ background: '#FFE5E5', border: '1px solid #FF3B30', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: '#CC0000', fontSize: '0.85rem' }}>
+                    <div style={{
+                        background: '#fff0f0', border: `2px solid ${SYS.accent}`,
+                        padding: '10px 14px', marginBottom: 16,
+                        color: SYS.accent, fontSize: '0.85rem', fontWeight: 600,
+                    }}>
                         {error}
                     </div>
                 )}
 
                 {/* ── Add/Edit form ── */}
                 {showForm && (
-                    <div id="budget-form" style={{ marginBottom: 20 }}>
-                        <EntryForm
-                            initial={formInitial}
-                            onSave={handleSave}
-                            onCancel={handleCancel}
-                            loading={loading}
-                        />
+                    <div id="budget-form">
+                        <EntryForm initial={formInitial} onSave={handleSave} onCancel={handleCancel} loading={loading} />
                     </div>
                 )}
 
                 {/* ── Balance as of date ── */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 500, color: '#555' }}>Balance as of</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', color: SYS.light }}>
+                        Balance as of
+                    </span>
                     <input type="date" value={cutoff} onChange={e => setCutoff(e.target.value)}
-                        style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid rgba(0,0,0,0.18)', fontSize: '0.9rem', fontFamily: 'inherit' }} />
-                    <span style={{ fontSize: '0.78rem', color: '#8E8E93' }}>
-                        (entries after this date are dimmed)
+                        style={{ padding: '6px 10px', border: `2px solid ${SYS.border}`, fontSize: '0.88rem', fontFamily: 'inherit', outline: 'none' }} />
+                    <span style={{ fontSize: '0.75rem', color: SYS.light }}>
+                        (future entries are dimmed)
                     </span>
                 </div>
 
                 {/* ── Summary cards ── */}
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 24 }}>
-                    <SummaryCard icon={TrendingUp} label="Total Income" amount={income} color="#34C759" sub="+" />
-                    <SummaryCard icon={TrendingDown} label="Total Expenses" amount={outcome} color="#FF3B30" sub="−" />
-                    <SummaryCard icon={Scale} label="Balance" amount={net} color={net >= 0 ? '#007AFF' : '#FF3B30'} sub={net >= 0 ? '+' : '−'} />
+                    <SummaryCard icon={TrendingUp}   label="Total Income"   amount={income}  color={SYS.success} sub="+" />
+                    <SummaryCard icon={TrendingDown} label="Total Expenses" amount={outcome} color={SYS.accent}  sub="−" />
+                    <SummaryCard icon={Scale}        label="Balance"        amount={net}     color={net >= 0 ? SYS.primary : SYS.accent} sub={net >= 0 ? '+' : '−'} />
                 </div>
 
                 {/* ── Entry list ── */}
-                <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
+                <div style={{ background: SYS.bg, border: `3px solid ${SYS.border}`, overflow: 'hidden' }}>
                     {/* List header */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '0.5px solid rgba(0,0,0,0.08)' }}>
+                    <div style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '10px 16px', borderBottom: `2px solid ${SYS.border}`,
+                        background: '#F5F5F5',
+                    }}>
                         <div style={{ display: 'flex', gap: 6 }}>
                             {[['all', 'All'], ['income', 'Income'], ['outcome', 'Expenses']].map(([val, label]) => (
                                 <button key={val} type="button" onClick={() => setTypeFilter(val)}
-                                    style={filterBtnStyle(typeFilter === val)}>
+                                    style={filterBtn(typeFilter === val, val === 'income' ? SYS.success : val === 'outcome' ? SYS.accent : SYS.primary)}>
                                     {label}
                                 </button>
                             ))}
                         </div>
-                        <span style={{ fontSize: '0.78rem', color: '#8E8E93' }}>
+                        <span style={{ fontSize: '0.75rem', color: SYS.light, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                             {visibleEntries.length} entr{visibleEntries.length === 1 ? 'y' : 'ies'}
                         </span>
                     </div>
 
                     {/* Rows */}
                     {loading && entries.length === 0 ? (
-                        <div style={{ padding: '32px', textAlign: 'center', color: '#8E8E93', fontSize: '0.9rem' }}>Loading…</div>
+                        <div style={{ padding: '32px', textAlign: 'center', color: SYS.light, fontSize: '0.9rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                            Loading…
+                        </div>
                     ) : visibleEntries.length === 0 ? (
-                        <div style={{ padding: '48px 24px', textAlign: 'center', color: '#8E8E93' }}>
+                        <div style={{ padding: '48px 24px', textAlign: 'center', color: SYS.light }}>
                             <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>💰</div>
-                            <div style={{ fontWeight: 600, marginBottom: 4 }}>No entries yet</div>
+                            <div style={{ fontWeight: 700, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.4px' }}>No entries yet</div>
                             <div style={{ fontSize: '0.85rem' }}>Add your first income or expense above.</div>
                         </div>
                     ) : (

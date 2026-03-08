@@ -49,8 +49,11 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
 
     useEffect(() => {
         const initializeData = async () => {
-            const fetchedTabs = await fetchTabs();
-            await checkOrphanedTransactions();
+            // Phase 1: tabs + orphan check in parallel
+            const [fetchedTabs] = await Promise.all([
+                fetchTabs(),
+                checkOrphanedTransactions(),
+            ]);
             if (!fetchedTabs || fetchedTabs.length === 0) { setActiveTabId(null); return; }
 
             const savedTabId = storage.get(STORAGE_KEYS.ACTIVE_TAB_ID);
@@ -60,15 +63,24 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
             setActiveTabId(tabIdToUse);
             storage.set(STORAGE_KEYS.ACTIVE_TAB_ID, String(tabIdToUse));
 
-            const fetchedMonths = await fetchSavedMonths(tabIdToUse);
-            await fetchAllDescriptions();
-            await fetchTransactionStats(tabIdToUse);
-
+            // Phase 2: all tab-specific fetches in parallel
+            // Optimistically use the cached month from storage so transactions
+            // load at the same time as months/stats/descriptions — saves 2 round-trips
             const savedMonth = storage.get(STORAGE_KEYS.SELECTED_MONTH);
+            const shouldLoadSpecificMonth = savedMonth && savedMonth !== 'all';
+
+            const [fetchedMonths] = await Promise.all([
+                fetchSavedMonths(tabIdToUse),
+                fetchAllDescriptions(),
+                fetchTransactionStats(tabIdToUse),
+                shouldLoadSpecificMonth
+                    ? fetchMonthTransactions(savedMonth, tabIdToUse)
+                    : fetchAllTransactions(tabIdToUse),
+            ]);
+
+            // Fallback: if cached month no longer exists in the list, load all
             const monthList = fetchedMonths || [];
-            if (savedMonth && savedMonth !== 'all' && monthList.some(m => (m.month_year ?? m) === savedMonth)) {
-                await fetchMonthTransactions(savedMonth, tabIdToUse);
-            } else {
+            if (shouldLoadSpecificMonth && !monthList.some(m => (m.month_year ?? m) === savedMonth)) {
                 await fetchAllTransactions(tabIdToUse);
             }
         };
@@ -87,10 +99,13 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         setDescriptionFilter('');
         setTypeFilter('all');
         setVisibleTransactions(50);
-        await fetchSavedMonths(tabId);
-        await fetchAllDescriptions();
-        await fetchTransactionStats(tabId);
-        await fetchAllTransactions(tabId);
+        // All four fetches are independent — run in parallel
+        await Promise.all([
+            fetchSavedMonths(tabId),
+            fetchAllDescriptions(),
+            fetchTransactionStats(tabId),
+            fetchAllTransactions(tabId),
+        ]);
     }, [fetchSavedMonths, fetchAllDescriptions, fetchTransactionStats, fetchAllTransactions,
         setActiveTabId, setSelectedMonth, setMonthTransactions, setUploadedData, setSearchTerm,
         setDescriptionFilter, setTypeFilter]);
