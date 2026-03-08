@@ -71,7 +71,7 @@ def forgot_password():
         resend_api_key = os.environ.get('RESEND_API_KEY', '').strip()
         if resend_api_key:
             payload = _json.dumps({
-                'from': 'Task Tracker <no-reply@drpitz.club>',
+                'from': 'Task Tracker <noreply@drpitz.club>',
                 'to': [user['email']],
                 'subject': 'Password Reset Request - Task Tracker',
                 'text': email_body,
