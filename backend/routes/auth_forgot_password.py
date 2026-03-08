@@ -82,6 +82,7 @@ def forgot_password():
                 headers={
                     'Authorization': f'Bearer {resend_api_key}',
                     'Content-Type': 'application/json',
+                    'User-Agent': 'resend-python/2.0.0',
                 },
                 method='POST',
             )
