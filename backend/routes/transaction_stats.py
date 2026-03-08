@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from config import get_db_connection, token_required, decrypt_field
 from mysql.connector import Error
+from concurrent.futures import ThreadPoolExecutor
 
 transaction_stats_bp = Blueprint('transaction_stats', __name__)
 
@@ -53,71 +54,73 @@ def get_transaction_stats(payload):
 
             rows = cursor.fetchall()
 
-            # Aggregate by type in Python after decrypting amounts
-            type_stats = {}
-            for row in rows:
-                t = row['transaction_type'] or 'unknown'
-                if t not in type_stats:
-                    type_stats[t] = {
-                        'transaction_type': t,
-                        'transaction_count': 0,
-                        'total_amount': 0.0,
-                        'avg_amount': 0.0,
-                        'first_date': row['transaction_date'],
-                        'last_date': row['transaction_date']
-                    }
-                type_stats[t]['transaction_count'] += 1
-                try:
-                    decrypted = decrypt_field(row['amount'])
-                    amt = float(decrypted) if decrypted else 0.0
-                except (ValueError, TypeError):
-                    amt = 0.0
-                type_stats[t]['total_amount'] += amt
-                if row['transaction_date']:
-                    if not type_stats[t]['first_date'] or row['transaction_date'] < type_stats[t]['first_date']:
-                        type_stats[t]['first_date'] = row['transaction_date']
-                    if not type_stats[t]['last_date'] or row['transaction_date'] > type_stats[t]['last_date']:
-                        type_stats[t]['last_date'] = row['transaction_date']
+        # Decrypt each amount ONCE in parallel, then reuse for both aggregations
+        def _decrypt_amount(row):
+            try:
+                decrypted = decrypt_field(row['amount'])
+                return float(decrypted) if decrypted else 0.0
+            except (ValueError, TypeError):
+                return 0.0
 
-            by_type = []
-            for stat in type_stats.values():
-                if stat['transaction_count'] > 0:
-                    stat['avg_amount'] = stat['total_amount'] / stat['transaction_count']
-                if stat['first_date']:
-                    stat['first_date'] = stat['first_date'].isoformat()
-                if stat['last_date']:
-                    stat['last_date'] = stat['last_date'].isoformat()
-                by_type.append(stat)
+        workers = min(len(rows), 8) if rows else 1
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            amounts = list(ex.map(_decrypt_amount, rows)) if rows else []
 
-            # Aggregate monthly breakdown by type in Python
-            monthly_stats = {}
-            for row in rows:
-                key = (row['month_year'], row['transaction_type'] or 'unknown')
-                if key not in monthly_stats:
-                    monthly_stats[key] = {
-                        'month_year': row['month_year'],
-                        'transaction_type': key[1],
-                        'transaction_count': 0,
-                        'total_amount': 0.0
-                    }
-                monthly_stats[key]['transaction_count'] += 1
-                try:
-                    decrypted = decrypt_field(row['amount'])
-                    amt = float(decrypted) if decrypted else 0.0
-                except (ValueError, TypeError):
-                    amt = 0.0
-                monthly_stats[key]['total_amount'] += amt
+        # Build both aggregations in a single pass over pre-decrypted data
+        type_stats = {}
+        monthly_stats = {}
 
-            monthly_by_type = sorted(
-                monthly_stats.values(),
-                key=lambda x: (x['month_year'], x['transaction_type']),
-                reverse=True
-            )
+        for row, amt in zip(rows, amounts):
+            t = row['transaction_type'] or 'unknown'
 
-            return jsonify({
-                'by_type': by_type,
-                'monthly_by_type': monthly_by_type
-            })
+            # --- by_type ---
+            if t not in type_stats:
+                type_stats[t] = {
+                    'transaction_type': t,
+                    'transaction_count': 0,
+                    'total_amount': 0.0,
+                    'avg_amount': 0.0,
+                    'first_date': row['transaction_date'],
+                    'last_date': row['transaction_date'],
+                }
+            type_stats[t]['transaction_count'] += 1
+            type_stats[t]['total_amount'] += amt
+            if row['transaction_date']:
+                if not type_stats[t]['first_date'] or row['transaction_date'] < type_stats[t]['first_date']:
+                    type_stats[t]['first_date'] = row['transaction_date']
+                if not type_stats[t]['last_date'] or row['transaction_date'] > type_stats[t]['last_date']:
+                    type_stats[t]['last_date'] = row['transaction_date']
+
+            # --- monthly_by_type ---
+            key = (row['month_year'], t)
+            if key not in monthly_stats:
+                monthly_stats[key] = {
+                    'month_year': row['month_year'],
+                    'transaction_type': t,
+                    'transaction_count': 0,
+                    'total_amount': 0.0,
+                }
+            monthly_stats[key]['transaction_count'] += 1
+            monthly_stats[key]['total_amount'] += amt
+
+        # Finalize by_type
+        by_type = []
+        for stat in type_stats.values():
+            if stat['transaction_count'] > 0:
+                stat['avg_amount'] = stat['total_amount'] / stat['transaction_count']
+            if stat['first_date']:
+                stat['first_date'] = stat['first_date'].isoformat()
+            if stat['last_date']:
+                stat['last_date'] = stat['last_date'].isoformat()
+            by_type.append(stat)
+
+        monthly_by_type = sorted(
+            monthly_stats.values(),
+            key=lambda x: (x['month_year'], x['transaction_type']),
+            reverse=True
+        )
+
+        return jsonify({'by_type': by_type, 'monthly_by_type': monthly_by_type})
 
     except Error as e:
         current_app.logger.error('transaction_query db error: %s', e, exc_info=True)
