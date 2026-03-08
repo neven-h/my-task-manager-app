@@ -20,7 +20,7 @@ const useClientsManagement = () => {
         try {
             setLoading(true);
             setError(null);
-            const response = await fetch(`${API_BASE}/clients/manage`, { headers: getAuthHeaders() });
+            const response = await fetch(`${API_BASE}/clients`, { headers: getAuthHeaders() });
             if (!response.ok) {
                 if (response.status === 401) throw new Error('Authentication required. Please log in.');
                 if (response.status === 403) throw new Error('Access denied. Admin privileges required.');
