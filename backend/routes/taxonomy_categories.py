@@ -48,7 +48,7 @@ def manage_categories(payload):
             label = data.get('label', '').strip()
             color = data.get('color', '#0d6efd')
             icon = data.get('icon', '\U0001f4dd')
-            owner = username if user_role != 'admin' else None
+            owner = username
 
             if not category_id or not label:
                 return jsonify({'error': 'Category ID and label are required'}), 400
@@ -89,13 +89,12 @@ def update_delete_category(payload, category_id):
             with get_db_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
 
-                if user_role != 'admin':
-                    cursor.execute("SELECT owner FROM categories_master WHERE category_id = %s", (category_id,))
-                    row = cursor.fetchone()
-                    if not row:
-                        return jsonify({'error': 'Category not found'}), 404
-                    if row['owner'] != username:
-                        return jsonify({'error': 'Access denied'}), 403
+                cursor.execute("SELECT owner FROM categories_master WHERE category_id = %s", (category_id,))
+                row = cursor.fetchone()
+                if not row:
+                    return jsonify({'error': 'Category not found'}), 404
+                if row['owner'] != username:
+                    return jsonify({'error': 'Access denied'}), 403
 
                 cursor.execute("""
                                UPDATE categories_master
@@ -117,13 +116,12 @@ def update_delete_category(payload, category_id):
             with get_db_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
 
-                if user_role != 'admin':
-                    cursor.execute("SELECT owner FROM categories_master WHERE category_id = %s", (category_id,))
-                    row = cursor.fetchone()
-                    if not row:
-                        return jsonify({'error': 'Category not found'}), 404
-                    if row['owner'] != username:
-                        return jsonify({'error': 'Access denied'}), 403
+                cursor.execute("SELECT owner FROM categories_master WHERE category_id = %s", (category_id,))
+                row = cursor.fetchone()
+                if not row:
+                    return jsonify({'error': 'Category not found'}), 404
+                if row['owner'] != username:
+                    return jsonify({'error': 'Access denied'}), 403
 
                 cursor.execute("DELETE FROM categories_master WHERE category_id = %s", (category_id,))
                 connection.commit()

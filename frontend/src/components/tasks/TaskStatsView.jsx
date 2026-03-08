@@ -1,13 +1,23 @@
 import React from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { useTaskContext } from '../../context/TaskContext';
 import ExpandableTaskBreakdown from './ExpandableTaskBreakdown';
 
 const TaskStatsView = () => {
-    const { stats, tasks } = useTaskContext();
+    const { stats, tasks, setView } = useTaskContext();
 
     return (
         <div style={{display: 'flex', flexDirection: 'column', gap: '32px'}}>
-            <h2 style={{fontSize: '2rem', fontWeight: 900}}>Statistics</h2>
+            <div style={{display: 'flex', alignItems: 'center', gap: '16px'}}>
+                <button
+                    onClick={() => setView('list')}
+                    className="btn btn-white"
+                    style={{padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '6px'}}
+                >
+                    <ArrowLeft size={16}/> Tasks
+                </button>
+                <h2 style={{fontSize: '2rem', fontWeight: 900, margin: 0}}>Statistics</h2>
+            </div>
 
             {stats && (
                 <>

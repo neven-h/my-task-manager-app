@@ -33,15 +33,18 @@ const TaskHeader = ({ showSidebar, setShowSidebar, setShowMobileMenu, setShowMob
                 overflow: 'visible'
             }}>
                 <div style={{ flexShrink: 0, minWidth: '200px' }}>
-                    <h1 style={{
-                        fontFamily: '"Inter", sans-serif',
-                        fontSize: 'clamp(1.5rem, 5vw, 3rem)',
-                        fontWeight: 900,
-                        margin: '0 0 4px 0',
-                        letterSpacing: '-1px',
-                        textTransform: 'uppercase',
-                        whiteSpace: 'nowrap'
-                    }}>
+                    <h1
+                        onClick={() => { setAppView('tasks'); setView('list'); }}
+                        style={{
+                            fontFamily: '"Inter", sans-serif',
+                            fontSize: 'clamp(1.5rem, 5vw, 3rem)',
+                            fontWeight: 900,
+                            margin: '0 0 4px 0',
+                            letterSpacing: '-1px',
+                            textTransform: 'uppercase',
+                            whiteSpace: 'nowrap',
+                            cursor: 'pointer',
+                        }}>
                         Task Tracker
                     </h1>
                     <p style={{
@@ -104,6 +107,10 @@ const TaskHeader = ({ showSidebar, setShowSidebar, setShowMobileMenu, setShowMob
                             👤 {authUser} (admin)
                         </span>
                     )}
+                    {/* Tasks button - always first */}
+                    <button className="btn btn-yellow" onClick={() => { setAppView('tasks'); setView('list'); }} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
+                        Tasks
+                    </button>
                     {/* Bank Transactions - for admin, shared, AND limited users */}
                     {(isAdmin || isSharedUser || isLimitedUser) && (
                         <button className="btn btn-blue" onClick={() => setAppView('transactions')} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
@@ -130,22 +137,15 @@ const TaskHeader = ({ showSidebar, setShowSidebar, setShowMobileMenu, setShowMob
                     )}
                     {/* Budget */}
                     {!isSharedUser && (
-                        <button className="btn btn-green" onClick={() => setAppView('budget')} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
+                        <button className="btn btn-red" onClick={() => setAppView('budget')} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
                             <PiggyBank size={16} style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>
                             Budget
                         </button>
                     )}
                     {/* Stats button */}
-                    <button className="btn btn-yellow" onClick={() => setView(view === 'list' ? 'stats' : 'list')} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
-                        {view === 'list' ? (
-                            <><BarChart3 size={16} style={{
-                                display: 'inline',
-                                verticalAlign: 'middle',
-                                marginRight: '4px'
-                            }}/>Stats</>
-                        ) : (
-                            <>Tasks</>
-                        )}
+                    <button className="btn btn-yellow" onClick={() => { setAppView('tasks'); setView(view === 'list' ? 'stats' : 'list'); }} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
+                        <BarChart3 size={16} style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>
+                        Stats
                     </button>
                     <button className="btn btn-white" onClick={() => navigate('/settings')} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
                         <Settings size={16}

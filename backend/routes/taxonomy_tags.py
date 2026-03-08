@@ -56,7 +56,7 @@ def manage_tags(payload):
             data = request.json
             name = data.get('name', '').strip()
             color = data.get('color', '#0d6efd')
-            owner = username if user_role != 'admin' else None
+            owner = username
 
             if not name:
                 return jsonify({'error': 'Tag name is required'}), 400
@@ -93,13 +93,12 @@ def update_delete_tag(payload, tag_id):
             with get_db_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
 
-                if user_role != 'admin':
-                    cursor.execute("SELECT owner FROM tags WHERE id = %s", (tag_id,))
-                    row = cursor.fetchone()
-                    if not row:
-                        return jsonify({'error': 'Tag not found'}), 404
-                    if row['owner'] != username:
-                        return jsonify({'error': 'Access denied'}), 403
+                cursor.execute("SELECT owner FROM tags WHERE id = %s", (tag_id,))
+                row = cursor.fetchone()
+                if not row:
+                    return jsonify({'error': 'Tag not found'}), 404
+                if row['owner'] != username:
+                    return jsonify({'error': 'Access denied'}), 403
 
                 cursor.execute("UPDATE tags SET name = %s, color = %s WHERE id = %s", (name, color, tag_id))
                 connection.commit()
@@ -117,13 +116,12 @@ def update_delete_tag(payload, tag_id):
             with get_db_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
 
-                if user_role != 'admin':
-                    cursor.execute("SELECT owner FROM tags WHERE id = %s", (tag_id,))
-                    row = cursor.fetchone()
-                    if not row:
-                        return jsonify({'error': 'Tag not found'}), 404
-                    if row['owner'] != username:
-                        return jsonify({'error': 'Access denied'}), 403
+                cursor.execute("SELECT owner FROM tags WHERE id = %s", (tag_id,))
+                row = cursor.fetchone()
+                if not row:
+                    return jsonify({'error': 'Tag not found'}), 404
+                if row['owner'] != username:
+                    return jsonify({'error': 'Access denied'}), 403
 
                 cursor.execute("DELETE FROM tags WHERE id = %s", (tag_id,))
                 connection.commit()

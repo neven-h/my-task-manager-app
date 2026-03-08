@@ -48,10 +48,8 @@ def _ensure_table(conn):
     cursor.close()
 
 
-def _owner_filter(user_role, username):
+def _owner_filter(username):
     """Return (where_clause, params) for owner-scoped queries."""
-    if user_role == 'admin':
-        return '', []
     return ' AND owner = %s', [username]
 
 
@@ -67,7 +65,7 @@ def get_budget_entries(payload):
         with get_db_connection() as conn:
             _ensure_table(conn)
             cursor = conn.cursor(dictionary=True)
-            where, params = _owner_filter(user_role, username)
+            where, params = _owner_filter(username)
             sql = "SELECT * FROM budget_entries WHERE 1=1"
             if where:
                 sql += where
@@ -159,7 +157,7 @@ def update_budget_entry(payload, entry_id):
             entry = cursor.fetchone()
             if not entry:
                 return jsonify({'error': 'Entry not found'}), 404
-            if user_role != 'admin' and (not username or entry.get('owner') != username):
+            if entry.get('owner') != username:
                 return jsonify({'error': 'Access denied'}), 403
 
             fields, params = [], []
@@ -214,7 +212,7 @@ def delete_budget_entry(payload, entry_id):
             entry = cursor.fetchone()
             if not entry:
                 return jsonify({'error': 'Entry not found'}), 404
-            if user_role != 'admin' and (not username or entry.get('owner') != username):
+            if entry.get('owner') != username:
                 return jsonify({'error': 'Access denied'}), 403
             cursor.execute("DELETE FROM budget_entries WHERE id = %s", (entry_id,))
             conn.commit()

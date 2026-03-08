@@ -35,13 +35,10 @@ def get_budget_tabs(payload):
         with get_db_connection() as conn:
             _ensure_tabs_table(conn)
             cursor = conn.cursor(dictionary=True)
-            if user_role == 'admin':
-                cursor.execute("SELECT * FROM budget_tabs ORDER BY created_at ASC")
-            else:
-                cursor.execute(
-                    "SELECT * FROM budget_tabs WHERE owner = %s ORDER BY created_at ASC",
-                    (username,)
-                )
+            cursor.execute(
+                "SELECT * FROM budget_tabs WHERE owner = %s ORDER BY created_at ASC",
+                (username,)
+            )
             tabs = cursor.fetchall()
             for t in tabs:
                 if t.get('created_at'):
@@ -100,7 +97,7 @@ def rename_budget_tab(payload, tab_id):
             tab = cursor.fetchone()
             if not tab:
                 return jsonify({'error': 'Tab not found'}), 404
-            if user_role != 'admin' and tab.get('owner') != username:
+            if tab.get('owner') != username:
                 return jsonify({'error': 'Access denied'}), 403
             cursor.execute(
                 "UPDATE budget_tabs SET name = %s WHERE id = %s",
@@ -131,7 +128,7 @@ def delete_budget_tab(payload, tab_id):
             tab = cursor.fetchone()
             if not tab:
                 return jsonify({'error': 'Tab not found'}), 404
-            if user_role != 'admin' and tab.get('owner') != username:
+            if tab.get('owner') != username:
                 return jsonify({'error': 'Access denied'}), 403
             # Unassign entries from this tab (keep the entries, just remove the tab link)
             cursor.execute(
