@@ -15,6 +15,8 @@ task_export_bp = Blueprint('task_export', __name__)
 def export_csv(payload):
     """Export tasks to CSV"""
     try:
+        username = payload.get('username')
+        user_role = payload.get('role', 'limited')
         category = request.args.get('category')
         status = request.args.get('status')
         client = request.args.get('client')
@@ -27,6 +29,11 @@ def export_csv(payload):
 
             query = "SELECT * FROM tasks WHERE 1=1"
             params = []
+
+            # Always scope to the requesting user's own tasks
+            if user_role != 'shared':
+                query += " AND created_by = %s"
+                params.append(username)
 
             if category and category != 'all':
                 query += " AND category = %s"
@@ -85,6 +92,8 @@ def export_csv(payload):
 def export_hours_report(payload):
     """Export tasks to CSV in hours report format"""
     try:
+        username = payload.get('username')
+        user_role = payload.get('role', 'limited')
         category = request.args.get('category')
         status = request.args.get('status')
         client = request.args.get('client')
@@ -97,6 +106,11 @@ def export_hours_report(payload):
 
             query = "SELECT * FROM tasks WHERE 1=1"
             params = []
+
+            # Always scope to the requesting user's own tasks
+            if user_role != 'shared':
+                query += " AND created_by = %s"
+                params.append(username)
 
             if category and category != 'all':
                 query += " AND category = %s"

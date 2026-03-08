@@ -20,22 +20,12 @@ def manage_categories(payload):
         try:
             with get_db_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
-
-                if user_role == 'limited':
-                    # Limited users only see their own categories
-                    cursor.execute("""
-                        SELECT category_id as id, label, color, icon
-                        FROM categories_master
-                        WHERE owner = %s
-                        ORDER BY label
-                    """, (username,))
-                else:
-                    cursor.execute("""
-                        SELECT category_id as id, label, color, icon
-                        FROM categories_master
-                        ORDER BY label
-                    """)
-
+                cursor.execute("""
+                    SELECT category_id as id, label, color, icon
+                    FROM categories_master
+                    WHERE owner = %s
+                    ORDER BY label
+                """, (username,))
                 return jsonify(cursor.fetchall())
         except Error as e:
             current_app.logger.error('taxonomy db error: %s', e, exc_info=True)
