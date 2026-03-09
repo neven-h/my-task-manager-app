@@ -23,15 +23,15 @@ const useMobileBankData = (activeTabId) => {
         return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     }, []);
 
-    const fetchTransactions = useCallback(async () => {
+    const fetchTransactions = useCallback(async (month = selectedMonth) => {
         // Skip loading spinner if we already have cached data for this tab+month
-        const isAllMonths = selectedMonth === 'all';
+        const isAllMonths = month === 'all';
         const hasCached = isAllMonths && !!cacheRef.current[activeTabId]?.transactions;
         if (!hasCached) setLoading(true);
         try {
             const path = isAllMonths
                 ? `${API_BASE}/transactions/all?tab_id=${activeTabId}`
-                : `${API_BASE}/transactions/${selectedMonth}?tab_id=${activeTabId}`;
+                : `${API_BASE}/transactions/${month}?tab_id=${activeTabId}`;
             const response = await fetch(path, { headers: getAuthHeaders() });
             const data = await response.json();
             const result = Array.isArray(data) ? data : [];
@@ -47,7 +47,7 @@ const useMobileBankData = (activeTabId) => {
         } finally {
             setLoading(false);
         }
-    }, [activeTabId, selectedMonth]);
+    }, [activeTabId]);
 
     const fetchMonths = useCallback(async () => {
         try {
@@ -57,7 +57,6 @@ const useMobileBankData = (activeTabId) => {
                 ? data.map(m => (typeof m === 'string' ? m : (m && m.month_year) || '')).filter(Boolean)
                 : [];
             setAvailableMonths(list);
-            setSelectedMonth('all');
             cacheRef.current[activeTabId] = { ...cacheRef.current[activeTabId], months: list };
         } catch (err) {
             console.error('Error fetching months:', err);
@@ -92,12 +91,14 @@ const useMobileBankData = (activeTabId) => {
         }
         fetchMonths();
         fetchStats();
-    }, [activeTabId, fetchMonths, fetchStats]);
+        fetchTransactions('all');
+    }, [activeTabId, fetchMonths, fetchStats, fetchTransactions]);
 
+    // Only fires when the user picks a different month (not on tab switch)
     useEffect(() => {
-        if (activeTabId === null) return;
-        fetchTransactions();
-    }, [activeTabId, selectedMonth, fetchTransactions]);
+        if (activeTabId === null || selectedMonth === 'all') return;
+        fetchTransactions(selectedMonth);
+    }, [selectedMonth]); // eslint-disable-line react-hooks/exhaustive-deps
 
     return {
         transactions, setTransactions,

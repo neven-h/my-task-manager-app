@@ -71,10 +71,9 @@ def get_portfolio_entries(payload):
                 where_clause += " AND tab_id = %s"
                 params.append(tab_id)
 
-            # Role-based filtering
-            if user_role == 'limited':
-                where_clause += " AND created_by = %s"
-                params.append(username)
+            # Always scope to the requesting user's own entries
+            where_clause += " AND created_by = %s"
+            params.append(username)
 
             # Date range filtering
             if start_date:
@@ -172,9 +171,9 @@ def get_portfolio_stock_names(payload):
                 query += " AND tab_id = %s"
                 params.append(tab_id)
 
-            if user_role == 'limited':
-                query += " AND created_by = %s"
-                params.append(username)
+            # Always scope to the requesting user's own entries
+            query += " AND created_by = %s"
+            params.append(username)
 
             query += " ORDER BY name ASC"
 

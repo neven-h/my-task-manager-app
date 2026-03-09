@@ -13,10 +13,7 @@ const useMobileStats = (authUser, authRole) => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [statsRes, tasksRes] = await Promise.all([
-                    fetch(`${API_BASE}/stats`, { headers: getAuthHeaders() }),
-                    fetch(`${API_BASE}/tasks`, { headers: getAuthHeaders() })
-                ]);
+                const statsRes = await fetch(`${API_BASE}/stats`, { headers: getAuthHeaders() });
                 if (statsRes.ok) {
                     const data = await statsRes.json();
                     const overall = data.overall || {};
@@ -34,14 +31,22 @@ const useMobileStats = (authUser, authRole) => {
                         monthly: data.monthly || []
                     });
                 }
+            } catch (err) {
+                console.error('Error fetching stats:', err);
+            } finally {
+                // Unblock the UI as soon as stats are ready — tasks load in background
+                setLoading(false);
+            }
+
+            // Fetch full task list in background for the expandable breakdown
+            try {
+                const tasksRes = await fetch(`${API_BASE}/tasks`, { headers: getAuthHeaders() });
                 if (tasksRes.ok) {
                     const tasksData = await tasksRes.json();
                     setTasks(Array.isArray(tasksData) ? tasksData : tasksData.tasks || []);
                 }
             } catch (err) {
-                console.error('Error fetching stats:', err);
-            } finally {
-                setLoading(false);
+                console.error('Error fetching tasks for breakdown:', err);
             }
         };
         fetchData();

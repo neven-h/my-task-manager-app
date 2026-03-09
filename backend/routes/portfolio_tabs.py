@@ -17,12 +17,8 @@ def get_portfolio_tabs(payload):
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
-            query = "SELECT * FROM portfolio_tabs WHERE 1=1"
-            params = []
-
-            if user_role == 'limited':
-                query += " AND owner = %s"
-                params.append(username)
+            query = "SELECT * FROM portfolio_tabs WHERE owner = %s"
+            params = [username]
 
             query += " ORDER BY created_at ASC"
             cursor.execute(query, params)
@@ -97,8 +93,8 @@ def update_portfolio_tab(payload, tab_id):
             if not tab:
                 return jsonify({'error': 'Tab not found'}), 404
 
-            # Authorization check: non-admin users can only modify their own tabs
-            if user_role != 'admin' and tab['owner'] != username:
+            # Authorization check: every user can only modify their own tabs
+            if tab['owner'] != username:
                 return jsonify({'error': 'Access denied'}), 403
 
             # Update the tab
@@ -137,8 +133,8 @@ def delete_portfolio_tab(payload, tab_id):
             if not tab:
                 return jsonify({'error': 'Tab not found'}), 404
 
-            # Authorization check: non-admin users can only delete their own tabs
-            if user_role != 'admin' and tab['owner'] != username:
+            # Authorization check: every user can only delete their own tabs
+            if tab['owner'] != username:
                 return jsonify({'error': 'Access denied'}), 403
 
             # Delete associated portfolio entries first (CASCADE should handle this, but being explicit)
