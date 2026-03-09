@@ -154,9 +154,65 @@ def save_transactions(payload):
 
             return jsonify({
                 'success': True,
-                'message': f'{len(transactions)} transactions saved successfully (encrypted)'
+                'message': f'{len(transactions)} transactions saved successfully (encrypted)',
+                'transaction_ids': [int(tid) for tid in transaction_ids]
             })
 
     except Error as e:
         current_app.logger.error('save_transactions db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
+
+
+@transactions_bp.route('/api/transactions/batch-delete', methods=['DELETE'])
+@token_required
+def batch_delete_transactions(payload):
+    """Delete multiple transactions by IDs (for undo after upload)"""
+    try:
+        data = request.json
+        transaction_ids = data.get('transaction_ids', [])
+        username = payload['username']
+        user_role = payload['role']
+
+        if not transaction_ids or not isinstance(transaction_ids, list):
+            return jsonify({'error': 'transaction_ids array is required'}), 400
+
+        if len(transaction_ids) > 5000:
+            return jsonify({'error': 'Cannot delete more than 5000 transactions at once'}), 400
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            placeholders = ','.join(['%s'] * len(transaction_ids))
+
+            # Ownership check: verify all transactions belong to this user
+            if user_role != 'admin':
+                cursor.execute(
+                    f"SELECT COUNT(*) as cnt FROM bank_transactions WHERE id IN ({placeholders}) AND uploaded_by != %s",
+                    (*transaction_ids, username)
+                )
+                row = cursor.fetchone()
+                if row and row['cnt'] > 0:
+                    return jsonify({'error': 'Access denied: some transactions do not belong to you'}), 403
+
+            cursor = connection.cursor()
+            cursor.execute(
+                f"DELETE FROM bank_transactions WHERE id IN ({placeholders})",
+                tuple(transaction_ids)
+            )
+            deleted_count = cursor.rowcount
+            connection.commit()
+
+            log_bank_transaction_access(
+                username=username,
+                action='BATCH_DELETE',
+                transaction_ids=','.join(str(tid) for tid in transaction_ids[:10]) + ('...' if len(transaction_ids) > 10 else '')
+            )
+
+            return jsonify({
+                'success': True,
+                'message': f'{deleted_count} transactions deleted',
+                'deleted_count': deleted_count
+            })
+
+    except Error as e:
+        current_app.logger.error('batch_delete_transactions db error: %s', e, exc_info=True)
         return jsonify({'error': 'A database error occurred'}), 500

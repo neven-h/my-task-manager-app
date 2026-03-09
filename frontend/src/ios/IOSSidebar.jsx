@@ -6,8 +6,6 @@ import {
     ChevronRight, PiggyBank
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
-import API_BASE from '../config';
-import { getAuthHeaders } from '../api.js';
 import { FONT_STACK } from './theme';
 
 const SPRING = 'cubic-bezier(0.22,1,0.36,1)';
@@ -107,7 +105,7 @@ const Row = ({ icon: Icon, iconBg, label, onClick, destructive = false, showDivi
 };
 
 /* ── Main component ────────────────────────────────────────────────── */
-const IOSSidebar = ({ isOpen, onClose, onOpenSearch }) => {
+const IOSSidebar = ({ isOpen, onClose, onOpenSearch, onOpenUpload }) => {
     const navigate = useNavigate();
     const {
         authUser, isAdmin, isSharedUser, isLimitedUser,
@@ -116,7 +114,6 @@ const IOSSidebar = ({ isOpen, onClose, onOpenSearch }) => {
     } = useTaskContext();
 
     const [closing, setClosing] = useState(false);
-    const uploadRef = React.useRef(null);
 
     const handleClose = () => {
         setClosing(true);
@@ -128,26 +125,6 @@ const IOSSidebar = ({ isOpen, onClose, onOpenSearch }) => {
     const nav = (view) => { setAppView(view); handleClose(); };
     const showFinance = isAdmin || isSharedUser || isLimitedUser;
     const visible = isOpen && !closing;
-
-    const handleUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const fd = new FormData();
-        fd.append('file', file);
-        fd.append('transaction_type', 'credit');
-        try {
-            const res = await fetch(`${API_BASE}/transactions/upload`, {
-                method: 'POST', headers: getAuthHeaders(false), body: fd
-            });
-            const data = await res.json().catch(() => null);
-            if (res.ok) alert(`Successfully uploaded ${data?.transaction_count || '0'} transactions!`);
-            else alert(`Error: ${data?.error || 'Upload failed'}`);
-        } catch (err) {
-            alert(`Error uploading file: ${err?.message || err}`);
-        }
-        handleClose();
-        e.target.value = '';
-    };
 
     return (
         <>
@@ -246,9 +223,7 @@ const IOSSidebar = ({ isOpen, onClose, onOpenSearch }) => {
                             <Row icon={Users}      iconBg="#FF9F0A" label="Clients"
                                 onClick={() => nav('clients')} showDivider />
                             <Row icon={Upload}     iconBg="#007AFF" label="Upload Transactions" isAction
-                                onClick={() => uploadRef.current?.click()} showDivider={false} />
-                            <input ref={uploadRef} type="file" accept=".csv,.xlsx,.xls"
-                                style={{ display: 'none' }} onChange={handleUpload} />
+                                onClick={() => { handleClose(); if (onOpenUpload) onOpenUpload(); }} showDivider={false} />
                         </SectionCard>
                     </>
                 )}
