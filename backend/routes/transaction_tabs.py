@@ -17,12 +17,8 @@ def get_transaction_tabs(payload):
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
-            query = "SELECT * FROM transaction_tabs WHERE 1=1"
-            params = []
-
-            if user_role == 'limited':
-                query += " AND owner = %s"
-                params.append(username)
+            query = "SELECT * FROM transaction_tabs WHERE owner = %s"
+            params = [username]
 
             query += " ORDER BY created_at ASC"
             cursor.execute(query, params)
@@ -90,13 +86,12 @@ def update_transaction_tab(payload, tab_id):
             cursor = connection.cursor(dictionary=True)
 
             # Ownership check
-            if user_role != 'admin':
-                cursor.execute("SELECT owner FROM transaction_tabs WHERE id = %s", (tab_id,))
-                tab = cursor.fetchone()
-                if not tab:
-                    return jsonify({'error': 'Tab not found'}), 404
-                if tab['owner'] != username:
-                    return jsonify({'error': 'Access denied'}), 403
+            cursor.execute("SELECT owner FROM transaction_tabs WHERE id = %s", (tab_id,))
+            tab = cursor.fetchone()
+            if not tab:
+                return jsonify({'error': 'Tab not found'}), 404
+            if tab['owner'] != username:
+                return jsonify({'error': 'Access denied'}), 403
 
             cursor = connection.cursor()
             cursor.execute(
@@ -127,13 +122,12 @@ def delete_transaction_tab(payload, tab_id):
             cursor = connection.cursor(dictionary=True)
 
             # Ownership check
-            if user_role != 'admin':
-                cursor.execute("SELECT owner FROM transaction_tabs WHERE id = %s", (tab_id,))
-                tab = cursor.fetchone()
-                if not tab:
-                    return jsonify({'error': 'Tab not found'}), 404
-                if tab['owner'] != username:
-                    return jsonify({'error': 'Access denied'}), 403
+            cursor.execute("SELECT owner FROM transaction_tabs WHERE id = %s", (tab_id,))
+            tab = cursor.fetchone()
+            if not tab:
+                return jsonify({'error': 'Tab not found'}), 404
+            if tab['owner'] != username:
+                return jsonify({'error': 'Access denied'}), 403
 
             cursor = connection.cursor()
 
