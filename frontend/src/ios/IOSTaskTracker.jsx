@@ -21,6 +21,7 @@ import IOSSearchDrawer from './IOSSearchDrawer';
 import IOSTaskFormModal from './IOSTaskFormModal';
 import IOSBulkTaskModal from './IOSBulkTaskModal';
 import IOSShareTaskModal from './IOSShareTaskModal';
+import MobileUploadFlow from '../mobile/components/bank/MobileUploadFlow';
 import useSwipeBack from './hooks/useSwipeBack';
 
 import { THEME, FONT_STACK } from './theme';
@@ -66,6 +67,7 @@ const IOSTaskTrackerInner = () => {
     const [showSidebar, setShowSidebar] = useState(false);
     const [filterMode, setFilterMode] = useState('all');
     const [showSearchDrawer, setShowSearchDrawer] = useState(false);
+    const [showUploadFlow, setShowUploadFlow] = useState(false);
 
     const goBack = () => setAppView('tasks');
 
@@ -97,8 +99,13 @@ const IOSTaskTrackerInner = () => {
             <IOSActiveFilterBanner />
             <IOSTaskList filterMode={filterMode} />
 
-            <IOSSidebar isOpen={showSidebar} onClose={() => setShowSidebar(false)} onOpenSearch={() => setShowSearchDrawer(true)} />
+            <IOSSidebar isOpen={showSidebar} onClose={() => setShowSidebar(false)} onOpenSearch={() => setShowSearchDrawer(true)} onOpenUpload={() => setShowUploadFlow(true)} />
             <IOSSearchDrawer isOpen={showSearchDrawer} onClose={() => setShowSearchDrawer(false)} />
+
+            <MobileUploadFlow
+                isOpen={showUploadFlow}
+                onClose={() => setShowUploadFlow(false)}
+            />
 
             <IOSTaskFormModal />
             <IOSBulkTaskModal />
