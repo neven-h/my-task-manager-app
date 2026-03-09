@@ -36,7 +36,7 @@ def get_transaction_stats(payload):
                 filters.append("transaction_date <= %s")
                 params.append(end_date)
             if user_role != 'shared':
-                filters.append("uploaded_by = %s")
+                filters.append("(uploaded_by = %s OR uploaded_by IS NULL)")
                 params.append(username)
 
             where_clause = " AND ".join(filters) if filters else "1=1"

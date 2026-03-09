@@ -38,7 +38,7 @@ def get_transaction_months(payload):
 
             # Filter by role — shared role retains cross-user read access; everyone else sees only their own
             if user_role != 'shared':
-                query += " AND uploaded_by = %s"
+                query += " AND (uploaded_by = %s OR uploaded_by IS NULL)"
                 params.append(username)
 
             cursor.execute(query, params)
@@ -136,7 +136,7 @@ def get_all_transactions(payload):
 
             # Filter by role — shared role retains cross-user read access; everyone else sees only their own
             if user_role != 'shared':
-                query += " AND uploaded_by = %s"
+                query += " AND (uploaded_by = %s OR uploaded_by IS NULL)"
                 params.append(username)
 
             query += " ORDER BY transaction_date DESC, id DESC"
