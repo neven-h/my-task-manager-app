@@ -40,6 +40,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         chartData, aggregateByCategory, getFilteredPreview,
     } = filters;
 
+    const [transactionType, setTransactionType] = useState('credit');
     const [visibleTransactions, setVisibleTransactions] = useState(50);
     const [editingTransaction, setEditingTransaction] = useState(null);
     const [showAddForm, setShowAddForm] = useState(false);
@@ -132,7 +133,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
     }, [createFirstTabRaw, fetchTabs, fetchSavedMonths, fetchTransactionStats, fetchAllTransactions,
         setActiveTabId, setMonthTransactions, setSavedMonths, setSelectedMonth, setTransactionStats]);
 
-    const handleFileUpload = useCallback(async (event) => { await handleFileUploadRaw(event, filters.typeFilter); setPreviewFilter('all'); }, [handleFileUploadRaw, filters.typeFilter, setPreviewFilter]);
+    const handleFileUpload = useCallback(async (event) => { await handleFileUploadRaw(event, transactionType); setPreviewFilter('all'); }, [handleFileUploadRaw, transactionType, setPreviewFilter]);
 
     const handleSaveTransactions = useCallback(async () => {
         if (await handleSaveRaw(activeTabId)) { await fetchSavedMonths(activeTabId); await fetchTransactionStats(activeTabId); await fetchAllTransactions(activeTabId); }
@@ -218,6 +219,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         allDescriptions, transactionStats,
         loading, error, setError, success, setSuccess,
         searchTerm, setSearchTerm, descriptionFilter, setDescriptionFilter,
+        transactionType, setTransactionType,
         typeFilter, setTypeFilter, previewFilter, setPreviewFilter,
         visibleTransactions, setVisibleTransactions,
         editingTransaction, setEditingTransaction, showAddForm, setShowAddForm,
