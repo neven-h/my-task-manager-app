@@ -40,11 +40,10 @@ def get_transactions_by_month(payload, month_year):
             query += " AND tab_id = %s"
             params.append(tab_id)
 
-            # Filter by role
-            if user_role == 'limited':
+            # Filter by role — shared role retains cross-user read access; everyone else sees only their own
+            if user_role != 'shared':
                 query += " AND uploaded_by = %s"
                 params.append(username)
-            # admin and shared see all
 
             query += " ORDER BY transaction_date DESC, id DESC"
 
