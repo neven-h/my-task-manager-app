@@ -70,7 +70,7 @@ const UploadPreview = () => {
                         </tr>
                     </thead>
                     <tbody>
-                        {getFilteredPreview().slice(0, 50).map((t, idx) => (
+                        {getFilteredPreview(uploadedData).slice(0, 50).map((t, idx) => (
                             <tr key={idx} style={{ borderBottom: `1px solid ${colors.border}` }}>
                                 <td style={{ padding: '0.75rem 1rem', fontSize: '1rem' }}>{t.transaction_date}</td>
                                 <td style={{ padding: '0.75rem 1rem', fontSize: '1rem' }}>{t.description}</td>
