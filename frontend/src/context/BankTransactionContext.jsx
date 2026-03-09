@@ -22,7 +22,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
     const {
         uploadedData, setUploadedData, savedMonths, setSavedMonths,
         selectedMonth, setSelectedMonth, monthTransactions, setMonthTransactions,
-        allDescriptions, transactionStats, loading, setLoading, error, setError, success, setSuccess,
+        allDescriptions, transactionStats, setTransactionStats, loading, setLoading, error, setError, success, setSuccess,
         tabs, setTabs, activeTabId, setActiveTabId, orphanedCount,
         fetchTabs, checkOrphanedTransactions, adoptOrphanedTransactions: adoptOrphanedRaw,
         handleCreateFirstTab: createFirstTabRaw, fetchAllDescriptions, fetchTransactionStats,
@@ -94,6 +94,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         storage.set(STORAGE_KEYS.ACTIVE_TAB_ID, String(tabId));
         setSelectedMonth(null);
         setMonthTransactions([]);
+        setTransactionStats(null);
         setUploadedData(null);
         setSearchTerm('');
         setDescriptionFilter('');
@@ -107,7 +108,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
             fetchAllTransactions(tabId),
         ]);
     }, [fetchSavedMonths, fetchAllDescriptions, fetchTransactionStats, fetchAllTransactions,
-        setActiveTabId, setSelectedMonth, setMonthTransactions, setUploadedData, setSearchTerm,
+        setActiveTabId, setSelectedMonth, setMonthTransactions, setTransactionStats, setUploadedData, setSearchTerm,
         setDescriptionFilter, setTypeFilter]);
 
     // ==================== WRAPPED CRUD ====================
@@ -122,14 +123,14 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
             await fetchTabs();
             setActiveTabId(result.id);
             storage.set(STORAGE_KEYS.ACTIVE_TAB_ID, String(result.id));
-            setMonthTransactions([]); setSavedMonths([]); setSelectedMonth(null);
+            setMonthTransactions([]); setSavedMonths([]); setSelectedMonth(null); setTransactionStats(null);
             await fetchSavedMonths(result.id);
             await fetchTransactionStats(result.id);
             await fetchAllTransactions(result.id);
         }
         return result;
     }, [createFirstTabRaw, fetchTabs, fetchSavedMonths, fetchTransactionStats, fetchAllTransactions,
-        setActiveTabId, setMonthTransactions, setSavedMonths, setSelectedMonth]);
+        setActiveTabId, setMonthTransactions, setSavedMonths, setSelectedMonth, setTransactionStats]);
 
     const handleFileUpload = useCallback(async (event) => { await handleFileUploadRaw(event, filters.typeFilter); setPreviewFilter('all'); }, [handleFileUploadRaw, filters.typeFilter, setPreviewFilter]);
 
@@ -198,11 +199,11 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
     const onTabCreated = useCallback(async (newTabId) => {
         setActiveTabId(newTabId);
         storage.set(STORAGE_KEYS.ACTIVE_TAB_ID, String(newTabId));
-        setMonthTransactions([]); setSavedMonths([]); setSelectedMonth(null); setVisibleTransactions(50);
+        setMonthTransactions([]); setSavedMonths([]); setSelectedMonth(null); setTransactionStats(null); setVisibleTransactions(50);
         await fetchSavedMonths(newTabId);
         await fetchTransactionStats(newTabId);
         await fetchAllTransactions(newTabId);
-    }, [fetchSavedMonths, fetchTransactionStats, fetchAllTransactions, setActiveTabId, setMonthTransactions, setSavedMonths, setSelectedMonth]);
+    }, [fetchSavedMonths, fetchTransactionStats, fetchAllTransactions, setActiveTabId, setMonthTransactions, setSavedMonths, setSelectedMonth, setTransactionStats]);
 
     const onTabDeleted = useCallback(async (deletedTabId, updatedTabs) => {
         if (activeTabId === deletedTabId) {

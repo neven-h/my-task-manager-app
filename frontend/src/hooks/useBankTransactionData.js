@@ -105,7 +105,7 @@ const useBankTransactionData = () => {
         selectedMonth, setSelectedMonth,
         monthTransactions, setMonthTransactions,
         allDescriptions,
-        transactionStats,
+        transactionStats, setTransactionStats,
 
         // UI state
         loading, setLoading,
