@@ -83,13 +83,25 @@ export function downloadICS(task) {
     const ics = generateICS(task);
     const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${task.title.replace(/[^a-z0-9]/gi, '_')}.ics`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+    // iOS Safari does not support programmatic <a>.click() for blob downloads.
+    // Using window.location.href with an ICS blob triggers the native
+    // "Add to Calendar?" prompt in Safari.
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    if (isIOS) {
+        window.location.href = url;
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } else {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${task.title.replace(/[^a-z0-9]/gi, '_')}.ics`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
 }
 
 /**

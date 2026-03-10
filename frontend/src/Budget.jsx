@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { TrendingUp, TrendingDown, Scale, Edit2, Trash2, Copy } from 'lucide-react';
+import { TrendingUp, TrendingDown, Scale, Edit2, Trash2, Copy, FileDown, Zap } from 'lucide-react';
 import useBudget from './hooks/useBudget';
 import useBudgetTabs from './hooks/useBudgetTabs';
 
@@ -146,8 +146,8 @@ const EntryForm = ({ initial, onSave, onCancel, loading }) => {
     );
 };
 
-// ── EntryRow ───────────────────────────────────────────────────────────────────
-const EntryRow = ({ entry, cutoff, onEdit, onDuplicate, onDelete, loading }) => {
+// ── EntryRow (expandable description history) ─────────────────────────────────
+const EntryRow = ({ entry, cutoff, onEdit, onDuplicate, onDelete, loading, isExpanded, onToggleExpand, history }) => {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const isPast = entry.entry_date <= cutoff;
     const isIncome = entry.type === 'income';
@@ -155,77 +155,209 @@ const EntryRow = ({ entry, cutoff, onEdit, onDuplicate, onDelete, loading }) => 
     const sign = isIncome ? '+' : '−';
 
     return (
-        <div style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            padding: '10px 16px',
-            borderBottom: `1px solid ${SYS.border}`,
-            opacity: isPast ? 1 : 0.4,
-        }}>
-            {/* Type indicator */}
-            <div style={{ width: 8, height: 8, background: amountColor, flexShrink: 0 }} />
+        <>
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '10px 16px',
+                borderBottom: `1px solid ${SYS.border}`,
+                opacity: isPast ? 1 : 0.4,
+            }}>
+                {/* Type indicator */}
+                <div style={{ width: 8, height: 8, background: amountColor, flexShrink: 0 }} />
 
-            {/* Date */}
-            <div style={{ fontSize: '0.78rem', color: SYS.light, width: 68, flexShrink: 0, fontWeight: 600 }}>
-                {new Date(entry.entry_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-            </div>
-
-            {/* Description + category */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {entry.description}
+                {/* Date */}
+                <div style={{ fontSize: '0.78rem', color: SYS.light, width: 68, flexShrink: 0, fontWeight: 600 }}>
+                    {new Date(entry.entry_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                 </div>
-                {(entry.category || entry.notes) && (
-                    <div style={{ fontSize: '0.74rem', color: SYS.light, marginTop: 2 }}>
-                        {[entry.category, entry.notes].filter(Boolean).join(' · ')}
+
+                {/* Description + category (clickable to expand) */}
+                <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => onToggleExpand(entry.id)}>
+                    <div style={{
+                        fontWeight: 600, fontSize: '0.9rem',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        borderBottom: '1px dashed #999', display: 'inline',
+                        paddingBottom: 1,
+                    }}>
+                        {entry.description}
                     </div>
-                )}
+                    {(entry.category || entry.notes) && (
+                        <div style={{ fontSize: '0.74rem', color: SYS.light, marginTop: 2 }}>
+                            {[entry.category, entry.notes].filter(Boolean).join(' · ')}
+                        </div>
+                    )}
+                </div>
+
+                {/* Amount */}
+                <div style={{ fontWeight: 800, fontSize: '0.95rem', color: amountColor, flexShrink: 0 }}>
+                    {sign}{fmt(entry.amount)}
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                    {confirmDelete ? (
+                        <>
+                            <button type="button" onClick={() => { setConfirmDelete(false); onDelete(entry.id); }}
+                                style={{ padding: '3px 10px', border: `2px solid ${SYS.border}`, background: SYS.accent, color: '#fff', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', textTransform: 'uppercase' }}>
+                                Delete?
+                            </button>
+                            <button type="button" onClick={() => setConfirmDelete(false)}
+                                style={{ padding: '3px 8px', border: `2px solid ${SYS.border}`, background: '#fff', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 700 }}>
+                                ✕
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <button type="button" onClick={() => onEdit(entry)}
+                                style={{ background: 'none', border: 'none', padding: '3px 6px', cursor: 'pointer', color: SYS.light }}
+                                title="Edit">
+                                <Edit2 size={14} />
+                            </button>
+                            <button type="button" onClick={() => onDuplicate(entry)}
+                                style={{ background: 'none', border: 'none', padding: '3px 6px', cursor: 'pointer', color: SYS.light }}
+                                title="Duplicate">
+                                <Copy size={14} />
+                            </button>
+                            <button type="button" onClick={() => setConfirmDelete(true)}
+                                style={{ background: 'none', border: 'none', padding: '3px 6px', cursor: 'pointer', color: SYS.light }}
+                                title="Delete">
+                                <Trash2 size={14} />
+                            </button>
+                        </>
+                    )}
+                </div>
             </div>
 
-            {/* Amount */}
-            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: amountColor, flexShrink: 0 }}>
-                {sign}{fmt(entry.amount)}
-            </div>
+            {/* Expanded description history */}
+            {isExpanded && history.length > 0 && (
+                <div style={{ background: '#f9f9f9', borderBottom: `1px solid ${SYS.border}` }}>
+                    <div style={{ padding: '6px 16px 4px 32px', fontSize: '0.7rem', fontWeight: 700, color: SYS.light, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                        Recent with same description
+                    </div>
+                    {history.map(h => (
+                        <div key={h.id} style={{
+                            display: 'flex', alignItems: 'center', gap: 12,
+                            padding: '5px 16px 5px 32px',
+                            fontSize: '0.82rem', color: SYS.light,
+                        }}>
+                            <div style={{ width: 8, height: 8, background: h.type === 'income' ? SYS.success : SYS.accent, flexShrink: 0 }} />
+                            <div style={{ width: 68, flexShrink: 0, fontWeight: 600 }}>
+                                {new Date(h.entry_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            </div>
+                            <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {h.description}
+                            </div>
+                            <div style={{ fontWeight: 700, color: h.type === 'income' ? SYS.success : SYS.accent, flexShrink: 0 }}>
+                                {h.type === 'income' ? '+' : '−'}{fmt(h.amount)}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </>
+    );
+};
 
-            {/* Actions */}
-            <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                {confirmDelete ? (
-                    <>
-                        <button type="button" onClick={() => { setConfirmDelete(false); onDelete(entry.id); }}
-                            style={{ padding: '3px 10px', border: `2px solid ${SYS.border}`, background: SYS.accent, color: '#fff', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', textTransform: 'uppercase' }}>
-                            Delete?
-                        </button>
-                        <button type="button" onClick={() => setConfirmDelete(false)}
-                            style={{ padding: '3px 8px', border: `2px solid ${SYS.border}`, background: '#fff', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 700 }}>
-                            ✕
-                        </button>
-                    </>
-                ) : (
-                    <>
-                        <button type="button" onClick={() => onEdit(entry)}
-                            style={{ background: 'none', border: 'none', padding: '3px 6px', cursor: 'pointer', color: SYS.light }}
-                            title="Edit">
-                            <Edit2 size={14} />
-                        </button>
-                        <button type="button" onClick={() => onDuplicate(entry)}
-                            style={{ background: 'none', border: 'none', padding: '3px 6px', cursor: 'pointer', color: SYS.light }}
-                            title="Duplicate">
-                            <Copy size={14} />
-                        </button>
-                        <button type="button" onClick={() => setConfirmDelete(true)}
-                            style={{ background: 'none', border: 'none', padding: '3px 6px', cursor: 'pointer', color: SYS.light }}
-                            title="Delete">
-                            <Trash2 size={14} />
-                        </button>
-                    </>
-                )}
-            </div>
+// ── ForecastSection ───────────────────────────────────────────────────────────
+const ForecastSection = ({ predictions, onFetch, loading }) => {
+    const [open, setOpen] = useState(false);
+
+    const handleToggle = () => {
+        if (!open && predictions.length === 0) onFetch();
+        setOpen(o => !o);
+    };
+
+    const totalIncome = predictions.filter(p => p.type === 'income').reduce((s, p) => s + p.predicted_amount, 0);
+    const totalExpense = predictions.filter(p => p.type === 'outcome').reduce((s, p) => s + p.predicted_amount, 0);
+    const projectedNet = totalIncome - totalExpense;
+
+    return (
+        <div style={{ marginTop: 24 }}>
+            <button type="button" onClick={handleToggle}
+                style={{
+                    display: 'flex', alignItems: 'center', gap: 8, width: '100%',
+                    padding: '10px 16px',
+                    border: `3px solid ${SYS.border}`,
+                    background: open ? SYS.secondary : '#fff',
+                    cursor: 'pointer', fontWeight: 700, fontSize: '0.82rem',
+                    textTransform: 'uppercase', letterSpacing: '0.4px',
+                    fontFamily: 'inherit',
+                }}>
+                <Zap size={16} />
+                {open ? 'Hide' : 'Show'} AI Forecast (3 months)
+            </button>
+
+            {open && (
+                <div style={{
+                    border: `3px solid ${SYS.border}`, borderTop: 'none',
+                    background: '#FAFAFA',
+                }}>
+                    {predictions.length === 0 ? (
+                        <div style={{ padding: '24px', textAlign: 'center', color: SYS.light, fontSize: '0.85rem' }}>
+                            {loading ? 'Analyzing patterns…' : 'Not enough recurring data to predict. Add more entries with the same description.'}
+                        </div>
+                    ) : (
+                        <>
+                            {/* Projected totals */}
+                            <div style={{
+                                display: 'flex', gap: 12, padding: '12px 16px',
+                                borderBottom: `2px dashed ${SYS.border}`,
+                                flexWrap: 'wrap',
+                            }}>
+                                <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: SYS.light, letterSpacing: '0.4px', alignSelf: 'center' }}>
+                                    Projected 3-month totals:
+                                </div>
+                                <span style={{ fontWeight: 800, color: SYS.success }}>+{fmt(totalIncome)}</span>
+                                <span style={{ fontWeight: 800, color: SYS.accent }}>−{fmt(totalExpense)}</span>
+                                <span style={{ fontWeight: 800, color: projectedNet >= 0 ? SYS.primary : SYS.accent }}>
+                                    Net: {projectedNet >= 0 ? '+' : '−'}{fmt(projectedNet)}
+                                </span>
+                            </div>
+
+                            {/* Prediction rows */}
+                            {predictions.map((p, idx) => (
+                                <div key={idx} style={{
+                                    display: 'flex', alignItems: 'center', gap: 12,
+                                    padding: '8px 16px',
+                                    borderBottom: `1px dashed #ccc`,
+                                    fontSize: '0.82rem',
+                                }}>
+                                    <div style={{ width: 8, height: 8, background: p.type === 'income' ? SYS.success : SYS.accent, flexShrink: 0, borderRadius: '50%' }} />
+                                    <div style={{ width: 80, flexShrink: 0, fontWeight: 600, color: SYS.light }}>
+                                        {new Date(p.predicted_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                    </div>
+                                    <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {p.description}
+                                    </div>
+                                    <div style={{
+                                        fontWeight: 800,
+                                        color: p.type === 'income' ? SYS.success : SYS.accent,
+                                        flexShrink: 0,
+                                    }}>
+                                        {p.type === 'income' ? '+' : '−'}{fmt(p.predicted_amount)}
+                                    </div>
+                                    <div style={{
+                                        flexShrink: 0, padding: '2px 8px',
+                                        border: `2px solid ${SYS.border}`,
+                                        fontSize: '0.7rem', fontWeight: 700,
+                                        background: p.confidence >= 0.7 ? '#E8F5E9' : p.confidence >= 0.5 ? SYS.secondary : '#f5f5f5',
+                                        textTransform: 'uppercase', letterSpacing: '0.3px',
+                                    }}>
+                                        {Math.round(p.confidence * 100)}%
+                                    </div>
+                                </div>
+                            ))}
+                        </>
+                    )}
+                </div>
+            )}
         </div>
     );
 };
 
 // ── Main component ─────────────────────────────────────────────────────────────
 const Budget = ({ onBackToTasks }) => {
-    const { entries, loading, error, fetchEntries, createEntry, updateEntry, deleteEntry } = useBudget();
+    const { entries, loading, error, fetchEntries, createEntry, updateEntry, deleteEntry,
+        getDescriptionHistory, predictions, fetchPredictions, exportBudgetCSV } = useBudget();
     const { tabs, fetchTabs, createTab, deleteTab } = useBudgetTabs();
 
     const [cutoff, setCutoff]             = useState(today());
@@ -237,6 +369,7 @@ const Budget = ({ onBackToTasks }) => {
     const [newTabName, setNewTabName]     = useState('');
     const [addingTab, setAddingTab]       = useState(false);
     const [confirmDeleteTab, setConfirmDeleteTab] = useState(null);
+    const [expandedDescriptionId, setExpandedDescriptionId] = useState(null);
 
     useEffect(() => { fetchEntries(); fetchTabs(); }, [fetchEntries, fetchTabs]);
 
@@ -349,6 +482,18 @@ const Budget = ({ onBackToTasks }) => {
                     Budget Planner
                 </h1>
                 <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => exportBudgetCSV(activeTabId)}
+                        disabled={entries.length === 0}
+                        style={{
+                            padding: '7px 14px', border: `2px solid ${SYS.border}`,
+                            background: SYS.primary, color: '#fff',
+                            fontWeight: 700, fontSize: '0.78rem', cursor: entries.length === 0 ? 'not-allowed' : 'pointer',
+                            textTransform: 'uppercase', letterSpacing: '0.4px',
+                            opacity: entries.length === 0 ? 0.5 : 1,
+                            display: 'flex', alignItems: 'center', gap: 4,
+                        }}>
+                        <FileDown size={14} /> CSV
+                    </button>
                     <button onClick={() => openAdd('income')}
                         style={{
                             padding: '7px 14px', border: `2px solid ${SYS.border}`,
@@ -535,10 +680,20 @@ const Budget = ({ onBackToTasks }) => {
                                 onDuplicate={openDuplicate}
                                 onDelete={deleteEntry}
                                 loading={loading}
+                                isExpanded={expandedDescriptionId === e.id}
+                                onToggleExpand={(id) => setExpandedDescriptionId(prev => prev === id ? null : id)}
+                                history={expandedDescriptionId === e.id ? getDescriptionHistory(e) : []}
                             />
                         ))
                     )}
                 </div>
+
+                {/* ── AI Forecast ── */}
+                <ForecastSection
+                    predictions={predictions}
+                    onFetch={() => fetchPredictions(3, activeTabId)}
+                    loading={loading}
+                />
             </div>
         </div>
     );
