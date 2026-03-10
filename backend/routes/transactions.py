@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from flask import Blueprint, request, jsonify, current_app
 from config import (
     get_db_connection, token_required,
@@ -122,25 +123,35 @@ def save_transactions(payload):
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """
 
-            transaction_ids = []
-            for trans in transactions:
-                # Encrypt sensitive fields
-                encrypted_account = encrypt_field(trans.get('account_number', ''))
-                encrypted_description = encrypt_field(trans['description'])
-                encrypted_amount = encrypt_field(str(trans['amount']))
+            # Encrypt all fields in parallel to avoid sequential bottleneck
+            def _encrypt_trans(trans):
+                return (
+                    encrypt_field(trans.get('account_number', '')),
+                    encrypt_field(trans['description']),
+                    encrypt_field(str(trans['amount'])),
+                )
 
-                values = (
-                    encrypted_account,
+            workers = min(len(transactions), 8)
+            with ThreadPoolExecutor(max_workers=workers) as ex:
+                encrypted = list(ex.map(_encrypt_trans, transactions))
+
+            # Batch insert with pre-encrypted values
+            all_values = []
+            for trans, (enc_account, enc_desc, enc_amount) in zip(transactions, encrypted):
+                all_values.append((
+                    enc_account,
                     trans['transaction_date'],
-                    encrypted_description,
-                    encrypted_amount,
+                    enc_desc,
+                    enc_amount,
                     trans['month_year'],
                     trans.get('transaction_type', 'credit'),
                     username,
                     tab_id
-                )
-                cursor.execute(query, values)
-                transaction_ids.append(str(cursor.lastrowid))
+                ))
+
+            cursor.executemany(query, all_values)
+            first_id = cursor.lastrowid
+            transaction_ids = [str(first_id + i) for i in range(len(all_values))]
 
             connection.commit()
 
