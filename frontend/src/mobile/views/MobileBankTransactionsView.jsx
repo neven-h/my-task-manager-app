@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Plus } from 'lucide-react';
 import { THEME, FONT_STACK, BAUHAUS } from '../theme';
+import API_BASE from '../../config';
+import { getAuthHeaders } from '../../api.js';
 import useMobileBankTabs from '../hooks/useMobileBankTabs';
 import useMobileBankData from '../hooks/useMobileBankData';
 import useDebounce from '../../hooks/useDebounce';
@@ -47,6 +49,37 @@ const MobileBankTransactionsView = ({ authUser, authRole, onBack }) => {
         fetchTransactions, fetchStats
     });
 
+    const exportTransactionsCSV = useCallback(async () => {
+        if (!activeTabId) return;
+        try {
+            const params = new URLSearchParams({ tab_id: activeTabId });
+            if (selectedMonth && selectedMonth !== 'all') params.set('month', selectedMonth);
+            const response = await fetch(`${API_BASE}/export/transactions/csv?${params}`, { headers: getAuthHeaders() });
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({}));
+                throw new Error(err.error || 'Export failed');
+            }
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            // iOS Safari: use location.href for reliable blob downloads
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            if (isIOS) {
+                window.location.href = url;
+            } else {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `transactions_${selectedMonth || 'all'}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+            setTimeout(() => window.URL.revokeObjectURL(url), 5000);
+        } catch (err) {
+            setError(err.message);
+        }
+    }, [activeTabId, selectedMonth, setError]);
+
     const handleOpenEdit = (transaction) => {
         setEditingTransaction(transaction);
         const d = transaction.transaction_date;
@@ -80,6 +113,8 @@ const MobileBankTransactionsView = ({ authUser, authRole, onBack }) => {
                 setActiveTabId={setActiveTabId}
                 tabsLoading={tabsLoading}
                 handleCreateTab={handleCreateTab}
+                exportTransactionsCSV={exportTransactionsCSV}
+                hasTransactions={filteredTransactions.length > 0}
             />
 
             <MobileBankStats
