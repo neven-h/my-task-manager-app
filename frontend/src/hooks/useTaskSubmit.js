@@ -71,19 +71,17 @@ const useTaskSubmit = ({ setLoading, setError, loadTasks, fetchStats, fetchClien
     }, [loadTasks, fetchStats, fetchClients, setLoading, setError]);
 
     const shareTask = useCallback(async (taskId, email) => {
-        if (!email.trim()) { alert('Please enter an email address'); return false; }
+        if (!email.trim()) return { success: false, message: 'Please enter an email address' };
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) { alert('Please enter a valid email address'); return false; }
+        if (!emailRegex.test(email)) return { success: false, message: 'Please enter a valid email address' };
         try {
             setLoading(true);
             const response = await fetch(`${API_BASE}/tasks/${taskId}/share`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ email: email.trim() }) });
             const data = await response.json();
             if (!response.ok) throw new Error(data.error || 'Failed to share task');
-            alert(`Task shared successfully with ${email}!`);
-            return true;
+            return { success: true, message: `Task shared with ${email}` };
         } catch (err) {
-            alert(err.message);
-            return false;
+            return { success: false, message: err.message };
         } finally {
             setLoading(false);
         }

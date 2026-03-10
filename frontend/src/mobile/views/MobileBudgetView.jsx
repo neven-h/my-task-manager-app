@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
     ArrowLeft, TrendingUp, TrendingDown, Scale,
-    Plus, Edit2, Trash2, Check, X, ChevronDown, ChevronUp,
+    Plus, Edit2, Trash2, Check, X, ChevronDown, ChevronUp, FileDown, Zap,
 } from 'lucide-react';
 import useBudget from '../../hooks/useBudget';
 import { FONT_STACK } from '../../ios/theme';
@@ -177,8 +177,8 @@ const EntrySheet = ({ initial, onSave, onCancel, loading }) => {
     );
 };
 
-// ── Entry row ──────────────────────────────────────────────────────────────────
-const EntryRow = ({ entry, cutoff, onEdit, onDelete, isLast }) => {
+// ── Entry row (expandable) ────────────────────────────────────────────────────
+const EntryRow = ({ entry, cutoff, onEdit, onDelete, isLast, isExpanded, onToggleExpand, history }) => {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [pressed, setPressed] = useState(false);
     const isPast = entry.entry_date <= cutoff;
@@ -187,70 +187,206 @@ const EntryRow = ({ entry, cutoff, onEdit, onDelete, isLast }) => {
     const sign = isIncome ? '+' : '−';
 
     return (
-        <div
-            style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '13px 16px',
-                borderBottom: isLast ? 'none' : `0.5px solid ${IOS.separator}`,
-                opacity: isPast ? 1 : 0.42,
-                background: pressed ? '#F2F2F7' : IOS.card,
-                transition: `opacity 200ms, background 120ms`,
-            }}
-            onTouchStart={() => setPressed(true)}
-            onTouchEnd={() => setPressed(false)}
-        >
-            {/* Type dot */}
-            <div style={{ width: 9, height: 9, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+        <>
+            <div
+                style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '13px 16px',
+                    borderBottom: (isLast && !isExpanded) ? 'none' : `0.5px solid ${IOS.separator}`,
+                    opacity: isPast ? 1 : 0.42,
+                    background: pressed ? '#F2F2F7' : IOS.card,
+                    transition: `opacity 200ms, background 120ms`,
+                }}
+                onTouchStart={() => setPressed(true)}
+                onTouchEnd={() => setPressed(false)}
+            >
+                {/* Type dot */}
+                <div style={{ width: 9, height: 9, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
 
-            {/* Date */}
-            <div style={{ fontSize: '0.78rem', color: IOS.muted, width: 60, flexShrink: 0, lineHeight: 1.3 }}>
-                {new Date(entry.entry_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-            </div>
-
-            {/* Description + meta */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 500, fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {entry.description}
+                {/* Date */}
+                <div style={{ fontSize: '0.78rem', color: IOS.muted, width: 60, flexShrink: 0, lineHeight: 1.3 }}>
+                    {new Date(entry.entry_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                 </div>
-                {(entry.category || entry.notes) && (
-                    <div style={{ fontSize: '0.72rem', color: IOS.muted, marginTop: 2,
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {[entry.category, entry.notes].filter(Boolean).join(' · ')}
+
+                {/* Description + meta (clickable to expand) */}
+                <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => onToggleExpand(entry.id)}>
+                    <div style={{
+                        fontWeight: 500, fontSize: '0.9rem',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        borderBottom: '1px dashed #bbb', display: 'inline',
+                        paddingBottom: 1,
+                    }}>
+                        {entry.description}
                     </div>
-                )}
+                    {(entry.category || entry.notes) && (
+                        <div style={{ fontSize: '0.72rem', color: IOS.muted, marginTop: 2,
+                            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {[entry.category, entry.notes].filter(Boolean).join(' · ')}
+                        </div>
+                    )}
+                </div>
+
+                {/* Amount */}
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: dotColor, flexShrink: 0, marginRight: 4 }}>
+                    {sign}{fmt(entry.amount)}
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                    {confirmDelete ? (
+                        <>
+                            <button type="button" onClick={() => { setConfirmDelete(false); onDelete(entry.id); }}
+                                style={{ padding: '4px 10px', border: 'none', borderRadius: 7, background: IOS.red, color: '#fff', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer' }}>
+                                Delete?
+                            </button>
+                            <button type="button" onClick={() => setConfirmDelete(false)}
+                                style={{ padding: '4px 8px', border: '1px solid rgba(0,0,0,0.15)', borderRadius: 7, background: '#fff', fontSize: '0.72rem', cursor: 'pointer' }}>
+                                ✕
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <button type="button" onClick={() => onEdit(entry)}
+                                style={{ background: 'none', border: 'none', padding: '5px', cursor: 'pointer', color: IOS.muted, borderRadius: 6 }}>
+                                <Edit2 size={14} />
+                            </button>
+                            <button type="button" onClick={() => setConfirmDelete(true)}
+                                style={{ background: 'none', border: 'none', padding: '5px', cursor: 'pointer', color: IOS.muted, borderRadius: 6 }}>
+                                <Trash2 size={14} />
+                            </button>
+                        </>
+                    )}
+                </div>
             </div>
 
-            {/* Amount */}
-            <div style={{ fontWeight: 700, fontSize: '0.9rem', color: dotColor, flexShrink: 0, marginRight: 4 }}>
-                {sign}{fmt(entry.amount)}
-            </div>
+            {/* Expanded history */}
+            {isExpanded && history.length > 0 && (
+                <div style={{
+                    background: IOS.bg,
+                    borderBottom: isLast ? 'none' : `0.5px solid ${IOS.separator}`,
+                    padding: '4px 16px 8px 36px',
+                }}>
+                    <div style={{ fontSize: '0.68rem', fontWeight: 600, color: IOS.muted, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                        Recent with same description
+                    </div>
+                    {history.map(h => (
+                        <div key={h.id} style={{
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            padding: '5px 0',
+                            fontSize: '0.78rem', color: IOS.muted,
+                        }}>
+                            <div style={{ width: 6, height: 6, borderRadius: '50%', background: h.type === 'income' ? IOS.green : IOS.red, flexShrink: 0 }} />
+                            <div style={{ width: 55, flexShrink: 0, fontWeight: 600 }}>
+                                {new Date(h.entry_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            </div>
+                            <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {h.description}
+                            </div>
+                            <div style={{ fontWeight: 600, color: h.type === 'income' ? IOS.green : IOS.red, flexShrink: 0 }}>
+                                {h.type === 'income' ? '+' : '−'}{fmt(h.amount)}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </>
+    );
+};
 
-            {/* Actions */}
-            <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-                {confirmDelete ? (
-                    <>
-                        <button type="button" onClick={() => { setConfirmDelete(false); onDelete(entry.id); }}
-                            style={{ padding: '4px 10px', border: 'none', borderRadius: 7, background: IOS.red, color: '#fff', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer' }}>
-                            Delete?
-                        </button>
-                        <button type="button" onClick={() => setConfirmDelete(false)}
-                            style={{ padding: '4px 8px', border: '1px solid rgba(0,0,0,0.15)', borderRadius: 7, background: '#fff', fontSize: '0.72rem', cursor: 'pointer' }}>
-                            ✕
-                        </button>
-                    </>
-                ) : (
-                    <>
-                        <button type="button" onClick={() => onEdit(entry)}
-                            style={{ background: 'none', border: 'none', padding: '5px', cursor: 'pointer', color: IOS.muted, borderRadius: 6 }}>
-                            <Edit2 size={14} />
-                        </button>
-                        <button type="button" onClick={() => setConfirmDelete(true)}
-                            style={{ background: 'none', border: 'none', padding: '5px', cursor: 'pointer', color: IOS.muted, borderRadius: 6 }}>
-                            <Trash2 size={14} />
-                        </button>
-                    </>
-                )}
-            </div>
+// ── Forecast section (iOS) ────────────────────────────────────────────────────
+const ForecastSection = ({ predictions, onFetch, loading }) => {
+    const [open, setOpen] = useState(false);
+
+    const handleToggle = () => {
+        if (!open && predictions.length === 0) onFetch();
+        setOpen(o => !o);
+    };
+
+    const totalIncome = predictions.filter(p => p.type === 'income').reduce((s, p) => s + p.predicted_amount, 0);
+    const totalExpense = predictions.filter(p => p.type === 'outcome').reduce((s, p) => s + p.predicted_amount, 0);
+    const projectedNet = totalIncome - totalExpense;
+
+    return (
+        <div style={{ margin: '16px 16px 0' }}>
+            <button type="button" onClick={handleToggle}
+                style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    width: '100%', padding: '13px 16px',
+                    border: 'none', borderRadius: IOS.radius,
+                    background: open ? '#FFD500' : IOS.card,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.07)',
+                    cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem',
+                    fontFamily: FONT_STACK, color: '#000',
+                }}>
+                <Zap size={16} />
+                {open ? 'Hide' : 'Show'} AI Forecast
+            </button>
+
+            {open && (
+                <div style={{
+                    background: IOS.card, borderRadius: IOS.radius,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.07)',
+                    marginTop: 8, overflow: 'hidden',
+                }}>
+                    {predictions.length === 0 ? (
+                        <div style={{ padding: '24px 16px', textAlign: 'center', color: IOS.muted, fontSize: '0.85rem' }}>
+                            {loading ? 'Analyzing patterns…' : 'Not enough recurring data to predict.'}
+                        </div>
+                    ) : (
+                        <>
+                            {/* Projected totals */}
+                            <div style={{
+                                display: 'flex', gap: 10, padding: '12px 16px',
+                                borderBottom: `0.5px solid ${IOS.separator}`,
+                                flexWrap: 'wrap', alignItems: 'center',
+                            }}>
+                                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: IOS.muted, textTransform: 'uppercase' }}>
+                                    3-month projection:
+                                </span>
+                                <span style={{ fontWeight: 700, color: IOS.green, fontSize: '0.85rem' }}>+{fmt(totalIncome)}</span>
+                                <span style={{ fontWeight: 700, color: IOS.red, fontSize: '0.85rem' }}>−{fmt(totalExpense)}</span>
+                                <span style={{ fontWeight: 700, color: projectedNet >= 0 ? IOS.blue : IOS.red, fontSize: '0.85rem' }}>
+                                    Net: {projectedNet >= 0 ? '+' : '−'}{fmt(projectedNet)}
+                                </span>
+                            </div>
+
+                            {/* Prediction rows */}
+                            {predictions.map((p, idx) => (
+                                <div key={idx} style={{
+                                    display: 'flex', alignItems: 'center', gap: 10,
+                                    padding: '10px 16px',
+                                    borderBottom: idx < predictions.length - 1 ? `0.5px solid ${IOS.separator}` : 'none',
+                                    fontSize: '0.82rem',
+                                }}>
+                                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: p.type === 'income' ? IOS.green : IOS.red, flexShrink: 0 }} />
+                                    <div style={{ width: 55, flexShrink: 0, fontWeight: 600, color: IOS.muted }}>
+                                        {new Date(p.predicted_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                    </div>
+                                    <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {p.description}
+                                    </div>
+                                    <div style={{
+                                        fontWeight: 700,
+                                        color: p.type === 'income' ? IOS.green : IOS.red,
+                                        flexShrink: 0,
+                                    }}>
+                                        {p.type === 'income' ? '+' : '−'}{fmt(p.predicted_amount)}
+                                    </div>
+                                    <div style={{
+                                        flexShrink: 0, padding: '2px 6px',
+                                        borderRadius: 6,
+                                        fontSize: '0.68rem', fontWeight: 600,
+                                        background: p.confidence >= 0.7 ? '#E8F5E9' : p.confidence >= 0.5 ? '#FFF9C4' : IOS.bg,
+                                        color: p.confidence >= 0.7 ? '#2E7D32' : p.confidence >= 0.5 ? '#F57F17' : IOS.muted,
+                                    }}>
+                                        {Math.round(p.confidence * 100)}%
+                                    </div>
+                                </div>
+                            ))}
+                        </>
+                    )}
+                </div>
+            )}
         </div>
     );
 };
@@ -258,7 +394,8 @@ const EntryRow = ({ entry, cutoff, onEdit, onDelete, isLast }) => {
 // ── Main view ──────────────────────────────────────────────────────────────────
 const MobileBudgetView = ({ onBack }) => {
     const { entries, loading, error, fetchEntries, createEntry, updateEntry, deleteEntry,
-        totalIncome, totalOutcome, balance } = useBudget();
+        totalIncome, totalOutcome, balance, getDescriptionHistory,
+        predictions, fetchPredictions, exportBudgetCSV } = useBudget();
 
     const [cutoff, setCutoff]             = useState(today());
     const [typeFilter, setTypeFilter]     = useState('all');
@@ -266,6 +403,7 @@ const MobileBudgetView = ({ onBack }) => {
     const [showForm, setShowForm]         = useState(false);
     const [editingEntry, setEditingEntry] = useState(null);
     const [formInitial, setFormInitial]   = useState(emptyForm('income'));
+    const [expandedDescriptionId, setExpandedDescriptionId] = useState(null);
 
     useEffect(() => { fetchEntries(); }, [fetchEntries]);
 
@@ -331,7 +469,13 @@ const MobileBudgetView = ({ onBack }) => {
                     <h1 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, textAlign: 'center' }}>
                         Budget Planner
                     </h1>
-                    <div />
+                    <button onClick={() => exportBudgetCSV()}
+                        disabled={entries.length === 0}
+                        style={{ background: 'none', border: 'none', padding: '10px', cursor: entries.length === 0 ? 'default' : 'pointer',
+                            minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            opacity: entries.length === 0 ? 0.3 : 1 }}>
+                        <FileDown size={20} color={IOS.blue} />
+                    </button>
                 </div>
             </div>
 
@@ -448,10 +592,20 @@ const MobileBudgetView = ({ onBack }) => {
                             onEdit={openEdit}
                             onDelete={deleteEntry}
                             isLast={idx === visibleEntries.length - 1}
+                            isExpanded={expandedDescriptionId === e.id}
+                            onToggleExpand={(id) => setExpandedDescriptionId(prev => prev === id ? null : id)}
+                            history={expandedDescriptionId === e.id ? getDescriptionHistory(e) : []}
                         />
                     ))
                 )}
             </div>
+
+            {/* ── AI Forecast ── */}
+            <ForecastSection
+                predictions={predictions}
+                onFetch={() => fetchPredictions(3)}
+                loading={loading}
+            />
 
             {/* ── Bottom-sheet form ── */}
             {showForm && (

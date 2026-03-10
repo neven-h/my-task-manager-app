@@ -9,6 +9,7 @@ const TransactionHeader = () => {
         filteredTransactions,
         setShowAddForm,
         exportToPDF,
+        exportTransactionsCSV,
     } = useBankTransactionContext();
 
     return (
@@ -68,6 +69,28 @@ const TransactionHeader = () => {
                     }}
                 >
                     <Plus size={20} /> Add Transaction
+                </button>
+                <button
+                    onClick={exportTransactionsCSV}
+                    disabled={filteredTransactions.length === 0}
+                    style={{
+                        background: '#0000FF',
+                        border: `3px solid ${colors.border}`,
+                        color: '#fff',
+                        padding: '0.75rem 1.5rem',
+                        cursor: filteredTransactions.length === 0 ? 'not-allowed' : 'pointer',
+                        fontWeight: 'bold',
+                        fontSize: '1rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        opacity: filteredTransactions.length === 0 ? 0.5 : 1,
+                        fontFamily: '"Inter", sans-serif',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                    }}
+                >
+                    <FileDown size={20} /> Export CSV
                 </button>
                 <button
                     onClick={exportToPDF}

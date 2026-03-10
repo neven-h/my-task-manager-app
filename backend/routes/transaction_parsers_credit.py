@@ -3,7 +3,7 @@ import re
 import pandas as pd
 from routes.transaction_parsers import parse_cash_transaction_file
 
-_DATE_RE = re.compile(r'^\d{2}[./]\d{2}[./]\d{2,4}$|^\d{4}-\d{2}-\d{2}')
+_DATE_RE = re.compile(r'^\d{2}[./]\d{2}[./]\d{2,4}$|^\d{4}-\d{2}-\d{2}(\s|$)')
 
 
 def _fix_credit_card_column_alignment(df):
@@ -94,16 +94,27 @@ def _fallback_credit_parse(df):
     transactions = []
     for _, row in df.iterrows():
         try:
-            date_str = str(row[date_col]).strip()
-            if not date_str or date_str in ('nan', 'NaN', 'NaT'):
-                continue
-            transaction_date = None
-            for fmt in ('%d.%m.%Y', '%d/%m/%Y', '%d/%m/%y', '%d.%m.%y', '%Y-%m-%d'):
-                transaction_date = pd.to_datetime(date_str, format=fmt, errors='coerce')
-                if pd.notna(transaction_date):
-                    break
-            if pd.isna(transaction_date):
-                transaction_date = pd.to_datetime(date_str, dayfirst=True, errors='coerce')
+            raw_val = row[date_col]
+            # Excel cells read with dtype=str may still occasionally yield
+            # a native Timestamp; handle that first.
+            if isinstance(raw_val, (pd.Timestamp,)):
+                transaction_date = raw_val
+            else:
+                date_str = str(raw_val).strip()
+                if not date_str or date_str in ('nan', 'NaN', 'NaT'):
+                    continue
+                transaction_date = None
+                # Try explicit formats — include the "%Y-%m-%d %H:%M:%S"
+                # variant that Excel datetime-as-string produces ("2026-03-10 00:00:00").
+                # It MUST come before the bare "%Y-%m-%d" and before the
+                # dayfirst fallback which would misinterpret the ISO string.
+                for fmt in ('%d.%m.%Y', '%d/%m/%Y', '%d/%m/%y', '%d.%m.%y',
+                            '%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
+                    transaction_date = pd.to_datetime(date_str, format=fmt, errors='coerce')
+                    if pd.notna(transaction_date):
+                        break
+                if pd.isna(transaction_date):
+                    transaction_date = pd.to_datetime(date_str, dayfirst=True, errors='coerce')
             if pd.isna(transaction_date):
                 continue
 
@@ -178,7 +189,12 @@ def _load_excel_df(file_path):
                 break
 
     df = pd.read_excel(file_path, sheet_name=0, header=header_row, dtype=str)
-    df.columns = [str(c).strip() for c in df.columns]
+    # Clean column names: strip whitespace AND collapse newlines / carriage
+    # returns into single spaces.  Many Israeli bank exports (e.g. Cal/Visa)
+    # use multi-line header cells like "תאריך\nעסקה" or "סכום\nבש\"ח".
+    df.columns = [
+        re.sub(r'[\r\n]+', ' ', str(c)).strip() for c in df.columns
+    ]
     # Drop rows that are entirely NaN (trailing footer rows)
     df = df.dropna(how='all').reset_index(drop=True)
     return df, int(header_row)
