@@ -1,22 +1,31 @@
 import React, { useState } from 'react';
-import { Share2 } from 'lucide-react';
+import { Share2, CheckCircle, AlertCircle } from 'lucide-react';
 import { useTaskContext } from '../../context/TaskContext';
 
 const ShareTaskModal = () => {
     const { shareModal, closeShareModal, shareTask, loading } = useTaskContext();
     const { isOpen, sharingTask } = shareModal;
     const [shareEmail, setShareEmail] = useState('');
+    const [feedback, setFeedback] = useState(null); // { type: 'success'|'error', message }
 
     const handleShare = async () => {
-        const success = await shareTask(sharingTask.id, shareEmail);
-        if (success) {
-            setShareEmail('');
-            closeShareModal();
+        setFeedback(null);
+        const result = await shareTask(sharingTask.id, shareEmail);
+        if (result.success) {
+            setFeedback({ type: 'success', message: result.message });
+            setTimeout(() => {
+                setShareEmail('');
+                setFeedback(null);
+                closeShareModal();
+            }, 1500);
+        } else {
+            setFeedback({ type: 'error', message: result.message });
         }
     };
 
     const handleClose = () => {
         setShareEmail('');
+        setFeedback(null);
         closeShareModal();
     };
 
@@ -61,6 +70,23 @@ const ShareTaskModal = () => {
                     Share "{sharingTask.title}" with someone
                 </p>
 
+                {/* Inline feedback */}
+                {feedback && (
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '10px 14px', marginBottom: 16,
+                        border: `2px solid ${feedback.type === 'success' ? '#2E7D32' : '#C62828'}`,
+                        background: feedback.type === 'success' ? '#E8F5E9' : '#FFEBEE',
+                        color: feedback.type === 'success' ? '#2E7D32' : '#C62828',
+                        fontSize: '0.88rem', fontWeight: 600,
+                    }}>
+                        {feedback.type === 'success'
+                            ? <CheckCircle size={18} />
+                            : <AlertCircle size={18} />}
+                        {feedback.message}
+                    </div>
+                )}
+
                 <div style={{marginBottom: '24px'}}>
                     <label style={{
                         display: 'block',
@@ -76,7 +102,7 @@ const ShareTaskModal = () => {
                         placeholder="recipient@example.com"
                         value={shareEmail}
                         onChange={(e) => setShareEmail(e.target.value)}
-                        onKeyPress={(e) => {
+                        onKeyDown={(e) => {
                             if (e.key === 'Enter' && shareEmail.trim()) {
                                 handleShare();
                             }

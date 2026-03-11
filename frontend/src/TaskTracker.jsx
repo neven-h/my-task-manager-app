@@ -4,6 +4,7 @@ import BankTransactions from './BankTransactions';
 import ClientsManagement from './ClientsManagement';
 import StockPortfolio from './StockPortfolio';
 import Budget from './Budget';
+import DesktopNotebook from './components/notebook/DesktopNotebook';
 import './TaskTracker.css';
 
 import { TaskProvider, useTaskContext } from './context/TaskContext';
@@ -37,6 +38,9 @@ const TaskTrackerInner = () => {
     }
     if (appView === 'budget') {
         return <Budget onBackToTasks={() => setAppView('tasks')} />;
+    }
+    if (appView === 'notebook') {
+        return <DesktopNotebook onBackToTasks={() => setAppView('tasks')} />;
     }
 
     return (

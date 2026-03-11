@@ -123,7 +123,8 @@ def parse_cash_transaction_file(file_path):
                     continue
 
                 transaction_date = None
-                for dfmt in ['%d.%m.%Y', '%d/%m/%Y', '%d/%m/%y', '%d.%m.%y', '%Y-%m-%d']:
+                for dfmt in ['%d.%m.%Y', '%d/%m/%Y', '%d/%m/%y', '%d.%m.%y',
+                            '%Y-%m-%d %H:%M:%S', '%Y-%m-%d']:
                     transaction_date = pd.to_datetime(date_str, format=dfmt, errors='coerce')
                     if pd.notna(transaction_date):
                         break

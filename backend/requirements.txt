@@ -18,3 +18,6 @@ Pillow==12.1.1
 yfinance==1.1.0
 cloudinary==1.44.1
 bank-csv-normalizer @ https://github.com/neven-h/csv_parsing/archive/refs/heads/master.zip
+# Deep learning forecast engine (Amazon Chronos — pre-trained T5 transformer, ~45 MB model download on first use)
+chronos-forecasting
+torch

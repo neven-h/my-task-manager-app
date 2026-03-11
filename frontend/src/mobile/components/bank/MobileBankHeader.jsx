@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, FileDown } from 'lucide-react';
 import { THEME } from '../../theme';
 
 const SPRING = 'cubic-bezier(0.22,1,0.36,1)';
@@ -10,7 +10,9 @@ const MobileBankHeader = ({
     activeTabId,
     setActiveTabId,
     tabsLoading,
-    handleCreateTab
+    handleCreateTab,
+    exportTransactionsCSV,
+    hasTransactions,
 }) => {
     return (
         <div style={{
@@ -38,7 +40,20 @@ const MobileBankHeader = ({
                 <h1 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, textAlign: 'center', justifySelf: 'center' }}>
                     Bank Transactions
                 </h1>
-                <div />
+                <button
+                    onClick={exportTransactionsCSV}
+                    disabled={!hasTransactions}
+                    style={{
+                        background: 'none', border: 'none', padding: '10px',
+                        cursor: hasTransactions ? 'pointer' : 'not-allowed',
+                        minWidth: '44px', minHeight: '44px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        opacity: hasTransactions ? 1 : 0.35,
+                    }}
+                    title="Export CSV"
+                >
+                    <FileDown size={22} color={THEME.primary} />
+                </button>
             </div>
 
             {tabsLoading ? (

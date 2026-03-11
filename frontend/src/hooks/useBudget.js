@@ -8,13 +8,17 @@ const BASE = `${API_BASE}/budget`;
  * useBudget — manages budget entries (incomes + outcomes).
  *
  * Returns:
- *   entries[]        – all entries sorted by entry_date ASC
- *   loading          – bool
- *   error            – string | null
- *   fetchEntries()   – reload from API
- *   createEntry(data) – POST; data: {type,description,amount,entry_date,category?,notes?}
- *   updateEntry(id, data) – PUT
- *   deleteEntry(id)  – DELETE
+ *   entries[]              – all entries sorted by entry_date ASC
+ *   loading                – bool
+ *   error                  – string | null
+ *   fetchEntries()         – reload from API
+ *   createEntry(data)      – POST; data: {type,description,amount,entry_date,category?,notes?}
+ *   updateEntry(id, data)  – PUT
+ *   deleteEntry(id)        – DELETE
+ *   getDescriptionHistory(entry) – 5 most recent entries with same description
+ *   predictions[]          – AI-predicted future entries
+ *   fetchPredictions(months) – GET /api/budget/predict
+ *   exportBudgetCSV(tabId) – download CSV
  *
  * Computed helpers (need a cutoffDate string 'YYYY-MM-DD'):
  *   totalIncome(cutoff)  – sum of income entries on/before cutoff
@@ -25,6 +29,7 @@ const useBudget = () => {
     const [entries, setEntries] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [predictions, setPredictions] = useState([]);
 
     const fetchEntries = useCallback(async () => {
         setLoading(true);
@@ -124,6 +129,53 @@ const useBudget = () => {
 
     const balance = useCallback((cutoff) => totalIncome(cutoff) - totalOutcome(cutoff), [totalIncome, totalOutcome]);
 
+    // ── similar transactions (description history) ──────────────────────────
+    const getDescriptionHistory = useCallback((entry) =>
+        entries
+            .filter(e => e.id !== entry.id && e.description === entry.description)
+            .sort((a, b) => new Date(b.entry_date) - new Date(a.entry_date))
+            .slice(0, 5),
+        [entries]);
+
+    // ── AI predictions ──────────────────────────────────────────────────────
+    const fetchPredictions = useCallback(async (months = 3, tabId = null) => {
+        try {
+            const params = new URLSearchParams({ months: String(months) });
+            if (tabId) params.set('tab_id', tabId);
+            const res = await fetch(`${API_BASE}/budget/predict?${params}`, { headers: getAuthHeaders() });
+            if (!res.ok) throw new Error(`Server error ${res.status}`);
+            const data = await res.json();
+            setPredictions(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Failed to fetch predictions:', err);
+            setPredictions([]);
+        }
+    }, []);
+
+    // ── CSV export ──────────────────────────────────────────────────────────
+    const exportBudgetCSV = useCallback(async (tabId = null) => {
+        try {
+            const params = new URLSearchParams();
+            if (tabId) params.set('tab_id', tabId);
+            const res = await fetch(`${API_BASE}/export/budget/csv?${params}`, { headers: getAuthHeaders() });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || 'Export failed');
+            }
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `budget_export_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            setError(err.message);
+        }
+    }, [setError]);
+
     return {
         entries,
         loading,
@@ -135,6 +187,10 @@ const useBudget = () => {
         totalIncome,
         totalOutcome,
         balance,
+        getDescriptionHistory,
+        predictions,
+        fetchPredictions,
+        exportBudgetCSV,
     };
 };
 

@@ -5,15 +5,30 @@ const useBankTransactionFilters = (monthTransactions) => {
     const [descriptionFilter, setDescriptionFilter] = useState('');
     const [typeFilter, setTypeFilter] = useState('all');
     const [previewFilter, setPreviewFilter] = useState('all');
+    const [dateFrom, setDateFrom] = useState('');
+    const [dateTo, setDateTo] = useState('');
+    const [amountMin, setAmountMin] = useState('');
+    const [amountMax, setAmountMax] = useState('');
 
     const filteredTransactions = useMemo(() => {
         if (!Array.isArray(monthTransactions)) return [];
         return monthTransactions.filter(t => {
             if (typeFilter !== 'all' && t.transaction_type !== typeFilter) return false;
             if (searchTerm && !t.description?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-            return !(descriptionFilter && t.description !== descriptionFilter);
+            if (descriptionFilter && t.description !== descriptionFilter) return false;
+            if (dateFrom) {
+                const d = (t.transaction_date || '').split('T')[0];
+                if (d < dateFrom) return false;
+            }
+            if (dateTo) {
+                const d = (t.transaction_date || '').split('T')[0];
+                if (d > dateTo) return false;
+            }
+            if (amountMin !== '' && t.amount < Number(amountMin)) return false;
+            if (amountMax !== '' && t.amount > Number(amountMax)) return false;
+            return true;
         });
-    }, [monthTransactions, typeFilter, searchTerm, descriptionFilter]);
+    }, [monthTransactions, typeFilter, searchTerm, descriptionFilter, dateFrom, dateTo, amountMin, amountMax]);
 
     const { totalFiltered, creditTotal, cashTotal } = useMemo(() => (
         filteredTransactions.reduce((acc, t) => ({
@@ -56,11 +71,11 @@ const useBankTransactionFilters = (monthTransactions) => {
         descriptionFilter, setDescriptionFilter,
         typeFilter, setTypeFilter,
         previewFilter, setPreviewFilter,
+        dateFrom, setDateFrom, dateTo, setDateTo,
+        amountMin, setAmountMin, amountMax, setAmountMax,
         filteredTransactions,
         totalFiltered, creditTotal, cashTotal,
-        chartData,
-        aggregateByCategory,
-        getFilteredPreview,
+        chartData, aggregateByCategory, getFilteredPreview,
     };
 };
 

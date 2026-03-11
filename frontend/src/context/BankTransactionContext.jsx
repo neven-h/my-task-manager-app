@@ -1,8 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import useBankTransactionData from '../hooks/useBankTransactionData';
 import useBankTransactionFilters from '../hooks/useBankTransactionFilters';
+import useTransactionSelection from '../hooks/useTransactionSelection';
 import { exportBankTransactionsPDF } from '../utils/exportBankPDF';
 import storage, { STORAGE_KEYS } from '../utils/storage';
+import API_BASE from '../config';
+import { getAuthHeaders } from '../api.js';
 
 const BankTransactionContext = createContext(null);
 
@@ -36,14 +39,42 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
     const {
         searchTerm, setSearchTerm, descriptionFilter, setDescriptionFilter,
         typeFilter, setTypeFilter, previewFilter, setPreviewFilter,
+        dateFrom, setDateFrom, dateTo, setDateTo,
+        amountMin, setAmountMin, amountMax, setAmountMax,
         filteredTransactions, totalFiltered, creditTotal, cashTotal,
         chartData, aggregateByCategory, getFilteredPreview,
     } = filters;
 
+    const selection = useTransactionSelection(activeTabId, setError);
+
+    const handleDeleteSelected = useCallback(async () => {
+        const ok = await selection.deleteSelected();
+        if (ok) {
+            if (selectedMonth === 'all') await fetchAllTransactions(activeTabId);
+            else await fetchMonthTransactions(selectedMonth, activeTabId);
+            await fetchSavedMonths(activeTabId);
+            await fetchTransactionStats(activeTabId);
+        }
+    }, [selection, selectedMonth, activeTabId, fetchAllTransactions, fetchMonthTransactions, fetchSavedMonths, fetchTransactionStats]);
+
+    const [transactionType, setTransactionType] = useState('credit');
     const [visibleTransactions, setVisibleTransactions] = useState(50);
     const [editingTransaction, setEditingTransaction] = useState(null);
     const [showAddForm, setShowAddForm] = useState(false);
     const [expandedDescriptionId, setExpandedDescriptionId] = useState(null);
+    const [txPredictions, setTxPredictions] = useState([]);
+
+    const fetchTransactionPredictions = useCallback(async (months = 3) => {
+        if (!activeTabId) return;
+        try {
+            const params = new URLSearchParams({ months, tab_id: activeTabId });
+            const res = await fetch(`${API_BASE}/transactions/predict?${params}`, { headers: getAuthHeaders() });
+            if (!res.ok) throw new Error('Prediction request failed');
+            setTxPredictions(await res.json());
+        } catch (err) {
+            setError(err.message);
+        }
+    }, [activeTabId, setError]);
 
     // ==================== INITIALIZATION ====================
 
@@ -100,6 +131,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         setDescriptionFilter('');
         setTypeFilter('all');
         setVisibleTransactions(50);
+        selection.clearSelection();
         // All four fetches are independent — run in parallel
         await Promise.all([
             fetchSavedMonths(tabId),
@@ -109,7 +141,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         ]);
     }, [fetchSavedMonths, fetchAllDescriptions, fetchTransactionStats, fetchAllTransactions,
         setActiveTabId, setSelectedMonth, setMonthTransactions, setTransactionStats, setUploadedData, setSearchTerm,
-        setDescriptionFilter, setTypeFilter]);
+        setDescriptionFilter, setTypeFilter, selection]);
 
     // ==================== WRAPPED CRUD ====================
 
@@ -132,7 +164,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
     }, [createFirstTabRaw, fetchTabs, fetchSavedMonths, fetchTransactionStats, fetchAllTransactions,
         setActiveTabId, setMonthTransactions, setSavedMonths, setSelectedMonth, setTransactionStats]);
 
-    const handleFileUpload = useCallback(async (event) => { await handleFileUploadRaw(event, filters.typeFilter); setPreviewFilter('all'); }, [handleFileUploadRaw, filters.typeFilter, setPreviewFilter]);
+    const handleFileUpload = useCallback(async (event) => { await handleFileUploadRaw(event, transactionType); setPreviewFilter('all'); }, [handleFileUploadRaw, transactionType, setPreviewFilter]);
 
     const handleSaveTransactions = useCallback(async () => {
         if (await handleSaveRaw(activeTabId)) { await fetchSavedMonths(activeTabId); await fetchTransactionStats(activeTabId); await fetchAllTransactions(activeTabId); }
@@ -194,6 +226,50 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
 
     const exportToPDF = useCallback(() => exportBankTransactionsPDF(filteredTransactions, selectedMonth), [filteredTransactions, selectedMonth]);
 
+    const exportTransactionsCSV = useCallback(async () => {
+        if (!activeTabId) return;
+        try {
+            const params = new URLSearchParams({ tab_id: activeTabId });
+            if (selectedMonth && selectedMonth !== 'all') params.set('month', selectedMonth);
+            const response = await fetch(`${API_BASE}/export/transactions/csv?${params}`, { headers: getAuthHeaders() });
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({}));
+                throw new Error(err.error || 'Export failed');
+            }
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `transactions_${selectedMonth || 'all'}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            setError(err.message);
+        }
+    }, [activeTabId, selectedMonth, setError]);
+
+    const handleBatchRename = useCallback(async (oldDesc, newDesc) => {
+        if (!activeTabId || !oldDesc || !newDesc) return;
+        try {
+            const res = await fetch(`${API_BASE}/transactions/batch/rename`, {
+                method: 'PUT',
+                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tab_id: activeTabId, old_description: oldDesc, new_description: newDesc }),
+            });
+            if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Rename failed');
+            const result = await res.json();
+            setDescriptionFilter('');
+            if (selectedMonth === 'all') await fetchAllTransactions(activeTabId);
+            else await fetchMonthTransactions(selectedMonth, activeTabId);
+            await fetchAllDescriptions();
+            setSuccess(`${result.updated} transactions renamed`);
+        } catch (err) {
+            setError(err.message);
+        }
+    }, [activeTabId, selectedMonth, fetchAllTransactions, fetchMonthTransactions, fetchAllDescriptions, setDescriptionFilter, setError, setSuccess]);
+
     // ==================== TAB CALLBACKS ====================
 
     const onTabCreated = useCallback(async (newTabId) => {
@@ -218,10 +294,16 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         allDescriptions, transactionStats,
         loading, error, setError, success, setSuccess,
         searchTerm, setSearchTerm, descriptionFilter, setDescriptionFilter,
+        transactionType, setTransactionType,
         typeFilter, setTypeFilter, previewFilter, setPreviewFilter,
+        dateFrom, setDateFrom, dateTo, setDateTo,
+        amountMin, setAmountMin, amountMax, setAmountMax,
         visibleTransactions, setVisibleTransactions,
         editingTransaction, setEditingTransaction, showAddForm, setShowAddForm,
         expandedDescriptionId, setExpandedDescriptionId,
+        selectedIds: selection.selectedIds, toggleSelected: selection.toggleSelected,
+        toggleSelectAll: selection.selectAll, clearSelection: selection.clearSelection,
+        handleDeleteSelected, exportSelectedCSV: selection.exportSelected, handleBatchRename,
         tabs, setTabs, activeTabId, orphanedCount,
         handleSwitchTab, handleCreateFirstTab, adoptOrphanedTransactions,
         onTabCreated, onTabDeleted,
@@ -233,6 +315,8 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         formatMonthYear, aggregateByCategory, getDescriptionHistory,
         getFilteredPreview: (ud) => getFilteredPreview(ud),
         exportToPDF,
+        exportTransactionsCSV,
+        txPredictions, fetchTransactionPredictions,
     };
 
     return <BankTransactionContext.Provider value={value}>{children}</BankTransactionContext.Provider>;
