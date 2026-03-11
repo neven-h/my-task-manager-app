@@ -21,29 +21,35 @@ def manage_clients_list(payload):
             with get_db_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
 
-                # Always scope to this user's own clients
+                # Fetch all distinct client names from the clients table
+                # AND from this user's tasks, then compute stats in one query.
                 cursor.execute("""
-                    SELECT name, email, phone, notes, created_at, updated_at
-                    FROM clients
-                    WHERE owner = %s
-                    ORDER BY name
-                """, (username,))
-                clients_from_table = cursor.fetchall()
+                    SELECT
+                        client_name                          AS client,
+                        COALESCE(c.email, '')                AS email,
+                        COALESCE(c.phone, '')                AS phone,
+                        COALESCE(c.notes, '')                AS notes,
+                        COUNT(t.id)                          AS task_count,
+                        COALESCE(SUM(t.duration), 0)         AS total_hours,
+                        SUM(CASE WHEN t.status = 'completed' THEN 1 ELSE 0 END) AS completed_tasks
+                    FROM (
+                        -- Union: names from the clients table + names only in tasks
+                        SELECT name AS client_name FROM clients WHERE owner = %s
+                        UNION
+                        SELECT DISTINCT client AS client_name
+                        FROM tasks
+                        WHERE client IS NOT NULL AND client != ''
+                          AND created_by = %s
+                    ) AS all_names
+                    LEFT JOIN clients c
+                        ON c.name = all_names.client_name AND c.owner = %s
+                    LEFT JOIN tasks t
+                        ON t.client = all_names.client_name AND t.created_by = %s
+                    GROUP BY client_name, c.email, c.phone, c.notes
+                    ORDER BY client_name
+                """, (username, username, username, username))
 
-                # Also surface clients referenced in this user's tasks but not yet in the clients table
-                cursor.execute("""
-                    SELECT DISTINCT client
-                    FROM tasks
-                    WHERE client IS NOT NULL
-                      AND client != ''
-                      AND created_by = %s
-                      AND client NOT IN (SELECT name FROM clients WHERE owner = %s)
-                    ORDER BY client
-                """, (username, username))
-                clients_from_tasks = [row['client'] for row in cursor.fetchall()]
-
-                all_clients = clients_from_table + [{'name': c} for c in clients_from_tasks]
-                return jsonify(all_clients)
+                return jsonify(cursor.fetchall())
 
         except Error as e:
             current_app.logger.error('taxonomy db error: %s', e, exc_info=True)
