@@ -275,12 +275,13 @@ const ForecastSection = ({ predictions, onFetch, loading }) => {
             <button type="button" onClick={handleToggle}
                 style={{
                     display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-                    padding: '10px 16px',
-                    border: `3px solid ${SYS.border}`,
-                    background: open ? SYS.secondary : '#fff',
+                    padding: '12px 16px', borderRadius: open ? '10px 10px 0 0' : 10,
+                    border: '2px solid #e0e0e0',
+                    background: open ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : '#f9fafb',
+                    color: open ? '#fff' : SYS.text,
                     cursor: 'pointer', fontWeight: 700, fontSize: '0.82rem',
                     textTransform: 'uppercase', letterSpacing: '0.4px',
-                    fontFamily: 'inherit',
+                    fontFamily: 'inherit', transition: 'all 0.2s ease',
                 }}>
                 <Zap size={16} />
                 {open ? 'Hide' : 'Show'} AI Forecast (3 months)
@@ -288,7 +289,8 @@ const ForecastSection = ({ predictions, onFetch, loading }) => {
 
             {open && (
                 <div style={{
-                    border: `3px solid ${SYS.border}`, borderTop: 'none',
+                    border: '2px solid #e0e0e0', borderTop: 'none',
+                    borderRadius: '0 0 10px 10px',
                     background: '#FAFAFA',
                 }}>
                     {predictions.length === 0 ? (
@@ -300,7 +302,7 @@ const ForecastSection = ({ predictions, onFetch, loading }) => {
                             {/* Projected totals */}
                             <div style={{
                                 display: 'flex', gap: 12, padding: '12px 16px',
-                                borderBottom: `2px dashed ${SYS.border}`,
+                                borderBottom: '1px solid #e5e7eb',
                                 flexWrap: 'wrap',
                             }}>
                                 <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: SYS.light, letterSpacing: '0.4px', alignSelf: 'center' }}>
@@ -337,9 +339,9 @@ const ForecastSection = ({ predictions, onFetch, loading }) => {
                                     </div>
                                     <div style={{
                                         flexShrink: 0, padding: '2px 8px',
-                                        border: `2px solid ${SYS.border}`,
-                                        fontSize: '0.7rem', fontWeight: 700,
-                                        background: p.confidence >= 0.7 ? '#E8F5E9' : p.confidence >= 0.5 ? SYS.secondary : '#f5f5f5',
+                                        border: 'none', borderRadius: 12,
+                                        fontSize: '0.7rem', fontWeight: 700, color: '#fff',
+                                        background: p.confidence >= 0.7 ? '#22c55e' : p.confidence >= 0.5 ? '#f59e0b' : '#ef4444',
                                         textTransform: 'uppercase', letterSpacing: '0.3px',
                                     }}>
                                         {Math.round(p.confidence * 100)}%

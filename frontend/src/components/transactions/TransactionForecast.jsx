@@ -21,21 +21,21 @@ const TransactionForecast = () => {
     const projectedTotal = txPredictions.reduce((s, p) => s + p.predicted_amount, 0);
 
     return (
-        <div style={{ marginBottom: '1.5rem', border: '3px solid #000', boxShadow: '4px 4px 0px #000' }}>
+        <div style={{ marginBottom: '1.5rem', border: '2px solid #e0e0e0', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
             {/* Header row */}
             <div
                 onClick={toggle}
                 style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '14px 20px', background: '#000', color: '#fff', cursor: 'pointer',
+                    padding: '14px 20px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff', cursor: 'pointer',
                     userSelect: 'none',
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 900, fontSize: '0.95rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 800, fontSize: '0.95rem', letterSpacing: '0.3px' }}>
                     <Sparkles size={18} />
                     AI Forecast
                     {txPredictions.length > 0 && (
-                        <span style={{ background: '#FFD500', color: '#000', padding: '2px 8px', fontSize: '0.75rem', fontWeight: 900, marginLeft: 4 }}>
+                        <span style={{ background: 'rgba(255,255,255,0.25)', color: '#fff', padding: '2px 10px', fontSize: '0.75rem', fontWeight: 800, marginLeft: 4, borderRadius: 20 }}>
                             {txPredictions.length}
                         </span>
                     )}
@@ -60,8 +60,8 @@ const TransactionForecast = () => {
                     {!loading && txPredictions.length > 0 && (
                         <>
                             {/* Summary bar */}
-                            <div style={{ padding: '10px 20px', background: '#fffbe6', borderBottom: '2px solid #000', display: 'flex', gap: 24, alignItems: 'center' }}>
-                                <span style={{ fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase' }}>
+                            <div style={{ padding: '10px 20px', background: '#f5f3ff', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: 24, alignItems: 'center' }}>
+                                <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#6366f1' }}>
                                     Next 3 months projected:
                                 </span>
                                 <span style={{ fontWeight: 900, fontSize: '1.1rem', color: colors.accent }}>
@@ -69,7 +69,7 @@ const TransactionForecast = () => {
                                 </span>
                                 <button
                                     onClick={async (e) => { e.stopPropagation(); setLoading(true); await fetchTransactionPredictions(3); setLoading(false); }}
-                                    style={{ marginLeft: 'auto', fontSize: '0.8rem', fontWeight: 700, padding: '4px 12px', border: '2px solid #000', background: '#fff', cursor: 'pointer' }}
+                                    style={{ marginLeft: 'auto', fontSize: '0.8rem', fontWeight: 700, padding: '4px 12px', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer', color: '#6366f1' }}
                                 >
                                     Refresh
                                 </button>
@@ -78,9 +78,9 @@ const TransactionForecast = () => {
                             {/* Prediction rows */}
                             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <thead>
-                                    <tr style={{ background: '#f5f5f5', borderBottom: '2px solid #000' }}>
+                                    <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                                         {['Date', 'Description', 'Type', 'Amount', 'Confidence', 'Every'].map(h => (
-                                            <th key={h} style={{ padding: '8px 12px', fontWeight: 900, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left', whiteSpace: 'nowrap' }}>
+                                            <th key={h} style={{ padding: '8px 12px', fontWeight: 700, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left', whiteSpace: 'nowrap', color: '#6b7280' }}>
                                                 {h}
                                             </th>
                                         ))}

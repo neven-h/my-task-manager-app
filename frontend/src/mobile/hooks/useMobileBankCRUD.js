@@ -69,7 +69,23 @@ const useMobileBankCRUD = ({
         }
     };
 
-    return { handleSaveTransaction, handleDeleteTransaction, EMPTY_TRANSACTION };
+    const handleBatchRename = async (oldDesc, newDesc) => {
+        if (!activeTabId || !oldDesc || !newDesc) return;
+        try {
+            const res = await fetch(`${API_BASE}/transactions/batch/rename`, {
+                method: 'PUT',
+                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tab_id: activeTabId, old_description: oldDesc, new_description: newDesc }),
+            });
+            if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Rename failed');
+            await fetchTransactions();
+            await fetchStats();
+        } catch (err) {
+            setError(err.message);
+        }
+    };
+
+    return { handleSaveTransaction, handleDeleteTransaction, handleBatchRename, EMPTY_TRANSACTION };
 };
 
 export default useMobileBankCRUD;

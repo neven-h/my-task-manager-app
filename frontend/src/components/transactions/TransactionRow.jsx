@@ -11,17 +11,23 @@ const TransactionRow = ({ transaction }) => {
         handleUpdateTransaction,
         handleDeleteTransaction,
         getDescriptionHistory,
+        selectedIds, toggleSelected,
     } = useBankTransactionContext();
 
     const t = transaction;
     const isEditing = editingTransaction?.id === t.id;
     const isExpanded = expandedDescriptionId === t.id;
+    const isSelected = selectedIds.has(t.id);
 
     return (
         <React.Fragment>
-            <tr style={{ borderBottom: isExpanded ? 'none' : `1px solid ${colors.border}` }}>
+            <tr style={{ borderBottom: isExpanded ? 'none' : `1px solid ${colors.border}`, background: isSelected ? '#e8f0fe' : undefined }}>
                 {isEditing ? (
                     <>
+                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>
+                            <input type="checkbox" checked={isSelected} onChange={() => toggleSelected(t.id)}
+                                style={{ cursor: 'pointer', width: 16, height: 16 }} />
+                        </td>
                         <td style={{ padding: '0.5rem' }}>
                             <input
                                 type="date"
@@ -78,6 +84,10 @@ const TransactionRow = ({ transaction }) => {
                     </>
                 ) : (
                     <>
+                        <td style={{ padding: '0.65rem 0.75rem', textAlign: 'center' }}>
+                            <input type="checkbox" checked={isSelected} onChange={() => toggleSelected(t.id)}
+                                style={{ cursor: 'pointer', width: 16, height: 16 }} />
+                        </td>
                         <td style={{ padding: '0.65rem 0.75rem', fontSize: '0.9rem', color: colors.text }}>
                             {new Date(t.transaction_date).toLocaleDateString('he-IL')}
                         </td>
@@ -163,6 +173,7 @@ const TransactionRow = ({ transaction }) => {
                 if (history.length === 0) return null;
                 return history.map(h => (
                     <tr key={h.id} style={{ borderBottom: `1px solid ${colors.border}`, background: '#f9f9f9' }}>
+                        <td />
                         <td style={{ padding: '0.65rem 0.75rem', fontSize: '0.9rem', color: colors.textLight }}>
                             {new Date(h.transaction_date).toLocaleDateString('he-IL')}
                         </td>
