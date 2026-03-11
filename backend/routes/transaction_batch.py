@@ -47,7 +47,6 @@ def batch_delete(payload):
                 return jsonify({'error': 'Access denied'}), 403
 
             placeholders = ','.join(['%s'] * len(ids))
-            cursor = connection.cursor()
             cursor.execute(
                 f"DELETE FROM bank_transactions WHERE id IN ({placeholders}) AND tab_id = %s",
                 [*ids, tab_id],

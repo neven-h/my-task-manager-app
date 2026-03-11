@@ -1,4 +1,8 @@
-"""AI-powered budget prediction — projects future recurring entries."""
+"""Budget prediction using Amazon Chronos deep learning.
+
+Same engine as transaction_predict — projects recurring budget entries
+forward with per-prediction amount confidence intervals.
+"""
 import logging
 import math
 from collections import defaultdict
@@ -6,136 +10,109 @@ from datetime import datetime, timedelta
 
 from flask import Blueprint, request, jsonify
 from config import get_db_connection, token_required
+from .forecast_engine import predict_sequence, confidence_score, cache_get, cache_set
 
 logger = logging.getLogger(__name__)
-
 budget_predict_bp = Blueprint('budget_predict', __name__)
 
-
-def _avg(values):
-    return sum(values) / len(values) if values else 0
-
-
-def _std_dev(values):
-    if len(values) < 2:
-        return 0
-    avg = _avg(values)
-    return math.sqrt(sum((v - avg) ** 2 for v in values) / (len(values) - 1))
+_MIN_ENTRIES = 3
+_MAX_INTERVAL_STD_RATIO = 0.6
 
 
 @budget_predict_bp.route('/api/budget/predict', methods=['GET'])
 @token_required
 def predict_budget(payload):
-    """Analyze recurring budget entries and project future occurrences.
-
-    Query params:
-        months  – how many months ahead to forecast (default 3, max 12)
-        tab_id  – optional budget tab filter
-
-    Returns a JSON array of predicted entries:
-        [{ description, type, predicted_amount, predicted_date,
-           confidence, interval_days, entry_count }]
-    """
+    """Analyse recurring budget entries and project future occurrences via Chronos."""
     try:
         username = payload['username']
-        months_ahead = min(int(request.args.get('months', 3)), 12)
-        tab_id = request.args.get('tab_id')
+        months   = min(int(request.args.get('months', 3)), 12)
+        tab_id   = request.args.get('tab_id')
 
-        with get_db_connection() as connection:
-            cursor = connection.cursor(dictionary=True)
+        cache_key = f"budgetpredict:{username}:{tab_id}:{months}"
+        if (cached := cache_get(cache_key)) is not None:
+            return jsonify(cached)
 
-            query = """
-                SELECT description, type, amount, entry_date
-                FROM budget_entries
-                WHERE owner = %s
-            """
-            params = [username]
+        today  = datetime.now().date()
+        cutoff = today + timedelta(days=months * 30)
 
+        with get_db_connection() as conn:
+            cursor = conn.cursor(dictionary=True)
+            q = "SELECT description, type, amount, entry_date FROM budget_entries WHERE owner = %s"
+            p = [username]
             if tab_id:
-                query += " AND tab_id = %s"
-                params.append(tab_id)
-
-            query += " ORDER BY entry_date ASC, id ASC"
-            cursor.execute(query, params)
+                q += " AND tab_id = %s"; p.append(tab_id)
+            q += " ORDER BY entry_date ASC, id ASC"
+            cursor.execute(q, p)
             rows = cursor.fetchall()
 
         if not rows:
             return jsonify([])
 
-        # Group by (lowercased description, type)
-        groups = defaultdict(list)
+        groups: dict = defaultdict(list)
         for row in rows:
-            key = (row['description'].strip().lower(), row['type'])
-            groups[key].append(row)
+            groups[(row['description'].strip().lower(), row['type'])].append(row)
 
-        today = datetime.now().date()
-        cutoff = today + timedelta(days=months_ahead * 30)
-        predictions = []
+        results = _build_predictions(groups, today, cutoff, months)
+        cache_set(cache_key, results)
+        return jsonify(results)
 
-        for (desc_lower, entry_type), entries in groups.items():
-            if len(entries) < 2:
-                continue
-
-            # Parse dates and amounts
-            dates = []
-            amounts = []
-            original_desc = entries[-1]['description']  # keep original casing
-
-            for e in entries:
-                d = e['entry_date']
-                if isinstance(d, str):
-                    d = datetime.strptime(d, '%Y-%m-%d').date()
-                dates.append(d)
-                amounts.append(float(e['amount']))
-
-            # Calculate intervals between consecutive entries (in days)
-            intervals = []
-            for i in range(1, len(dates)):
-                delta = (dates[i] - dates[i - 1]).days
-                if delta > 0:
-                    intervals.append(delta)
-
-            if not intervals:
-                continue
-
-            avg_interval = _avg(intervals)
-            interval_std = _std_dev(intervals)
-
-            # Skip entries with very irregular intervals (std_dev > 50% of avg)
-            # or intervals outside 7-365 day range
-            if avg_interval < 7 or avg_interval > 365:
-                continue
-            if len(intervals) >= 3 and interval_std > avg_interval * 0.5:
-                continue
-
-            avg_amount = _avg(amounts)
-            entry_count = len(entries)
-
-            # Bayesian-style confidence: increases with more data points
-            confidence = round(entry_count / (entry_count + 2), 2)
-
-            # Project future entries from last known date
-            last_date = dates[-1]
-            next_date = last_date + timedelta(days=round(avg_interval))
-
-            while next_date <= cutoff:
-                if next_date >= today:
-                    predictions.append({
-                        'description': original_desc,
-                        'type': entry_type,
-                        'predicted_amount': round(avg_amount, 2),
-                        'predicted_date': next_date.isoformat(),
-                        'confidence': confidence,
-                        'interval_days': round(avg_interval),
-                        'entry_count': entry_count,
-                    })
-                next_date += timedelta(days=round(avg_interval))
-
-        # Sort by predicted date
-        predictions.sort(key=lambda p: p['predicted_date'])
-
-        return jsonify(predictions)
-
-    except Exception as e:
-        logger.error('budget_predict error: %s', e, exc_info=True)
+    except Exception as exc:
+        logger.error('budget_predict error: %s', exc, exc_info=True)
         return jsonify({'error': 'Failed to generate predictions'}), 500
+
+
+# ── Core logic ────────────────────────────────────────────────────────────────
+def _build_predictions(groups, today, cutoff, n_ahead):
+    results = []
+
+    for (_, entry_type), entries in groups.items():
+        if len(entries) < _MIN_ENTRIES:
+            continue
+
+        original_desc = entries[-1]['description']
+        dates, amounts = [], []
+        for e in entries:
+            d = e['entry_date']
+            if isinstance(d, str):
+                d = datetime.strptime(d[:10], '%Y-%m-%d').date()
+            dates.append(d)
+            amounts.append(float(e['amount']))
+
+        intervals = [(dates[i] - dates[i - 1]).days
+                     for i in range(1, len(dates))
+                     if (dates[i] - dates[i - 1]).days > 0]
+        if not intervals:
+            continue
+
+        avg_iv = sum(intervals) / len(intervals)
+        if avg_iv < 7 or avg_iv > 365:
+            continue
+        if len(intervals) >= 3:
+            std_iv = math.sqrt(sum((x - avg_iv) ** 2 for x in intervals) / len(intervals))
+            if std_iv > avg_iv * _MAX_INTERVAL_STD_RATIO:
+                continue
+
+        amount_fc   = predict_sequence(amounts,                n=n_ahead)
+        interval_fc = predict_sequence([float(x) for x in intervals], n=n_ahead)
+
+        next_date = dates[-1]
+        for i in range(n_ahead):
+            iv_days   = max(7, round(interval_fc['median'][i]))
+            next_date = next_date + timedelta(days=iv_days)
+            if next_date > cutoff:
+                break
+            if next_date >= today:
+                results.append({
+                    'description':           original_desc,
+                    'type':                  entry_type,
+                    'predicted_amount':      round(max(0.0, amount_fc['median'][i]), 2),
+                    'predicted_amount_low':  round(max(0.0, amount_fc['low'][i]),    2),
+                    'predicted_amount_high': round(max(0.0, amount_fc['high'][i]),   2),
+                    'predicted_date':        next_date.isoformat(),
+                    'interval_days':         iv_days,
+                    'confidence':            confidence_score(amount_fc, interval_fc, len(entries), i),
+                    'entry_count':           len(entries),
+                })
+
+    results.sort(key=lambda p: p['predicted_date'])
+    return results
