@@ -51,11 +51,11 @@ const TaskHeader = ({ showSidebar, setShowSidebar, setShowMobileMenu, setShowMob
                     <Filter size={18} />
                 </button>
 
-                {/* Desktop nav buttons (scrollable) */}
+                {/* Desktop nav buttons (scrollable, centered) */}
                 <div className="desktop-header-buttons" style={{
                     display: 'flex', gap: '8px', flexWrap: 'nowrap', alignItems: 'center',
                     flex: 1, minWidth: 0, overflowX: 'auto', overflowY: 'visible',
-                    paddingBottom: '2px', justifyContent: 'flex-end',
+                    paddingBottom: '2px', justifyContent: 'center',
                 }}>
                     {(isAdmin || isSharedUser || isLimitedUser) && (
                         <button className="btn btn-blue" onClick={() => setAppView('transactions')} style={NAV_BTN}>
