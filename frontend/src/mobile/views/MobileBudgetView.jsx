@@ -313,10 +313,10 @@ const ForecastSection = ({ predictions, onFetch, loading }) => {
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                     width: '100%', padding: '13px 16px',
                     border: 'none', borderRadius: IOS.radius,
-                    background: open ? '#FFD500' : IOS.card,
+                    background: open ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : IOS.card,
                     boxShadow: '0 1px 3px rgba(0,0,0,0.07)',
                     cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem',
-                    fontFamily: FONT_STACK, color: '#000',
+                    fontFamily: FONT_STACK, color: open ? '#fff' : '#000',
                 }}>
                 <Zap size={16} />
                 {open ? 'Hide' : 'Show'} AI Forecast
