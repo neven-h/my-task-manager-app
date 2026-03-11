@@ -27,20 +27,20 @@ const TaskHeader = ({ showSidebar, setShowSidebar, setShowMobileMenu, setShowMob
                 justifyContent: 'flex-start',
                 alignItems: 'center',
                 padding: '0 var(--header-padding, 16px)',
-                gap: 'var(--header-gap, 32px)',
+                gap: 'var(--header-gap, 16px)',
                 flexWrap: 'nowrap',
                 minWidth: 0,
                 overflow: 'visible'
             }}>
-                <div style={{ flexShrink: 0, minWidth: '200px' }}>
+                <div style={{ flexShrink: 0 }}>
                     <h1
                         onClick={() => { setAppView('tasks'); setView('list'); }}
                         style={{
                             fontFamily: '"Inter", sans-serif',
-                            fontSize: 'clamp(1.5rem, 5vw, 3rem)',
+                            fontSize: 'clamp(1.3rem, 3vw, 2rem)',
                             fontWeight: 900,
-                            margin: '0 0 4px 0',
-                            letterSpacing: '-1px',
+                            margin: 0,
+                            letterSpacing: '-0.5px',
                             textTransform: 'uppercase',
                             whiteSpace: 'nowrap',
                             cursor: 'pointer',
@@ -92,13 +92,15 @@ const TaskHeader = ({ showSidebar, setShowSidebar, setShowMobileMenu, setShowMob
                 <div className="desktop-header-buttons"
                      style={{
                          display: 'flex',
-                         gap: '12px',
+                         gap: '8px',
                          flexWrap: 'nowrap',
                          alignItems: 'center',
+                         flex: 1,
                          minWidth: 0,
                          overflowX: 'auto',
                          overflowY: 'visible',
-                         paddingBottom: '2px'
+                         paddingBottom: '2px',
+                         justifyContent: 'flex-end',
                      }}>
 
                     {/* Show user info - only for admin */}
@@ -107,16 +109,12 @@ const TaskHeader = ({ showSidebar, setShowSidebar, setShowMobileMenu, setShowMob
                             👤 {authUser} (admin)
                         </span>
                     )}
-                    {/* Tasks button - always first */}
-                    <button className="btn btn-yellow" onClick={() => { setAppView('tasks'); setView('list'); }} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
-                        Tasks
-                    </button>
                     {/* Bank Transactions - for admin, shared, AND limited users */}
                     {(isAdmin || isSharedUser || isLimitedUser) && (
                         <button className="btn btn-blue" onClick={() => setAppView('transactions')} style={{whiteSpace: 'nowrap', flexShrink: 0}}>
                             <DollarSign size={16}
                                         style={{display: 'inline', verticalAlign: 'middle', marginRight: '4px'}}/>
-                            Bank Transactions
+                            Transactions
                         </button>
                     )}
                     {/* Clients - for admin and limited users (not shared) */}
