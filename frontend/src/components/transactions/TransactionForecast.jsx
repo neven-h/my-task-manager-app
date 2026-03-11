@@ -28,7 +28,7 @@ const TransactionForecast = () => {
                 onClick={toggle}
                 style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '14px 20px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff', cursor: 'pointer',
+                    padding: '14px 20px', background: '#1e293b', color: '#ffffff', color: '#fff', cursor: 'pointer',
                     userSelect: 'none',
                 }}
             >
