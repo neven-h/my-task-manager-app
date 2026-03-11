@@ -12,6 +12,7 @@ import TransactionSidebar from './components/transactions/TransactionSidebar';
 import TransactionTable from './components/transactions/TransactionTable';
 import AddTransactionModal from './components/transactions/AddTransactionModal';
 import CreateFirstTab from './components/transactions/CreateFirstTab';
+import TransactionForecast from './components/transactions/TransactionForecast';
 
 const BankTransactionsInner = () => {
     const {
@@ -88,6 +89,7 @@ const BankTransactionsInner = () => {
 
             {activeTabId && (
                 <div className="bank-main" style={{ maxWidth: '1500px', margin: '0 auto', padding: '2rem' }}>
+                    <TransactionForecast />
                     <TransactionStatsCards />
                     <ExpenseDistributionChart />
                     <UploadPreview />
