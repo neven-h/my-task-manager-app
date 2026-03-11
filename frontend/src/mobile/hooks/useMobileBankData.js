@@ -9,6 +9,8 @@ const useMobileBankData = (activeTabId) => {
     const [availableMonths, setAvailableMonths] = useState([]);
     const [selectedMonth, setSelectedMonth] = useState('all');
     const [stats, setStats] = useState(null);
+    const [predictions, setPredictions] = useState([]);
+    const [predictionsLoading, setPredictionsLoading] = useState(false);
 
     // Cache per tabId to make tab switches instant
     const cacheRef = useRef({}); // { [tabId]: { transactions, months, stats } }
@@ -64,6 +66,22 @@ const useMobileBankData = (activeTabId) => {
         }
     }, [activeTabId]);
 
+    const fetchTransactionPredictions = useCallback(async (months = 3) => {
+        if (!activeTabId) return;
+        setPredictionsLoading(true);
+        try {
+            const params = new URLSearchParams({ months, tab_id: activeTabId });
+            const res = await fetch(`${API_BASE}/transactions/predict?${params}`, { headers: getAuthHeaders() });
+            if (!res.ok) throw new Error('Prediction request failed');
+            setPredictions(await res.json());
+        } catch (err) {
+            console.error('Failed to fetch predictions:', err);
+            setPredictions([]);
+        } finally {
+            setPredictionsLoading(false);
+        }
+    }, [activeTabId]);
+
     const fetchStats = useCallback(async () => {
         try {
             const response = await fetch(`${API_BASE}/transactions/stats?tab_id=${activeTabId}`, { headers: getAuthHeaders() });
@@ -78,6 +96,7 @@ const useMobileBankData = (activeTabId) => {
     useEffect(() => {
         if (activeTabId === null) return;
         setSelectedMonth('all');
+        setPredictions([]);
         // Pre-populate from cache immediately so there's no blank/loading flash
         const cached = cacheRef.current[activeTabId];
         if (cached) {
@@ -107,6 +126,8 @@ const useMobileBankData = (activeTabId) => {
         availableMonths,
         selectedMonth, setSelectedMonth,
         stats, setStats,
+        predictions, predictionsLoading,
+        fetchTransactionPredictions,
         formatMonthYear,
         fetchTransactions,
         fetchStats
