@@ -1,14 +1,18 @@
 import { useMemo } from 'react';
 import { BAUHAUS } from '../theme';
 
-const useMobileBankFilters = (transactions, typeFilter, searchTerm) => {
+const useMobileBankFilters = (transactions, typeFilter, searchTerm, dateFrom = '', dateTo = '', amountMin = '', amountMax = '') => {
     const filteredTransactions = useMemo(() =>
         transactions.filter(t => {
             if (typeFilter !== 'all' && t.transaction_type !== typeFilter) return false;
             if (searchTerm && !(t.description || '').toLowerCase().includes(searchTerm.toLowerCase())) return false;
+            if (dateFrom) { const d = (t.transaction_date || '').split('T')[0]; if (d < dateFrom) return false; }
+            if (dateTo) { const d = (t.transaction_date || '').split('T')[0]; if (d > dateTo) return false; }
+            if (amountMin !== '' && (Number(t.amount) || 0) < Number(amountMin)) return false;
+            if (amountMax !== '' && (Number(t.amount) || 0) > Number(amountMax)) return false;
             return true;
         }),
-        [transactions, typeFilter, searchTerm]
+        [transactions, typeFilter, searchTerm, dateFrom, dateTo, amountMin, amountMax]
     );
 
     const aggregateByCategory = (list) => {

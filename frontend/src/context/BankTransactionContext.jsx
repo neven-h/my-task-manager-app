@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import useBankTransactionData from '../hooks/useBankTransactionData';
 import useBankTransactionFilters from '../hooks/useBankTransactionFilters';
+import useTransactionSelection from '../hooks/useTransactionSelection';
 import { exportBankTransactionsPDF } from '../utils/exportBankPDF';
 import storage, { STORAGE_KEYS } from '../utils/storage';
 import API_BASE from '../config';
@@ -38,9 +39,23 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
     const {
         searchTerm, setSearchTerm, descriptionFilter, setDescriptionFilter,
         typeFilter, setTypeFilter, previewFilter, setPreviewFilter,
+        dateFrom, setDateFrom, dateTo, setDateTo,
+        amountMin, setAmountMin, amountMax, setAmountMax,
         filteredTransactions, totalFiltered, creditTotal, cashTotal,
         chartData, aggregateByCategory, getFilteredPreview,
     } = filters;
+
+    const selection = useTransactionSelection(activeTabId, setError);
+
+    const handleDeleteSelected = useCallback(async () => {
+        const ok = await selection.deleteSelected();
+        if (ok) {
+            if (selectedMonth === 'all') await fetchAllTransactions(activeTabId);
+            else await fetchMonthTransactions(selectedMonth, activeTabId);
+            await fetchSavedMonths(activeTabId);
+            await fetchTransactionStats(activeTabId);
+        }
+    }, [selection, selectedMonth, activeTabId, fetchAllTransactions, fetchMonthTransactions, fetchSavedMonths, fetchTransactionStats]);
 
     const [transactionType, setTransactionType] = useState('credit');
     const [visibleTransactions, setVisibleTransactions] = useState(50);
@@ -116,6 +131,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         setDescriptionFilter('');
         setTypeFilter('all');
         setVisibleTransactions(50);
+        selection.clearSelection();
         // All four fetches are independent — run in parallel
         await Promise.all([
             fetchSavedMonths(tabId),
@@ -125,7 +141,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         ]);
     }, [fetchSavedMonths, fetchAllDescriptions, fetchTransactionStats, fetchAllTransactions,
         setActiveTabId, setSelectedMonth, setMonthTransactions, setTransactionStats, setUploadedData, setSearchTerm,
-        setDescriptionFilter, setTypeFilter]);
+        setDescriptionFilter, setTypeFilter, selection]);
 
     // ==================== WRAPPED CRUD ====================
 
@@ -234,6 +250,26 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         }
     }, [activeTabId, selectedMonth, setError]);
 
+    const handleBatchRename = useCallback(async (oldDesc, newDesc) => {
+        if (!activeTabId || !oldDesc || !newDesc) return;
+        try {
+            const res = await fetch(`${API_BASE}/transactions/batch/rename`, {
+                method: 'PUT',
+                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tab_id: activeTabId, old_description: oldDesc, new_description: newDesc }),
+            });
+            if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Rename failed');
+            const result = await res.json();
+            setDescriptionFilter('');
+            if (selectedMonth === 'all') await fetchAllTransactions(activeTabId);
+            else await fetchMonthTransactions(selectedMonth, activeTabId);
+            await fetchAllDescriptions();
+            setSuccess(`${result.updated} transactions renamed`);
+        } catch (err) {
+            setError(err.message);
+        }
+    }, [activeTabId, selectedMonth, fetchAllTransactions, fetchMonthTransactions, fetchAllDescriptions, setDescriptionFilter, setError, setSuccess]);
+
     // ==================== TAB CALLBACKS ====================
 
     const onTabCreated = useCallback(async (newTabId) => {
@@ -260,9 +296,14 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         searchTerm, setSearchTerm, descriptionFilter, setDescriptionFilter,
         transactionType, setTransactionType,
         typeFilter, setTypeFilter, previewFilter, setPreviewFilter,
+        dateFrom, setDateFrom, dateTo, setDateTo,
+        amountMin, setAmountMin, amountMax, setAmountMax,
         visibleTransactions, setVisibleTransactions,
         editingTransaction, setEditingTransaction, showAddForm, setShowAddForm,
         expandedDescriptionId, setExpandedDescriptionId,
+        selectedIds: selection.selectedIds, toggleSelected: selection.toggleSelected,
+        toggleSelectAll: selection.selectAll, clearSelection: selection.clearSelection,
+        handleDeleteSelected, exportSelectedCSV: selection.exportSelected, handleBatchRename,
         tabs, setTabs, activeTabId, orphanedCount,
         handleSwitchTab, handleCreateFirstTab, adoptOrphanedTransactions,
         onTabCreated, onTabDeleted,
