@@ -52,6 +52,7 @@ from routes.budget_tabs import budget_tabs_bp
 from routes.budget_export import budget_export_bp
 from routes.budget_predict import budget_predict_bp
 from routes.transaction_export import transaction_export_bp
+from routes.transaction_predict import transaction_predict_bp
 from routes.admin import admin_bp
 from routes.admin_diagnose import admin_diagnose_bp
 from routes.admin_migrations import admin_migrations_bp
@@ -100,6 +101,7 @@ app.register_blueprint(budget_tabs_bp)
 app.register_blueprint(budget_export_bp)
 app.register_blueprint(budget_predict_bp)
 app.register_blueprint(transaction_export_bp)
+app.register_blueprint(transaction_predict_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(admin_diagnose_bp)
 app.register_blueprint(admin_migrations_bp)

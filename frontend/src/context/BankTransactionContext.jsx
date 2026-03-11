@@ -47,6 +47,19 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
     const [editingTransaction, setEditingTransaction] = useState(null);
     const [showAddForm, setShowAddForm] = useState(false);
     const [expandedDescriptionId, setExpandedDescriptionId] = useState(null);
+    const [txPredictions, setTxPredictions] = useState([]);
+
+    const fetchTransactionPredictions = useCallback(async (months = 3) => {
+        if (!activeTabId) return;
+        try {
+            const params = new URLSearchParams({ months, tab_id: activeTabId });
+            const res = await fetch(`${API_BASE}/transactions/predict?${params}`, { headers: getAuthHeaders() });
+            if (!res.ok) throw new Error('Prediction request failed');
+            setTxPredictions(await res.json());
+        } catch (err) {
+            setError(err.message);
+        }
+    }, [activeTabId, setError]);
 
     // ==================== INITIALIZATION ====================
 
@@ -262,6 +275,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         getFilteredPreview: (ud) => getFilteredPreview(ud),
         exportToPDF,
         exportTransactionsCSV,
+        txPredictions, fetchTransactionPredictions,
     };
 
     return <BankTransactionContext.Provider value={value}>{children}</BankTransactionContext.Provider>;
