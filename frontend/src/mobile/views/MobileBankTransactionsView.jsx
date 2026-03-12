@@ -15,7 +15,7 @@ import MobileBankStats from '../components/bank/MobileBankStats';
 import MobileBankTransactionList from '../components/bank/MobileBankTransactionList';
 import MobileBankTransactionForm from '../components/bank/MobileBankTransactionForm';
 import MobileBankSelectionBar from '../components/bank/MobileBankSelectionBar';
-import MobileBankForecast from '../components/bank/MobileBankForecast';
+import MobileBankInsights from '../components/bank/MobileBankInsights';
 
 const EMPTY_TX = {
     transaction_date: new Date().toISOString().split('T')[0],
@@ -29,7 +29,8 @@ const MobileBankTransactionsView = ({ authUser, authRole, onBack }) => {
         transactions, loading, setLoading, error, setError,
         availableMonths, selectedMonth, setSelectedMonth,
         stats, predictions, predictionsLoading,
-        fetchTransactionPredictions, formatMonthYear, fetchTransactions, fetchStats
+        fetchTransactionPredictions, formatMonthYear, fetchTransactions, fetchStats,
+        insights, insightsLoading, fetchInsights
     } = useMobileBankData(activeTabId);
 
     const [showAddForm, setShowAddForm] = useState(false);
@@ -113,13 +114,12 @@ const MobileBankTransactionsView = ({ authUser, authRole, onBack }) => {
                 onBatchRename={handleBatchRename}
             />
 
-            {/* AI Forecast */}
+            {/* Spending Insights */}
             {activeTabId && !sel.selectMode && (
-                <MobileBankForecast
-                    predictions={predictions}
-                    onFetch={() => fetchTransactionPredictions(3)}
-                    loading={predictionsLoading}
-                    tabId={activeTabId}
+                <MobileBankInsights
+                    insights={insights}
+                    onFetch={fetchInsights}
+                    loading={insightsLoading}
                 />
             )}
 

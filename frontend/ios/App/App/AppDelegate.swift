@@ -1,5 +1,6 @@
 import UIKit
 import Capacitor
+import LocalAuthentication
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -7,6 +8,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+        // Ensure Capacitor plugins (including any custom biometric plugin) are registered
+        // This is typically automatic, but keeping a reference here avoids tree-shaking in some setups.
+        _ = ApplicationDelegateProxy.shared
         return true
     }
 
@@ -43,6 +47,39 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Feel free to add additional processing here, but if you want the App API to support
         // tracking app url opens, make sure to keep this call
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
+    }
+    
+    // Convenience: Trigger Face ID/Passcode auth from native side if you need to wire it to a button.
+    // Example usage from a view controller: (UIApplication.shared.delegate as? AppDelegate)?.authenticateWithBiometrics(reason: "Sign in with Face ID") { success, error in
+    //     // handle result
+    // }
+    func authenticateWithBiometrics(reason: String = "Authenticate to sign in", completion: @escaping (Bool, String?) -> Void) {
+        let context = LAContext()
+        var authError: NSError?
+        let policy: LAPolicy = .deviceOwnerAuthentication
+        guard context.canEvaluatePolicy(policy, error: &authError) else {
+            completion(false, authError?.localizedDescription ?? "Biometric/Passcode authentication not available")
+            return
+        }
+        context.localizedFallbackTitle = "Use Passcode"
+        context.evaluatePolicy(policy, localizedReason: reason) { success, error in
+            if success {
+                completion(true, nil)
+            } else {
+                let message: String
+                if let laErr = error as? LAError {
+                    switch laErr.code {
+                    case .userCancel: message = "Authentication canceled"
+                    case .systemCancel: message = "Authentication canceled by system"
+                    case .biometryLockout: message = "Biometrics locked. Try passcode."
+                    default: message = "Authentication failed"
+                    }
+                } else {
+                    message = error?.localizedDescription ?? "Authentication failed"
+                }
+                completion(false, message)
+            }
+        }
     }
 
 }
