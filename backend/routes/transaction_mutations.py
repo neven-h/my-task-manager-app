@@ -4,6 +4,7 @@ from config import (
     log_bank_transaction_access,
 )
 from mysql.connector import Error
+from .forecast_engine import invalidate_prediction_cache
 
 transaction_mutations_bp = Blueprint('transaction_mutations', __name__)
 
@@ -45,6 +46,7 @@ def delete_transaction(payload, transaction_id):
                 action='DELETE',
                 transaction_ids=str(transaction_id)
             )
+            invalidate_prediction_cache(username)
 
             return jsonify({'message': 'Transaction deleted successfully'})
 
@@ -90,6 +92,7 @@ def delete_month_transactions(payload, month_year):
                 month_year=month_year,
                 transaction_ids=f"Count: {deleted_count}"
             )
+            invalidate_prediction_cache(username, tab_id)
 
             return jsonify({
                 'message': f'{deleted_count} transactions deleted successfully'

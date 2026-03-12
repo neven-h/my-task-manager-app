@@ -1,10 +1,11 @@
-"""Budget prediction using Amazon Chronos deep learning.
+"""Budget prediction — EWMA + linear trend forecasting.
 
 Same engine as transaction_predict — projects recurring budget entries
-forward with per-prediction amount confidence intervals.
+forward with per-prediction amount confidence intervals and trend direction.
 """
 import logging
 import math
+import re
 from collections import defaultdict
 from datetime import datetime, timedelta
 
@@ -15,14 +16,14 @@ from .forecast_engine import predict_sequence, confidence_score, cache_get, cach
 logger = logging.getLogger(__name__)
 budget_predict_bp = Blueprint('budget_predict', __name__)
 
-_MIN_ENTRIES = 3
-_MAX_INTERVAL_STD_RATIO = 0.6
+_MIN_ENTRIES = 2
+_MAX_INTERVAL_STD_RATIO = 0.8
 
 
 @budget_predict_bp.route('/api/budget/predict', methods=['GET'])
 @token_required
 def predict_budget(payload):
-    """Analyse recurring budget entries and project future occurrences via Chronos."""
+    """Analyse recurring budget entries and project future occurrences."""
     try:
         username = payload['username']
         months   = min(int(request.args.get('months', 3)), 12)
@@ -37,7 +38,8 @@ def predict_budget(payload):
 
         with get_db_connection() as conn:
             cursor = conn.cursor(dictionary=True)
-            q = "SELECT description, type, amount, entry_date FROM budget_entries WHERE owner = %s"
+            q = ("SELECT description, type, amount, entry_date FROM budget_entries "
+                 "WHERE owner = %s AND entry_date >= DATE_SUB(NOW(), INTERVAL 24 MONTH)")
             p = [username]
             if tab_id:
                 q += " AND tab_id = %s"; p.append(tab_id)
@@ -50,7 +52,8 @@ def predict_budget(payload):
 
         groups: dict = defaultdict(list)
         for row in rows:
-            groups[(row['description'].strip().lower(), row['type'])].append(row)
+            norm_key = re.sub(r'\s+', ' ', row['description'].strip().lower())
+            groups[(norm_key, row['type'])].append(row)
 
         results = _build_predictions(groups, today, cutoff, months)
         cache_set(cache_key, results)
@@ -94,6 +97,7 @@ def _build_predictions(groups, today, cutoff, n_ahead):
 
         amount_fc   = predict_sequence(amounts,                n=n_ahead)
         interval_fc = predict_sequence([float(x) for x in intervals], n=n_ahead)
+        trend = amount_fc.get('trend', 'stable')
 
         next_date = dates[-1]
         for i in range(n_ahead):
@@ -112,6 +116,7 @@ def _build_predictions(groups, today, cutoff, n_ahead):
                     'interval_days':         iv_days,
                     'confidence':            confidence_score(amount_fc, interval_fc, len(entries), i),
                     'entry_count':           len(entries),
+                    'trend':                 trend,
                 })
 
     results.sort(key=lambda p: p['predicted_date'])

@@ -1,10 +1,11 @@
-"""Bank transaction prediction using Amazon Chronos deep learning.
+"""Bank transaction prediction — EWMA + linear trend forecasting.
 
 Projects future recurring transactions with per-prediction confidence
-intervals derived from the model's probabilistic output.
+intervals and trend direction (up/down/stable).
 """
 import logging
 import math
+import re
 from collections import defaultdict
 from datetime import datetime, timedelta
 
@@ -15,14 +16,14 @@ from .forecast_engine import predict_sequence, confidence_score, cache_get, cach
 logger = logging.getLogger(__name__)
 transaction_predict_bp = Blueprint('transaction_predict', __name__)
 
-_MIN_ENTRIES = 3   # need at least 3 occurrences to detect a pattern
-_MAX_INTERVAL_STD_RATIO = 0.6  # skip series whose timing is too chaotic
+_MIN_ENTRIES = 2   # need at least 2 occurrences to detect a pattern
+_MAX_INTERVAL_STD_RATIO = 0.8  # skip series whose timing is too chaotic
 
 
 @transaction_predict_bp.route('/api/transactions/predict', methods=['GET'])
 @token_required
 def predict_transactions(payload):
-    """Detect recurring transactions and project future occurrences via Chronos."""
+    """Detect recurring transactions and project future occurrences."""
     try:
         username  = payload['username']
         user_role = payload.get('role', 'limited')
@@ -39,7 +40,8 @@ def predict_transactions(payload):
         with get_db_connection() as conn:
             cursor = conn.cursor(dictionary=True)
             q = ("SELECT description, amount, transaction_date, transaction_type "
-                 "FROM bank_transactions WHERE 1=1")
+                 "FROM bank_transactions "
+                 "WHERE transaction_date >= DATE_SUB(NOW(), INTERVAL 24 MONTH)")
             p = []
             if tab_id:
                 q += " AND tab_id = %s";      p.append(tab_id)
@@ -59,7 +61,8 @@ def predict_transactions(payload):
                 amount = float(decrypt_field(row['amount']))
             except Exception:
                 continue
-            groups[(desc.strip().lower(), row['transaction_type'])].append(
+            norm_key = re.sub(r'\s+', ' ', desc.strip().lower())
+            groups[(norm_key, row['transaction_type'])].append(
                 {'description': desc, 'amount': amount,
                  'date': row['transaction_date'], 'type': row['transaction_type']}
             )
@@ -106,6 +109,7 @@ def _build_predictions(groups, today, cutoff, n_ahead):
 
         amount_fc   = predict_sequence(amounts,                n=n_ahead)
         interval_fc = predict_sequence([float(x) for x in intervals], n=n_ahead)
+        trend = amount_fc.get('trend', 'stable')
 
         next_date = dates[-1]
         for i in range(n_ahead):
@@ -125,6 +129,7 @@ def _build_predictions(groups, today, cutoff, n_ahead):
                     'interval_days':        iv_days,
                     'confidence':           confidence_score(amount_fc, interval_fc, len(entries), i),
                     'entry_count':          len(entries),
+                    'trend':                trend,
                 })
 
     results.sort(key=lambda p: p['predicted_date'])

@@ -119,6 +119,7 @@ const MobileBankTransactionsView = ({ authUser, authRole, onBack }) => {
                     predictions={predictions}
                     onFetch={() => fetchTransactionPredictions(3)}
                     loading={predictionsLoading}
+                    tabId={activeTabId}
                 />
             )}
 
