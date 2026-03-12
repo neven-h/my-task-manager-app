@@ -11,6 +11,8 @@ const useMobileBankData = (activeTabId) => {
     const [stats, setStats] = useState(null);
     const [predictions, setPredictions] = useState([]);
     const [predictionsLoading, setPredictionsLoading] = useState(false);
+    const [insights, setInsights] = useState(null);
+    const [insightsLoading, setInsightsLoading] = useState(false);
 
     // Cache per tabId to make tab switches instant
     const cacheRef = useRef({}); // { [tabId]: { transactions, months, stats } }
@@ -82,6 +84,22 @@ const useMobileBankData = (activeTabId) => {
         }
     }, [activeTabId]);
 
+    const fetchInsights = useCallback(async () => {
+        if (!activeTabId) return;
+        setInsightsLoading(true);
+        try {
+            const params = new URLSearchParams({ tab_id: activeTabId });
+            const res = await fetch(`${API_BASE}/transactions/insights?${params}`, { headers: getAuthHeaders() });
+            if (!res.ok) throw new Error('Insights request failed');
+            setInsights(await res.json());
+        } catch (err) {
+            console.error('Failed to fetch insights:', err);
+            setInsights(null);
+        } finally {
+            setInsightsLoading(false);
+        }
+    }, [activeTabId]);
+
     const fetchStats = useCallback(async () => {
         try {
             const response = await fetch(`${API_BASE}/transactions/stats?tab_id=${activeTabId}`, { headers: getAuthHeaders() });
@@ -128,6 +146,7 @@ const useMobileBankData = (activeTabId) => {
         stats, setStats,
         predictions, predictionsLoading,
         fetchTransactionPredictions,
+        insights, insightsLoading, fetchInsights,
         formatMonthYear,
         fetchTransactions,
         fetchStats

@@ -64,6 +64,8 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
     const [uploadTargetTabId, setUploadTargetTabId] = useState(null);
     const [expandedDescriptionId, setExpandedDescriptionId] = useState(null);
     const [txPredictions, setTxPredictions] = useState([]);
+    const [spendingInsights, setSpendingInsights] = useState(null);
+    const [insightsLoading, setInsightsLoading] = useState(false);
 
     const fetchTransactionPredictions = useCallback(async (months = 3) => {
         if (!activeTabId) return;
@@ -74,6 +76,21 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
             setTxPredictions(await res.json());
         } catch (err) {
             setError(err.message);
+        }
+    }, [activeTabId, setError]);
+
+    const fetchSpendingInsights = useCallback(async () => {
+        if (!activeTabId) return;
+        setInsightsLoading(true);
+        try {
+            const params = new URLSearchParams({ tab_id: activeTabId });
+            const res = await fetch(`${API_BASE}/transactions/insights?${params}`, { headers: getAuthHeaders() });
+            if (!res.ok) throw new Error('Insights request failed');
+            setSpendingInsights(await res.json());
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setInsightsLoading(false);
         }
     }, [activeTabId, setError]);
 
@@ -324,6 +341,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         exportToPDF,
         exportTransactionsCSV,
         txPredictions, fetchTransactionPredictions,
+        spendingInsights, insightsLoading, fetchSpendingInsights,
     };
 
     return <BankTransactionContext.Provider value={value}>{children}</BankTransactionContext.Provider>;
