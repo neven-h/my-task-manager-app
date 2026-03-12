@@ -46,7 +46,7 @@ const ExpenseDistributionChart = () => {
                 </span>
             </h2>
 
-            <div style={{
+            <div className="chart-grid" style={{
                 display: 'grid',
                 gridTemplateColumns: '1fr 2fr',
                 gap: '2rem',

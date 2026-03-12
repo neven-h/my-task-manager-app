@@ -58,9 +58,10 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
     }, [selection, selectedMonth, activeTabId, fetchAllTransactions, fetchMonthTransactions, fetchSavedMonths, fetchTransactionStats]);
 
     const [transactionType, setTransactionType] = useState('credit');
-    const [visibleTransactions, setVisibleTransactions] = useState(50);
+    const [visibleTransactions, setVisibleTransactions] = useState(15);
     const [editingTransaction, setEditingTransaction] = useState(null);
     const [showAddForm, setShowAddForm] = useState(false);
+    const [uploadTargetTabId, setUploadTargetTabId] = useState(null);
     const [expandedDescriptionId, setExpandedDescriptionId] = useState(null);
     const [txPredictions, setTxPredictions] = useState([]);
 
@@ -127,10 +128,11 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         setMonthTransactions([]);
         setTransactionStats(null);
         setUploadedData(null);
+        setUploadTargetTabId(null);
         setSearchTerm('');
         setDescriptionFilter('');
         setTypeFilter('all');
-        setVisibleTransactions(50);
+        setVisibleTransactions(15);
         selection.clearSelection();
         // All four fetches are independent — run in parallel
         await Promise.all([
@@ -167,8 +169,12 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
     const handleFileUpload = useCallback(async (event) => { await handleFileUploadRaw(event, transactionType); setPreviewFilter('all'); }, [handleFileUploadRaw, transactionType, setPreviewFilter]);
 
     const handleSaveTransactions = useCallback(async () => {
-        if (await handleSaveRaw(activeTabId)) { await fetchSavedMonths(activeTabId); await fetchTransactionStats(activeTabId); await fetchAllTransactions(activeTabId); }
-    }, [handleSaveRaw, activeTabId, fetchSavedMonths, fetchTransactionStats, fetchAllTransactions]);
+        const targetTabId = uploadTargetTabId || activeTabId;
+        if (await handleSaveRaw(targetTabId)) {
+            setUploadTargetTabId(null);
+            await handleSwitchTab(targetTabId);
+        }
+    }, [handleSaveRaw, uploadTargetTabId, activeTabId, handleSwitchTab]);
 
     const handleAddTransaction = useCallback(async (newTransaction) => {
         const ok = await handleAddRaw(newTransaction, activeTabId);
@@ -210,8 +216,8 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         if (await handleDeleteMonthRaw(monthYear, activeTabId)) { await fetchSavedMonths(activeTabId); await fetchTransactionStats(activeTabId); }
     }, [handleDeleteMonthRaw, activeTabId, fetchSavedMonths, fetchTransactionStats]);
 
-    const fetchAllTransactionsWrapped = useCallback(async () => { setVisibleTransactions(50); await fetchAllTransactions(activeTabId); }, [fetchAllTransactions, activeTabId]);
-    const fetchMonthTransactionsWrapped = useCallback(async (monthYear) => { setVisibleTransactions(50); await fetchMonthTransactions(monthYear, activeTabId); }, [fetchMonthTransactions, activeTabId]);
+    const fetchAllTransactionsWrapped = useCallback(async () => { setVisibleTransactions(15); await fetchAllTransactions(activeTabId); }, [fetchAllTransactions, activeTabId]);
+    const fetchMonthTransactionsWrapped = useCallback(async (monthYear) => { setVisibleTransactions(15); await fetchMonthTransactions(monthYear, activeTabId); }, [fetchMonthTransactions, activeTabId]);
 
     const formatMonthYear = useCallback((monthYear) => {
         if (!monthYear || monthYear === 'all') return 'All Transactions';
@@ -275,7 +281,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
     const onTabCreated = useCallback(async (newTabId) => {
         setActiveTabId(newTabId);
         storage.set(STORAGE_KEYS.ACTIVE_TAB_ID, String(newTabId));
-        setMonthTransactions([]); setSavedMonths([]); setSelectedMonth(null); setTransactionStats(null); setVisibleTransactions(50);
+        setMonthTransactions([]); setSavedMonths([]); setSelectedMonth(null); setTransactionStats(null); setVisibleTransactions(15);
         await fetchSavedMonths(newTabId);
         await fetchTransactionStats(newTabId);
         await fetchAllTransactions(newTabId);
@@ -300,6 +306,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         amountMin, setAmountMin, amountMax, setAmountMax,
         visibleTransactions, setVisibleTransactions,
         editingTransaction, setEditingTransaction, showAddForm, setShowAddForm,
+        uploadTargetTabId, setUploadTargetTabId,
         expandedDescriptionId, setExpandedDescriptionId,
         selectedIds: selection.selectedIds, toggleSelected: selection.toggleSelected,
         toggleSelectAll: selection.selectAll, clearSelection: selection.clearSelection,

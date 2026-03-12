@@ -61,6 +61,8 @@ const BankTransactionsInner = () => {
                     .stats-grid { grid-template-columns: 1fr !important; }
                     .bank-header h1 { font-size: 1.1rem !important; }
                     .transactions-table th, .transactions-table td { padding: 6px !important; font-size: 0.75rem !important; }
+                    .transactions-grid { grid-template-columns: 1fr !important; }
+                    .chart-grid { grid-template-columns: 1fr !important; }
                 }
             `}</style>
 
@@ -94,7 +96,7 @@ const BankTransactionsInner = () => {
                     <ExpenseDistributionChart />
                     <UploadPreview />
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(250px, 18rem) 1fr', gap: '1.5rem' }}>
+                    <div className="transactions-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(250px, 18rem) 1fr', gap: '1.5rem' }}>
                         <TransactionSidebar />
                         <div>
                             <TransactionTable />
