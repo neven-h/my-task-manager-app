@@ -1,11 +1,8 @@
-"""Shared deep learning forecast engine.
+"""Shared forecast engine — statistical IQR method.
 
-Uses Amazon Chronos-T5-Tiny (8M-param pre-trained transformer) for
-zero-shot sequence prediction — no per-series training needed.
-Falls back to statistical IQR method if Chronos is unavailable.
-
-First use downloads ~45 MB from HuggingFace and caches in
-~/.cache/huggingface/hub/. All subsequent runs are fully offline.
+Chronos/torch was removed because the T5 transformer OOM-killed gunicorn
+workers on Railway (SIGKILL mid-inference).  The IQR fallback is fast,
+deterministic, and requires no extra memory.
 """
 import logging
 import statistics
@@ -13,8 +10,7 @@ import time
 
 logger = logging.getLogger(__name__)
 
-_pipeline = None       # lazy-loaded Chronos pipeline
-_pipeline_tried = False  # avoid retrying a failed import on every call
+_pipeline_tried = False  # kept for compat — always False/None path now
 
 # ── In-memory prediction cache ────────────────────────────────────────────────
 _cache: dict = {}
@@ -32,25 +28,11 @@ def cache_set(key: str, value):
     _cache[key] = (time.time(), value)
 
 
-# ── Chronos loader ────────────────────────────────────────────────────────────
+# ── Forecast pipeline ─────────────────────────────────────────────────────────
 def _load_pipeline():
-    global _pipeline, _pipeline_tried
-    if _pipeline is not None or _pipeline_tried:
-        return _pipeline
-    _pipeline_tried = True
-    try:
-        import torch
-        from chronos import ChronosPipeline
-        logger.info("Loading Chronos-T5-Tiny (8M params, first run downloads ~45 MB)…")
-        _pipeline = ChronosPipeline.from_pretrained(
-            "amazon/chronos-t5-tiny",
-            device_map="cpu",
-            torch_dtype=torch.float32,
-        )
-        logger.info("Chronos loaded — deep learning forecasting active")
-    except Exception as exc:
-        logger.warning("Chronos unavailable, using statistical fallback: %s", exc)
-    return _pipeline
+    """Returns None — Chronos disabled to prevent OOM on Railway.
+    predict_sequence() always takes the _stat_forecast path."""
+    return None
 
 
 # ── Core prediction ───────────────────────────────────────────────────────────
@@ -69,19 +51,8 @@ def predict_sequence(values: list, n: int = 3) -> dict:
     if pipeline is None:
         return _stat_forecast(values, n)
 
-    try:
-        import torch
-        ctx = torch.tensor(values, dtype=torch.float32).unsqueeze(0)  # [1, T]
-        fc = pipeline.predict(ctx, prediction_length=n, num_samples=20)  # [1, 20, n]
-        samples = fc[0].float()  # [20, n]
-        return {
-            'median': samples.quantile(0.5, dim=0).tolist(),
-            'low':    samples.quantile(0.1, dim=0).tolist(),
-            'high':   samples.quantile(0.9, dim=0).tolist(),
-        }
-    except Exception as exc:
-        logger.warning("Chronos predict failed, using stat fallback: %s", exc)
-        return _stat_forecast(values, n)
+    # Chronos disabled — always use statistical fallback
+    return _stat_forecast(values, n)
 
 
 def _stat_forecast(values: list, n: int) -> dict:
