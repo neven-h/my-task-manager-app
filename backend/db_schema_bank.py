@@ -76,6 +76,19 @@ def init_bank_tables(cursor, connection):
     print("Created transaction_tabs table")
 
     cursor.execute("""
+        CREATE TABLE IF NOT EXISTS budget_bank_links (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            budget_tab_id INT NOT NULL,
+            transaction_tab_id INT NOT NULL,
+            owner VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uk_budget_tx_link (budget_tab_id, transaction_tab_id),
+            INDEX idx_bbl_owner (owner)
+        )
+    """)
+    print("Created budget_bank_links table")
+
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS bank_transaction_audit_log (
             id INT AUTO_INCREMENT PRIMARY KEY,
             username VARCHAR(255) NOT NULL,
