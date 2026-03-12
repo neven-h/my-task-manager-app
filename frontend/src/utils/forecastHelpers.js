@@ -66,3 +66,43 @@ export function humanBasis(entryCount, intervalDays) {
 export function activePredictions(predictions, dismissed) {
     return predictions.filter((_, i) => !dismissed.has(i));
 }
+
+// ── Trend arrow ──────────────────────────────────────────────────────────────
+
+export function trendArrow(trend) {
+    if (trend === 'up')   return { symbol: '↑', color: '#dc2626', label: 'Increasing' };
+    if (trend === 'down') return { symbol: '↓', color: '#16a34a', label: 'Decreasing' };
+    return { symbol: '→', color: '#6b7280', label: 'Stable' };
+}
+
+// ── Confidence label ─────────────────────────────────────────────────────────
+
+export function confidenceLabel(score) {
+    if (score >= 0.7) return { text: 'High',   color: '#16a34a' };
+    if (score >= 0.45) return { text: 'Medium', color: '#d97706' };
+    return { text: 'Low', color: '#dc2626' };
+}
+
+// ── Persistent dismissals via localStorage ───────────────────────────────────
+
+const DISMISS_KEY = 'forecast_dismissed_';
+
+export function loadDismissed(tabId) {
+    if (!tabId) return new Set();
+    try {
+        const raw = localStorage.getItem(DISMISS_KEY + tabId);
+        return raw ? new Set(JSON.parse(raw)) : new Set();
+    } catch { return new Set(); }
+}
+
+export function saveDismissed(tabId, dismissed) {
+    if (!tabId) return;
+    localStorage.setItem(DISMISS_KEY + tabId, JSON.stringify([...dismissed]));
+}
+
+// ── Empty state messages ─────────────────────────────────────────────────────
+
+export function emptyStateMessage(hasAnyData) {
+    if (hasAnyData) return 'No recurring patterns detected yet. Upload at least 2 months of similar transactions.';
+    return 'Upload at least 2 months of transactions to enable AI predictions.';
+}

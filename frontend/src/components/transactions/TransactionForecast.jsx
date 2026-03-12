@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Sparkles, ChevronDown, ChevronUp, MoreHorizontal, X, RotateCcw } from 'lucide-react';
 import { useBankTransactionContext } from '../../context/BankTransactionContext';
 import {
     groupPredictions, GROUP_META, humanFrequency, humanBasis, activePredictions,
+    trendArrow, confidenceLabel, loadDismissed, saveDismissed, emptyStateMessage,
 } from '../../utils/forecastHelpers';
 
 const fmt = (n) => Math.abs(n).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -11,6 +12,8 @@ const fmt = (n) => Math.abs(n).toLocaleString('he-IL', { minimumFractionDigits: 
 const PredRow = ({ p, onDismiss, onRestore }) => {
     const [expanded, setExpanded] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
+    const trend = trendArrow(p.trend);
+    const conf = confidenceLabel(p.confidence);
 
     return (
         <div style={{
@@ -29,12 +32,21 @@ const PredRow = ({ p, onDismiss, onRestore }) => {
                 <div style={{ width: 70, flexShrink: 0, fontWeight: 700, color: '#555', fontSize: '0.8rem' }}>
                     {new Date(p.predicted_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                 </div>
-                <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>
-                    {p.description}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>
+                        {p.description}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: '#9ca3af', fontWeight: 600, marginTop: 2 }}>
+                        {humanBasis(p.entry_count, p.interval_days)}
+                    </div>
                 </div>
                 <div style={{ flexShrink: 0, fontSize: '0.75rem', fontWeight: 600, color: '#6b7280' }}>
                     {humanFrequency(p.interval_days)}
                 </div>
+                {/* Trend arrow */}
+                <span style={{ flexShrink: 0, fontWeight: 900, fontSize: '0.9rem', color: trend.color }} title={trend.label}>
+                    {trend.symbol}
+                </span>
                 <div style={{ fontWeight: 900, fontSize: '0.9rem', color: '#dc2626', flexShrink: 0 }}>
                     ₪{fmt(p.predicted_amount)}
                 </div>
@@ -75,13 +87,16 @@ const PredRow = ({ p, onDismiss, onRestore }) => {
             {expanded && !p._dismissed && (
                 <div style={{
                     padding: '4px 16px 10px 82px', fontSize: '0.76rem', color: '#6b7280',
-                    display: 'flex', gap: 16, flexWrap: 'wrap',
+                    display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center',
                 }}>
-                    <span>{humanBasis(p.entry_count, p.interval_days)}</span>
-                    <span>Confidence: {Math.round(p.confidence * 100)}%</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: conf.color, display: 'inline-block' }} />
+                        {conf.text} confidence
+                    </span>
                     {p.predicted_amount_low != null && (
                         <span>Range: ₪{fmt(p.predicted_amount_low)} – ₪{fmt(p.predicted_amount_high)}</span>
                     )}
+                    <span style={{ color: trend.color }}>{trend.label} trend</span>
                 </div>
             )}
         </div>
@@ -112,10 +127,13 @@ const GroupSection = ({ groupKey, items, onDismiss, onRestore }) => {
 
 // ── Main component ───────────────────────────────────────────────────────────
 const TransactionForecast = () => {
-    const { txPredictions, fetchTransactionPredictions, colors } = useBankTransactionContext();
+    const { txPredictions, fetchTransactionPredictions, colors, activeTabId } = useBankTransactionContext();
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [dismissed, setDismissed] = useState(new Set());
+    const [dismissed, setDismissed] = useState(() => loadDismissed(activeTabId));
+
+    // Reload dismissed set when tab changes
+    useEffect(() => { setDismissed(loadDismissed(activeTabId)); }, [activeTabId]);
 
     const toggle = async () => {
         if (!open && txPredictions.length === 0) {
@@ -126,12 +144,16 @@ const TransactionForecast = () => {
         setOpen(v => !v);
     };
 
-    const dismiss = (idx) => setDismissed(prev => new Set(prev).add(idx));
-    const restore = (idx) => setDismissed(prev => { const s = new Set(prev); s.delete(idx); return s; });
+    const dismiss = (idx) => {
+        setDismissed(prev => { const s = new Set(prev).add(idx); saveDismissed(activeTabId, s); return s; });
+    };
+    const restore = (idx) => {
+        setDismissed(prev => { const s = new Set(prev); s.delete(idx); saveDismissed(activeTabId, s); return s; });
+    };
 
     const active = activePredictions(txPredictions, dismissed);
     const projectedTotal = active.reduce((s, p) => s + p.predicted_amount, 0);
-    const groups = groupPredictions(txPredictions, dismissed);
+    const groups = useMemo(() => groupPredictions(txPredictions, dismissed), [txPredictions, dismissed]);
 
     return (
         <div style={{ marginBottom: '1.5rem', border: '2px solid #e0e0e0', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
@@ -160,7 +182,7 @@ const TransactionForecast = () => {
                     )}
                     {!loading && txPredictions.length === 0 && (
                         <div style={{ padding: 20, textAlign: 'center', color: '#666', fontWeight: 600 }}>
-                            No recurring patterns detected yet. Upload more transaction history.
+                            {emptyStateMessage(false)}
                         </div>
                     )}
                     {!loading && txPredictions.length > 0 && (<>
@@ -171,7 +193,7 @@ const TransactionForecast = () => {
                                 <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 600 }}>({dismissed.size} dismissed)</span>
                             )}
                             <button
-                                onClick={async (e) => { e.stopPropagation(); setLoading(true); setDismissed(new Set()); await fetchTransactionPredictions(3); setLoading(false); }}
+                                onClick={async (e) => { e.stopPropagation(); setLoading(true); const s = new Set(); setDismissed(s); saveDismissed(activeTabId, s); await fetchTransactionPredictions(3); setLoading(false); }}
                                 style={{ marginLeft: 'auto', fontSize: '0.78rem', fontWeight: 700, padding: '4px 12px', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer', color: '#6366f1' }}
                             >
                                 Refresh

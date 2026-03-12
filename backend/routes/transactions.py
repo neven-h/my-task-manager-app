@@ -11,6 +11,7 @@ import pandas as pd
 import os
 
 from routes.transaction_parsers_credit import parse_transaction_file
+from routes.forecast_engine import invalidate_prediction_cache
 
 transactions_bp = Blueprint('transactions', __name__)
 
@@ -162,6 +163,7 @@ def save_transactions(payload):
                 transaction_ids=','.join(transaction_ids[:10]) + ('...' if len(transaction_ids) > 10 else ''),
                 month_year=transactions[0].get('month_year')
             )
+            invalidate_prediction_cache(username, tab_id)
 
             return jsonify({
                 'success': True,

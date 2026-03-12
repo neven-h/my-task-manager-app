@@ -5,6 +5,7 @@ a date-sorted timeline of predicted income/expenses with running balance.
 """
 import logging
 import math
+import re
 from collections import defaultdict
 from datetime import datetime, timedelta
 
@@ -15,8 +16,8 @@ from .forecast_engine import predict_sequence, confidence_score, cache_get, cach
 logger = logging.getLogger(__name__)
 balance_forecast_bp = Blueprint('balance_forecast', __name__)
 
-_MIN_ENTRIES = 3
-_MAX_INTERVAL_STD_RATIO = 0.6
+_MIN_ENTRIES = 2
+_MAX_INTERVAL_STD_RATIO = 0.8
 
 
 @balance_forecast_bp.route('/api/budget/balance-forecast', methods=['GET'])
@@ -78,10 +79,11 @@ def balance_forecast(payload):
                     except Exception:
                         continue
 
-                # Get bank transaction predictions
+                # Get bank transaction predictions (24-month window)
                 cur.execute(
                     "SELECT description, amount, transaction_date, transaction_type "
                     "FROM bank_transactions WHERE tab_id = %s"
+                    " AND transaction_date >= DATE_SUB(NOW(), INTERVAL 24 MONTH)"
                     + ("" if user_role == 'shared' else " AND uploaded_by = %s")
                     + " ORDER BY transaction_date ASC, id ASC",
                     (tx_tab_id,) if user_role == 'shared' else (tx_tab_id, username),
@@ -89,10 +91,12 @@ def balance_forecast(payload):
                 bank_rows = cur.fetchall()
                 bank_predictions = _predict_bank(bank_rows, today, cutoff, months)
 
-            # 3. Get budget predictions
+            # 3. Get budget predictions (24-month window)
             cur.execute(
                 "SELECT description, type, amount, entry_date FROM budget_entries "
-                "WHERE owner = %s AND tab_id = %s ORDER BY entry_date ASC, id ASC",
+                "WHERE owner = %s AND tab_id = %s"
+                " AND entry_date >= DATE_SUB(NOW(), INTERVAL 24 MONTH)"
+                " ORDER BY entry_date ASC, id ASC",
                 (username, tab_id),
             )
             budget_pred_rows = cur.fetchall()
@@ -125,7 +129,7 @@ def balance_forecast(payload):
 # ── Prediction helpers (reuse same logic as dedicated modules) ────────────────
 
 def _group_and_predict(groups, today, cutoff, n_ahead, source_label):
-    """Shared logic: filter groups, run Chronos, emit timeline entries."""
+    """Shared logic: filter groups, run EWMA forecast, emit timeline entries."""
     results = []
     for (_, entry_type), entries in groups.items():
         if len(entries) < _MIN_ENTRIES:
@@ -151,6 +155,7 @@ def _group_and_predict(groups, today, cutoff, n_ahead, source_label):
 
         amount_fc = predict_sequence(amounts, n=n_ahead)
         interval_fc = predict_sequence([float(x) for x in intervals], n=n_ahead)
+        trend = amount_fc.get('trend', 'stable')
 
         next_date = dates[-1]
         for i in range(n_ahead):
@@ -166,6 +171,7 @@ def _group_and_predict(groups, today, cutoff, n_ahead, source_label):
                     'type': entry_type,
                     'amount': round(max(0.0, amount_fc['median'][i]), 2),
                     'confidence': confidence_score(amount_fc, interval_fc, len(entries), i),
+                    'trend': trend,
                 })
     return results
 
@@ -178,7 +184,8 @@ def _predict_budget(rows, today, cutoff, n_ahead):
         d = r['entry_date']
         if isinstance(d, str):
             d = datetime.strptime(d[:10], '%Y-%m-%d').date()
-        groups[(r['description'].strip().lower(), r['type'])].append(
+        norm_key = re.sub(r'\s+', ' ', r['description'].strip().lower())
+        groups[(norm_key, r['type'])].append(
             {'description': r['description'], 'amount': float(r['amount']),
              'date': d, 'type': r['type']}
         )
@@ -198,7 +205,8 @@ def _predict_bank(rows, today, cutoff, n_ahead):
         d = r['transaction_date']
         if isinstance(d, str):
             d = datetime.strptime(d[:10], '%Y-%m-%d').date()
-        groups[(desc.strip().lower(), r['transaction_type'])].append(
+        norm_key = re.sub(r'\s+', ' ', desc.strip().lower())
+        groups[(norm_key, r['transaction_type'])].append(
             {'description': desc, 'amount': amount, 'date': d, 'type': 'expense'}
         )
     return _group_and_predict(groups, today, cutoff, n_ahead, 'bank')

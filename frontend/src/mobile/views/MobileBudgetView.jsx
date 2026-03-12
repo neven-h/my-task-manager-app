@@ -8,6 +8,7 @@ import useBudget from '../../hooks/useBudget';
 import { FONT_STACK } from '../../ios/theme';
 import {
     groupPredictions, GROUP_META, humanFrequency, humanBasis, activePredictions,
+    trendArrow, confidenceLabel, loadDismissed, saveDismissed, emptyStateMessage,
 } from '../../utils/forecastHelpers';
 
 // ── design tokens (iOS native) ────────────────────────────────────────────────
@@ -304,6 +305,8 @@ const MBPredRow = ({ p, isLast, onDismiss, onRestore }) => {
     const [menuOpen, setMenuOpen] = useState(false);
     const isIncome = p.type === 'income';
     const color = isIncome ? IOS.green : IOS.red;
+    const trend = trendArrow(p.trend);
+    const conf = confidenceLabel(p.confidence);
 
     return (
         <div style={{ opacity: p._dismissed ? 0.35 : 1, textDecoration: p._dismissed ? 'line-through' : 'none', transition: 'opacity 0.2s' }}>
@@ -321,6 +324,9 @@ const MBPredRow = ({ p, isLast, onDismiss, onRestore }) => {
                         {' · '}{humanFrequency(p.interval_days)}
                     </div>
                 </div>
+                <span style={{ flexShrink: 0, fontWeight: 800, fontSize: '0.85rem', color: trend.color }} title={trend.label}>
+                    {trend.symbol}
+                </span>
                 <div style={{ fontWeight: 700, color, flexShrink: 0 }}>{isIncome ? '+' : '−'}{fmt(p.predicted_amount)}</div>
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                     <button onClick={(e) => { e.stopPropagation(); setMenuOpen(m => !m); }}
@@ -347,9 +353,14 @@ const MBPredRow = ({ p, isLast, onDismiss, onRestore }) => {
                 </div>
             </div>
             {expanded && !p._dismissed && (
-                <div style={{ padding: '2px 16px 10px 33px', fontSize: '0.72rem', color: IOS.muted }}>
-                    {humanBasis(p.entry_count, p.interval_days)} · Confidence: {Math.round(p.confidence * 100)}%
-                    {p.predicted_amount_low != null && ` · Range: ${fmt(p.predicted_amount_low)} – ${fmt(p.predicted_amount_high)}`}
+                <div style={{ padding: '2px 16px 10px 33px', fontSize: '0.72rem', color: IOS.muted, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span>{humanBasis(p.entry_count, p.interval_days)}</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: conf.color, display: 'inline-block' }} />
+                        {conf.text}
+                    </span>
+                    {p.predicted_amount_low != null && <span>{fmt(p.predicted_amount_low)} – {fmt(p.predicted_amount_high)}</span>}
+                    <span style={{ color: trend.color }}>{trend.label}</span>
                 </div>
             )}
         </div>
@@ -377,23 +388,25 @@ const MBGroupSection = ({ groupKey, items, onDismiss, onRestore }) => {
     );
 };
 
+const BUDGET_FORECAST_KEY = 'budget';
+
 const ForecastSection = ({ predictions, onFetch, loading }) => {
     const [open, setOpen] = useState(false);
-    const [dismissed, setDismissed] = useState(new Set());
+    const [dismissed, setDismissed] = useState(() => loadDismissed(BUDGET_FORECAST_KEY));
 
     const handleToggle = () => {
         if (!open && predictions.length === 0) onFetch();
         setOpen(o => !o);
     };
 
-    const dismiss = (idx) => setDismissed(prev => new Set(prev).add(idx));
-    const restore = (idx) => setDismissed(prev => { const s = new Set(prev); s.delete(idx); return s; });
+    const dismiss = (idx) => setDismissed(prev => { const s = new Set(prev).add(idx); saveDismissed(BUDGET_FORECAST_KEY, s); return s; });
+    const restore = (idx) => setDismissed(prev => { const s = new Set(prev); s.delete(idx); saveDismissed(BUDGET_FORECAST_KEY, s); return s; });
 
     const active = activePredictions(predictions, dismissed);
     const totalIncome = active.filter(p => p.type === 'income').reduce((s, p) => s + p.predicted_amount, 0);
     const totalExpense = active.filter(p => p.type === 'outcome').reduce((s, p) => s + p.predicted_amount, 0);
     const projectedNet = totalIncome - totalExpense;
-    const groups = groupPredictions(predictions, dismissed);
+    const groups = useMemo(() => groupPredictions(predictions, dismissed), [predictions, dismissed]);
 
     return (
         <div style={{ margin: '16px 16px 0' }}>
@@ -422,9 +435,13 @@ const ForecastSection = ({ predictions, onFetch, loading }) => {
 
             {open && (
                 <div style={{ background: IOS.card, borderRadius: IOS.radius, boxShadow: '0 1px 3px rgba(0,0,0,0.07)', marginTop: 8, overflow: 'hidden' }}>
-                    {predictions.length === 0 ? (
+                    {loading && predictions.length === 0 ? (
                         <div style={{ padding: '24px 16px', textAlign: 'center', color: IOS.muted, fontSize: '0.85rem' }}>
-                            {loading ? 'Analyzing patterns…' : 'Not enough recurring data to predict.'}
+                            Analyzing patterns…
+                        </div>
+                    ) : predictions.length === 0 ? (
+                        <div style={{ padding: '24px 16px', textAlign: 'center', color: IOS.muted, fontSize: '0.85rem' }}>
+                            {emptyStateMessage(false)}
                         </div>
                     ) : (<>
                         <div style={{ display: 'flex', gap: 10, padding: '12px 16px', borderBottom: `0.5px solid ${IOS.separator}`, flexWrap: 'wrap', alignItems: 'center' }}>

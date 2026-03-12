@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { TrendingUp } from 'lucide-react';
+import { trendArrow, emptyStateMessage } from '../../../utils/forecastHelpers';
 
 const IOS = {
     bg: '#F2F2F7', card: '#fff', separator: 'rgba(0,0,0,0.08)',
@@ -56,7 +57,7 @@ const MobileBalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
                         </div>
                     ) : !forecast ? (
                         <div style={{ padding: 24, textAlign: 'center', color: IOS.muted, fontSize: '0.85rem' }}>
-                            Not enough data to forecast.
+                            {emptyStateMessage(false)}
                         </div>
                     ) : (
                         <>
@@ -80,6 +81,7 @@ const MobileBalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
                             {/* Timeline rows */}
                             {tl.map((p, idx) => {
                                 const isIncome = p.type === 'income';
+                                const trend = trendArrow(p.trend);
                                 return (
                                     <div key={idx} style={{
                                         display: 'flex', alignItems: 'center', gap: 10,
@@ -100,6 +102,9 @@ const MobileBalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
                                                 <span style={{ color: p.source === 'bank' ? IOS.muted : IOS.blue }}>{p.source}</span>
                                             </div>
                                         </div>
+                                        <span style={{ flexShrink: 0, fontWeight: 800, fontSize: '0.82rem', color: trend.color }} title={trend.label}>
+                                            {trend.symbol}
+                                        </span>
                                         <div style={{ fontWeight: 600, color: isIncome ? IOS.green : IOS.red, fontSize: '0.88rem', flexShrink: 0 }}>
                                             {isIncome ? '+' : '−'}{fmt(p.amount)}
                                         </div>

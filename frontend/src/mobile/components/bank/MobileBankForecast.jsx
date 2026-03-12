@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Zap, MoreHorizontal, X, RotateCcw } from 'lucide-react';
 import { FONT_STACK } from '../../theme';
 import {
     groupPredictions, GROUP_META, humanFrequency, humanBasis, activePredictions,
+    trendArrow, confidenceLabel, loadDismissed, saveDismissed, emptyStateMessage,
 } from '../../../utils/forecastHelpers';
 
 const IOS = {
@@ -16,6 +17,8 @@ const dayFmt = (d) => new Date(d + 'T00:00:00').toLocaleDateString(undefined, { 
 const MobilePredRow = ({ p, isLast, onDismiss, onRestore }) => {
     const [expanded, setExpanded] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
+    const trend = trendArrow(p.trend);
+    const conf = confidenceLabel(p.confidence);
 
     return (
         <div style={{
@@ -34,6 +37,10 @@ const MobilePredRow = ({ p, isLast, onDismiss, onRestore }) => {
                     <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>{p.description}</div>
                     <div style={{ fontSize: '0.72rem', color: IOS.muted }}>{dayFmt(p.predicted_date)} · {humanFrequency(p.interval_days)}</div>
                 </div>
+                {/* Trend arrow */}
+                <span style={{ flexShrink: 0, fontWeight: 800, fontSize: '0.85rem', color: trend.color }} title={trend.label}>
+                    {trend.symbol}
+                </span>
                 <div style={{ fontWeight: 700, color: IOS.red, flexShrink: 0 }}>₪{fmt(p.predicted_amount)}</div>
                 <div style={{ position: 'relative', flexShrink: 0 }}>
                     <button onClick={(e) => { e.stopPropagation(); setMenuOpen(m => !m); }}
@@ -60,9 +67,16 @@ const MobilePredRow = ({ p, isLast, onDismiss, onRestore }) => {
                 </div>
             </div>
             {expanded && !p._dismissed && (
-                <div style={{ padding: '2px 16px 10px 33px', fontSize: '0.72rem', color: IOS.muted }}>
-                    {humanBasis(p.entry_count, p.interval_days)} · Confidence: {Math.round(p.confidence * 100)}%
-                    {p.predicted_amount_low != null && ` · Range: ₪${fmt(p.predicted_amount_low)} – ₪${fmt(p.predicted_amount_high)}`}
+                <div style={{ padding: '2px 16px 10px 33px', fontSize: '0.72rem', color: IOS.muted, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span>{humanBasis(p.entry_count, p.interval_days)}</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: conf.color, display: 'inline-block' }} />
+                        {conf.text}
+                    </span>
+                    {p.predicted_amount_low != null && (
+                        <span>₪{fmt(p.predicted_amount_low)} – ₪{fmt(p.predicted_amount_high)}</span>
+                    )}
+                    <span style={{ color: trend.color }}>{trend.label}</span>
                 </div>
             )}
         </div>
@@ -92,21 +106,28 @@ const MobileGroup = ({ groupKey, items, onDismiss, onRestore }) => {
 };
 
 // ── Main ─────────────────────────────────────────────────────────────────────
-const MobileBankForecast = ({ predictions, onFetch, loading }) => {
+const MobileBankForecast = ({ predictions, onFetch, loading, tabId }) => {
     const [open, setOpen] = useState(false);
-    const [dismissed, setDismissed] = useState(new Set());
+    const [dismissed, setDismissed] = useState(() => loadDismissed(tabId));
+
+    // Reload dismissed set when tab changes
+    useEffect(() => { setDismissed(loadDismissed(tabId)); }, [tabId]);
 
     const handleToggle = () => {
         if (!open && predictions.length === 0) onFetch();
         setOpen(o => !o);
     };
 
-    const dismiss = (idx) => setDismissed(prev => new Set(prev).add(idx));
-    const restore = (idx) => setDismissed(prev => { const s = new Set(prev); s.delete(idx); return s; });
+    const dismiss = (idx) => {
+        setDismissed(prev => { const s = new Set(prev).add(idx); saveDismissed(tabId, s); return s; });
+    };
+    const restore = (idx) => {
+        setDismissed(prev => { const s = new Set(prev); s.delete(idx); saveDismissed(tabId, s); return s; });
+    };
 
     const active = activePredictions(predictions, dismissed);
     const total = active.reduce((s, p) => s + p.predicted_amount, 0);
-    const groups = groupPredictions(predictions, dismissed);
+    const groups = useMemo(() => groupPredictions(predictions, dismissed), [predictions, dismissed]);
 
     return (
         <div style={{ margin: '12px 16px 0', fontFamily: FONT_STACK }}>
@@ -136,7 +157,7 @@ const MobileBankForecast = ({ predictions, onFetch, loading }) => {
                 <div style={{ background: IOS.card, borderRadius: IOS.radius, boxShadow: '0 1px 3px rgba(0,0,0,0.07)', marginTop: 8, overflow: 'hidden' }}>
                     {predictions.length === 0 && (
                         <div style={{ padding: '24px 16px', textAlign: 'center', color: IOS.muted, fontSize: '0.85rem' }}>
-                            {loading ? '✦ Analyzing recurring patterns…' : 'Not enough recurring data to predict.'}
+                            {loading ? '✦ Analyzing recurring patterns…' : emptyStateMessage(false)}
                         </div>
                     )}
                     {predictions.length > 0 && (<>

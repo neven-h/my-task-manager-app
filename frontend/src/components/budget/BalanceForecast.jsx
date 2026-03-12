@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { TrendingUp, Zap } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
+import { trendArrow, confidenceLabel, emptyStateMessage } from '../../utils/forecastHelpers';
 
 const SYS = { primary: '#0000FF', success: '#00AA00', accent: '#FF0000', light: '#666', border: '#000', text: '#000' };
 
@@ -46,7 +47,7 @@ const BalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
                         </div>
                     ) : !forecast ? (
                         <div style={{ padding: 24, textAlign: 'center', color: SYS.light, fontSize: '0.85rem' }}>
-                            Not enough data to forecast.
+                            {emptyStateMessage(false)}
                         </div>
                     ) : (
                         <>
@@ -94,6 +95,8 @@ const BalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
                                 const isIncome = p.type === 'income';
                                 const amtColor = isIncome ? SYS.success : SYS.accent;
                                 const balColor = p.running_balance >= 0 ? SYS.primary : SYS.accent;
+                                const trend = trendArrow(p.trend);
+                                const conf = confidenceLabel(p.confidence);
                                 return (
                                     <div key={idx} style={{
                                         display: 'flex', alignItems: 'center', gap: 12,
@@ -113,6 +116,9 @@ const BalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
                                         }}>
                                             {p.source}
                                         </div>
+                                        <span style={{ flexShrink: 0, fontWeight: 800, color: trend.color, fontSize: '0.85rem' }} title={`${trend.label} · ${conf.text} confidence`}>
+                                            {trend.symbol}
+                                        </span>
                                         <div style={{ width: 90, textAlign: 'right', fontWeight: 800, color: amtColor, flexShrink: 0 }}>
                                             {isIncome ? '+' : '−'}{fmt(p.amount)}
                                         </div>
