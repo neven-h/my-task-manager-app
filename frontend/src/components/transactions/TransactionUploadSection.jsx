@@ -7,7 +7,11 @@ const TransactionUploadSection = () => {
         transactionType, setTransactionType,
         loading, colors,
         handleFileUpload,
+        tabs, activeTabId,
+        uploadTargetTabId, setUploadTargetTabId,
     } = useBankTransactionContext();
+
+    const effectiveTargetTabId = uploadTargetTabId || activeTabId;
 
     return (
         <div style={{
@@ -24,6 +28,27 @@ const TransactionUploadSection = () => {
                 <Upload size={18} color={colors.primary} />
                 Upload
             </h3>
+
+            {tabs.length > 1 && (
+                <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: '700', color: colors.textLight, textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: '0.3rem' }}>
+                        Upload to tab
+                    </label>
+                    <select
+                        value={effectiveTargetTabId || ''}
+                        onChange={(e) => setUploadTargetTabId(Number(e.target.value))}
+                        style={{
+                            width: '100%', padding: '0.5rem', border: `2px solid ${colors.border}`,
+                            background: colors.card, color: colors.text, fontSize: '0.85rem',
+                            fontFamily: '"Inter", sans-serif', fontWeight: '600', cursor: 'pointer',
+                        }}
+                    >
+                        {tabs.map(tab => (
+                            <option key={tab.id} value={tab.id}>{tab.name}</option>
+                        ))}
+                    </select>
+                </div>
+            )}
 
             <div style={{ marginBottom: '0.75rem' }}>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>

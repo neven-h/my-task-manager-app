@@ -69,14 +69,14 @@ const TransactionTable = () => {
             </div>
 
             {/* Show More */}
-            {filteredTransactions.length > visibleTransactions && (
+            {monthTransactions.length > visibleTransactions && (
                 <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-                    <button onClick={() => setVisibleTransactions(prev => prev + 50)} style={{
+                    <button onClick={() => setVisibleTransactions(prev => prev + 15)} style={{
                         padding: '0.75rem 2rem', background: colors.primary, color: '#fff',
                         border: `2px solid ${colors.border}`, cursor: 'pointer', fontWeight: '700',
                         fontSize: '0.95rem', textTransform: 'uppercase', letterSpacing: '0.3px',
                     }}>
-                        Show More ({filteredTransactions.length - visibleTransactions} remaining)
+                        Show More ({monthTransactions.length - visibleTransactions} remaining)
                     </button>
                 </div>
             )}
