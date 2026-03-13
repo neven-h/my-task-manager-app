@@ -354,11 +354,15 @@ const ForecastSection = ({ predictions, onFetch, loading }) => {
     const dismiss = (idx) => setDismissed(prev => new Set(prev).add(idx));
     const restore = (idx) => setDismissed(prev => { const s = new Set(prev); s.delete(idx); return s; });
 
-    const active = activePredictions(predictions, dismissed);
+    // Cap to top 15 most confident predictions to keep it concise
+    const capped = predictions.length > 15
+        ? [...predictions].sort((a, b) => (b.confidence || 0) - (a.confidence || 0)).slice(0, 15)
+        : predictions;
+    const active = activePredictions(capped, dismissed);
     const totalIncome = active.filter(p => p.type === 'income').reduce((s, p) => s + p.predicted_amount, 0);
     const totalExpense = active.filter(p => p.type === 'outcome').reduce((s, p) => s + p.predicted_amount, 0);
     const projectedNet = totalIncome - totalExpense;
-    const groups = groupPredictions(predictions, dismissed);
+    const groups = groupPredictions(capped, dismissed);
 
     return (
         <div style={{ marginTop: 24 }}>
@@ -399,7 +403,6 @@ const ForecastSection = ({ predictions, onFetch, loading }) => {
                         </div>
                         <BudgetGroupSection groupKey="fixed" items={groups.fixed} onDismiss={dismiss} onRestore={restore} />
                         <BudgetGroupSection groupKey="variable" items={groups.variable} onDismiss={dismiss} onRestore={restore} />
-                        <BudgetGroupSection groupKey="anomalies" items={groups.anomalies} onDismiss={dismiss} onRestore={restore} />
                     </>)}
                 </div>
             )}

@@ -150,21 +150,44 @@ const TransactionInsights = () => {
 
                     {/* Data */}
                     {data && data.month_count > 0 && (<>
-                        {/* Summary bar */}
+                        {/* Summary text */}
+                        {data.summary && (
+                            <div style={{
+                                padding: '12px 20px', background: '#f0f9ff',
+                                borderBottom: '1px solid #e5e7eb',
+                                fontSize: '0.84rem', fontWeight: 500, color: '#1e3a5f',
+                                lineHeight: 1.5,
+                            }}>
+                                {data.summary}
+                            </div>
+                        )}
+
+                        {/* Key numbers bar */}
                         <div style={{
                             padding: '10px 20px', background: '#f5f3ff',
                             borderBottom: '1px solid #e5e7eb',
                             display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap',
                         }}>
-                            <span style={{ fontWeight: 700, fontSize: '0.82rem', color: '#6366f1' }}>
-                                Monthly Average:
-                            </span>
-                            <span style={{ fontWeight: 900, fontSize: '1.1rem', color: SYS.accent }}>
-                                ₪{fmtAmount(data.monthly_avg)}
-                            </span>
-                            <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 600 }}>
-                                ({data.month_count} months of data)
-                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase' }}>Avg/Month</span>
+                                <span style={{ fontWeight: 900, fontSize: '1rem', color: SYS.accent }}>₪{fmtAmount(data.monthly_avg)}</span>
+                            </div>
+                            {data.biggest_month && (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase' }}>Highest</span>
+                                    <span style={{ fontWeight: 800, fontSize: '0.88rem', color: '#dc2626' }}>
+                                        {fmtMonth(data.biggest_month.month)} ₪{fmtAmount(data.biggest_month.amount)}
+                                    </span>
+                                </div>
+                            )}
+                            {data.lowest_month && (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '0.68rem', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase' }}>Lowest</span>
+                                    <span style={{ fontWeight: 800, fontSize: '0.88rem', color: '#16a34a' }}>
+                                        {fmtMonth(data.lowest_month.month)} ₪{fmtAmount(data.lowest_month.amount)}
+                                    </span>
+                                </div>
+                            )}
                             <button
                                 onClick={(e) => { e.stopPropagation(); fetchSpendingInsights(); }}
                                 style={{
@@ -242,7 +265,7 @@ const TransactionInsights = () => {
                             <CategoryRow key={i} cat={cat} rank={i + 1} maxTotal={data.top_categories[0]?.total || 1} />
                         ))}
 
-                        {/* Patterns */}
+                        {/* Patterns / Insights */}
                         {data.patterns?.length > 0 && (
                             <div style={{
                                 padding: '12px 16px', background: '#fffbeb',
@@ -252,16 +275,27 @@ const TransactionInsights = () => {
                                     fontSize: '0.72rem', fontWeight: 700, color: '#92400e',
                                     textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6,
                                 }}>
-                                    Insights
+                                    Key Insights
                                 </div>
-                                {data.patterns.map((p, i) => (
-                                    <div key={i} style={{
-                                        fontSize: '0.8rem', color: '#78350f',
-                                        padding: '3px 0', fontWeight: 500,
-                                    }}>
-                                        • {p}
-                                    </div>
-                                ))}
+                                {data.patterns.map((p, i) => {
+                                    const text = typeof p === 'string' ? p : p.text;
+                                    const type = typeof p === 'object' ? p.type : '';
+                                    const icon = type === 'peak_month' ? '📈' :
+                                                 type === 'low_month' ? '📉' :
+                                                 type === 'category_trend' ? (p.trend === 'up' ? '↑' : '↓') :
+                                                 type === 'concentration' ? '🎯' :
+                                                 type === 'recent_trend' ? (p.direction === 'up' ? '🔺' : '🔻') : '•';
+                                    return (
+                                        <div key={i} style={{
+                                            fontSize: '0.8rem', color: '#78350f',
+                                            padding: '4px 0', fontWeight: 500,
+                                            display: 'flex', alignItems: 'center', gap: 6,
+                                        }}>
+                                            <span style={{ flexShrink: 0 }}>{icon}</span>
+                                            <span>{text}</span>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                     </>)}

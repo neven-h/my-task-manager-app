@@ -147,23 +147,50 @@ const MobileBankInsights = ({ insights, onFetch, loading }) => {
                     )}
 
                     {data && data.month_count > 0 && (<>
-                        {/* Summary */}
-                        <div style={{
-                            padding: '14px 16px', textAlign: 'center',
-                            borderBottom: `0.5px solid ${IOS.separator}`,
-                        }}>
+                        {/* Summary text */}
+                        {data.summary && (
                             <div style={{
-                                fontSize: '0.7rem', fontWeight: 600, color: IOS.muted,
-                                textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4,
+                                padding: '12px 16px', background: '#f0f9ff',
+                                borderBottom: `0.5px solid ${IOS.separator}`,
+                                fontSize: '0.82rem', fontWeight: 500, color: '#1e3a5f',
+                                lineHeight: 1.5,
                             }}>
-                                Monthly Average Expense
+                                {data.summary}
                             </div>
-                            <div style={{ fontSize: '1.8rem', fontWeight: 700, color: IOS.red }}>
-                                ₪{fmtAmount(data.monthly_avg)}
+                        )}
+
+                        {/* Key numbers */}
+                        <div style={{
+                            padding: '14px 16px',
+                            borderBottom: `0.5px solid ${IOS.separator}`,
+                            display: 'flex', justifyContent: 'space-around', textAlign: 'center',
+                        }}>
+                            <div>
+                                <div style={{ fontSize: '0.65rem', fontWeight: 600, color: IOS.muted, textTransform: 'uppercase' }}>Avg/Month</div>
+                                <div style={{ fontSize: '1.3rem', fontWeight: 700, color: IOS.red }}>₪{fmtAmount(data.monthly_avg)}</div>
                             </div>
-                            <div style={{ fontSize: '0.72rem', color: IOS.muted, marginTop: 2 }}>
-                                Based on {data.month_count} months of data
-                            </div>
+                            {data.biggest_month && (
+                                <div>
+                                    <div style={{ fontSize: '0.65rem', fontWeight: 600, color: IOS.muted, textTransform: 'uppercase' }}>Highest</div>
+                                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: IOS.red }}>
+                                        {fmtMonth(data.biggest_month.month)}
+                                    </div>
+                                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151' }}>
+                                        ₪{fmtAmount(data.biggest_month.amount)}
+                                    </div>
+                                </div>
+                            )}
+                            {data.lowest_month && (
+                                <div>
+                                    <div style={{ fontSize: '0.65rem', fontWeight: 600, color: IOS.muted, textTransform: 'uppercase' }}>Lowest</div>
+                                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: IOS.green }}>
+                                        {fmtMonth(data.lowest_month.month)}
+                                    </div>
+                                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#374151' }}>
+                                        ₪{fmtAmount(data.lowest_month.amount)}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Monthly bar chart */}
@@ -233,7 +260,7 @@ const MobileBankInsights = ({ insights, onFetch, loading }) => {
                             />
                         ))}
 
-                        {/* Patterns */}
+                        {/* Key Insights */}
                         {data.patterns?.length > 0 && (
                             <div style={{
                                 padding: '10px 16px', background: '#fffbeb',
@@ -243,16 +270,19 @@ const MobileBankInsights = ({ insights, onFetch, loading }) => {
                                     fontSize: '0.68rem', fontWeight: 600, color: '#92400e',
                                     textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 4,
                                 }}>
-                                    Insights
+                                    Key Insights
                                 </div>
-                                {data.patterns.map((p, i) => (
-                                    <div key={i} style={{
-                                        fontSize: '0.78rem', color: '#78350f',
-                                        padding: '2px 0', fontWeight: 500,
-                                    }}>
-                                        • {p}
-                                    </div>
-                                ))}
+                                {data.patterns.map((p, i) => {
+                                    const text = typeof p === 'string' ? p : p.text;
+                                    return (
+                                        <div key={i} style={{
+                                            fontSize: '0.78rem', color: '#78350f',
+                                            padding: '3px 0', fontWeight: 500,
+                                        }}>
+                                            {text}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                     </>)}

@@ -402,11 +402,17 @@ const ForecastSection = ({ predictions, onFetch, loading }) => {
     const dismiss = (idx) => setDismissed(prev => { const s = new Set(prev).add(idx); saveDismissed(BUDGET_FORECAST_KEY, s); return s; });
     const restore = (idx) => setDismissed(prev => { const s = new Set(prev); s.delete(idx); saveDismissed(BUDGET_FORECAST_KEY, s); return s; });
 
-    const active = activePredictions(predictions, dismissed);
+    // Cap to top 15 most confident predictions
+    const capped = useMemo(() =>
+        predictions.length > 15
+            ? [...predictions].sort((a, b) => (b.confidence || 0) - (a.confidence || 0)).slice(0, 15)
+            : predictions,
+        [predictions]);
+    const active = activePredictions(capped, dismissed);
     const totalIncome = active.filter(p => p.type === 'income').reduce((s, p) => s + p.predicted_amount, 0);
     const totalExpense = active.filter(p => p.type === 'outcome').reduce((s, p) => s + p.predicted_amount, 0);
     const projectedNet = totalIncome - totalExpense;
-    const groups = useMemo(() => groupPredictions(predictions, dismissed), [predictions, dismissed]);
+    const groups = useMemo(() => groupPredictions(capped, dismissed), [capped, dismissed]);
 
     return (
         <div style={{ margin: '16px 16px 0' }}>
@@ -455,7 +461,6 @@ const ForecastSection = ({ predictions, onFetch, loading }) => {
                         </div>
                         <MBGroupSection groupKey="fixed" items={groups.fixed} onDismiss={dismiss} onRestore={restore} />
                         <MBGroupSection groupKey="variable" items={groups.variable} onDismiss={dismiss} onRestore={restore} />
-                        <MBGroupSection groupKey="anomalies" items={groups.anomalies} onDismiss={dismiss} onRestore={restore} />
                     </>)}
                 </div>
             )}
