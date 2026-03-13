@@ -98,6 +98,57 @@ def transaction_balance_forecast(payload):
             if monthly_history else 0.0
         )
 
+        # ── Spending momentum (OLS slope on monthly history) ───────────────────
+        momentum = 'stable'
+        if len(monthly_history) >= 3:
+            vals = [m['total'] for m in monthly_history]
+            slope = _simple_slope(vals)
+            mean_v = sum(vals) / len(vals)
+            ratio = slope / max(abs(mean_v), 0.01)
+            if ratio > 0.05:
+                momentum = 'increasing'
+            elif ratio < -0.05:
+                momentum = 'decreasing'
+
+        # ── Anomaly detection: current-month spikes vs historical avg ──────────
+        current_month_key = today.strftime('%Y-%m')
+        # Build per-description historical averages (exclude current month)
+        desc_monthly: dict = defaultdict(lambda: defaultdict(float))
+        for r in decrypted:
+            month_key = r['date'].strftime('%Y-%m')
+            norm = re.sub(r'\s+', ' ', r['description'].strip().lower())
+            desc_monthly[norm][month_key] += r['amount']
+
+        anomalies = []
+        for norm, monthly_map in desc_monthly.items():
+            if current_month_key not in monthly_map:
+                continue
+            current_val = monthly_map[current_month_key]
+            historic = [v for k, v in monthly_map.items() if k != current_month_key]
+            if len(historic) < 2:
+                continue
+            hist_avg = sum(historic) / len(historic)
+            if hist_avg < 50:       # ignore noise-level categories
+                continue
+            pct_above = (current_val - hist_avg) / hist_avg
+            if pct_above >= 0.25 and (current_val - hist_avg) >= 80:
+                # Find original casing
+                original_desc = next(
+                    (r['description'] for r in decrypted
+                     if re.sub(r'\s+', ' ', r['description'].strip().lower()) == norm
+                     and r['date'].strftime('%Y-%m') == current_month_key),
+                    norm
+                )
+                anomalies.append({
+                    'description': original_desc,
+                    'current':     round(current_val, 2),
+                    'avg':         round(hist_avg, 2),
+                    'pct_above':   round(pct_above * 100),
+                })
+        # Sort by pct_above descending, cap at 5
+        anomalies.sort(key=lambda a: a['pct_above'], reverse=True)
+        anomalies = anomalies[:5]
+
         # ── Per-description prediction groups ──────────────────────────────────
         groups: dict = defaultdict(list)
         for r in decrypted:
@@ -117,10 +168,12 @@ def transaction_balance_forecast(payload):
         ]
 
         result = {
-            'monthly_history':  monthly_history,
-            'predictions':      predictions,
+            'monthly_history':   monthly_history,
+            'predictions':       predictions,
             'predicted_monthly': predicted_monthly,
             'avg_monthly_spend': avg_monthly_spend,
+            'momentum':          momentum,
+            'anomalies':         anomalies,
         }
         cache_set(cache_key, result)
         return jsonify(result)
@@ -128,6 +181,19 @@ def transaction_balance_forecast(payload):
     except Exception as exc:
         logger.error('transaction_balance_forecast error: %s', exc, exc_info=True)
         return jsonify({'error': 'Failed to generate balance forecast'}), 500
+
+
+# ── Simple OLS slope helper ───────────────────────────────────────────────────
+
+def _simple_slope(values):
+    n = len(values)
+    if n < 2:
+        return 0.0
+    sx = sum(range(n)); sy = sum(values)
+    sxx = sum(i * i for i in range(n))
+    sxy = sum(i * values[i] for i in range(n))
+    denom = n * sxx - sx * sx
+    return (n * sxy - sx * sy) / denom if denom else 0.0
 
 
 # ── Core prediction logic (mirrors transaction_predict.py) ────────────────────
