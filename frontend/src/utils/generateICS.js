@@ -79,29 +79,47 @@ export function generateICS(task) {
     return lines.join('\r\n');
 }
 
-export function downloadICS(task) {
+export async function downloadICS(task) {
     const ics = generateICS(task);
-    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
+    const filename = `${(task.title || 'event').replace(/[^a-z0-9]/gi, '_')}.ics`;
 
-    // iOS Safari does not support programmatic <a>.click() for blob downloads.
-    // Using window.location.href with an ICS blob triggers the native
-    // "Add to Calendar?" prompt in Safari.
+    const isCapacitor = !!(window.Capacitor?.isNativePlatform?.());
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-    if (isIOS) {
+    if (isCapacitor || isIOS) {
+        // Web Share API with a File triggers the native iOS share sheet,
+        // from which the user can pick "Add to Calendar".
+        // This is the only reliable path inside a Capacitor WKWebView —
+        // window.location.href = blobUrl navigates the WebView away from the app.
+        try {
+            const file = new File([ics], filename, { type: 'text/calendar' });
+            if (navigator.share && navigator.canShare?.({ files: [file] })) {
+                await navigator.share({ files: [file] });
+                return;
+            }
+        } catch (err) {
+            if (err.name === 'AbortError') return; // user dismissed share sheet
+            console.warn('Share failed:', err);
+        }
+        // Fallback for very old iOS Safari (pre-14): blob URL navigation
+        const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
         window.location.href = url;
         setTimeout(() => URL.revokeObjectURL(url), 10000);
-    } else {
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${task.title.replace(/[^a-z0-9]/gi, '_')}.ics`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        return;
     }
+
+    // Desktop: programmatic anchor download
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /**
