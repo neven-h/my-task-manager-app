@@ -17,6 +17,7 @@ import MobileBankTransactionForm from '../components/bank/MobileBankTransactionF
 import MobileBankSelectionBar from '../components/bank/MobileBankSelectionBar';
 import MobileBankInsights from '../components/bank/MobileBankInsights';
 import MobileBankUpload from '../components/bank/MobileBankUpload';
+import MobileTransactionBalanceForecast from '../components/bank/MobileTransactionBalanceForecast';
 
 const EMPTY_TX = {
     transaction_date: new Date().toISOString().split('T')[0],
@@ -133,6 +134,11 @@ const MobileBankTransactionsView = ({ authUser, authRole, onBack }) => {
                 amountMin={amountMin} setAmountMin={setAmountMin} amountMax={amountMax} setAmountMax={setAmountMax}
                 selectMode={sel.selectMode} onToggleSelectMode={sel.selectMode ? sel.exitSelectMode : sel.enterSelectMode}
             />
+
+            {/* Balance Forecast */}
+            {activeTabId && !sel.selectMode && (
+                <MobileTransactionBalanceForecast activeTabId={activeTabId} />
+            )}
 
             {/* Spending Insights — above transaction list for visibility */}
             {activeTabId && !sel.selectMode && (
