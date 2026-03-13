@@ -154,22 +154,37 @@ const MobileBankTransactionList = ({
                                 onBatchRename={onBatchRename} />
                         ))}
                     </div>
-                    {hasMore && (
-                        <button
-                            onClick={() => setVisible(v => v + PAGE_SIZE)}
-                            style={{
-                                width: '100%', marginTop: 12, padding: '12px',
-                                background: 'none', border: '1px solid rgba(0,0,0,0.12)',
-                                borderRadius: 12, fontSize: '0.85rem', fontWeight: 600,
-                                color: THEME.primary, cursor: 'pointer',
-                            }}
-                        >
-                            Load {Math.min(PAGE_SIZE, filteredTransactions.length - visible)} more
-                            <span style={{ fontWeight: 400, color: '#888', marginLeft: 6 }}>
-                                ({visible} of {filteredTransactions.length})
-                            </span>
-                        </button>
-                    )}
+                    <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                        {hasMore && (
+                            <button
+                                onClick={() => setVisible(v => v + PAGE_SIZE)}
+                                style={{
+                                    flex: 1, padding: '12px',
+                                    background: 'none', border: '1px solid rgba(0,0,0,0.12)',
+                                    borderRadius: 12, fontSize: '0.85rem', fontWeight: 600,
+                                    color: THEME.primary, cursor: 'pointer',
+                                }}
+                            >
+                                Load {Math.min(PAGE_SIZE, filteredTransactions.length - visible)} more
+                                <span style={{ fontWeight: 400, color: '#888', marginLeft: 6 }}>
+                                    ({visible} of {filteredTransactions.length})
+                                </span>
+                            </button>
+                        )}
+                        {visible > PAGE_SIZE && (
+                            <button
+                                onClick={() => setVisible(PAGE_SIZE)}
+                                style={{
+                                    flex: hasMore ? 0 : 1, padding: '12px 20px',
+                                    background: 'none', border: '1px solid rgba(0,0,0,0.12)',
+                                    borderRadius: 12, fontSize: '0.85rem', fontWeight: 600,
+                                    color: '#888', cursor: 'pointer',
+                                }}
+                            >
+                                Show Less
+                            </button>
+                        )}
+                    </div>
                 </>
             )}
         </div>
