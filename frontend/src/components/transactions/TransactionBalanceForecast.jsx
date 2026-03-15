@@ -17,9 +17,16 @@ const fmtM = (ym) => {
     return new Date(+y, +m - 1).toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
 };
 
+// Compact axis label — avoids locale RTL issues in SVG text
+const fmtAxis = (n) => {
+    if (n >= 1_000_000) return `₪${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000)     return `₪${Math.round(n / 1000)}k`;
+    return `₪${Math.round(n)}`;
+};
+
 // ── Bar chart (history + predicted) ─────────────────────────────────────────
 const SpendingChart = ({ monthly_history, predicted_monthly, adjust }) => {
-    const H = 150, LEFT = 52, BOTTOM = 26;
+    const H = 150, LEFT = 36, BOTTOM = 26;
     const factor = 1 + adjust / 100;
     const allMonths = [
         ...monthly_history.map(m => ({ ...m, type: 'actual' })),
@@ -41,8 +48,9 @@ const SpendingChart = ({ monthly_history, predicted_monthly, adjust }) => {
                 return (
                     <g key={pct}>
                         <line x1={LEFT} y1={y} x2={100} y2={y} stroke="#e5e7eb" strokeWidth="0.4" strokeDasharray="1,1" />
-                        <text x={LEFT - 1} y={y + 1.5} textAnchor="end" fontSize="3.5" fill="#9ca3af">
-                            {fmt(maxVal * pct, true)}
+                        <text x={LEFT - 1} y={y + 1.5} textAnchor="end" fontSize="3.2" fill="#9ca3af"
+                            style={{ direction: 'ltr', unicodeBidi: 'plaintext' }}>
+                            {fmtAxis(maxVal * pct)}
                         </text>
                     </g>
                 );
@@ -301,7 +309,7 @@ const TransactionBalanceForecast = () => {
                                     fontWeight: 900, fontSize: '1.1rem',
                                     color: startingBalance >= 0 ? '#059669' : '#dc2626',
                                 }}>
-                                    ₪{fmt(startingBalance)}
+                                    {startingBalance < 0 ? '−' : ''}₪{fmt(startingBalance, true)}
                                 </span>
                                 <button onClick={() => { setBalInput(String(startingBalance)); setEditingBal(true); }}
                                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: 2 }}>
@@ -439,7 +447,7 @@ const TransactionBalanceForecast = () => {
                                             fontWeight: 900, fontSize: '0.95rem',
                                             color: row.balance >= 0 ? '#059669' : '#dc2626',
                                         }}>
-                                            ₪{fmt(row.balance)}
+                                            {row.balance < 0 ? '−' : ''}₪{fmt(row.balance, true)}
                                         </div>
                                     </div>
                                 ))}
