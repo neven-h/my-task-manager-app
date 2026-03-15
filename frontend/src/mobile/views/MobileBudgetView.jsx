@@ -1,10 +1,15 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, memo } from 'react';
 import {
     ArrowLeft, TrendingUp, TrendingDown, Scale,
     Plus, Edit2, Trash2, Check, X, ChevronDown, ChevronUp, FileDown, Zap,
     MoreHorizontal, RotateCcw,
 } from 'lucide-react';
 import useBudget from '../../hooks/useBudget';
+import useBudgetTabs from '../../hooks/useBudgetTabs';
+import useBudgetLinks from '../../hooks/useBudgetLinks';
+import useBalanceForecast from '../../hooks/useBalanceForecast';
+import MobileBudgetLinkBanner from '../components/budget/MobileBudgetLinkBanner';
+import MobileBalanceForecast from '../components/budget/MobileBalanceForecast';
 import { FONT_STACK } from '../../ios/theme';
 import {
     groupPredictions, GROUP_META, humanFrequency, humanBasis, activePredictions,
@@ -41,7 +46,7 @@ const emptyForm = (type = 'income') => ({
 });
 
 // ── Summary card ──────────────────────────────────────────────────────────────
-const SummaryCard = ({ icon: Icon, label, amount, color, sign }) => (
+const SummaryCard = memo(({ icon: Icon, label, amount, color, sign, badge }) => (
     <div style={{
         flex: '1 1 0',
         background: IOS.card,
@@ -54,12 +59,21 @@ const SummaryCard = ({ icon: Icon, label, amount, color, sign }) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: IOS.muted, fontSize: '0.7rem', fontWeight: 500 }}>
             <Icon size={12} color={color} />
             <span style={{ textTransform: 'uppercase', letterSpacing: 0.3 }}>{label}</span>
+            {badge && (
+                <span style={{
+                    fontSize: '0.55rem', fontWeight: 700, letterSpacing: 0.2,
+                    background: 'rgba(0,122,255,0.1)', color: IOS.blue,
+                    borderRadius: 4, padding: '1px 4px', textTransform: 'uppercase',
+                }}>
+                    {badge}
+                </span>
+            )}
         </div>
         <div style={{ fontSize: '1.15rem', fontWeight: 700, color, lineHeight: 1.2, wordBreak: 'break-all' }}>
             {sign}{fmt(amount)}
         </div>
     </div>
-);
+));
 
 // ── Bottom-sheet entry form ───────────────────────────────────────────────────
 const EntrySheet = ({ initial, onSave, onCancel, loading }) => {
@@ -182,8 +196,11 @@ const EntrySheet = ({ initial, onSave, onCancel, loading }) => {
     );
 };
 
+// ── Stable empty array to avoid creating new [] reference on every render
+const EMPTY_HISTORY = [];
+
 // ── Entry row (expandable) ────────────────────────────────────────────────────
-const EntryRow = ({ entry, cutoff, onEdit, onDelete, isLast, isExpanded, onToggleExpand, history }) => {
+const EntryRow = memo(({ entry, cutoff, onEdit, onDelete, isLast, isExpanded, onToggleExpand, history }) => {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [pressed, setPressed] = useState(false);
     const isPast = entry.entry_date <= cutoff;
@@ -296,11 +313,11 @@ const EntryRow = ({ entry, cutoff, onEdit, onDelete, isLast, isExpanded, onToggl
             )}
         </>
     );
-};
+});
 
 // ── Forecast section (iOS) ────────────────────────────────────────────────────
 // ── Mobile budget prediction row (AI UX: progressive disclosure + dismiss) ────
-const MBPredRow = ({ p, isLast, onDismiss, onRestore }) => {
+const MBPredRow = memo(({ p, isLast, onDismiss, onRestore }) => {
     const [expanded, setExpanded] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const isIncome = p.type === 'income';
@@ -365,7 +382,7 @@ const MBPredRow = ({ p, isLast, onDismiss, onRestore }) => {
             )}
         </div>
     );
-};
+});
 
 const MBGroupSection = ({ groupKey, items, onDismiss, onRestore }) => {
     if (items.length === 0) return null;
@@ -468,12 +485,20 @@ const ForecastSection = ({ predictions, onFetch, loading }) => {
     );
 };
 
+// Constant outside component — no recreation on every render
+const FILTER_TABS = [['all', 'All'], ['income', 'Income'], ['outcome', 'Expenses']];
+
 // ── Main view ──────────────────────────────────────────────────────────────────
 const MobileBudgetView = ({ onBack }) => {
     const { entries, loading, error, fetchEntries, createEntry, updateEntry, deleteEntry,
         totalIncome, totalOutcome, balance, getDescriptionHistory,
         predictions, fetchPredictions, exportBudgetCSV } = useBudget();
 
+    const { tabs, fetchTabs } = useBudgetTabs();
+    const { linkedTab, fetchLink, setLink, removeLink } = useBudgetLinks();
+    const { forecast, loading: forecastLoading, fetchForecast, clearForecast } = useBalanceForecast();
+
+    const [activeTabId, setActiveTabId]   = useState(null);
     const [cutoff, setCutoff]             = useState(today());
     const [typeFilter, setTypeFilter]     = useState('all');
     const [showDatePicker, setShowDatePicker] = useState(false);
@@ -482,15 +507,34 @@ const MobileBudgetView = ({ onBack }) => {
     const [formInitial, setFormInitial]   = useState(emptyForm('income'));
     const [expandedDescriptionId, setExpandedDescriptionId] = useState(null);
 
-    useEffect(() => { fetchEntries(); }, [fetchEntries]);
+    useEffect(() => { fetchEntries(); fetchTabs(); }, [fetchEntries, fetchTabs]);
 
-    const income  = totalIncome(cutoff);
-    const outcome = totalOutcome(cutoff);
-    const net     = balance(cutoff);
+    useEffect(() => {
+        fetchLink(activeTabId);
+        clearForecast();
+    }, [activeTabId, fetchLink, clearForecast]);
+
+    // Auto-fetch forecast as soon as a linked tab is discovered
+    useEffect(() => {
+        if (linkedTab && activeTabId) fetchForecast(activeTabId, 3);
+    }, [linkedTab, activeTabId, fetchForecast]);
+
+    const tabEntries = useMemo(() =>
+        activeTabId === null ? entries : entries.filter(e => e.tab_id === activeTabId),
+        [entries, activeTabId]);
+
+    const income  = useMemo(() =>
+        tabEntries.filter(e => e.type === 'income' && e.entry_date <= cutoff).reduce((s, e) => s + parseFloat(e.amount), 0),
+        [tabEntries, cutoff]);
+    const outcome = useMemo(() =>
+        tabEntries.filter(e => e.type === 'outcome' && e.entry_date <= cutoff).reduce((s, e) => s + parseFloat(e.amount), 0),
+        [tabEntries, cutoff]);
+    const net        = income - outcome;
+    const displayBal = forecast ? forecast.current_balance : net;
 
     const visibleEntries = useMemo(() =>
-        entries.filter(e => typeFilter === 'all' || e.type === typeFilter),
-        [entries, typeFilter]);
+        tabEntries.filter(e => typeFilter === 'all' || e.type === typeFilter),
+        [tabEntries, typeFilter]);
 
     const openAdd = (type) => {
         setEditingEntry(null);
@@ -514,13 +558,12 @@ const MobileBudgetView = ({ onBack }) => {
     const handleSave = async (data) => {
         const ok = editingEntry
             ? await updateEntry(editingEntry.id, data)
-            : await createEntry(data);
+            : await createEntry({ ...data, tab_id: activeTabId });
         if (ok) { setShowForm(false); setEditingEntry(null); }
     };
 
     const handleCancel = () => { setShowForm(false); setEditingEntry(null); };
 
-    const filterTabs = [['all', 'All'], ['income', 'Income'], ['outcome', 'Expenses']];
 
     return (
         <div style={{ minHeight: '100vh', background: IOS.bg, fontFamily: FONT_STACK, paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}>
@@ -555,6 +598,43 @@ const MobileBudgetView = ({ onBack }) => {
                     </button>
                 </div>
             </div>
+
+            {/* ── Tab strip ── */}
+            {tabs.length > 0 && (
+                <div style={{
+                    display: 'flex', overflowX: 'auto', gap: 8,
+                    padding: '10px 16px',
+                    background: IOS.card,
+                    borderBottom: `0.5px solid ${IOS.separator}`,
+                    WebkitOverflowScrolling: 'touch',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none',
+                }}>
+                    {[{ id: null, name: 'All' }, ...tabs].map(tab => {
+                        const isActive = activeTabId === tab.id;
+                        return (
+                            <button key={tab.id ?? 'all'} type="button"
+                                onClick={() => setActiveTabId(tab.id)}
+                                style={{
+                                    padding: '6px 16px',
+                                    borderRadius: 20,
+                                    border: 'none',
+                                    background: isActive ? IOS.blue : IOS.bg,
+                                    color: isActive ? '#fff' : IOS.muted,
+                                    fontWeight: isActive ? 600 : 500,
+                                    fontSize: '0.82rem',
+                                    whiteSpace: 'nowrap',
+                                    cursor: 'pointer',
+                                    fontFamily: FONT_STACK,
+                                    flexShrink: 0,
+                                    transition: `all 200ms ${IOS.spring}`,
+                                }}>
+                                {tab.name}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
 
             <div style={{ padding: '16px 16px 0' }}>
 
@@ -597,11 +677,14 @@ const MobileBudgetView = ({ onBack }) => {
                 <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
                     <SummaryCard icon={TrendingUp}   label="Income"   amount={income}  color={IOS.green} sign="+" />
                     <SummaryCard icon={TrendingDown} label="Expenses" amount={outcome} color={IOS.red}   sign="−" />
-                    <SummaryCard icon={Scale}        label="Balance"  amount={net}     color={net >= 0 ? IOS.blue : IOS.red} sign={net >= 0 ? '+' : '−'} />
+                    <SummaryCard icon={Scale}        label="Balance"  amount={displayBal}
+                        color={displayBal >= 0 ? IOS.blue : IOS.red}
+                        sign={displayBal >= 0 ? '+' : '−'}
+                        badge={forecast && linkedTab ? '＋bank' : null} />
                 </div>
 
                 {/* ── Quick add buttons ── */}
-                <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: activeTabId ? 12 : 16 }}>
                     <button onClick={() => openAdd('income')}
                         style={{ flex: 1, padding: '12px 0', border: 'none', borderRadius: 12,
                             background: IOS.green, color: '#fff', fontWeight: 600, fontSize: '0.9rem',
@@ -617,11 +700,21 @@ const MobileBudgetView = ({ onBack }) => {
                 </div>
             </div>
 
+            {/* ── Bank link banner (specific tab only) ── */}
+            {activeTabId && (
+                <MobileBudgetLinkBanner
+                    budgetTabId={activeTabId}
+                    linkedTab={linkedTab}
+                    onSetLink={(txTabId) => setLink(activeTabId, txTabId)}
+                    onRemoveLink={() => removeLink(activeTabId)}
+                />
+            )}
+
             {/* ── Entry list card ── */}
             <div style={{ margin: '0 16px', background: IOS.card, borderRadius: IOS.radius, boxShadow: '0 1px 3px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
                 {/* Filter tabs */}
                 <div style={{ display: 'flex', borderBottom: `0.5px solid ${IOS.separator}`, padding: '10px 12px', gap: 6 }}>
-                    {filterTabs.map(([val, label]) => {
+                    {FILTER_TABS.map(([val, label]) => {
                         const active = typeFilter === val;
                         return (
                             <button key={val} type="button" onClick={() => setTypeFilter(val)}
@@ -671,7 +764,7 @@ const MobileBudgetView = ({ onBack }) => {
                             isLast={idx === visibleEntries.length - 1}
                             isExpanded={expandedDescriptionId === e.id}
                             onToggleExpand={(id) => setExpandedDescriptionId(prev => prev === id ? null : id)}
-                            history={expandedDescriptionId === e.id ? getDescriptionHistory(e) : []}
+                            history={expandedDescriptionId === e.id ? getDescriptionHistory(e) : EMPTY_HISTORY}
                         />
                     ))
                 )}
@@ -680,8 +773,16 @@ const MobileBudgetView = ({ onBack }) => {
             {/* ── AI Forecast ── */}
             <ForecastSection
                 predictions={predictions}
-                onFetch={() => fetchPredictions(3)}
+                onFetch={() => fetchPredictions(3, activeTabId)}
                 loading={loading}
+            />
+
+            {/* ── Cash Flow Timeline ── */}
+            <MobileBalanceForecast
+                forecast={forecast}
+                onFetch={() => fetchForecast(activeTabId, 3)}
+                loading={forecastLoading}
+                linkedTab={linkedTab}
             />
 
             {/* ── Bottom-sheet form ── */}

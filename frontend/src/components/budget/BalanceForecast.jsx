@@ -1,19 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, memo } from 'react';
 import { TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { trendArrow, confidenceLabel } from '../../utils/forecastHelpers';
 
 const SYS = { primary: '#0000FF', success: '#00AA00', accent: '#FF0000', light: '#666', border: '#000', text: '#000' };
 
 const fmt = (n) =>
-    new Intl.NumberFormat(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.abs(n));
+    new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(n));
 
 const fmtMonth = (ym) => {
     const [y, m] = ym.split('-');
     return new Date(+y, +m - 1).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
 };
 
+const round2 = (n) => Math.round(n * 100) / 100;
+
 // ── History row (monthly aggregate) ─────────────────────────────────────────
-const HistoryRow = ({ m, isLast }) => {
+const HistoryRow = memo(({ m, isLast }) => {
     const [exp, setExp] = useState(false);
     const netPos = m.net >= 0;
 
@@ -75,10 +77,10 @@ const HistoryRow = ({ m, isLast }) => {
             )}
         </div>
     );
-};
+});
 
 // ── Future prediction row ────────────────────────────────────────────────────
-const PredRow = ({ p, idx, isLast }) => {
+const PredRow = memo(({ p, idx, isLast }) => {
     const isIncome = p.type === 'income';
     const trend    = trendArrow(p.trend);
     const conf     = confidenceLabel(p.confidence);
@@ -118,21 +120,59 @@ const PredRow = ({ p, idx, isLast }) => {
             </div>
         </div>
     );
-};
+});
 
 // ── Main ─────────────────────────────────────────────────────────────────────
+const HIST_SHOW = 3;
+
 const BalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
-    const [open, setOpen] = useState(false);
+    const [open, setOpen]               = useState(false);
+    const [showAllHist, setShowAllHist] = useState(false);
+
+    // Stable refs — prevent useMemo invalidation on unrelated re-renders
+    const tl   = useMemo(() => forecast?.timeline        || [], [forecast]);
+    const hist = useMemo(() => forecast?.history_timeline || [], [forecast]);
+
+    // Monthly projections from future timeline
+    const monthlyProj = useMemo(() => {
+        if (!tl.length) return [];
+        const byMonth = {};
+        for (const item of tl) {
+            const mk = item.date.slice(0, 7);
+            if (!byMonth[mk]) byMonth[mk] = { income: 0, expense: 0, endBalance: item.running_balance };
+            if (item.type === 'income') byMonth[mk].income += item.amount;
+            else byMonth[mk].expense += item.amount;
+            byMonth[mk].endBalance = item.running_balance;
+        }
+        return Object.entries(byMonth).sort().map(([mk, v]) => ({
+            month: mk,
+            income:     round2(v.income),
+            expense:    round2(v.expense),
+            net:        round2(v.income - v.expense),
+            endBalance: v.endBalance,
+        }));
+    }, [tl]);
+
+    // Runway: months until balance hits zero (only when trending negative)
+    const runway = useMemo(() => {
+        if (!forecast || !monthlyProj.length) return null;
+        const avgNet = monthlyProj.reduce((s, m) => s + m.net, 0) / monthlyProj.length;
+        if (avgNet >= 0) return null;
+        const months = Math.floor(forecast.current_balance / Math.abs(avgNet));
+        return months > 0 ? months : 0;
+    }, [forecast, monthlyProj]);
 
     if (!linkedTab) return null;
+
+    const visHist        = showAllHist ? hist : hist.slice(-HIST_SHOW);
+    const hiddenHistCount = hist.length - HIST_SHOW;
 
     const handleToggle = () => {
         if (!open && !forecast) onFetch();
         setOpen(o => !o);
     };
 
-    const tl   = forecast?.timeline       || [];
-    const hist = forecast?.history_timeline || [];
+    const endBal = forecast?.forecast_end_balance;
 
     return (
         <div style={{ marginTop: 24 }}>
@@ -148,9 +188,19 @@ const BalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
             }}>
                 <TrendingUp size={16} />
                 {open ? 'Hide' : 'Show'} Cash Flow Timeline
+                {/* Projected end badge when closed */}
+                {!open && endBal !== undefined && endBal !== null && (
+                    <span style={{
+                        marginLeft: 'auto',
+                        fontSize: '0.8rem', fontWeight: 700,
+                        color: endBal >= 0 ? '#2563eb' : '#dc2626',
+                    }}>
+                        Projected: {endBal >= 0 ? '+' : '−'}₪{fmt(endBal)}
+                    </span>
+                )}
                 {open && tl.length > 0 && (
                     <span style={{ marginLeft: 6, background: 'rgba(255,255,255,0.25)', padding: '1px 8px', borderRadius: 20, fontSize: '0.72rem' }}>
-                        {tl.length} predictions
+                        {tl.length} items
                     </span>
                 )}
             </button>
@@ -188,7 +238,78 @@ const BalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
                                     <span>In: <b style={{ color: SYS.success }}>+₪{fmt((forecast.budget_income || 0) + (forecast.bank_income || 0))}</b></span>
                                     <span>Out: <b style={{ color: SYS.accent }}>−₪{fmt((forecast.budget_expense || 0) + (forecast.bank_expense || 0))}</b></span>
                                 </div>
+                                {/* Runway warning */}
+                                {runway !== null && (
+                                    <div style={{
+                                        width: '100%', padding: '5px 10px',
+                                        background: runway < 3 ? '#fef2f2' : '#fffbeb',
+                                        border: `1px solid ${runway < 3 ? '#fecaca' : '#fde68a'}`,
+                                        borderRadius: 6, fontSize: '0.75rem', fontWeight: 600,
+                                        color: runway < 3 ? SYS.accent : '#92400e',
+                                    }}>
+                                        ⚠ At this pace, balance covers ~{runway} more month{runway !== 1 ? 's' : ''}
+                                    </div>
+                                )}
                             </div>
+
+                            {/* ── Monthly Outlook table ────────────── */}
+                            {monthlyProj.length > 0 && (
+                                <>
+                                    <div style={{
+                                        padding: '5px 16px', background: '#f0fdf4',
+                                        fontSize: '0.68rem', fontWeight: 700, color: '#166534',
+                                        textTransform: 'uppercase', letterSpacing: '0.4px',
+                                        borderBottom: '1px solid #bbf7d0',
+                                    }}>
+                                        Monthly Outlook
+                                    </div>
+                                    {/* Table header */}
+                                    <div style={{
+                                        display: 'flex', alignItems: 'center',
+                                        padding: '5px 16px', borderBottom: '1px solid #e5e7eb',
+                                        fontSize: '0.65rem', fontWeight: 700, color: '#9ca3af',
+                                        textTransform: 'uppercase', letterSpacing: '0.3px',
+                                        background: '#f9fafb',
+                                    }}>
+                                        <div style={{ width: 80 }}>Month</div>
+                                        <div style={{ width: 90, textAlign: 'right' }}>In</div>
+                                        <div style={{ width: 90, textAlign: 'right' }}>Out</div>
+                                        <div style={{ width: 90, textAlign: 'right' }}>Net</div>
+                                        <div style={{ flex: 1, textAlign: 'right' }}>End Balance</div>
+                                    </div>
+                                    {monthlyProj.map((m, i) => {
+                                        const netPos = m.net >= 0;
+                                        const isLast = i === monthlyProj.length - 1;
+                                        return (
+                                            <div key={m.month} style={{
+                                                display: 'flex', alignItems: 'center',
+                                                padding: '7px 16px',
+                                                borderBottom: isLast ? 'none' : '1px solid #f3f4f6',
+                                                fontSize: '0.82rem',
+                                                background: i % 2 === 0 ? '#fff' : '#fafafa',
+                                            }}>
+                                                <div style={{ width: 80, fontWeight: 600, color: SYS.light, fontSize: '0.76rem' }}>
+                                                    {fmtMonth(m.month)}
+                                                </div>
+                                                <div style={{ width: 90, textAlign: 'right', color: SYS.success, fontWeight: 700 }}>
+                                                    {m.income > 0 ? `+₪${fmt(m.income)}` : '—'}
+                                                </div>
+                                                <div style={{ width: 90, textAlign: 'right', color: SYS.accent, fontWeight: 700 }}>
+                                                    −₪{fmt(m.expense)}
+                                                </div>
+                                                <div style={{ width: 90, textAlign: 'right', fontWeight: 800,
+                                                    color: netPos ? SYS.success : SYS.accent }}>
+                                                    {netPos ? '+' : '−'}₪{fmt(Math.abs(m.net))}
+                                                </div>
+                                                <div style={{ flex: 1, textAlign: 'right', fontWeight: 700,
+                                                    color: m.endBalance >= 0 ? SYS.primary : SYS.accent }}>
+                                                    {m.endBalance >= 0 ? '' : '−'}₪{fmt(m.endBalance)}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </>
+                            )}
 
                             {/* ── Column headers ────────────────────── */}
                             {(hist.length > 0 || tl.length > 0) && (
@@ -214,11 +335,24 @@ const BalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
                                         fontSize: '0.68rem', fontWeight: 700, color: '#1e40af',
                                         textTransform: 'uppercase', letterSpacing: '0.4px',
                                         borderBottom: '1px solid #dbeafe',
+                                        display: 'flex', alignItems: 'center', gap: 8,
                                     }}>
-                                        Historical (actual)
+                                        <span>Historical (actual)</span>
+                                        {!showAllHist && hiddenHistCount > 0 && (
+                                            <button type="button" onClick={() => setShowAllHist(true)}
+                                                style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: '0.68rem', fontWeight: 700, color: '#1e40af', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+                                                +{hiddenHistCount} more months
+                                            </button>
+                                        )}
+                                        {showAllHist && hiddenHistCount > 0 && (
+                                            <button type="button" onClick={() => setShowAllHist(false)}
+                                                style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: '0.68rem', fontWeight: 700, color: '#1e40af', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+                                                Show less
+                                            </button>
+                                        )}
                                     </div>
-                                    {hist.map((m, i) => (
-                                        <HistoryRow key={m.month} m={m} isLast={i === hist.length - 1} />
+                                    {visHist.map((m, i) => (
+                                        <HistoryRow key={m.month} m={m} isLast={i === visHist.length - 1} />
                                     ))}
                                 </>
                             )}
@@ -244,14 +378,14 @@ const BalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
                             {tl.length > 0 && (
                                 <>
                                     <div style={{
-                                        padding: '5px 16px', background: '#f0fdf4',
-                                        fontSize: '0.68rem', fontWeight: 700, color: '#166534',
+                                        padding: '5px 16px', background: '#f9fafb',
+                                        fontSize: '0.68rem', fontWeight: 700, color: '#6b7280',
                                         textTransform: 'uppercase', letterSpacing: '0.4px',
-                                        borderBottom: '1px solid #bbf7d0',
+                                        borderBottom: '1px solid #e5e7eb',
                                     }}>
-                                        Predicted (next {Math.ceil(tl.length / 2)} items shown)
+                                        Upcoming · {tl.length} items
                                     </div>
-                                    {/* Column headers for predictions */}
+                                    {/* Column headers */}
                                     <div style={{
                                         display: 'flex', alignItems: 'center', gap: 10,
                                         padding: '5px 16px', borderBottom: '1px solid #e5e7eb',
@@ -278,7 +412,7 @@ const BalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
                             )}
 
                             {/* ── Projected end balance ─────────────── */}
-                            {tl.length > 0 && forecast.forecast_end_balance !== undefined && (
+                            {tl.length > 0 && endBal !== undefined && (
                                 <div style={{
                                     display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12,
                                     padding: '12px 16px', borderTop: '2px solid #e5e7eb',
@@ -289,9 +423,9 @@ const BalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
                                     </span>
                                     <span style={{
                                         fontSize: '1.15rem', fontWeight: 800,
-                                        color: forecast.forecast_end_balance >= 0 ? SYS.primary : SYS.accent,
+                                        color: endBal >= 0 ? SYS.primary : SYS.accent,
                                     }}>
-                                        {forecast.forecast_end_balance >= 0 ? '+' : '−'}₪{fmt(forecast.forecast_end_balance)}
+                                        {endBal >= 0 ? '+' : '−'}₪{fmt(endBal)}
                                     </span>
                                 </div>
                             )}

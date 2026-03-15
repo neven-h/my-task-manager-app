@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, memo } from 'react';
 import { TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 import { trendArrow } from '../../../utils/forecastHelpers';
 
@@ -9,15 +9,17 @@ const IOS = {
 };
 
 const fmt = (n) =>
-    new Intl.NumberFormat(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(Math.abs(n));
+    new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(n));
 
 const fmtMonth = (ym) => {
     const [y, m] = ym.split('-');
     return new Date(+y, +m - 1).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
 };
 
-// ── History row ──────────────────────────────────────────────────────────────
-const HistoryRow = ({ m, isLast }) => {
+const round2 = (n) => Math.round(n * 100) / 100;
+
+// ── History row ───────────────────────────────────────────────────────────────
+const HistoryRow = memo(({ m, isLast }) => {
     const [exp, setExp] = useState(false);
     const netPos = m.net >= 0;
 
@@ -70,10 +72,10 @@ const HistoryRow = ({ m, isLast }) => {
             )}
         </div>
     );
-};
+});
 
-// ── Prediction row ───────────────────────────────────────────────────────────
-const PredRow = ({ p, isLast }) => {
+// ── Prediction row ────────────────────────────────────────────────────────────
+const PredRow = memo(({ p, isLast }) => {
     const isIncome = p.type === 'income';
     const trend    = trendArrow(p.trend);
     return (
@@ -112,24 +114,107 @@ const PredRow = ({ p, isLast }) => {
             </div>
         </div>
     );
-};
+});
 
-// ── Main ─────────────────────────────────────────────────────────────────────
+// ── Monthly outlook card ──────────────────────────────────────────────────────
+const MonthCard = memo(({ m }) => {
+    const netPos = m.net >= 0;
+    return (
+        <div style={{
+            flexShrink: 0, width: 118,
+            borderRadius: 12,
+            border: `1px solid ${netPos ? '#bbf7d0' : '#fecaca'}`,
+            overflow: 'hidden',
+        }}>
+            <div style={{
+                background: netPos ? '#f0fdf4' : '#fef2f2',
+                padding: '6px 10px',
+                fontSize: '0.68rem', fontWeight: 700,
+                color: netPos ? '#166534' : '#991b1b',
+                textTransform: 'uppercase', letterSpacing: '0.3px',
+            }}>
+                {fmtMonth(m.month)}
+            </div>
+            <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {m.income > 0 && (
+                    <div style={{ fontSize: '0.72rem', color: IOS.green, fontWeight: 500 }}>
+                        +₪{fmt(m.income)}
+                    </div>
+                )}
+                <div style={{ fontSize: '0.72rem', color: IOS.red, fontWeight: 500 }}>
+                    −₪{fmt(m.expense)}
+                </div>
+                <div style={{
+                    fontSize: '0.78rem', fontWeight: 700,
+                    color: netPos ? IOS.green : IOS.red,
+                    borderTop: `0.5px solid ${IOS.separator}`,
+                    marginTop: 2, paddingTop: 4,
+                }}>
+                    {netPos ? '+' : '−'}₪{fmt(Math.abs(m.net))}
+                </div>
+                <div style={{ fontSize: '0.7rem', color: IOS.blue, fontWeight: 600 }}>
+                    ₪{m.endBalance >= 0 ? '' : '−'}{fmt(m.endBalance)}
+                </div>
+            </div>
+        </div>
+    );
+});
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+const HIST_SHOW = 3;
+
 const MobileBalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
-    const [open, setOpen] = useState(false);
+    const [open, setOpen]           = useState(false);
+    const [showAllHist, setShowAllHist] = useState(false);
+
+    // Stable refs — prevent useMemo invalidation when forecast object identity is stable
+    const tl   = useMemo(() => forecast?.timeline        || [], [forecast]);
+    const hist = useMemo(() => forecast?.history_timeline || [], [forecast]);
+
+    // Monthly projections from future timeline
+    const monthlyProj = useMemo(() => {
+        if (!tl.length) return [];
+        const byMonth = {};
+        for (const item of tl) {
+            const mk = item.date.slice(0, 7);
+            if (!byMonth[mk]) byMonth[mk] = { income: 0, expense: 0, endBalance: item.running_balance };
+            if (item.type === 'income') byMonth[mk].income += item.amount;
+            else byMonth[mk].expense += item.amount;
+            byMonth[mk].endBalance = item.running_balance;
+        }
+        return Object.entries(byMonth).sort().map(([mk, v]) => ({
+            month: mk,
+            income:     round2(v.income),
+            expense:    round2(v.expense),
+            net:        round2(v.income - v.expense),
+            endBalance: v.endBalance,
+        }));
+    }, [tl]);
+
+    // Runway: months until balance hits zero (only relevant when trending negative)
+    const runway = useMemo(() => {
+        if (!forecast || !monthlyProj.length) return null;
+        const avgNet = monthlyProj.reduce((s, m) => s + m.net, 0) / monthlyProj.length;
+        if (avgNet >= 0) return null;
+        const months = Math.floor(forecast.current_balance / Math.abs(avgNet));
+        return months > 0 ? months : 0;
+    }, [forecast, monthlyProj]);
 
     if (!linkedTab) return null;
+
+    const visHist        = showAllHist ? hist : hist.slice(-HIST_SHOW);
+    const hiddenHistCount = hist.length - HIST_SHOW;
 
     const handleToggle = () => {
         if (!open && !forecast) onFetch();
         setOpen(o => !o);
     };
 
-    const tl   = forecast?.timeline        || [];
-    const hist = forecast?.history_timeline || [];
+    const endBal = forecast?.forecast_end_balance;
 
     return (
         <div style={{ margin: '16px 16px 0' }}>
+            {/* Toggle button — shows projected end balance when closed */}
             <button type="button" onClick={handleToggle} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 gap: 8, width: '100%', padding: '13px 16px',
@@ -143,6 +228,15 @@ const MobileBalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
             }}>
                 <TrendingUp size={16} />
                 {open ? 'Hide Cash Flow Timeline' : 'Cash Flow Timeline'}
+                {!open && endBal !== undefined && endBal !== null && (
+                    <span style={{
+                        marginLeft: 'auto',
+                        fontSize: '0.8rem', fontWeight: 700,
+                        color: endBal >= 0 ? IOS.blue : IOS.red,
+                    }}>
+                        {endBal >= 0 ? '+' : '−'}₪{fmt(endBal)}
+                    </span>
+                )}
                 {open && tl.length > 0 && (
                     <span style={{
                         marginLeft: 6, background: 'rgba(255,255,255,0.25)',
@@ -169,7 +263,7 @@ const MobileBalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
                             Add budget entries and link a bank tab to see the timeline.
                         </div>
                     ) : (<>
-                        {/* Balance hero */}
+                        {/* ── Balance hero ── */}
                         <div style={{
                             padding: '16px 16px 12px', textAlign: 'center',
                             borderBottom: `0.5px solid ${IOS.separator}`,
@@ -187,24 +281,80 @@ const MobileBalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
                                 <span>In: <b style={{ color: IOS.green }}>+₪{fmt((forecast.budget_income || 0) + (forecast.bank_income || 0))}</b></span>
                                 <span>Out: <b style={{ color: IOS.red }}>−₪{fmt((forecast.budget_expense || 0) + (forecast.bank_expense || 0))}</b></span>
                             </div>
+                            {/* Runway warning */}
+                            {runway !== null && (
+                                <div style={{
+                                    marginTop: 8, padding: '5px 12px', borderRadius: 20, display: 'inline-block',
+                                    background: runway < 3 ? 'rgba(255,59,48,0.08)' : 'rgba(245,158,11,0.08)',
+                                    fontSize: '0.72rem', fontWeight: 600,
+                                    color: runway < 3 ? IOS.red : '#d97706',
+                                }}>
+                                    ⚠ At this pace, covers ~{runway} more month{runway !== 1 ? 's' : ''}
+                                </div>
+                            )}
+                            {/* Projected end */}
+                            {endBal !== undefined && (
+                                <div style={{ marginTop: runway ? 4 : 8, fontSize: '0.72rem', color: IOS.muted }}>
+                                    Projected end:{' '}
+                                    <b style={{ color: endBal >= 0 ? IOS.blue : IOS.red }}>
+                                        {endBal >= 0 ? '+' : '−'}₪{fmt(endBal)}
+                                    </b>
+                                </div>
+                            )}
                         </div>
 
-                        {/* History section */}
+                        {/* ── Monthly Outlook ── */}
+                        {monthlyProj.length > 0 && (
+                            <>
+                                <div style={{
+                                    padding: '6px 16px', background: '#f0fdf4',
+                                    borderBottom: `0.5px solid #bbf7d0`,
+                                    fontSize: '0.65rem', fontWeight: 700, color: '#166534',
+                                    textTransform: 'uppercase', letterSpacing: '0.4px',
+                                }}>
+                                    Monthly Outlook
+                                </div>
+                                <div style={{
+                                    display: 'flex', gap: 8, overflowX: 'auto',
+                                    padding: '12px 16px',
+                                    WebkitOverflowScrolling: 'touch',
+                                    scrollbarWidth: 'none',
+                                    borderBottom: `0.5px solid ${IOS.separator}`,
+                                }}>
+                                    {monthlyProj.map(m => <MonthCard key={m.month} m={m} />)}
+                                </div>
+                            </>
+                        )}
+
+                        {/* ── History ── */}
                         {hist.length > 0 && (<>
                             <div style={{
                                 padding: '6px 16px', background: '#eff6ff',
                                 borderBottom: `0.5px solid #dbeafe`,
                                 fontSize: '0.65rem', fontWeight: 700, color: '#1e40af',
                                 textTransform: 'uppercase', letterSpacing: '0.4px',
+                                display: 'flex', alignItems: 'center', gap: 8,
                             }}>
-                                Historical (actual)
+                                <span>Historical (actual)</span>
+                                {!showAllHist && hiddenHistCount > 0 && (
+                                    <button type="button" onClick={() => setShowAllHist(true)}
+                                        style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: '0.65rem', fontWeight: 700, color: '#1e40af', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+                                        +{hiddenHistCount} more
+                                    </button>
+                                )}
+                                {showAllHist && hiddenHistCount > 0 && (
+                                    <button type="button" onClick={() => setShowAllHist(false)}
+                                        style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: '0.65rem', fontWeight: 700, color: '#1e40af', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+                                        Show less
+                                    </button>
+                                )}
                             </div>
-                            {hist.map((m, i) => (
-                                <HistoryRow key={m.month} m={m} isLast={i === hist.length - 1} />
+                            {visHist.map((m, i) => (
+                                <HistoryRow key={m.month} m={m} isLast={i === visHist.length - 1} />
                             ))}
                         </>)}
 
-                        {/* TODAY divider */}
+                        {/* ── TODAY divider ── */}
                         {(hist.length > 0 || tl.length > 0) && (
                             <div style={{
                                 padding: '8px 16px',
@@ -219,15 +369,15 @@ const MobileBalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
                             </div>
                         )}
 
-                        {/* Predictions */}
+                        {/* ── Individual predictions ── */}
                         {tl.length > 0 && (<>
                             <div style={{
-                                padding: '6px 16px', background: '#f0fdf4',
-                                borderBottom: `0.5px solid #bbf7d0`,
-                                fontSize: '0.65rem', fontWeight: 700, color: '#166534',
+                                padding: '6px 16px', background: '#f9fafb',
+                                borderBottom: `0.5px solid ${IOS.separator}`,
+                                fontSize: '0.65rem', fontWeight: 700, color: IOS.muted,
                                 textTransform: 'uppercase', letterSpacing: '0.4px',
                             }}>
-                                Predicted
+                                Upcoming · {tl.length} items
                             </div>
                             {tl.map((p, idx) => (
                                 <PredRow key={idx} p={p} isLast={idx === tl.length - 1} />
@@ -237,25 +387,6 @@ const MobileBalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
                         {tl.length === 0 && hist.length === 0 && (
                             <div style={{ padding: 20, textAlign: 'center', color: IOS.muted, fontSize: '0.85rem' }}>
                                 No data yet — add budget entries and link a bank tab.
-                            </div>
-                        )}
-
-                        {/* Projected end balance */}
-                        {tl.length > 0 && forecast.forecast_end_balance !== undefined && (
-                            <div style={{
-                                padding: '14px 16px', background: '#f9fafb',
-                                borderTop: `0.5px solid ${IOS.separator}`,
-                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                            }}>
-                                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: IOS.muted, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                                    Projected end
-                                </span>
-                                <span style={{
-                                    fontSize: '1.15rem', fontWeight: 700,
-                                    color: forecast.forecast_end_balance >= 0 ? IOS.blue : IOS.red,
-                                }}>
-                                    {forecast.forecast_end_balance >= 0 ? '+' : '−'}₪{fmt(forecast.forecast_end_balance)}
-                                </span>
                             </div>
                         )}
                     </>)}

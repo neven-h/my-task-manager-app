@@ -431,6 +431,8 @@ const Budget = ({ onBackToTasks }) => {
 
     useEffect(() => { fetchEntries(); fetchTabs(); }, [fetchEntries, fetchTabs]);
     useEffect(() => { fetchLink(activeTabId); clearForecast(); }, [activeTabId, fetchLink, clearForecast]);
+    // Auto-fetch forecast as soon as a linked tab is found
+    useEffect(() => { if (linkedTab && activeTabId) fetchForecast(activeTabId, 3); }, [linkedTab, activeTabId, fetchForecast]);
 
     const tabEntries = useMemo(() =>
         activeTabId === null
