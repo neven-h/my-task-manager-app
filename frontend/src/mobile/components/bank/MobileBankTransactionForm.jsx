@@ -58,7 +58,7 @@ const MobileBankTransactionForm = ({
                             type="date"
                             value={newTransaction.transaction_date}
                             onChange={(e) => setNewTransaction({...newTransaction, transaction_date: e.target.value})}
-                            style={{width: '100%', padding: BAUHAUS.inputPadding, border: BAUHAUS.inputBorder, fontSize: BAUHAUS.inputFontSize, borderRadius: 0}}
+                            style={{width: '100%', padding: BAUHAUS.inputPadding, border: BAUHAUS.inputBorder, fontSize: BAUHAUS.inputFontSize, borderRadius: 0, boxSizing: 'border-box'}}
                         />
                     </div>
                     <div>
@@ -80,20 +80,31 @@ const MobileBankTransactionForm = ({
                                 }
                                 setNewTransaction(update);
                             }}
-                            style={{width: '100%', padding: BAUHAUS.inputPadding, border: BAUHAUS.inputBorder, fontSize: BAUHAUS.inputFontSize, borderRadius: 0}}
+                            style={{width: '100%', padding: BAUHAUS.inputPadding, border: BAUHAUS.inputBorder, fontSize: BAUHAUS.inputFontSize, borderRadius: 0, boxSizing: 'border-box'}}
                         />
                     </div>
                     <div>
                         <label style={{display: 'block', marginBottom: '8px', fontWeight: BAUHAUS.labelWeight, fontSize: BAUHAUS.labelFontSize, textTransform: 'uppercase'}}>
                             Amount
                         </label>
+                        <div style={{display: 'flex', gap: '8px'}}>
                         <input
                             type="number"
                             step="0.01"
                             value={newTransaction.amount}
                             onChange={(e) => setNewTransaction({...newTransaction, amount: e.target.value})}
-                            style={{width: '100%', padding: BAUHAUS.inputPadding, border: BAUHAUS.inputBorder, fontSize: BAUHAUS.inputFontSize, borderRadius: 0}}
+                            style={{flex: 1, padding: BAUHAUS.inputPadding, border: BAUHAUS.inputBorder, fontSize: BAUHAUS.inputFontSize, borderRadius: 0, boxSizing: 'border-box'}}
                         />
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const val = parseFloat(newTransaction.amount);
+                                if (!isNaN(val)) setNewTransaction({...newTransaction, amount: String(-val)});
+                            }}
+                            style={{padding: '0 16px', border: BAUHAUS.inputBorder, background: '#f8f8f8', fontWeight: 700, fontSize: '1.1rem', cursor: 'pointer', flexShrink: 0}}
+                            title="Toggle sign"
+                        >±</button>
+                        </div>
                     </div>
                     <div>
                         <label style={{display: 'block', marginBottom: '8px', fontWeight: BAUHAUS.labelWeight, fontSize: BAUHAUS.labelFontSize, textTransform: 'uppercase'}}>
@@ -102,7 +113,7 @@ const MobileBankTransactionForm = ({
                         <select
                             value={newTransaction.transaction_type}
                             onChange={(e) => setNewTransaction({...newTransaction, transaction_type: e.target.value})}
-                            style={{width: '100%', padding: BAUHAUS.inputPadding, border: BAUHAUS.inputBorder, fontSize: BAUHAUS.inputFontSize, borderRadius: 0}}
+                            style={{width: '100%', padding: BAUHAUS.inputPadding, border: BAUHAUS.inputBorder, fontSize: BAUHAUS.inputFontSize, borderRadius: 0, boxSizing: 'border-box'}}
                         >
                             <option value="credit">Credit Card</option>
                             <option value="cash">Cash (ATM)</option>
@@ -127,7 +138,7 @@ const MobileBankTransactionForm = ({
                         </button>
                         <button
                             onClick={onSave}
-                            disabled={loading || !newTransaction.description || !newTransaction.amount}
+                            disabled={loading || !newTransaction.description || newTransaction.amount === '' || isNaN(parseFloat(newTransaction.amount))}
                             style={{
                                 flex: 1,
                                 padding: '14px',
@@ -137,7 +148,7 @@ const MobileBankTransactionForm = ({
                                 fontWeight: BAUHAUS.labelWeight,
                                 fontSize: '0.9rem',
                                 cursor: 'pointer',
-                                opacity: (loading || !newTransaction.description || !newTransaction.amount) ? 0.5 : 1
+                                opacity: (loading || !newTransaction.description || newTransaction.amount === '' || isNaN(parseFloat(newTransaction.amount))) ? 0.5 : 1
                             }}
                         >
                             {loading ? 'Saving...' : 'Save'}

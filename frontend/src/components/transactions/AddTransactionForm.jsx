@@ -55,9 +55,18 @@ const AddTransactionForm = ({ newTransaction, setNewTransaction, allDescriptions
             </div>
             <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '1.05rem', color: colors.text }}>💰 Amount (₪)</label>
-                <input type="number" step="0.01" value={newTransaction.amount}
-                    onChange={(e) => setNewTransaction({ ...newTransaction, amount: e.target.value })}
-                    placeholder="0.00" style={{ width: '100%', padding: '1rem', border: `3px solid ${colors.border}`, fontSize: '1.05rem', fontFamily: '"Inter", sans-serif' }} />
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input type="number" step="0.01" value={newTransaction.amount}
+                        onChange={(e) => setNewTransaction({ ...newTransaction, amount: e.target.value })}
+                        placeholder="0.00" style={{ flex: 1, padding: '1rem', border: `3px solid ${colors.border}`, fontSize: '1.05rem', fontFamily: '"Inter", sans-serif' }} />
+                    <button type="button"
+                        onClick={() => {
+                            const val = parseFloat(newTransaction.amount);
+                            if (!isNaN(val)) setNewTransaction({ ...newTransaction, amount: String(-val) });
+                        }}
+                        style={{ padding: '1rem', border: `3px solid ${colors.border}`, background: colors.card, cursor: 'pointer', fontWeight: '700', fontSize: '1.1rem', color: colors.text, fontFamily: '"Inter", sans-serif' }}
+                        title="Toggle sign">±</button>
+                </div>
             </div>
             <div style={{ marginBottom: '2rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '1.05rem', color: colors.text }}>🏦 Account Number (optional)</label>

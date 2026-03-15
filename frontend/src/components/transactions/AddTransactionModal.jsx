@@ -21,7 +21,7 @@ const AddTransactionModal = () => {
     };
     const onClose = () => { setShowAddForm(false); setNewTransaction(getDefaultTransaction()); };
 
-    const canAdd = newTransaction.description && newTransaction.amount && !loading;
+    const canAdd = !!newTransaction.description && newTransaction.amount !== '' && !isNaN(parseFloat(newTransaction.amount)) && !loading;
     const typeColor = newTransaction.transaction_type === 'cash' ? colors.success
         : newTransaction.transaction_type === 'transfer_in' ? '#34C759'
         : newTransaction.transaction_type === 'transfer_out' ? '#FF3B30'
