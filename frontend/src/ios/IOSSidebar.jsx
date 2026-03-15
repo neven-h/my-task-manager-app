@@ -2,117 +2,17 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Plus, RefreshCw, Search, BookOpen, DollarSign, Upload,
-    TrendingUp, Users, BarChart3, Download, Settings, LogOut,
-    ChevronRight, PiggyBank
+    TrendingUp, Users, BarChart3, Download, Settings, LogOut, PiggyBank
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { FONT_STACK } from './theme';
+import { SectionLabel, SectionCard, Row } from './IOSSidebarRow';
 
 const SPRING = 'cubic-bezier(0.22,1,0.36,1)';
 
-/* ── Section header label ──────────────────────────────────────────── */
-const SectionLabel = ({ children, first }) => (
-    <div style={{
-        fontSize: '12px',
-        fontWeight: 400,
-        color: '#6C6C70',
-        textTransform: 'uppercase',
-        letterSpacing: '0.4px',
-        padding: first ? '8px 20px 6px' : '20px 20px 6px',
-        fontFamily: FONT_STACK
-    }}>
-        {children}
-    </div>
-);
-
-/* ── White grouped-card container ──────────────────────────────────── */
-const SectionCard = ({ children }) => (
-    <div style={{
-        background: '#fff',
-        borderRadius: 12,
-        margin: '0 16px',
-        overflow: 'hidden'
-    }}>
-        {children}
-    </div>
-);
-
-/* ── Tappable row with icon container ──────────────────────────────── */
-const Row = ({ icon: Icon, iconBg, label, onClick, destructive = false, showDivider = true, isAction = false }) => {
-    const [pressed, setPressed] = useState(false);
-    return (
-        <div style={{ position: 'relative' }}>
-            <button
-                onTouchStart={() => setPressed(true)}
-                onTouchEnd={() => setPressed(false)}
-                onMouseDown={() => setPressed(true)}
-                onMouseUp={() => setPressed(false)}
-                onMouseLeave={() => setPressed(false)}
-                onClick={onClick}
-                style={{
-                    width: '100%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '0 14px 0 16px',
-                    height: 52,
-                    background: pressed ? 'rgba(0,0,0,0.05)' : 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: `background 120ms ${SPRING}`,
-                    fontFamily: FONT_STACK
-                }}
-            >
-                {/* Rounded-square icon */}
-                <div style={{
-                    width: 30, height: 30, borderRadius: 7,
-                    background: destructive ? '#FF3B30' : (iconBg || '#8E8E93'),
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0
-                }}>
-                    <Icon size={17} color="#fff" strokeWidth={2.2} />
-                </div>
-
-                <span style={{
-                    flex: 1,
-                    fontSize: '1rem',
-                    fontWeight: 400,
-                    color: destructive ? '#FF3B30' : '#000',
-                    fontFamily: FONT_STACK,
-                    lineHeight: 1
-                }}>
-                    {label}
-                </span>
-
-                {/* Disclosure chevron on nav rows only */}
-                {!isAction && !destructive && (
-                    <ChevronRight size={16} color="#C7C7CC" strokeWidth={2.5} />
-                )}
-            </button>
-
-            {/* Inset divider */}
-            {showDivider && (
-                <div style={{
-                    position: 'absolute', bottom: 0,
-                    left: 58,  /* 16px pad + 30px icon + 12px gap */
-                    right: 0, height: '0.5px',
-                    background: 'rgba(0,0,0,0.12)'
-                }} />
-            )}
-        </div>
-    );
-};
-
-/* ── Main component ────────────────────────────────────────────────── */
 const IOSSidebar = ({ isOpen, onClose, onOpenSearch, onOpenUpload }) => {
     const navigate = useNavigate();
-    const {
-        authUser, isAdmin, isSharedUser, isLimitedUser,
-        openNewTaskForm, setAppView, fetchTasks, exportToCSV, onLogout,
-        hasActiveFilters
-    } = useTaskContext();
-
+    const { authUser, isAdmin, isSharedUser, isLimitedUser, openNewTaskForm, setAppView, fetchTasks, exportToCSV, onLogout, hasActiveFilters } = useTaskContext();
     const [closing, setClosing] = useState(false);
 
     const handleClose = () => {
@@ -128,123 +28,70 @@ const IOSSidebar = ({ isOpen, onClose, onOpenSearch, onOpenUpload }) => {
 
     return (
         <>
-            {/* Backdrop */}
-            <div
-                onClick={handleClose}
-                style={{
-                    position: 'fixed', inset: 0,
-                    background: 'rgba(0,0,0,0.4)',
-                    backdropFilter: 'blur(6px)',
-                    WebkitBackdropFilter: 'blur(6px)',
-                    opacity: visible ? 1 : 0,
-                    transition: `opacity 260ms ${SPRING}`,
-                    zIndex: 300
-                }}
-            />
-
-            {/* Bottom sheet */}
+            <div onClick={handleClose} style={{
+                position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+                backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+                opacity: visible ? 1 : 0, transition: `opacity 260ms ${SPRING}`, zIndex: 300
+            }} />
             <div style={{
-                position: 'fixed',
-                left: 0, right: 0, bottom: 0,
-                background: '#F2F2F7',
-                borderTopLeftRadius: 24,
-                borderTopRightRadius: 24,
+                position: 'fixed', left: 0, right: 0, bottom: 0,
+                background: '#F2F2F7', borderTopLeftRadius: 24, borderTopRightRadius: 24,
                 boxShadow: '0 -2px 20px rgba(0,0,0,0.10)',
                 transform: visible ? 'translateY(0)' : 'translateY(100%)',
                 transition: `transform 260ms ${SPRING}`,
-                zIndex: 301,
-                maxHeight: '85vh',
-                overflowY: 'auto',
+                zIndex: 301, maxHeight: '85vh', overflowY: 'auto',
                 paddingBottom: 'env(safe-area-inset-bottom, 16px)'
             }}>
-                {/* Drag handle */}
-                <div style={{
-                    width: 36, height: 5,
-                    background: 'rgba(0,0,0,0.18)',
-                    borderRadius: 3,
-                    margin: '10px auto 0'
-                }} />
+                <div style={{ width: 36, height: 5, background: 'rgba(0,0,0,0.18)', borderRadius: 3, margin: '10px auto 0' }} />
 
-                {/* User chip */}
                 {authUser && (
                     <div style={{
-                        margin: '12px 16px 4px',
-                        padding: '8px 14px',
-                        background: '#fff',
-                        borderRadius: 10,
-                        fontSize: '0.85rem',
-                        color: '#6C6C70',
-                        fontFamily: FONT_STACK,
-                        fontWeight: 400
+                        margin: '12px 16px 4px', padding: '8px 14px', background: '#fff',
+                        borderRadius: 10, fontSize: '0.85rem', color: '#6C6C70', fontFamily: FONT_STACK, fontWeight: 400
                     }}>
                         👤 {authUser}{isAdmin ? ' · admin' : ''}
                         {hasActiveFilters && (
-                            <span style={{
-                                marginLeft: 8, display: 'inline-block',
-                                width: 8, height: 8, borderRadius: '50%',
-                                background: '#0000FF', verticalAlign: 'middle'
-                            }} />
+                            <span style={{ marginLeft: 8, display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#0000FF', verticalAlign: 'middle' }} />
                         )}
                     </div>
                 )}
 
-                {/* ── Actions ──────────────────────────────────────── */}
                 <SectionLabel first={!authUser}>Actions</SectionLabel>
                 <SectionCard>
-                    <Row icon={Plus}      iconBg="#0000FF" label="New Task" isAction
-                        onClick={() => { openNewTaskForm(); handleClose(); }} showDivider />
-                    <Row icon={Search}    iconBg="#5856D6" label="Search"   isAction
-                        onClick={() => { onOpenSearch(); handleClose(); }}   showDivider />
-                    <Row icon={RefreshCw} iconBg="#8E8E93" label="Refresh"  isAction
-                        onClick={async () => { await fetchTasks(); handleClose(); }}
-                        showDivider={false} />
+                    <Row icon={Plus}      iconBg="#0000FF" label="New Task" isAction onClick={() => { openNewTaskForm(); handleClose(); }} showDivider />
+                    <Row icon={Search}    iconBg="#5856D6" label="Search"   isAction onClick={() => { onOpenSearch(); handleClose(); }} showDivider />
+                    <Row icon={RefreshCw} iconBg="#8E8E93" label="Refresh"  isAction onClick={async () => { await fetchTasks(); handleClose(); }} showDivider={false} />
                 </SectionCard>
 
-                {/* ── Views ────────────────────────────────────────── */}
                 <SectionLabel>Views</SectionLabel>
                 <SectionCard>
-                    <Row icon={BookOpen}  iconBg="#34C759" label="Notebook"
-                        onClick={() => nav('notebook')} showDivider />
-                    <Row icon={BarChart3} iconBg="#FF9500" label="Stats"
-                        onClick={() => nav('stats')} showDivider={false} />
+                    <Row icon={BookOpen}  iconBg="#34C759" label="Notebook" onClick={() => nav('notebook')} showDivider />
+                    <Row icon={BarChart3} iconBg="#FF9500" label="Stats"    onClick={() => nav('stats')} showDivider={false} />
                 </SectionCard>
 
-                {/* ── Finance (role-gated) ──────────────────────────── */}
                 {showFinance && (
                     <>
                         <SectionLabel>Finance</SectionLabel>
                         <SectionCard>
-                            <Row icon={DollarSign} iconBg="#30D158" label="Transactions"
-                                onClick={() => nav('transactions')} showDivider />
-                            <Row icon={TrendingUp} iconBg="#5856D6" label="Portfolio"
-                                onClick={() => nav('portfolio')} showDivider />
-                            <Row icon={PiggyBank}  iconBg="#34C759" label="Budget"
-                                onClick={() => nav('budget')} showDivider />
-                            <Row icon={Users}      iconBg="#FF9F0A" label="Clients"
-                                onClick={() => nav('clients')} showDivider />
-                            <Row icon={Upload}     iconBg="#007AFF" label="Upload Transactions" isAction
-                                onClick={() => { handleClose(); if (onOpenUpload) onOpenUpload(); }} showDivider={false} />
+                            <Row icon={DollarSign} iconBg="#30D158" label="Transactions" onClick={() => nav('transactions')} showDivider />
+                            <Row icon={TrendingUp} iconBg="#5856D6" label="Portfolio"    onClick={() => nav('portfolio')} showDivider />
+                            <Row icon={PiggyBank}  iconBg="#34C759" label="Budget"       onClick={() => nav('budget')} showDivider />
+                            <Row icon={Users}      iconBg="#FF9F0A" label="Clients"      onClick={() => nav('clients')} showDivider />
+                            <Row icon={Upload}     iconBg="#007AFF" label="Upload Transactions" isAction onClick={() => { handleClose(); if (onOpenUpload) onOpenUpload(); }} showDivider={false} />
                         </SectionCard>
                     </>
                 )}
 
-                {/* ── More ─────────────────────────────────────────── */}
                 <SectionLabel>More</SectionLabel>
                 <SectionCard>
-                    <Row icon={Download} iconBg="#007AFF" label="Export CSV" isAction
-                        onClick={() => { exportToCSV(); handleClose(); }} showDivider />
-                    <Row icon={Settings} iconBg="#8E8E93" label="Settings"
-                        onClick={() => { navigate('/settings'); handleClose(); }} showDivider={false} />
+                    <Row icon={Download} iconBg="#007AFF" label="Export CSV" isAction onClick={() => { exportToCSV(); handleClose(); }} showDivider />
+                    <Row icon={Settings} iconBg="#8E8E93" label="Settings"   onClick={() => { navigate('/settings'); handleClose(); }} showDivider={false} />
                 </SectionCard>
 
-                {/* ── Account ──────────────────────────────────────── */}
                 <SectionLabel>Account</SectionLabel>
                 <SectionCard>
-                    <Row icon={LogOut} label="Logout" destructive isAction
-                        onClick={() => { handleClose(); if (onLogout) onLogout(); }}
-                        showDivider={false} />
+                    <Row icon={LogOut} label="Logout" destructive isAction onClick={() => { handleClose(); if (onLogout) onLogout(); }} showDivider={false} />
                 </SectionCard>
-
                 <div style={{ height: 16 }} />
             </div>
         </>

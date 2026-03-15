@@ -1,138 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Sparkles, ChevronDown, ChevronUp, MoreHorizontal, X, RotateCcw } from 'lucide-react';
+import { Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { useBankTransactionContext } from '../../context/BankTransactionContext';
-import {
-    groupPredictions, GROUP_META, humanFrequency, humanBasis, activePredictions,
-    trendArrow, confidenceLabel, loadDismissed, saveDismissed, emptyStateMessage,
-} from '../../utils/forecastHelpers';
+import { groupPredictions, activePredictions, loadDismissed, saveDismissed, emptyStateMessage } from '../../utils/forecastHelpers';
+import GroupSection from './TransactionForecastGroup';
 
 const fmt = (n) => Math.abs(n).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-// ── Prediction row (progressive disclosure + action menu) ────────────────────
-const PredRow = ({ p, onDismiss, onRestore }) => {
-    const [expanded, setExpanded] = useState(false);
-    const [menuOpen, setMenuOpen] = useState(false);
-    const trend = trendArrow(p.trend);
-    const conf = confidenceLabel(p.confidence);
-
-    return (
-        <div style={{
-            borderBottom: '1px dashed #e5e7eb',
-            opacity: p._dismissed ? 0.35 : 1,
-            textDecoration: p._dismissed ? 'line-through' : 'none',
-            transition: 'opacity 0.2s',
-        }}>
-            <div
-                onClick={() => !p._dismissed && setExpanded(e => !e)}
-                style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '10px 16px', cursor: 'pointer', fontSize: '0.85rem',
-                }}
-            >
-                <div style={{ width: 70, flexShrink: 0, fontWeight: 700, color: '#555', fontSize: '0.8rem' }}>
-                    {new Date(p.predicted_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600 }}>
-                        {p.description}
-                    </div>
-                    <div style={{ fontSize: '0.7rem', color: '#9ca3af', fontWeight: 600, marginTop: 2 }}>
-                        {humanBasis(p.entry_count, p.interval_days)}
-                    </div>
-                </div>
-                <div style={{ flexShrink: 0, fontSize: '0.75rem', fontWeight: 600, color: '#6b7280' }}>
-                    {humanFrequency(p.interval_days)}
-                </div>
-                {/* Trend arrow */}
-                <span style={{ flexShrink: 0, fontWeight: 900, fontSize: '0.9rem', color: trend.color }} title={trend.label}>
-                    {trend.symbol}
-                </span>
-                <div style={{ fontWeight: 900, fontSize: '0.9rem', color: '#dc2626', flexShrink: 0 }}>
-                    ₪{fmt(p.predicted_amount)}
-                </div>
-
-                {/* Action menu */}
-                <div style={{ position: 'relative', flexShrink: 0 }}>
-                    <button
-                        onClick={(e) => { e.stopPropagation(); setMenuOpen(m => !m); }}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: '#9ca3af' }}
-                    >
-                        {p._dismissed ? <RotateCcw size={14} /> : <MoreHorizontal size={16} />}
-                    </button>
-                    {menuOpen && (
-                        <div style={{
-                            position: 'absolute', right: 0, top: 24, zIndex: 10,
-                            background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8,
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.12)', minWidth: 160, whiteSpace: 'nowrap',
-                        }}>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); p._dismissed ? onRestore() : onDismiss(); setMenuOpen(false); }}
-                                style={{
-                                    display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-                                    padding: '8px 12px', background: 'none', border: 'none',
-                                    fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer',
-                                    color: p._dismissed ? '#16a34a' : '#dc2626', textAlign: 'left',
-                                }}
-                            >
-                                {p._dismissed
-                                    ? <><RotateCcw size={14} /> Restore prediction</>
-                                    : <><X size={14} /> Won&#39;t happen this month</>}
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Expanded detail (progressive disclosure — nerdy data) */}
-            {expanded && !p._dismissed && (
-                <div style={{
-                    padding: '4px 16px 10px 82px', fontSize: '0.76rem', color: '#6b7280',
-                    display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center',
-                }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: conf.color, display: 'inline-block' }} />
-                        {conf.text} confidence
-                    </span>
-                    {p.predicted_amount_low != null && (
-                        <span>Range: ₪{fmt(p.predicted_amount_low)} – ₪{fmt(p.predicted_amount_high)}</span>
-                    )}
-                    <span style={{ color: trend.color }}>{trend.label} trend</span>
-                </div>
-            )}
-        </div>
-    );
-};
-
-// ── Group section header + rows ──────────────────────────────────────────────
-const GroupSection = ({ groupKey, items, onDismiss, onRestore }) => {
-    if (items.length === 0) return null;
-    const meta = GROUP_META[groupKey];
-    return (
-        <div>
-            <div style={{
-                padding: '8px 16px', background: '#f9fafb', borderBottom: '1px solid #e5e7eb',
-                display: 'flex', alignItems: 'center', gap: 8,
-                fontSize: '0.73rem', fontWeight: 700, textTransform: 'uppercase',
-                letterSpacing: '0.5px', color: meta.color,
-            }}>
-                <span>{meta.icon}</span> {meta.label}
-                <span style={{ marginLeft: 'auto', fontWeight: 600, color: '#9ca3af' }}>{items.length}</span>
-            </div>
-            {items.map(p => (
-                <PredRow key={p._idx} p={p} onDismiss={() => onDismiss(p._idx)} onRestore={() => onRestore(p._idx)} />
-            ))}
-        </div>
-    );
-};
-
-// ── Main component ───────────────────────────────────────────────────────────
 const TransactionForecast = () => {
     const { txPredictions, fetchTransactionPredictions, colors, activeTabId } = useBankTransactionContext();
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [dismissed, setDismissed] = useState(() => loadDismissed(activeTabId));
 
-    // Reload dismissed set when tab changes
     useEffect(() => { setDismissed(loadDismissed(activeTabId)); }, [activeTabId]);
 
     const toggle = async () => {
@@ -157,10 +36,7 @@ const TransactionForecast = () => {
 
     return (
         <div style={{ marginBottom: '1.5rem', border: '2px solid #e0e0e0', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-            <div onClick={toggle} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '14px 20px', background: '#64748b', color: '#fff', cursor: 'pointer', userSelect: 'none',
-            }}>
+            <div onClick={toggle} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: '#64748b', color: '#fff', cursor: 'pointer', userSelect: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 800, fontSize: '0.95rem', letterSpacing: '0.3px' }}>
                     <Sparkles size={18} />
                     AI Forecast
@@ -181,9 +57,7 @@ const TransactionForecast = () => {
                         </div>
                     )}
                     {!loading && txPredictions.length === 0 && (
-                        <div style={{ padding: 20, textAlign: 'center', color: '#666', fontWeight: 600 }}>
-                            {emptyStateMessage(false)}
-                        </div>
+                        <div style={{ padding: 20, textAlign: 'center', color: '#666', fontWeight: 600 }}>{emptyStateMessage(false)}</div>
                     )}
                     {!loading && txPredictions.length > 0 && (<>
                         <div style={{ padding: '10px 20px', background: '#f5f3ff', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -199,8 +73,8 @@ const TransactionForecast = () => {
                                 Refresh
                             </button>
                         </div>
-                        <GroupSection groupKey="fixed" items={groups.fixed} onDismiss={dismiss} onRestore={restore} />
-                        <GroupSection groupKey="variable" items={groups.variable} onDismiss={dismiss} onRestore={restore} />
+                        <GroupSection groupKey="fixed"     items={groups.fixed}     onDismiss={dismiss} onRestore={restore} />
+                        <GroupSection groupKey="variable"  items={groups.variable}  onDismiss={dismiss} onRestore={restore} />
                         <GroupSection groupKey="anomalies" items={groups.anomalies} onDismiss={dismiss} onRestore={restore} />
                     </>)}
                 </div>

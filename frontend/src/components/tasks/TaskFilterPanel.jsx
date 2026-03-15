@@ -1,227 +1,58 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Paperclip } from 'lucide-react';
 import { useTaskContext } from '../../context/TaskContext';
 import CustomAutocomplete from '../CustomAutocomplete';
+import TaskTagsFilter from './TaskTagsFilter';
 
 const TaskFilterPanel = () => {
     const { filters, setFilters, allCategories, allTags, clients, hasActiveFilters, clearFilters } = useTaskContext();
-    const [tagsVisible, setTagsVisible] = useState(true);
 
     return (
-        <div style={{marginBottom: '32px'}}>
-            <h3 style={{
-                fontSize: '0.75rem',
-                fontWeight: 900,
-                textTransform: 'uppercase',
-                letterSpacing: '1px',
-                marginBottom: '16px'
-            }}>Filters</h3>
-            <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
+        <div style={{ marginBottom: '32px' }}>
+            <h3 style={{ fontSize: '0.75rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '16px' }}>Filters</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div>
-                    <label style={{
-                        display: 'block',
-                        marginBottom: '8px',
-                        fontWeight: 700,
-                        fontSize: '0.85rem'
-                    }}>Search</label>
-                    <input type="text" placeholder="Keywords..." value={filters.search}
-                           onChange={(e) => setFilters({...filters, search: e.target.value})}/>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem' }}>Search</label>
+                    <input type="text" placeholder="Keywords..." value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value })} />
                 </div>
                 <div>
-                    <label style={{
-                        display: 'block',
-                        marginBottom: '8px',
-                        fontWeight: 700,
-                        fontSize: '0.85rem'
-                    }}>Status</label>
-                    <select value={filters.status}
-                            onChange={(e) => setFilters({...filters, status: e.target.value})}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem' }}>Status</label>
+                    <select value={filters.status} onChange={(e) => setFilters({ ...filters, status: e.target.value })}>
                         <option value="all">All Status</option>
                         <option value="uncompleted">Uncompleted</option>
                         <option value="completed">Completed</option>
                     </select>
                 </div>
                 <div>
-                    <label style={{
-                        display: 'block',
-                        marginBottom: '8px',
-                        fontWeight: 700,
-                        fontSize: '0.85rem'
-                    }}>Category</label>
-                    <select value={filters.category}
-                            onChange={(e) => setFilters({...filters, category: e.target.value})}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem' }}>Category</label>
+                    <select value={filters.category} onChange={(e) => setFilters({ ...filters, category: e.target.value })}>
                         <option value="all">All Categories</option>
-                        {allCategories.map(cat => (
-                            <option key={cat.id} value={cat.id}>{cat.label}</option>))}
+                        {allCategories.map(cat => <option key={cat.id} value={cat.id}>{cat.label}</option>)}
                     </select>
                 </div>
                 <CustomAutocomplete
-                    label="Client"
-                    placeholder="Client name..."
+                    label="Client" placeholder="Client name..."
                     value={filters.client}
-                    onChange={(value) => setFilters({...filters, client: value})}
+                    onChange={(value) => setFilters({ ...filters, client: value })}
                     options={clients.map(client => typeof client === 'string' ? client : client.name)}
                 />
                 <div>
-                    <label style={{
-                        display: 'block',
-                        marginBottom: '8px',
-                        fontWeight: 700,
-                        fontSize: '0.85rem'
-                    }}>Date From</label>
-                    <input type="date" value={filters.dateStart}
-                           onChange={(e) => setFilters({...filters, dateStart: e.target.value})}/>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem' }}>Date From</label>
+                    <input type="date" value={filters.dateStart} onChange={(e) => setFilters({ ...filters, dateStart: e.target.value })} />
                 </div>
                 <div>
-                    <label style={{
-                        display: 'block',
-                        marginBottom: '8px',
-                        fontWeight: 700,
-                        fontSize: '0.85rem'
-                    }}>Date To</label>
-                    <input type="date" value={filters.dateEnd}
-                           onChange={(e) => setFilters({...filters, dateEnd: e.target.value})}/>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem' }}>Date To</label>
+                    <input type="date" value={filters.dateEnd} onChange={(e) => setFilters({ ...filters, dateEnd: e.target.value })} />
                 </div>
+                <TaskTagsFilter allTags={allTags} filters={filters} setFilters={setFilters} />
                 <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <label style={{ fontWeight: 700, fontSize: '0.85rem', margin: 0 }}>Tags</label>
-                        <div style={{ display: 'flex', gap: '4px' }}>
-                            {tagsVisible ? (
-                                <button
-                                    type="button"
-                                    onClick={() => setTagsVisible(false)}
-                                    title="Hide tags"
-                                    style={{
-                                        padding: '2px 8px',
-                                        border: '1.5px solid #000',
-                                        background: '#000',
-                                        color: '#fff',
-                                        fontSize: '0.72rem',
-                                        fontWeight: 700,
-                                        cursor: 'pointer',
-                                        fontFamily: '"Inter", sans-serif',
-                                        letterSpacing: '0.3px',
-                                    }}
-                                >
-                                    Hide
-                                </button>
-                            ) : (
-                                <button
-                                    type="button"
-                                    onClick={() => setTagsVisible(true)}
-                                    title="Show tags"
-                                    style={{
-                                        padding: '2px 8px',
-                                        border: '1.5px solid #000',
-                                        background: '#FFD500',
-                                        color: '#000',
-                                        fontSize: '0.72rem',
-                                        fontWeight: 700,
-                                        cursor: 'pointer',
-                                        fontFamily: '"Inter", sans-serif',
-                                        letterSpacing: '0.3px',
-                                    }}
-                                >
-                                    Show
-                                </button>
-                            )}
-                            {tagsVisible && allTags.length > 0 && (
-                                <>
-                                    <button
-                                        type="button"
-                                        onClick={() => setFilters(f => ({ ...f, tags: allTags.map(t => t.name) }))}
-                                        title="Select all tags"
-                                        style={{
-                                            padding: '2px 8px',
-                                            border: '1.5px solid #000',
-                                            background: '#fff',
-                                            fontSize: '0.72rem',
-                                            fontWeight: 700,
-                                            cursor: 'pointer',
-                                            fontFamily: '"Inter", sans-serif',
-                                            letterSpacing: '0.3px',
-                                        }}
-                                    >
-                                        All
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setFilters(f => ({ ...f, tags: [] }))}
-                                        title="Clear all tag filters"
-                                        style={{
-                                            padding: '2px 8px',
-                                            border: '1.5px solid #000',
-                                            background: '#fff',
-                                            fontSize: '0.72rem',
-                                            fontWeight: 700,
-                                            cursor: 'pointer',
-                                            fontFamily: '"Inter", sans-serif',
-                                            letterSpacing: '0.3px',
-                                        }}
-                                    >
-                                        None
-                                    </button>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                    {tagsVisible && (
-                        <>
-                            {allTags.length === 0 ? (
-                                <div style={{fontSize: '0.8rem', color: '#64748b'}}>No tags yet</div>
-                            ) : (
-                                <div style={{display: 'flex', flexWrap: 'wrap', gap: '6px'}}>
-                                    {allTags.map(tag => {
-                                        const isSelected = filters.tags.includes(tag.name);
-                                        return (
-                                            <button
-                                                key={tag.id}
-                                                type="button"
-                                                onClick={() => setFilters(f => ({
-                                                    ...f,
-                                                    tags: isSelected
-                                                        ? f.tags.filter(t => t !== tag.name)
-                                                        : [...f.tags, tag.name]
-                                                }))}
-                                                style={{
-                                                    padding: '4px 10px',
-                                                    border: '2px solid #000',
-                                                    background: isSelected ? '#FFD500' : '#fff',
-                                                    fontWeight: isSelected ? 700 : 500,
-                                                    fontSize: '0.82rem',
-                                                    cursor: 'pointer',
-                                                    fontFamily: '"Inter", sans-serif',
-                                                    boxShadow: isSelected ? '2px 2px 0 #000' : 'none',
-                                                    transition: 'all 0.1s ease'
-                                                }}
-                                            >
-                                                {tag.name}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                            {filters.tags.length > 0 && (
-                                <div style={{fontSize: '0.75rem', color: '#64748b', marginTop: '6px'}}>
-                                    {filters.tags.length} tag{filters.tags.length > 1 ? 's' : ''} selected
-                                </div>
-                            )}
-                        </>
-                    )}
-                </div>
-                <div>
-                    <label style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem'}}>
-                        <input
-                            type="checkbox"
-                            checked={filters.hasAttachment}
-                            onChange={(e) => setFilters(f => ({...f, hasAttachment: e.target.checked}))}
-                            style={{width: '16px', height: '16px', cursor: 'pointer'}}
-                        />
-                        <Paperclip size={14} style={{flexShrink: 0}} /> Has Attachment
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem' }}>
+                        <input type="checkbox" checked={filters.hasAttachment} onChange={(e) => setFilters(f => ({ ...f, hasAttachment: e.target.checked }))} style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
+                        <Paperclip size={14} style={{ flexShrink: 0 }} /> Has Attachment
                     </label>
                 </div>
                 {hasActiveFilters && (
-                    <button className="btn btn-white" onClick={clearFilters} style={{width: '100%'}}>Clear Filters</button>
+                    <button className="btn btn-white" onClick={clearFilters} style={{ width: '100%' }}>Clear Filters</button>
                 )}
             </div>
         </div>
