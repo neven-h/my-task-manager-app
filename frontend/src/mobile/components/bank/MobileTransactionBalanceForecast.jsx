@@ -212,7 +212,7 @@ const MobileTransactionBalanceForecast = ({ activeTabId }) => {
                                     fontWeight: 900, fontSize: '1.1rem',
                                     color: startingBalance >= 0 ? IOS.green : IOS.red,
                                 }}>
-                                    ₪{fmt(startingBalance)}
+                                    {startingBalance < 0 ? '−' : ''}₪{fmt(startingBalance, true)}
                                 </span>
                                 <button onClick={() => { setBalInput(String(startingBalance)); setEditingBal(true); }}
                                     style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
@@ -407,7 +407,7 @@ const MobileTransactionBalanceForecast = ({ activeTabId }) => {
                                             fontWeight: 900, fontSize: '1rem',
                                             color: row.balance >= 0 ? IOS.green : IOS.red,
                                         }}>
-                                            ₪{fmt(row.balance)}
+                                            {row.balance < 0 ? '−' : ''}₪{fmt(row.balance, true)}
                                         </div>
                                     </div>
                                 ))}
