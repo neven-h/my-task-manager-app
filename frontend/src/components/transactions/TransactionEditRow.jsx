@@ -1,7 +1,7 @@
 import React from 'react';
 import { Save, X } from 'lucide-react';
 
-const TransactionEditRow = ({ editingTransaction, setEditingTransaction, isSelected, toggleSelected, colors, handleUpdateTransaction }) => (
+const TransactionEditRow = ({ editingTransaction, setEditingTransaction, isSelected, toggleSelected, colors, handleUpdateTransaction, transactionId }) => (
     <>
         <td style={{ padding: '0.5rem', textAlign: 'center' }}>
             <input type="checkbox" checked={isSelected} onChange={() => toggleSelected(editingTransaction.id)} style={{ cursor: 'pointer', width: 16, height: 16 }} />
@@ -30,7 +30,7 @@ const TransactionEditRow = ({ editingTransaction, setEditingTransaction, isSelec
                 style={{ padding: '0.4rem', border: `2px solid ${colors.border}`, width: '100%', textAlign: 'right', fontSize: '0.9rem', fontFamily: '"Inter", sans-serif' }} />
         </td>
         <td style={{ padding: '0.5rem', textAlign: 'center' }}>
-            <button onClick={() => handleUpdateTransaction(editingTransaction.id)}
+            <button onClick={() => handleUpdateTransaction(transactionId)}
                 style={{ padding: '0.4rem 0.6rem', background: colors.success, color: '#fff', border: `2px solid ${colors.border}`, cursor: 'pointer', marginRight: '0.4rem', fontFamily: '"Inter", sans-serif' }}>
                 <Save size={14} />
             </button>

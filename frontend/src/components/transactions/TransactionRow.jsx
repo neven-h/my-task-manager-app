@@ -22,7 +22,7 @@ const TransactionRow = ({ transaction }) => {
         <React.Fragment>
             <tr style={{ borderBottom: isExpanded ? 'none' : `1px solid ${colors.border}`, background: isSelected ? '#e8f0fe' : undefined }}>
                 {isEditing ? (
-                    <TransactionEditRow editingTransaction={editingTransaction} setEditingTransaction={setEditingTransaction} isSelected={isSelected} toggleSelected={toggleSelected} colors={colors} handleUpdateTransaction={handleUpdateTransaction} />
+                    <TransactionEditRow editingTransaction={editingTransaction} setEditingTransaction={setEditingTransaction} isSelected={isSelected} toggleSelected={toggleSelected} colors={colors} handleUpdateTransaction={handleUpdateTransaction} transactionId={t.id} />
                 ) : (
                     <>
                         <td style={{ padding: '0.65rem 0.75rem', textAlign: 'center' }}>
