@@ -1,416 +1,29 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { TrendingUp, TrendingDown, Scale, Edit2, Trash2, Copy, FileDown, Zap, MoreHorizontal, X, RotateCcw } from 'lucide-react';
-import {
-    groupPredictions, GROUP_META, humanFrequency, humanBasis, activePredictions,
-} from './utils/forecastHelpers';
+import { TrendingUp, TrendingDown, Scale } from 'lucide-react';
 import useBudget from './hooks/useBudget';
 import useBudgetTabs from './hooks/useBudgetTabs';
 import useBudgetLinks from './hooks/useBudgetLinks';
 import useBalanceForecast from './hooks/useBalanceForecast';
 import BudgetLinkBanner from './components/budget/BudgetLinkBanner';
 import BalanceForecast from './components/budget/BalanceForecast';
+import { SummaryCard } from './components/budget/BudgetSummaryCard';
+import { EntryForm } from './components/budget/BudgetEntryForm';
+import { ForecastSection } from './components/budget/BudgetForecastSection';
+import { BudgetTabBar } from './components/budget/BudgetTabBar';
+import { BudgetHeader } from './components/budget/BudgetHeader';
+import { BudgetEntryList } from './components/budget/BudgetEntryList';
 
-// ── system palette (matches bank/portfolio design) ─────────────────────────────
 const SYS = {
-    primary:   '#0000FF',
-    success:   '#00AA00',
-    accent:    '#FF0000',
-    secondary: '#FFD500',
-    bg:        '#fff',
-    text:      '#000',
-    light:     '#666',
-    border:    '#000',
+    primary: '#0000FF', success: '#00AA00', accent: '#FF0000',
+    bg: '#fff', text: '#000', light: '#666', border: '#000',
 };
 
-// ── helpers ────────────────────────────────────────────────────────────────────
 const today = () => new Date().toISOString().split('T')[0];
 
-const fmt = (n) =>
-    new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(n));
-
 const emptyForm = (type = 'income') => ({
-    type,
-    description: '',
-    amount: '',
-    entry_date: today(),
-    category: '',
-    notes: '',
+    type, description: '', amount: '', entry_date: today(), category: '', notes: '',
 });
 
-// ── SummaryCard ────────────────────────────────────────────────────────────────
-const SummaryCard = ({ icon: Icon, label, amount, color, sub }) => (
-    <div style={{
-        flex: '1 1 180px',
-        background: SYS.bg,
-        border: `3px solid ${SYS.border}`,
-        padding: '16px 20px',
-        display: 'flex', flexDirection: 'column', gap: 6,
-    }}>
-        <div style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            color: SYS.light, fontSize: '0.72rem', fontWeight: 700,
-            textTransform: 'uppercase', letterSpacing: '0.6px',
-        }}>
-            <Icon size={13} color={color} />
-            {label}
-        </div>
-        <div style={{ fontSize: '1.6rem', fontWeight: 800, color, lineHeight: 1.15 }}>
-            {sub}{fmt(amount)}
-        </div>
-    </div>
-);
-
-// ── EntryForm ──────────────────────────────────────────────────────────────────
-const EntryForm = ({ initial, onSave, onCancel, loading }) => {
-    const [form, setForm] = useState(initial);
-    const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (!form.description.trim() || !form.amount || !form.entry_date) return;
-        onSave({ ...form, amount: parseFloat(form.amount) });
-    };
-
-    const inputStyle = {
-        width: '100%', padding: '8px 10px',
-        border: `2px solid ${SYS.border}`, fontSize: '0.88rem',
-        fontFamily: 'inherit', boxSizing: 'border-box', background: '#fff',
-        outline: 'none',
-    };
-
-    return (
-        <form onSubmit={handleSubmit} style={{
-            background: '#F5F5F5',
-            border: `3px solid ${SYS.border}`,
-            padding: '16px 20px',
-            display: 'flex', flexDirection: 'column', gap: 10,
-            marginBottom: 20,
-        }}>
-            {/* Type toggle */}
-            <div style={{ display: 'flex', gap: 8 }}>
-                {[['income', '↑ INCOME'], ['outcome', '↓ EXPENSE']].map(([t, label]) => (
-                    <button key={t} type="button"
-                        onClick={() => set('type', t)}
-                        style={{
-                            flex: 1, padding: '8px 0',
-                            border: `2px solid ${SYS.border}`,
-                            background: form.type === t
-                                ? (t === 'income' ? SYS.success : SYS.accent)
-                                : '#fff',
-                            color: form.type === t ? '#fff' : SYS.text,
-                            fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer',
-                            letterSpacing: '0.5px',
-                        }}>
-                        {label}
-                    </button>
-                ))}
-            </div>
-
-            {/* Description + Amount */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
-                <input required style={inputStyle} placeholder="Description *"
-                    value={form.description} onChange={e => set('description', e.target.value)} />
-                <input required type="number" min="0.01" step="0.01"
-                    style={{ ...inputStyle, width: 120 }}
-                    placeholder="Amount *"
-                    value={form.amount} onChange={e => set('amount', e.target.value)} />
-            </div>
-
-            {/* Date + Category */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <input required type="date" style={inputStyle}
-                    value={form.entry_date} onChange={e => set('entry_date', e.target.value)} />
-                <input style={inputStyle} placeholder="Category (optional)"
-                    value={form.category} onChange={e => set('category', e.target.value)} />
-            </div>
-
-            {/* Notes */}
-            <textarea style={{ ...inputStyle, resize: 'vertical', minHeight: 52 }}
-                placeholder="Notes (optional)"
-                value={form.notes} onChange={e => set('notes', e.target.value)} />
-
-            {/* Actions */}
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <button type="button" onClick={onCancel}
-                    style={{
-                        padding: '8px 20px', border: `2px solid ${SYS.border}`,
-                        background: '#fff', cursor: 'pointer', fontSize: '0.8rem',
-                        fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px',
-                    }}>
-                    Cancel
-                </button>
-                <button type="submit" disabled={loading}
-                    style={{
-                        padding: '8px 20px', border: `2px solid ${SYS.border}`,
-                        background: SYS.primary, color: '#fff', cursor: 'pointer',
-                        fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase',
-                        letterSpacing: '0.4px', opacity: loading ? 0.6 : 1,
-                    }}>
-                    {loading ? 'Saving…' : 'Save'}
-                </button>
-            </div>
-        </form>
-    );
-};
-
-// ── EntryRow (expandable description history) ─────────────────────────────────
-const EntryRow = ({ entry, cutoff, onEdit, onDuplicate, onDelete, loading, isExpanded, onToggleExpand, history }) => {
-    const [confirmDelete, setConfirmDelete] = useState(false);
-    const isPast = entry.entry_date <= cutoff;
-    const isIncome = entry.type === 'income';
-    const amountColor = isIncome ? SYS.success : SYS.accent;
-    const sign = isIncome ? '+' : '−';
-
-    return (
-        <>
-            <div style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '10px 16px',
-                borderBottom: `1px solid ${SYS.border}`,
-                opacity: isPast ? 1 : 0.4,
-            }}>
-                {/* Type indicator */}
-                <div style={{ width: 8, height: 8, background: amountColor, flexShrink: 0 }} />
-
-                {/* Date */}
-                <div style={{ fontSize: '0.78rem', color: SYS.light, width: 68, flexShrink: 0, fontWeight: 600 }}>
-                    {new Date(entry.entry_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                </div>
-
-                {/* Description + category (clickable to expand) */}
-                <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => onToggleExpand(entry.id)}>
-                    <div style={{
-                        fontWeight: 600, fontSize: '0.9rem',
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                        borderBottom: '1px dashed #999', display: 'inline',
-                        paddingBottom: 1,
-                    }}>
-                        {entry.description}
-                    </div>
-                    {(entry.category || entry.notes) && (
-                        <div style={{ fontSize: '0.74rem', color: SYS.light, marginTop: 2 }}>
-                            {[entry.category, entry.notes].filter(Boolean).join(' · ')}
-                        </div>
-                    )}
-                </div>
-
-                {/* Amount */}
-                <div style={{ fontWeight: 800, fontSize: '0.95rem', color: amountColor, flexShrink: 0 }}>
-                    {sign}{fmt(entry.amount)}
-                </div>
-
-                {/* Actions */}
-                <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                    {confirmDelete ? (
-                        <>
-                            <button type="button" onClick={() => { setConfirmDelete(false); onDelete(entry.id); }}
-                                style={{ padding: '3px 10px', border: `2px solid ${SYS.border}`, background: SYS.accent, color: '#fff', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', textTransform: 'uppercase' }}>
-                                Delete?
-                            </button>
-                            <button type="button" onClick={() => setConfirmDelete(false)}
-                                style={{ padding: '3px 8px', border: `2px solid ${SYS.border}`, background: '#fff', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 700 }}>
-                                ✕
-                            </button>
-                        </>
-                    ) : (
-                        <>
-                            <button type="button" onClick={() => onEdit(entry)}
-                                style={{ background: 'none', border: 'none', padding: '3px 6px', cursor: 'pointer', color: SYS.light }}
-                                title="Edit">
-                                <Edit2 size={14} />
-                            </button>
-                            <button type="button" onClick={() => onDuplicate(entry)}
-                                style={{ background: 'none', border: 'none', padding: '3px 6px', cursor: 'pointer', color: SYS.light }}
-                                title="Duplicate">
-                                <Copy size={14} />
-                            </button>
-                            <button type="button" onClick={() => setConfirmDelete(true)}
-                                style={{ background: 'none', border: 'none', padding: '3px 6px', cursor: 'pointer', color: SYS.light }}
-                                title="Delete">
-                                <Trash2 size={14} />
-                            </button>
-                        </>
-                    )}
-                </div>
-            </div>
-
-            {/* Expanded description history */}
-            {isExpanded && history.length > 0 && (
-                <div style={{ background: '#f9f9f9', borderBottom: `1px solid ${SYS.border}` }}>
-                    <div style={{ padding: '6px 16px 4px 32px', fontSize: '0.7rem', fontWeight: 700, color: SYS.light, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                        Recent with same description
-                    </div>
-                    {history.map(h => (
-                        <div key={h.id} style={{
-                            display: 'flex', alignItems: 'center', gap: 12,
-                            padding: '5px 16px 5px 32px',
-                            fontSize: '0.82rem', color: SYS.light,
-                        }}>
-                            <div style={{ width: 8, height: 8, background: h.type === 'income' ? SYS.success : SYS.accent, flexShrink: 0 }} />
-                            <div style={{ width: 68, flexShrink: 0, fontWeight: 600 }}>
-                                {new Date(h.entry_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                            </div>
-                            <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {h.description}
-                            </div>
-                            <div style={{ fontWeight: 700, color: h.type === 'income' ? SYS.success : SYS.accent, flexShrink: 0 }}>
-                                {h.type === 'income' ? '+' : '−'}{fmt(h.amount)}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </>
-    );
-};
-
-// ── ForecastSection (AI UX: semantic grouping, progressive disclosure, dismiss) ─
-const BudgetPredRow = ({ p, onDismiss, onRestore }) => {
-    const [expanded, setExpanded] = useState(false);
-    const [menuOpen, setMenuOpen] = useState(false);
-    const isIncome = p.type === 'income';
-    const amtColor = isIncome ? SYS.success : SYS.accent;
-
-    return (
-        <div style={{
-            borderBottom: '1px dashed #ccc',
-            opacity: p._dismissed ? 0.35 : 1,
-            textDecoration: p._dismissed ? 'line-through' : 'none',
-            transition: 'opacity 0.2s',
-        }}>
-            <div onClick={() => !p._dismissed && setExpanded(e => !e)}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px', cursor: 'pointer', fontSize: '0.82rem' }}>
-                <div style={{ width: 8, height: 8, background: amtColor, flexShrink: 0, borderRadius: '50%' }} />
-                <div style={{ width: 80, flexShrink: 0, fontWeight: 600, color: SYS.light }}>
-                    {new Date(p.predicted_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                </div>
-                <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.description}</div>
-                <div style={{ flexShrink: 0, fontSize: '0.73rem', fontWeight: 600, color: SYS.light }}>{humanFrequency(p.interval_days)}</div>
-                <div style={{ fontWeight: 800, color: amtColor, flexShrink: 0 }}>{isIncome ? '+' : '−'}{fmt(p.predicted_amount)}</div>
-                <div style={{ position: 'relative', flexShrink: 0 }}>
-                    <button onClick={(e) => { e.stopPropagation(); setMenuOpen(m => !m); }}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 2, color: SYS.light }}>
-                        {p._dismissed ? <RotateCcw size={13} /> : <MoreHorizontal size={15} />}
-                    </button>
-                    {menuOpen && (
-                        <div style={{
-                            position: 'absolute', right: 0, top: 22, zIndex: 10,
-                            background: '#fff', border: '1px solid #e5e7eb', borderRadius: 8,
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.12)', minWidth: 160, whiteSpace: 'nowrap',
-                        }}>
-                            <button onClick={(e) => { e.stopPropagation(); p._dismissed ? onRestore() : onDismiss(); setMenuOpen(false); }}
-                                style={{
-                                    display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-                                    padding: '8px 12px', background: 'none', border: 'none',
-                                    fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
-                                    color: p._dismissed ? SYS.success : SYS.accent, textAlign: 'left',
-                                }}>
-                                {p._dismissed ? <><RotateCcw size={13} /> Restore</> : <><X size={13} /> Won&#39;t happen</>}
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </div>
-            {expanded && !p._dismissed && (
-                <div style={{ padding: '4px 16px 10px 100px', fontSize: '0.74rem', color: SYS.light, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-                    <span>{humanBasis(p.entry_count, p.interval_days)}</span>
-                    <span>Confidence: {Math.round(p.confidence * 100)}%</span>
-                    {p.predicted_amount_low != null && <span>Range: {fmt(p.predicted_amount_low)} – {fmt(p.predicted_amount_high)}</span>}
-                </div>
-            )}
-        </div>
-    );
-};
-
-const BudgetGroupSection = ({ groupKey, items, onDismiss, onRestore }) => {
-    if (items.length === 0) return null;
-    const meta = GROUP_META[groupKey];
-    return (
-        <div>
-            <div style={{
-                padding: '7px 16px', background: '#f5f5f5', borderBottom: '1px solid #e5e7eb',
-                display: 'flex', alignItems: 'center', gap: 8,
-                fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: meta.color,
-            }}>
-                <span>{meta.icon}</span> {meta.label}
-                <span style={{ marginLeft: 'auto', fontWeight: 600, color: SYS.light }}>{items.length}</span>
-            </div>
-            {items.map(p => (
-                <BudgetPredRow key={p._idx} p={p} onDismiss={() => onDismiss(p._idx)} onRestore={() => onRestore(p._idx)} />
-            ))}
-        </div>
-    );
-};
-
-const ForecastSection = ({ predictions, onFetch, loading }) => {
-    const [open, setOpen] = useState(false);
-    const [dismissed, setDismissed] = useState(new Set());
-
-    const handleToggle = () => {
-        if (!open && predictions.length === 0) onFetch();
-        setOpen(o => !o);
-    };
-
-    const dismiss = (idx) => setDismissed(prev => new Set(prev).add(idx));
-    const restore = (idx) => setDismissed(prev => { const s = new Set(prev); s.delete(idx); return s; });
-
-    // Cap to top 15 most confident predictions to keep it concise
-    const capped = predictions.length > 15
-        ? [...predictions].sort((a, b) => (b.confidence || 0) - (a.confidence || 0)).slice(0, 15)
-        : predictions;
-    const active = activePredictions(capped, dismissed);
-    const totalIncome = active.filter(p => p.type === 'income').reduce((s, p) => s + p.predicted_amount, 0);
-    const totalExpense = active.filter(p => p.type === 'outcome').reduce((s, p) => s + p.predicted_amount, 0);
-    const projectedNet = totalIncome - totalExpense;
-    const groups = groupPredictions(capped, dismissed);
-
-    return (
-        <div style={{ marginTop: 24 }}>
-            <button type="button" onClick={handleToggle}
-                style={{
-                    display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-                    padding: '12px 16px', borderRadius: open ? '10px 10px 0 0' : 10,
-                    border: '2px solid #e0e0e0',
-                    background: open ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : '#f9fafb',
-                    color: open ? '#fff' : SYS.text,
-                    cursor: 'pointer', fontWeight: 700, fontSize: '0.82rem',
-                    textTransform: 'uppercase', letterSpacing: '0.4px',
-                    fontFamily: 'inherit', transition: 'all 0.2s ease',
-                }}>
-                <Zap size={16} />
-                {open ? 'Hide' : 'Show'} AI Forecast (3 months)
-            </button>
-
-            {open && (
-                <div style={{ border: '2px solid #e0e0e0', borderTop: 'none', borderRadius: '0 0 10px 10px', background: '#FAFAFA' }}>
-                    {predictions.length === 0 ? (
-                        <div style={{ padding: 24, textAlign: 'center', color: SYS.light, fontSize: '0.85rem' }}>
-                            {loading ? 'Analyzing patterns…' : 'Not enough recurring data to predict. Add more entries with the same description.'}
-                        </div>
-                    ) : (<>
-                        <div style={{ display: 'flex', gap: 12, padding: '12px 16px', borderBottom: '1px solid #e5e7eb', flexWrap: 'wrap', alignItems: 'center' }}>
-                            <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: SYS.light, letterSpacing: '0.4px' }}>
-                                Next 3 months:
-                            </div>
-                            <span style={{ fontWeight: 800, color: SYS.success }}>+{fmt(totalIncome)}</span>
-                            <span style={{ fontWeight: 800, color: SYS.accent }}>−{fmt(totalExpense)}</span>
-                            <span style={{ fontWeight: 800, color: projectedNet >= 0 ? SYS.primary : SYS.accent }}>
-                                Net: {projectedNet >= 0 ? '+' : '−'}{fmt(projectedNet)}
-                            </span>
-                            {dismissed.size > 0 && (
-                                <span style={{ fontSize: '0.73rem', color: SYS.light }}>({dismissed.size} dismissed)</span>
-                            )}
-                        </div>
-                        <BudgetGroupSection groupKey="fixed" items={groups.fixed} onDismiss={dismiss} onRestore={restore} />
-                        <BudgetGroupSection groupKey="variable" items={groups.variable} onDismiss={dismiss} onRestore={restore} />
-                    </>)}
-                </div>
-            )}
-        </div>
-    );
-};
-
-// ── Main component ─────────────────────────────────────────────────────────────
 const Budget = ({ onBackToTasks }) => {
     const { entries, loading, error, fetchEntries, createEntry, updateEntry, deleteEntry,
         getDescriptionHistory, predictions, fetchPredictions, exportBudgetCSV } = useBudget();
@@ -418,26 +31,23 @@ const Budget = ({ onBackToTasks }) => {
     const { linkedTab, fetchLink, setLink, removeLink } = useBudgetLinks();
     const { forecast, loading: forecastLoading, fetchForecast, clearForecast } = useBalanceForecast();
 
-    const [cutoff, setCutoff]             = useState(today());
-    const [typeFilter, setTypeFilter]     = useState('all');
-    const [activeTabId, setActiveTabId]   = useState(null);
-    const [showForm, setShowForm]         = useState(false);
-    const [editingEntry, setEditingEntry] = useState(null);
-    const [formInitial, setFormInitial]   = useState(emptyForm('income'));
-    const [newTabName, setNewTabName]     = useState('');
-    const [addingTab, setAddingTab]       = useState(false);
-    const [confirmDeleteTab, setConfirmDeleteTab] = useState(null);
+    const [cutoff, setCutoff]                         = useState(today());
+    const [typeFilter, setTypeFilter]                 = useState('all');
+    const [activeTabId, setActiveTabId]               = useState(null);
+    const [showForm, setShowForm]                     = useState(false);
+    const [editingEntry, setEditingEntry]             = useState(null);
+    const [formInitial, setFormInitial]               = useState(emptyForm('income'));
+    const [newTabName, setNewTabName]                 = useState('');
+    const [addingTab, setAddingTab]                   = useState(false);
+    const [confirmDeleteTab, setConfirmDeleteTab]     = useState(null);
     const [expandedDescriptionId, setExpandedDescriptionId] = useState(null);
 
     useEffect(() => { fetchEntries(); fetchTabs(); }, [fetchEntries, fetchTabs]);
     useEffect(() => { fetchLink(activeTabId); clearForecast(); }, [activeTabId, fetchLink, clearForecast]);
-    // Auto-fetch forecast as soon as a linked tab is found
     useEffect(() => { if (linkedTab && activeTabId) fetchForecast(activeTabId, 3); }, [linkedTab, activeTabId, fetchForecast]);
 
     const tabEntries = useMemo(() =>
-        activeTabId === null
-            ? entries
-            : entries.filter(e => e.tab_id === activeTabId),
+        activeTabId === null ? entries : entries.filter(e => e.tab_id === activeTabId),
         [entries, activeTabId]);
 
     const income  = useMemo(() => tabEntries.filter(e => e.type === 'income'  && e.entry_date <= cutoff).reduce((s, e) => s + e.amount, 0), [tabEntries, cutoff]);
@@ -449,39 +59,20 @@ const Budget = ({ onBackToTasks }) => {
         [tabEntries, typeFilter]);
 
     const openAdd = (type) => {
-        setEditingEntry(null);
-        setFormInitial(emptyForm(type));
-        setShowForm(true);
+        setEditingEntry(null); setFormInitial(emptyForm(type)); setShowForm(true);
         setTimeout(() => document.getElementById('budget-form')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
     };
-
     const openDuplicate = (entry) => {
         setEditingEntry(null);
-        setFormInitial({
-            type: entry.type,
-            description: entry.description,
-            amount: String(entry.amount),
-            entry_date: today(),
-            category: entry.category || '',
-            notes: entry.notes || '',
-        });
+        setFormInitial({ type: entry.type, description: entry.description, amount: String(entry.amount), entry_date: today(), category: entry.category || '', notes: entry.notes || '' });
         setShowForm(true);
         setTimeout(() => document.getElementById('budget-form')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
     };
-
     const openEdit = (entry) => {
         setEditingEntry(entry);
-        setFormInitial({
-            type: entry.type,
-            description: entry.description,
-            amount: String(entry.amount),
-            entry_date: entry.entry_date,
-            category: entry.category || '',
-            notes: entry.notes || '',
-        });
+        setFormInitial({ type: entry.type, description: entry.description, amount: String(entry.amount), entry_date: entry.entry_date, category: entry.category || '', notes: entry.notes || '' });
         setShowForm(true);
     };
-
     const handleSave = async (data) => {
         if (editingEntry) {
             const ok = await updateEntry(editingEntry.id, data);
@@ -491,288 +82,51 @@ const Budget = ({ onBackToTasks }) => {
             if (ok) setShowForm(false);
         }
     };
-
-    const handleCancel = () => { setShowForm(false); setEditingEntry(null); };
-
-    const handleAddTab = async () => {
-        const name = newTabName.trim();
-        if (!name) return;
+    const handleCancel  = () => { setShowForm(false); setEditingEntry(null); };
+    const handleAddTab  = async () => {
+        const name = newTabName.trim(); if (!name) return;
         const tab = await createTab(name);
         if (tab) { setNewTabName(''); setAddingTab(false); setActiveTabId(tab.id); }
     };
-
     const handleDeleteTab = async (tabId) => {
         const ok = await deleteTab(tabId);
         if (ok && activeTabId === tabId) setActiveTabId(null);
         setConfirmDeleteTab(null);
     };
 
-    // ── shared button styles ───────────────────────────────────────────────────
-    const filterBtn = (active, color = SYS.primary) => ({
-        padding: '5px 16px',
-        border: `2px solid ${SYS.border}`,
-        background: active ? color : '#fff',
-        color: active ? '#fff' : SYS.text,
-        fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer',
-        textTransform: 'uppercase', letterSpacing: '0.4px',
-    });
-
     return (
         <div style={{ minHeight: '100vh', background: SYS.bg, fontFamily: 'inherit' }}>
-
-            {/* ── Header ── */}
-            <div style={{
-                background: SYS.bg,
-                borderBottom: `3px solid ${SYS.border}`,
-                padding: '14px 24px',
-                display: 'flex', alignItems: 'center', gap: 16,
-                position: 'sticky', top: 0, zIndex: 10,
-            }}>
-                <button onClick={onBackToTasks}
-                    style={{
-                        background: 'none', border: 'none', cursor: 'pointer',
-                        color: SYS.primary, fontWeight: 700, fontSize: '0.85rem',
-                        textTransform: 'uppercase', letterSpacing: '0.4px', padding: 0,
-                    }}>
-                    ← Tasks
-                </button>
-                <h1 style={{
-                    flex: 1, margin: 0, fontSize: '1.2rem', fontWeight: 800,
-                    textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.5px',
-                }}>
-                    Budget Planner
-                </h1>
-                <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => exportBudgetCSV(activeTabId)}
-                        disabled={entries.length === 0}
-                        style={{
-                            padding: '7px 14px', border: `2px solid ${SYS.border}`,
-                            background: SYS.primary, color: '#fff',
-                            fontWeight: 700, fontSize: '0.78rem', cursor: entries.length === 0 ? 'not-allowed' : 'pointer',
-                            textTransform: 'uppercase', letterSpacing: '0.4px',
-                            opacity: entries.length === 0 ? 0.5 : 1,
-                            display: 'flex', alignItems: 'center', gap: 4,
-                        }}>
-                        <FileDown size={14} /> CSV
-                    </button>
-                    <button onClick={() => openAdd('income')}
-                        style={{
-                            padding: '7px 14px', border: `2px solid ${SYS.border}`,
-                            background: SYS.success, color: '#fff',
-                            fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer',
-                            textTransform: 'uppercase', letterSpacing: '0.4px',
-                        }}>
-                        + Income
-                    </button>
-                    <button onClick={() => openAdd('outcome')}
-                        style={{
-                            padding: '7px 14px', border: `2px solid ${SYS.border}`,
-                            background: SYS.accent, color: '#fff',
-                            fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer',
-                            textTransform: 'uppercase', letterSpacing: '0.4px',
-                        }}>
-                        + Expense
-                    </button>
-                </div>
-            </div>
-
-            {/* ── Tab bar ── */}
-            <div style={{
-                background: SYS.bg,
-                borderBottom: `3px solid ${SYS.border}`,
-                padding: '0 20px',
-                display: 'flex', alignItems: 'center', gap: 0,
-                overflowX: 'auto',
-            }}>
-                {/* "All" tab */}
-                <button type="button" onClick={() => setActiveTabId(null)}
-                    style={{
-                        padding: '10px 18px', border: 'none', background: 'none', cursor: 'pointer',
-                        fontSize: '0.82rem', fontWeight: 700,
-                        color: activeTabId === null ? SYS.primary : SYS.text,
-                        borderBottom: activeTabId === null ? `3px solid ${SYS.primary}` : '3px solid transparent',
-                        textTransform: 'uppercase', letterSpacing: '0.4px',
-                        whiteSpace: 'nowrap', flexShrink: 0,
-                    }}>
-                    All
-                </button>
-
-                {tabs.map(tab => (
-                    <div key={tab.id} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                        <button type="button" onClick={() => setActiveTabId(tab.id)}
-                            style={{
-                                padding: '10px 14px 10px 18px', border: 'none', background: 'none', cursor: 'pointer',
-                                fontSize: '0.82rem', fontWeight: 700,
-                                color: activeTabId === tab.id ? SYS.primary : SYS.text,
-                                borderBottom: activeTabId === tab.id ? `3px solid ${SYS.primary}` : '3px solid transparent',
-                                textTransform: 'uppercase', letterSpacing: '0.4px',
-                                whiteSpace: 'nowrap',
-                            }}>
-                            {tab.name}
-                        </button>
-                        {confirmDeleteTab === tab.id ? (
-                            <>
-                                <button type="button" onClick={() => handleDeleteTab(tab.id)}
-                                    style={{ background: SYS.accent, color: '#fff', border: `2px solid ${SYS.border}`, padding: '2px 8px', fontSize: '0.7rem', fontWeight: 700, cursor: 'pointer', marginRight: 2, textTransform: 'uppercase' }}>
-                                    Delete?
-                                </button>
-                                <button type="button" onClick={() => setConfirmDeleteTab(null)}
-                                    style={{ background: 'none', border: 'none', color: SYS.light, cursor: 'pointer', fontSize: '0.8rem', padding: '2px 4px', fontWeight: 700 }}>
-                                    ✕
-                                </button>
-                            </>
-                        ) : (
-                            <button type="button" onClick={() => setConfirmDeleteTab(tab.id)}
-                                title="Delete tab"
-                                style={{ background: 'none', border: 'none', color: '#ccc', cursor: 'pointer', fontSize: '0.75rem', padding: '2px 4px', lineHeight: 1, fontWeight: 700 }}>
-                                ✕
-                            </button>
-                        )}
-                    </div>
-                ))}
-
-                {/* Add tab */}
-                {addingTab ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 0 6px 8px', flexShrink: 0 }}>
-                        <input
-                            autoFocus
-                            value={newTabName}
-                            onChange={e => setNewTabName(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter') handleAddTab(); if (e.key === 'Escape') { setAddingTab(false); setNewTabName(''); } }}
-                            placeholder="Tab name…"
-                            style={{ padding: '4px 8px', border: `2px solid ${SYS.border}`, fontSize: '0.8rem', width: 120, outline: 'none', fontFamily: 'inherit' }}
-                        />
-                        <button type="button" onClick={handleAddTab}
-                            style={{ padding: '4px 10px', border: `2px solid ${SYS.border}`, background: SYS.primary, color: '#fff', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', textTransform: 'uppercase' }}>
-                            Add
-                        </button>
-                        <button type="button" onClick={() => { setAddingTab(false); setNewTabName(''); }}
-                            style={{ background: 'none', border: 'none', color: SYS.light, cursor: 'pointer', fontSize: '0.9rem', fontWeight: 700 }}>
-                            ✕
-                        </button>
-                    </div>
-                ) : (
-                    <button type="button" onClick={() => setAddingTab(true)}
-                        title="Add tab"
-                        style={{ padding: '10px 12px', border: 'none', background: 'none', cursor: 'pointer', color: SYS.primary, fontSize: '1.2rem', flexShrink: 0, fontWeight: 700 }}>
-                        +
-                    </button>
-                )}
-            </div>
+            <BudgetHeader onBackToTasks={onBackToTasks} exportBudgetCSV={exportBudgetCSV} activeTabId={activeTabId} entriesCount={entries.length} openAdd={openAdd} />
+            <BudgetTabBar tabs={tabs} activeTabId={activeTabId} setActiveTabId={setActiveTabId} confirmDeleteTab={confirmDeleteTab} setConfirmDeleteTab={setConfirmDeleteTab} handleDeleteTab={handleDeleteTab} addingTab={addingTab} setAddingTab={setAddingTab} newTabName={newTabName} setNewTabName={setNewTabName} handleAddTab={handleAddTab} />
 
             <div style={{ maxWidth: 920, margin: '0 auto', padding: '24px 20px' }}>
-
-                {/* ── Error ── */}
                 {error && (
-                    <div style={{
-                        background: '#fff0f0', border: `2px solid ${SYS.accent}`,
-                        padding: '10px 14px', marginBottom: 16,
-                        color: SYS.accent, fontSize: '0.85rem', fontWeight: 600,
-                    }}>
+                    <div style={{ background: '#fff0f0', border: `2px solid ${SYS.accent}`, padding: '10px 14px', marginBottom: 16, color: SYS.accent, fontSize: '0.85rem', fontWeight: 600 }}>
                         {error}
                     </div>
                 )}
-
-                {/* ── Add/Edit form ── */}
                 {showForm && (
                     <div id="budget-form">
                         <EntryForm initial={formInitial} onSave={handleSave} onCancel={handleCancel} loading={loading} />
                     </div>
                 )}
-
-                {/* ── Bank Tab Link ── */}
                 {activeTabId && (
-                    <BudgetLinkBanner
-                        budgetTabId={activeTabId}
-                        linkedTab={linkedTab}
-                        onSetLink={(txTabId) => setLink(activeTabId, txTabId)}
-                        onRemoveLink={() => removeLink(activeTabId)}
-                    />
+                    <BudgetLinkBanner budgetTabId={activeTabId} linkedTab={linkedTab} onSetLink={(txTabId) => setLink(activeTabId, txTabId)} onRemoveLink={() => removeLink(activeTabId)} />
                 )}
-
-                {/* ── Balance as of date ── */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                    <span style={{ fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', color: SYS.light }}>
-                        Balance as of
-                    </span>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', color: SYS.light }}>Balance as of</span>
                     <input type="date" value={cutoff} onChange={e => setCutoff(e.target.value)}
                         style={{ padding: '6px 10px', border: `2px solid ${SYS.border}`, fontSize: '0.88rem', fontFamily: 'inherit', outline: 'none' }} />
-                    <span style={{ fontSize: '0.75rem', color: SYS.light }}>
-                        (future entries are dimmed)
-                    </span>
+                    <span style={{ fontSize: '0.75rem', color: SYS.light }}>(future entries are dimmed)</span>
                 </div>
-
-                {/* ── Summary cards ── */}
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 24 }}>
                     <SummaryCard icon={TrendingUp}   label="Total Income"   amount={income}  color={SYS.success} sub="+" />
                     <SummaryCard icon={TrendingDown} label="Total Expenses" amount={outcome} color={SYS.accent}  sub="−" />
                     <SummaryCard icon={Scale}        label="Balance"        amount={net}     color={net >= 0 ? SYS.primary : SYS.accent} sub={net >= 0 ? '+' : '−'} />
                 </div>
-
-                {/* ── Entry list ── */}
-                <div style={{ background: SYS.bg, border: `3px solid ${SYS.border}`, overflow: 'hidden' }}>
-                    {/* List header */}
-                    <div style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '10px 16px', borderBottom: `2px solid ${SYS.border}`,
-                        background: '#F5F5F5',
-                    }}>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                            {[['all', 'All'], ['income', 'Income'], ['outcome', 'Expenses']].map(([val, label]) => (
-                                <button key={val} type="button" onClick={() => setTypeFilter(val)}
-                                    style={filterBtn(typeFilter === val, val === 'income' ? SYS.success : val === 'outcome' ? SYS.accent : SYS.primary)}>
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                        <span style={{ fontSize: '0.75rem', color: SYS.light, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                            {visibleEntries.length} entr{visibleEntries.length === 1 ? 'y' : 'ies'}
-                        </span>
-                    </div>
-
-                    {/* Rows */}
-                    {loading && entries.length === 0 ? (
-                        <div style={{ padding: '32px', textAlign: 'center', color: SYS.light, fontSize: '0.9rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                            Loading…
-                        </div>
-                    ) : visibleEntries.length === 0 ? (
-                        <div style={{ padding: '48px 24px', textAlign: 'center', color: SYS.light }}>
-                            <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>💰</div>
-                            <div style={{ fontWeight: 700, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.4px' }}>No entries yet</div>
-                            <div style={{ fontSize: '0.85rem' }}>Add your first income or expense above.</div>
-                        </div>
-                    ) : (
-                        visibleEntries.map(e => (
-                            <EntryRow
-                                key={e.id}
-                                entry={e}
-                                cutoff={cutoff}
-                                onEdit={openEdit}
-                                onDuplicate={openDuplicate}
-                                onDelete={deleteEntry}
-                                loading={loading}
-                                isExpanded={expandedDescriptionId === e.id}
-                                onToggleExpand={(id) => setExpandedDescriptionId(prev => prev === id ? null : id)}
-                                history={expandedDescriptionId === e.id ? getDescriptionHistory(e) : []}
-                            />
-                        ))
-                    )}
-                </div>
-
-                {/* ── AI Forecast ── */}
-                <ForecastSection
-                    predictions={predictions}
-                    onFetch={() => fetchPredictions(3, activeTabId)}
-                    loading={loading}
-                />
-
-                {/* ── Balance Forecast (shows when tab is linked to bank) ── */}
-                <BalanceForecast
-                    forecast={forecast}
-                    onFetch={() => fetchForecast(activeTabId, 3)}
-                    loading={forecastLoading}
-                    linkedTab={linkedTab}
-                />
+                <BudgetEntryList loading={loading} entries={entries} visibleEntries={visibleEntries} typeFilter={typeFilter} setTypeFilter={setTypeFilter} cutoff={cutoff} openEdit={openEdit} openDuplicate={openDuplicate} deleteEntry={deleteEntry} expandedDescriptionId={expandedDescriptionId} setExpandedDescriptionId={setExpandedDescriptionId} getDescriptionHistory={getDescriptionHistory} />
+                <ForecastSection predictions={predictions} onFetch={() => fetchPredictions(3, activeTabId)} loading={loading} />
+                <BalanceForecast forecast={forecast} onFetch={() => fetchForecast(activeTabId, 3)} loading={forecastLoading} linkedTab={linkedTab} />
             </div>
         </div>
     );
