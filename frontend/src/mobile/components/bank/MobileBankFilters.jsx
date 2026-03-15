@@ -38,6 +38,8 @@ const MobileBankFilters = ({
                     <option value="all">All Types</option>
                     <option value="credit">Credit</option>
                     <option value="cash">Cash</option>
+                    <option value="transfer_in">Transfer In</option>
+                    <option value="transfer_out">Transfer Out</option>
                 </select>
                 <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}
                     style={{ ...IOS_INPUT, flex: 1 }} title="Month">

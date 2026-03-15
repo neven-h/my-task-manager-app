@@ -65,8 +65,8 @@ const BalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
                                 }}>
                                     {forecast.current_balance >= 0 ? '+' : '−'}{fmt(forecast.current_balance)}
                                 </span>
-                                <div style={{ fontSize: '0.72rem', color: SYS.light, display: 'flex', gap: 8 }}>
-                                    <span>Income: <b style={{ color: SYS.success }}>+{fmt(forecast.budget_income)}</b></span>
+                                <div style={{ fontSize: '0.72rem', color: SYS.light, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                    <span>Income: <b style={{ color: SYS.success }}>+{fmt((forecast.budget_income || 0) + (forecast.bank_income || 0))}</b></span>
                                     <span>Budget exp: <b style={{ color: SYS.accent }}>−{fmt(forecast.budget_expense)}</b></span>
                                     {forecast.bank_expense > 0 && (
                                         <span>Bank exp: <b style={{ color: SYS.accent }}>−{fmt(forecast.bank_expense)}</b></span>
@@ -128,6 +128,37 @@ const BalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
                                     </div>
                                 );
                             })}
+
+                            {/* Historical Actual Bank Spending */}
+                            {forecast.monthly_actuals && forecast.monthly_actuals.length > 0 && (
+                                <div style={{ borderTop: '2px solid #e5e7eb', padding: '12px 16px' }}>
+                                    <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: SYS.light, letterSpacing: '0.4px', marginBottom: 8 }}>
+                                        Historical — Actual Bank Spending
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: '0.68rem', fontWeight: 700, color: SYS.light, textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: 4 }}>
+                                        <div style={{ width: 70 }}>Month</div>
+                                        <div style={{ width: 80, textAlign: 'right' }}>Expenses</div>
+                                        <div style={{ width: 80, textAlign: 'right' }}>Income</div>
+                                        <div style={{ width: 80, textAlign: 'right' }}>Net</div>
+                                    </div>
+                                    {forecast.monthly_actuals.map((m) => (
+                                        <div key={m.month} style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: '0.8rem', padding: '3px 0', borderBottom: '1px dashed #eee' }}>
+                                            <div style={{ width: 70, fontWeight: 600, color: SYS.light, fontSize: '0.75rem' }}>
+                                                {new Date(m.month + '-01T00:00:00').toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+                                            </div>
+                                            <div style={{ width: 80, textAlign: 'right', color: SYS.accent, fontWeight: 600 }}>
+                                                {m.expense > 0 ? `−${fmt(m.expense)}` : '—'}
+                                            </div>
+                                            <div style={{ width: 80, textAlign: 'right', color: SYS.success, fontWeight: 600 }}>
+                                                {m.income > 0 ? `+${fmt(m.income)}` : '—'}
+                                            </div>
+                                            <div style={{ width: 80, textAlign: 'right', fontWeight: 700, color: m.net <= 0 ? SYS.success : SYS.accent }}>
+                                                {m.net <= 0 ? `+${fmt(Math.abs(m.net))}` : `−${fmt(m.net)}`}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
 
                             {/* Projected end balance */}
                             {forecast.forecast_end_balance !== undefined && (

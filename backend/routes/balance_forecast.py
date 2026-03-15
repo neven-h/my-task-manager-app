@@ -63,21 +63,29 @@ def balance_forecast(payload):
             )
             link = cur.fetchone()
 
-            bank_total = 0.0
+            bank_income = 0.0
+            bank_expense = 0.0
+            monthly_actuals = []
             bank_predictions = []
             if link:
                 tx_tab_id = link['transaction_tab_id']
-                # Sum historical bank transactions (all are expenses)
+                # Sum historical bank transactions, split by type
                 cur.execute(
-                    "SELECT amount FROM bank_transactions WHERE tab_id = %s"
+                    "SELECT amount, transaction_type FROM bank_transactions WHERE tab_id = %s"
                     + ("" if user_role == 'shared' else " AND uploaded_by = %s"),
                     (tx_tab_id,) if user_role == 'shared' else (tx_tab_id, username),
                 )
                 for row in cur.fetchall():
                     try:
-                        bank_total += abs(float(decrypt_field(row['amount'])))
+                        amt = abs(float(decrypt_field(row['amount'])))
+                        tx_type = row.get('transaction_type', 'credit')
+                        if tx_type == 'transfer_in':
+                            bank_income += amt
+                        else:
+                            bank_expense += amt
                     except Exception:
                         continue
+                bank_total = bank_expense - bank_income  # net expense (positive = net outflow)
 
                 # Get bank transaction predictions (24-month window)
                 cur.execute(
@@ -91,6 +99,35 @@ def balance_forecast(payload):
                 bank_rows = cur.fetchall()
                 bank_predictions = _predict_bank(bank_rows, today, cutoff, months)
 
+                # Build monthly actuals from bank transactions (last 12 months)
+                history_start = today.replace(day=1)
+                for _ in range(11):
+                    history_start = (history_start - timedelta(days=1)).replace(day=1)
+                monthly_actuals_map: dict = {}
+                for row in bank_rows:
+                    try:
+                        amt = abs(float(decrypt_field(row['amount'])))
+                        tx_type = row.get('transaction_type', 'credit')
+                        d = row['transaction_date']
+                        if isinstance(d, str):
+                            d = datetime.strptime(d[:10], '%Y-%m-%d').date()
+                        if d < history_start:
+                            continue
+                        mk = d.strftime('%Y-%m')
+                        if mk not in monthly_actuals_map:
+                            monthly_actuals_map[mk] = {'expense': 0.0, 'income': 0.0}
+                        if tx_type == 'transfer_in':
+                            monthly_actuals_map[mk]['income'] += amt
+                        else:
+                            monthly_actuals_map[mk]['expense'] += amt
+                    except Exception:
+                        continue
+                monthly_actuals = [
+                    {'month': mk, 'expense': round(v['expense'], 2), 'income': round(v['income'], 2),
+                     'net': round(v['expense'] - v['income'], 2)}
+                    for mk, v in sorted(monthly_actuals_map.items())
+                ]
+
             # 3. Get budget predictions (24-month window)
             cur.execute(
                 "SELECT description, type, amount, entry_date FROM budget_entries "
@@ -103,14 +140,16 @@ def balance_forecast(payload):
             budget_predictions = _predict_budget(budget_pred_rows, today, cutoff, months)
 
         # 4. Build unified timeline with running balance
-        current_balance = round(budget_income - budget_expense - bank_total, 2)
+        current_balance = round(budget_income - budget_expense - bank_expense + bank_income, 2)
         timeline = _merge_timeline(budget_predictions, bank_predictions, current_balance)
 
         result = {
             'current_balance': current_balance,
             'budget_income': round(budget_income, 2),
             'budget_expense': round(budget_expense, 2),
-            'bank_expense': round(bank_total, 2),
+            'bank_expense': round(bank_expense, 2),
+            'bank_income': round(bank_income, 2),
+            'monthly_actuals': monthly_actuals if link else [],
             'as_of': today.isoformat(),
             'linked_tab': link,
             'timeline': timeline,
@@ -207,7 +246,8 @@ def _predict_bank(rows, today, cutoff, n_ahead):
             d = datetime.strptime(d[:10], '%Y-%m-%d').date()
         norm_key = re.sub(r'\s+', ' ', desc.strip().lower())
         groups[(norm_key, r['transaction_type'])].append(
-            {'description': desc, 'amount': amount, 'date': d, 'type': 'expense'}
+            {'description': desc, 'amount': amount, 'date': d,
+             'type': 'income' if r['transaction_type'] == 'transfer_in' else 'expense'}
         )
     return _group_and_predict(groups, today, cutoff, n_ahead, 'bank')
 
@@ -219,7 +259,8 @@ def _merge_timeline(budget_preds, bank_preds, current_balance):
         delta = p['amount'] if p['type'] == 'income' else -p['amount']
         all_preds.append({**p, 'delta': delta})
     for p in bank_preds:
-        all_preds.append({**p, 'delta': -p['amount']})
+        delta = p['amount'] if p['type'] == 'income' else -p['amount']
+        all_preds.append({**p, 'delta': delta})
 
     all_preds.sort(key=lambda x: x['date'])
     running = current_balance

@@ -37,9 +37,14 @@ const MobileBankHeader = ({
                 >
                     <ArrowLeft size={22} />
                 </button>
-                <h1 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, textAlign: 'center', justifySelf: 'center' }}>
-                    Bank Transactions
-                </h1>
+                <div style={{ textAlign: 'center', justifySelf: 'center' }}>
+                    <h1 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>
+                        Bank Transactions
+                    </h1>
+                    <span style={{ fontSize: '0.72rem', color: '#888', fontWeight: 500 }}>
+                        Cards, Cash &amp; Transfers
+                    </span>
+                </div>
                 <button
                     onClick={exportTransactionsCSV}
                     disabled={!hasTransactions}

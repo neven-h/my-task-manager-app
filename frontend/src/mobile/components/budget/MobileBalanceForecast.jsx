@@ -72,9 +72,9 @@ const MobileBalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
                                 }}>
                                     {forecast.current_balance >= 0 ? '+' : '−'}{fmt(forecast.current_balance)}
                                 </div>
-                                <div style={{ fontSize: '0.72rem', color: IOS.muted, marginTop: 4, display: 'flex', justifyContent: 'center', gap: 12 }}>
-                                    <span>In: <b style={{ color: IOS.green }}>+{fmt(forecast.budget_income)}</b></span>
-                                    <span>Out: <b style={{ color: IOS.red }}>−{fmt(forecast.budget_expense + forecast.bank_expense)}</b></span>
+                                <div style={{ fontSize: '0.72rem', color: IOS.muted, marginTop: 4, display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+                                    <span>In: <b style={{ color: IOS.green }}>+{fmt((forecast.budget_income || 0) + (forecast.bank_income || 0))}</b></span>
+                                    <span>Out: <b style={{ color: IOS.red }}>−{fmt((forecast.budget_expense || 0) + (forecast.bank_expense || 0))}</b></span>
                                 </div>
                             </div>
 
@@ -117,6 +117,40 @@ const MobileBalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
                                     </div>
                                 );
                             })}
+
+                            {/* Historical Actual Bank Spending */}
+                            {forecast.monthly_actuals && forecast.monthly_actuals.length > 0 && (
+                                <div style={{ borderTop: `0.5px solid ${IOS.separator}`, padding: '12px 16px' }}>
+                                    <div style={{ fontSize: '0.68rem', fontWeight: 600, color: IOS.muted, textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 8 }}>
+                                        Actual Bank Spending
+                                    </div>
+                                    {forecast.monthly_actuals.map((m) => (
+                                        <div key={m.month} style={{
+                                            display: 'flex', alignItems: 'center', gap: 8,
+                                            padding: '6px 0', borderBottom: `0.5px solid ${IOS.separator}`,
+                                        }}>
+                                            <div style={{ fontSize: '0.78rem', fontWeight: 500, color: IOS.muted, width: 68, flexShrink: 0 }}>
+                                                {new Date(m.month + '-01T00:00:00').toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+                                            </div>
+                                            <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                                                {m.income > 0 && (
+                                                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: IOS.green }}>
+                                                        +{fmt(m.income)}
+                                                    </span>
+                                                )}
+                                                {m.expense > 0 && (
+                                                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: IOS.red }}>
+                                                        −{fmt(m.expense)}
+                                                    </span>
+                                                )}
+                                                <span style={{ fontSize: '0.78rem', fontWeight: 700, color: m.net <= 0 ? IOS.green : IOS.red, minWidth: 65, textAlign: 'right' }}>
+                                                    {m.net <= 0 ? `+${fmt(Math.abs(m.net))}` : `−${fmt(m.net)}`}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
 
                             {/* End balance */}
                             {forecast.forecast_end_balance !== undefined && (

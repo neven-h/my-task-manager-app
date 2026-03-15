@@ -45,9 +45,14 @@ const TransactionHeader = () => {
                 >
                     <ArrowLeft size={20} /> Back
                 </button>
-                <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: '800', letterSpacing: '-0.5px' }}>
-                    💰 BANK TRANSACTIONS
-                </h1>
+                <div>
+                    <h1 style={{ margin: 0, fontSize: '2rem', fontWeight: '800', letterSpacing: '-0.5px' }}>
+                        💰 BANK TRANSACTIONS
+                    </h1>
+                    <span style={{ fontSize: '0.85rem', color: '#666', fontWeight: 500, letterSpacing: '0.3px' }}>
+                        Cards, Cash &amp; Transfers
+                    </span>
+                </div>
             </div>
             <div className="bank-header-buttons" style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                 <button

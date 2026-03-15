@@ -67,15 +67,17 @@ def transaction_balance_forecast(payload):
         for r in rows:
             try:
                 desc   = decrypt_field(r['description'])
-                amount = abs(float(decrypt_field(r['amount'])))
+                raw_amount = abs(float(decrypt_field(r['amount'])))
+                is_income = r['transaction_type'] == 'transfer_in'
             except Exception:
                 continue
             d = r['transaction_date']
             if isinstance(d, str):
                 d = datetime.strptime(d[:10], '%Y-%m-%d').date()
             decrypted.append({
-                'description': desc, 'amount': amount,
+                'description': desc, 'amount': raw_amount,
                 'date': d, 'type': r['transaction_type'],
+                'is_income': is_income,
             })
 
         # ── Historical monthly totals (last _HISTORY_MONTHS months) ────────────
@@ -85,18 +87,22 @@ def transaction_balance_forecast(payload):
             history_start = (history_start - timedelta(days=1)).replace(day=1)
 
         monthly_totals: dict = defaultdict(float)
+        monthly_income_map: dict = defaultdict(float)
         for r in decrypted:
             if r['date'] >= history_start:
-                monthly_totals[r['date'].strftime('%Y-%m')] += r['amount']
+                month_key = r['date'].strftime('%Y-%m')
+                if r['is_income']:
+                    monthly_totals[month_key] -= r['amount']   # income reduces net outflow
+                    monthly_income_map[month_key] += r['amount']
+                else:
+                    monthly_totals[month_key] += r['amount']
 
         monthly_history = [
             {'month': m, 'total': round(v, 2)}
             for m, v in sorted(monthly_totals.items())
         ]
-        avg_monthly_spend = (
-            round(sum(m['total'] for m in monthly_history) / len(monthly_history), 2)
-            if monthly_history else 0.0
-        )
+        positive_months = [m['total'] for m in monthly_history if m['total'] > 0]
+        avg_monthly_spend = round(sum(positive_months) / len(positive_months), 2) if positive_months else 0.0
 
         # ── Spending momentum (OLS slope on monthly history) ───────────────────
         momentum = 'stable'
@@ -121,6 +127,9 @@ def transaction_balance_forecast(payload):
 
         anomalies = []
         for norm, monthly_map in desc_monthly.items():
+            # Skip income transactions for anomaly detection
+            if any(r['is_income'] for r in decrypted if re.sub(r'\s+', ' ', r['description'].strip().lower()) == norm):
+                continue
             if current_month_key not in monthly_map:
                 continue
             current_val = monthly_map[current_month_key]
@@ -244,6 +253,7 @@ def _build_predictions(groups, today, cutoff, n_ahead):
                     'confidence':            confidence_score(amount_fc, interval_fc, len(entries), i),
                     'entry_count':           len(entries),
                     'trend':                 trend,
+                    'is_income':             tx_type == 'transfer_in',
                 })
 
     results.sort(key=lambda p: p['predicted_date'])

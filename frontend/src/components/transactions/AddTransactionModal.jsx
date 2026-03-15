@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CreditCard, Banknote } from 'lucide-react';
+import { CreditCard, Banknote, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { useBankTransactionContext } from '../../context/BankTransactionContext';
 
 const getDefaultTransaction = () => ({
@@ -64,53 +64,39 @@ const AddTransactionModal = () => {
 
                 <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: '700', fontSize: '1.1rem', color: colors.text }}>Type</label>
-                    <div style={{ display: 'flex', gap: '0.75rem' }}>
-                        <button
-                            type="button"
-                            onClick={() => setNewTransaction({...newTransaction, transaction_type: 'credit'})}
-                            style={{
-                                flex: 1,
-                                padding: '1rem',
-                                border: `3px solid ${colors.border}`,
-                                background: newTransaction.transaction_type === 'credit' ? colors.accent : colors.card,
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.5rem',
-                                fontSize: '1.05rem',
-                                fontWeight: newTransaction.transaction_type === 'credit' ? '700' : '500',
-                                color: newTransaction.transaction_type === 'credit' ? '#fff' : colors.text,
-                                fontFamily: '"Inter", sans-serif',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.5px'
-                            }}
-                        >
-                            <CreditCard size={20} /> 💳 Credit
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setNewTransaction({...newTransaction, transaction_type: 'cash'})}
-                            style={{
-                                flex: 1,
-                                padding: '1rem',
-                                border: `3px solid ${colors.border}`,
-                                background: newTransaction.transaction_type === 'cash' ? colors.success : colors.card,
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.5rem',
-                                fontSize: '1.05rem',
-                                fontWeight: newTransaction.transaction_type === 'cash' ? '700' : '500',
-                                color: newTransaction.transaction_type === 'cash' ? '#fff' : colors.text,
-                                fontFamily: '"Inter", sans-serif',
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.5px'
-                            }}
-                        >
-                            <Banknote size={20} /> 💵 Cash
-                        </button>
+                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                        {[
+                            { value: 'credit', label: 'Credit', icon: <CreditCard size={18} />, bg: colors.accent },
+                            { value: 'cash', label: 'Cash', icon: <Banknote size={18} />, bg: colors.success },
+                            { value: 'transfer_out', label: 'Transfer Out', icon: <ArrowUpRight size={18} />, bg: '#FF3B30' },
+                            { value: 'transfer_in', label: 'Transfer In', icon: <ArrowDownLeft size={18} />, bg: '#34C759' },
+                        ].map(({ value, label, icon, bg }) => (
+                            <button
+                                key={value}
+                                type="button"
+                                onClick={() => setNewTransaction({...newTransaction, transaction_type: value})}
+                                style={{
+                                    flex: 1,
+                                    padding: '0.75rem',
+                                    border: `3px solid ${colors.border}`,
+                                    background: newTransaction.transaction_type === value ? bg : colors.card,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.4rem',
+                                    fontSize: '0.9rem',
+                                    fontWeight: newTransaction.transaction_type === value ? '700' : '500',
+                                    color: newTransaction.transaction_type === value ? '#fff' : colors.text,
+                                    fontFamily: '"Inter", sans-serif',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px',
+                                    minWidth: '100px',
+                                }}
+                            >
+                                {icon} {label}
+                            </button>
+                        ))}
                     </div>
                 </div>
 
@@ -133,7 +119,18 @@ const AddTransactionModal = () => {
                     <input
                         type="text"
                         value={newTransaction.description}
-                        onChange={(e) => setNewTransaction({...newTransaction, description: e.target.value})}
+                        onChange={(e) => {
+                            const desc = e.target.value;
+                            const lower = desc.toLowerCase();
+                            const isBitPaybox = lower.includes('ביט') || lower.includes('bit') ||
+                                                lower.includes('פייבוקס') || lower.includes('paybox') ||
+                                                lower.includes('pay box') || lower.includes('העברה');
+                            const update = { ...newTransaction, description: desc };
+                            if (isBitPaybox && newTransaction.transaction_type === 'credit') {
+                                update.transaction_type = 'transfer_out';
+                            }
+                            setNewTransaction(update);
+                        }}
                         placeholder="Transaction description"
                         list="descriptions-list"
                         style={{ width: '100%', padding: '1rem', border: `3px solid ${colors.border}`, fontSize: '1.05rem', fontFamily: '"Inter", sans-serif' }}
@@ -175,7 +172,7 @@ const AddTransactionModal = () => {
                         style={{
                             flex: 1,
                             padding: '1.25rem',
-                            background: newTransaction.transaction_type === 'cash' ? colors.success : colors.primary,
+                            background: newTransaction.transaction_type === 'cash' ? colors.success : newTransaction.transaction_type === 'transfer_in' ? '#34C759' : newTransaction.transaction_type === 'transfer_out' ? '#FF3B30' : colors.primary,
                             color: '#fff',
                             border: `3px solid ${colors.border}`,
                             cursor: (!newTransaction.description || !newTransaction.amount || loading) ? 'not-allowed' : 'pointer',

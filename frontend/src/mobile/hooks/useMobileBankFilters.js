@@ -20,10 +20,12 @@ const useMobileBankFilters = (transactions, typeFilter, searchTerm, dateFrom = '
         (list || []).forEach(t => {
             const desc = t.description || 'Other';
             const amount = Number(t.amount) || 0;
-            if (!categoryData[desc]) categoryData[desc] = { count: 0, total: 0, credit: 0, cash: 0 };
+            if (!categoryData[desc]) categoryData[desc] = { count: 0, total: 0, credit: 0, cash: 0, transfer_in: 0, transfer_out: 0 };
             categoryData[desc].count++;
             categoryData[desc].total += amount;
             if (t.transaction_type === 'cash') categoryData[desc].cash += amount;
+            else if (t.transaction_type === 'transfer_in') categoryData[desc].transfer_in += amount;
+            else if (t.transaction_type === 'transfer_out') categoryData[desc].transfer_out += amount;
             else categoryData[desc].credit += amount;
         });
         return categoryData;
@@ -32,7 +34,10 @@ const useMobileBankFilters = (transactions, typeFilter, searchTerm, dateFrom = '
     const chartData = useMemo(() => {
         if (filteredTransactions.length === 0) return null;
         const categoryData = aggregateByCategory(filteredTransactions);
-        const totalAmount = filteredTransactions.reduce((s, t) => s + (Number(t.amount) || 0), 0);
+        const totalAmount = filteredTransactions.reduce((s, t) => {
+            if (t.transaction_type === 'transfer_in') return s;
+            return s + (Number(t.amount) || 0);
+        }, 0);
         if (totalAmount === 0 || !Number.isFinite(totalAmount)) return null;
         const sortedCategories = Object.entries(categoryData)
             .sort((a, b) => b[1].total - a[1].total)
