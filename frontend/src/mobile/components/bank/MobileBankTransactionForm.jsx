@@ -68,7 +68,18 @@ const MobileBankTransactionForm = ({
                         <input
                             type="text"
                             value={newTransaction.description}
-                            onChange={(e) => setNewTransaction({...newTransaction, description: e.target.value})}
+                            onChange={(e) => {
+                                const desc = e.target.value;
+                                const lower = desc.toLowerCase();
+                                const isBitPaybox = lower.includes('ביט') || lower.includes('bit') ||
+                                                    lower.includes('פייבוקס') || lower.includes('paybox') ||
+                                                    lower.includes('pay box') || lower.includes('העברה');
+                                const update = { ...newTransaction, description: desc };
+                                if (isBitPaybox && newTransaction.transaction_type === 'credit') {
+                                    update.transaction_type = 'transfer_out';
+                                }
+                                setNewTransaction(update);
+                            }}
                             style={{width: '100%', padding: BAUHAUS.inputPadding, border: BAUHAUS.inputBorder, fontSize: BAUHAUS.inputFontSize, borderRadius: 0}}
                         />
                     </div>
@@ -93,8 +104,10 @@ const MobileBankTransactionForm = ({
                             onChange={(e) => setNewTransaction({...newTransaction, transaction_type: e.target.value})}
                             style={{width: '100%', padding: BAUHAUS.inputPadding, border: BAUHAUS.inputBorder, fontSize: BAUHAUS.inputFontSize, borderRadius: 0}}
                         >
-                            <option value="credit">Credit</option>
-                            <option value="cash">Cash</option>
+                            <option value="credit">Credit Card</option>
+                            <option value="cash">Cash (ATM)</option>
+                            <option value="transfer_out">Transfer Out (Bit / Paybox / Wire)</option>
+                            <option value="transfer_in">Transfer In (Bit / Paybox / Wire)</option>
                         </select>
                     </div>
                     <div style={{display: 'flex', gap: '12px', marginTop: '8px'}}>

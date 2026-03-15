@@ -12,7 +12,7 @@ def init_bank_tables(cursor, connection):
             description VARCHAR(500) NOT NULL,
             amount DECIMAL(10, 2) NOT NULL,
             month_year VARCHAR(7) NOT NULL,
-            transaction_type ENUM('credit', 'cash') DEFAULT 'credit',
+            transaction_type VARCHAR(20) DEFAULT 'credit',
             upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_transaction_date (transaction_date),
             INDEX idx_month_year (month_year),
@@ -22,7 +22,7 @@ def init_bank_tables(cursor, connection):
     """)
 
     for col, col_def, label in [
-        ("transaction_type", "ENUM('credit', 'cash') DEFAULT 'credit'", "transaction_type"),
+        ("transaction_type", "VARCHAR(20) DEFAULT 'credit'", "transaction_type"),
         ("uploaded_by", "VARCHAR(255)", "uploaded_by"),
         ("tab_id", "INT", "tab_id"),
     ]:
@@ -63,6 +63,16 @@ def init_bank_tables(cursor, connection):
         except Error as e:
             if 'already' not in str(e).lower():
                 print(f"Migration note ({col}): {e}")
+
+    # Migrate transaction_type from ENUM to VARCHAR to support transfer_in/transfer_out
+    try:
+        cursor.execute(
+            "ALTER TABLE bank_transactions MODIFY COLUMN transaction_type VARCHAR(20) DEFAULT 'credit'"
+        )
+        print("Migrated transaction_type to VARCHAR(20)")
+    except Error as e:
+        if 'already' not in str(e).lower():
+            print(f"Migration note (transaction_type): {e}")
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS transaction_tabs (

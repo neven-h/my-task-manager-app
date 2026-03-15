@@ -11,7 +11,7 @@ import {
 } from '../../utils/cashflowHelpers';
 
 const fmt  = (n, abs = false) => (abs ? Math.abs(n) : n)
-    .toLocaleString('he-IL', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    .toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtM = (ym) => {
     const [y, m] = ym.split('-');
     return new Date(+y, +m - 1).toLocaleDateString(undefined, { month: 'short', year: '2-digit' });

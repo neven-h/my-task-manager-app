@@ -18,6 +18,7 @@ const useBudgetLinks = () => {
 
     const fetchLink = useCallback(async (budgetTabId) => {
         if (!budgetTabId) { setLinkedTab(null); return; }
+        setLinkedTab(null); // clear immediately so stale link doesn't trigger auto-fetch for new tab
         setLoading(true);
         try {
             const res = await fetch(`${API_BASE}/budget-tabs/${budgetTabId}/link`, { headers: getAuthHeaders() });
