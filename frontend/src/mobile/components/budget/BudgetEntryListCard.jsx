@@ -26,7 +26,7 @@ const FILTER_TABS = [['all', 'All'], ['income', 'Income'], ['outcome', 'Expenses
 const BudgetEntryListCard = ({
     visibleEntries, loading, entries, typeFilter, setTypeFilter, cutoff,
     openEdit, deleteEntry, expandedDescriptionId, setExpandedDescriptionId,
-    getDescriptionHistory,
+    getDescriptionHistory, selectMode, selectedIds, toggleSelect,
 }) => (
     <div style={{
         margin: '0 16px', background: IOS.card, borderRadius: IOS.radius,
@@ -85,6 +85,9 @@ const BudgetEntryListCard = ({
                     isExpanded={expandedDescriptionId === e.id}
                     onToggleExpand={(id) => setExpandedDescriptionId(prev => prev === id ? null : id)}
                     history={expandedDescriptionId === e.id ? getDescriptionHistory(e) : EMPTY_HISTORY}
+                    selectMode={selectMode}
+                    isSelected={selectedIds?.has(e.id)}
+                    onToggleSelect={toggleSelect}
                 />
             ))
         )}

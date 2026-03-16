@@ -1,9 +1,11 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { ArrowLeft, TrendingUp, TrendingDown, Scale, Plus, FileDown, Upload } from 'lucide-react';
 import useBudget from '../../hooks/useBudget';
 import useBudgetTabs from '../../hooks/useBudgetTabs';
 import useBudgetLinks from '../../hooks/useBudgetLinks';
 import useBalanceForecast from '../../hooks/useBalanceForecast';
+import useBudgetStats from '../../hooks/useBudgetStats';
+import useBudgetFilters from '../../hooks/useBudgetFilters';
 import MobileBudgetLinkBanner from '../components/budget/MobileBudgetLinkBanner';
 import MobileBalanceForecast from '../components/budget/MobileBalanceForecast';
 import { FONT_STACK } from '../../ios/theme';
@@ -14,6 +16,11 @@ import { BudgetTabStrip } from '../components/budget/BudgetTabStrip';
 import { BudgetDatePicker } from '../components/budget/BudgetDatePicker';
 import { BudgetEntryListCard } from '../components/budget/BudgetEntryListCard';
 import MobileBudgetUploadFlow from '../components/budget/MobileBudgetUploadFlow';
+import MobileBudgetHealthCard from '../components/budget/MobileBudgetHealthCard';
+import MobileBudgetExpenseChart from '../components/budget/MobileBudgetExpenseChart';
+import MobileBudgetMonthlyChart from '../components/budget/MobileBudgetMonthlyChart';
+import MobileBudgetFilters from '../components/budget/MobileBudgetFilters';
+import MobileBudgetSelectionBar from '../components/budget/MobileBudgetSelectionBar';
 
 const IOS = {
     bg: '#F2F2F7', card: '#fff', separator: 'rgba(0,0,0,0.08)',
@@ -29,7 +36,7 @@ const emptyForm = (type = 'income') => ({
 
 const MobileBudgetView = ({ onBack }) => {
     const { entries, loading, error, fetchEntries, createEntry, updateEntry, deleteEntry,
-        totalIncome, totalOutcome, balance, getDescriptionHistory,
+        batchDelete, getDescriptionHistory,
         predictions, fetchPredictions, exportBudgetCSV } = useBudget();
 
     const { tabs, fetchTabs } = useBudgetTabs();
@@ -38,21 +45,21 @@ const MobileBudgetView = ({ onBack }) => {
 
     const [activeTabId, setActiveTabId]   = useState(null);
     const [cutoff, setCutoff]             = useState(today());
-    const [typeFilter, setTypeFilter]     = useState('all');
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showForm, setShowForm]         = useState(false);
     const [editingEntry, setEditingEntry] = useState(null);
     const [formInitial, setFormInitial]   = useState(emptyForm('income'));
     const [expandedDescriptionId, setExpandedDescriptionId] = useState(null);
     const [showUpload, setShowUpload] = useState(false);
+    const [selectMode, setSelectMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState(new Set());
+
+    const { tabEntries, monthlyTotals, chartData, allCategories, health } = useBudgetStats(entries, cutoff, activeTabId);
+    const filters = useBudgetFilters(tabEntries);
 
     useEffect(() => { fetchEntries(); fetchTabs(); }, [fetchEntries, fetchTabs]);
     useEffect(() => { fetchLink(activeTabId); clearForecast(); }, [activeTabId, fetchLink, clearForecast]);
     useEffect(() => { if (linkedTab && activeTabId) fetchForecast(activeTabId, 3); }, [linkedTab, activeTabId, fetchForecast]);
-
-    const tabEntries = useMemo(() =>
-        activeTabId === null ? entries : entries.filter(e => e.tab_id === activeTabId),
-        [entries, activeTabId]);
 
     const income  = useMemo(() =>
         tabEntries.filter(e => e.type === 'income'  && e.entry_date <= cutoff).reduce((s, e) => s + parseFloat(e.amount), 0),
@@ -62,10 +69,6 @@ const MobileBudgetView = ({ onBack }) => {
         [tabEntries, cutoff]);
     const net        = income - outcome;
     const displayBal = forecast ? forecast.current_balance : net;
-
-    const visibleEntries = useMemo(() =>
-        tabEntries.filter(e => typeFilter === 'all' || e.type === typeFilter),
-        [tabEntries, typeFilter]);
 
     const refreshForecast = () => {
         if (linkedTab && activeTabId) fetchForecast(activeTabId, 3);
@@ -89,19 +92,33 @@ const MobileBudgetView = ({ onBack }) => {
         return ok;
     };
 
+    const toggleSelect = useCallback((id) => setSelectedIds(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; }), []);
+    const handleBatchDelete = useCallback(async () => {
+        if (selectedIds.size === 0) return;
+        const ok = await batchDelete([...selectedIds]);
+        if (ok) { setSelectedIds(new Set()); setSelectMode(false); refreshForecast(); }
+    }, [selectedIds, batchDelete]);
+    const cancelSelection = useCallback(() => { setSelectMode(false); setSelectedIds(new Set()); }, []);
+
     return (
-        <div style={{ minHeight: '100vh', background: IOS.bg, fontFamily: FONT_STACK, paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}>
+        <div style={{ minHeight: '100vh', background: IOS.bg, fontFamily: FONT_STACK, paddingBottom: selectMode ? 'calc(env(safe-area-inset-bottom, 0px) + 140px)' : 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}>
 
             {/* Sticky header */}
             <div style={{ background: IOS.card, borderBottom: `0.5px solid ${IOS.separator}`,
                 paddingTop: 'calc(env(safe-area-inset-top, 0px) + 14px)', paddingBottom: 12,
                 paddingLeft: 8, paddingRight: 8, position: 'sticky', top: 0, zIndex: 100 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr 44px', alignItems: 'center' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr 44px 44px', alignItems: 'center' }}>
                     <button onClick={onBack} style={{ background: 'none', border: 'none', padding: '10px', cursor: 'pointer',
                         minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <ArrowLeft size={22} color={IOS.blue} />
                     </button>
                     <h1 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, textAlign: 'center' }}>Budget Planner</h1>
+                    <button onClick={() => setSelectMode(m => !m)}
+                        style={{ background: 'none', border: 'none', padding: '10px', cursor: 'pointer',
+                            minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: selectMode ? IOS.red : IOS.blue, fontWeight: 600, fontSize: '0.78rem' }}>
+                        {selectMode ? 'Done' : 'Select'}
+                    </button>
                     <button onClick={() => exportBudgetCSV()} disabled={entries.length === 0}
                         style={{ background: 'none', border: 'none', padding: '10px', cursor: entries.length === 0 ? 'default' : 'pointer',
                             minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -168,13 +185,20 @@ const MobileBudgetView = ({ onBack }) => {
                     onRemoveLink={() => removeLink(activeTabId)} />
             )}
 
+            <MobileBudgetHealthCard health={health} />
+            <MobileBudgetExpenseChart chartData={chartData} />
+            <MobileBudgetMonthlyChart monthlyTotals={monthlyTotals} />
+
+            <MobileBudgetFilters {...filters} allCategories={allCategories} />
+
             <BudgetEntryListCard
-                visibleEntries={visibleEntries} loading={loading} entries={entries}
-                typeFilter={typeFilter} setTypeFilter={setTypeFilter} cutoff={cutoff}
+                visibleEntries={filters.filtered} loading={loading} entries={entries}
+                typeFilter={filters.typeFilter} setTypeFilter={filters.setTypeFilter} cutoff={cutoff}
                 openEdit={openEdit} deleteEntry={handleDelete}
                 expandedDescriptionId={expandedDescriptionId}
                 setExpandedDescriptionId={setExpandedDescriptionId}
                 getDescriptionHistory={getDescriptionHistory}
+                selectMode={selectMode} selectedIds={selectedIds} toggleSelect={toggleSelect}
             />
 
             <ForecastSection predictions={predictions} onFetch={() => fetchPredictions(3, activeTabId)} loading={loading} />
@@ -188,6 +212,8 @@ const MobileBudgetView = ({ onBack }) => {
 
             <MobileBudgetUploadFlow isOpen={showUpload} onClose={() => setShowUpload(false)}
                 activeTabId={activeTabId} onComplete={fetchEntries} />
+
+            {selectMode && <MobileBudgetSelectionBar count={selectedIds.size} onDelete={handleBatchDelete} onExport={() => exportBudgetCSV(activeTabId)} onCancel={cancelSelection} />}
         </div>
     );
 };

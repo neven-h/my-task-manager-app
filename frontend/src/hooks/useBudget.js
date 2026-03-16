@@ -114,6 +114,31 @@ const useBudget = () => {
         }
     }, []);
 
+    // ── batch delete ─────────────────────────────────────────────────────
+    const batchDelete = useCallback(async (ids) => {
+        if (!ids.length) return false;
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await fetch(`${BASE}/batch`, {
+                method: 'DELETE',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ ids }),
+            });
+            if (!res.ok) {
+                const json = await res.json().catch(() => ({}));
+                throw new Error(json.error || 'Batch delete failed');
+            }
+            setEntries(prev => prev.filter(e => !ids.includes(e.id)));
+            return true;
+        } catch (err) {
+            setError(err.message);
+            return false;
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     // ── computed helpers ────────────────────────────────────────────────────
     const totalIncome = useCallback((cutoff) =>
         entries
@@ -184,6 +209,7 @@ const useBudget = () => {
         createEntry,
         updateEntry,
         deleteEntry,
+        batchDelete,
         totalIncome,
         totalOutcome,
         balance,

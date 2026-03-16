@@ -16,7 +16,7 @@ const fmt = (n) =>
 // Stable empty array to avoid creating new [] reference on every render
 export const EMPTY_HISTORY = [];
 
-export const EntryRow = memo(({ entry, cutoff, onEdit, onDelete, isLast, isExpanded, onToggleExpand, history }) => {
+export const EntryRow = memo(({ entry, cutoff, onEdit, onDelete, isLast, isExpanded, onToggleExpand, history, selectMode, isSelected, onToggleSelect }) => {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [pressed, setPressed] = useState(false);
     const isPast = entry.entry_date <= cutoff;
@@ -38,6 +38,15 @@ export const EntryRow = memo(({ entry, cutoff, onEdit, onDelete, isLast, isExpan
                 onTouchStart={() => setPressed(true)}
                 onTouchEnd={() => setPressed(false)}
             >
+                {/* Select checkbox */}
+                {selectMode && (
+                    <div onClick={(e) => { e.stopPropagation(); onToggleSelect(entry.id); }}
+                        style={{ width: 22, height: 22, borderRadius: '50%', border: `2px solid ${isSelected ? '#007AFF' : 'rgba(0,0,0,0.2)'}`,
+                            background: isSelected ? '#007AFF' : '#fff', cursor: 'pointer', flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.7rem', fontWeight: 700 }}>
+                        {isSelected && '✓'}
+                    </div>
+                )}
                 {/* Type dot */}
                 <div style={{ width: 9, height: 9, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
 

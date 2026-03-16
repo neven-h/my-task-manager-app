@@ -168,6 +168,32 @@ def update_budget_entry(payload, entry_id):
         return jsonify({'error': 'An internal error occurred'}), 500
 
 
+@budget_bp.route('/api/budget/batch', methods=['DELETE'])
+@token_required
+def batch_delete_budget_entries(payload):
+    username = payload.get('username')
+    data = request.get_json() or {}
+    ids = data.get('ids', [])
+    if not ids or not isinstance(ids, list) or len(ids) > 5000:
+        return jsonify({'error': 'ids must be a list (max 5000)'}), 400
+    try:
+        with get_db_connection() as conn:
+            _ensure_table(conn)
+            cursor = conn.cursor()
+            placeholders = ','.join(['%s'] * len(ids))
+            cursor.execute(
+                f"DELETE FROM budget_entries WHERE id IN ({placeholders}) AND owner = %s",
+                (*ids, username),
+            )
+            deleted = cursor.rowcount
+            conn.commit()
+        invalidate_balance_forecast_cache(username)
+        return jsonify({'deleted': deleted})
+    except Exception as exc:
+        logger.exception('Failed to batch delete budget entries')
+        return jsonify({'error': 'An internal error occurred'}), 500
+
+
 @budget_bp.route('/api/budget/<int:entry_id>', methods=['DELETE'])
 @token_required
 def delete_budget_entry(payload, entry_id):

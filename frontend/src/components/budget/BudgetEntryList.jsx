@@ -24,6 +24,9 @@ export const BudgetEntryList = ({
     expandedDescriptionId,
     setExpandedDescriptionId,
     getDescriptionHistory,
+    selectMode,
+    selectedIds,
+    toggleSelect,
 }) => {
     const filterBtn = (active, color = SYS.primary) => ({
         padding: '5px 16px',
@@ -79,6 +82,9 @@ export const BudgetEntryList = ({
                         isExpanded={expandedDescriptionId === e.id}
                         onToggleExpand={(id) => setExpandedDescriptionId(prev => prev === id ? null : id)}
                         history={expandedDescriptionId === e.id ? getDescriptionHistory(e) : EMPTY_HISTORY}
+                        selectMode={selectMode}
+                        isSelected={selectedIds?.has(e.id)}
+                        onToggleSelect={toggleSelect}
                     />
                 ))
             )}
