@@ -119,6 +119,7 @@ def save_transactions(payload):
             cur2.execute("SELECT owner FROM budget_bank_links WHERE transaction_tab_id = %s", (tab_id,))
             for row in cur2.fetchall():
                 invalidate_balance_forecast_cache(row['owner'])
+            cur2.close()
             return jsonify({
                 'success': True,
                 'message': f'{len(transactions)} transactions saved successfully (encrypted)',

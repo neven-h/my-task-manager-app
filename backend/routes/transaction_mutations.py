@@ -103,6 +103,7 @@ def delete_month_transactions(payload, month_year):
             )
             for link_row in cursor2.fetchall():
                 invalidate_balance_forecast_cache(link_row['owner'])
+            cursor2.close()
 
             return jsonify({
                 'message': f'{deleted_count} transactions deleted successfully'
