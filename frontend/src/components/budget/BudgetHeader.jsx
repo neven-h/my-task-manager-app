@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileDown } from 'lucide-react';
+import { FileDown, Upload } from 'lucide-react';
 
 const SYS = {
     primary: '#0000FF',
@@ -9,7 +9,7 @@ const SYS = {
     border:  '#000',
 };
 
-export const BudgetHeader = ({ onBackToTasks, exportBudgetCSV, activeTabId, entriesCount, openAdd }) => (
+export const BudgetHeader = ({ onBackToTasks, exportBudgetCSV, activeTabId, entriesCount, openAdd, onUpload }) => (
     <div style={{
         background: SYS.bg,
         borderBottom: `3px solid ${SYS.border}`,
@@ -43,6 +43,16 @@ export const BudgetHeader = ({ onBackToTasks, exportBudgetCSV, activeTabId, entr
                     display: 'flex', alignItems: 'center', gap: 4,
                 }}>
                 <FileDown size={14} /> CSV
+            </button>
+            <button onClick={onUpload}
+                style={{
+                    padding: '7px 14px', border: `2px solid ${SYS.border}`,
+                    background: SYS.primary, color: '#fff',
+                    fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer',
+                    textTransform: 'uppercase', letterSpacing: '0.4px',
+                    display: 'flex', alignItems: 'center', gap: 4,
+                }}>
+                <Upload size={14} /> Upload
             </button>
             <button onClick={() => openAdd('income')}
                 style={{

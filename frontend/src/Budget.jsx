@@ -11,6 +11,7 @@ import { EntryForm } from './components/budget/BudgetEntryForm';
 import { ForecastSection } from './components/budget/BudgetForecastSection';
 import { BudgetTabBar } from './components/budget/BudgetTabBar';
 import { BudgetHeader } from './components/budget/BudgetHeader';
+import BudgetUploadModal from './components/budget/BudgetUploadModal';
 import { BudgetEntryList } from './components/budget/BudgetEntryList';
 
 const SYS = {
@@ -41,6 +42,7 @@ const Budget = ({ onBackToTasks }) => {
     const [addingTab, setAddingTab]                   = useState(false);
     const [confirmDeleteTab, setConfirmDeleteTab]     = useState(null);
     const [expandedDescriptionId, setExpandedDescriptionId] = useState(null);
+    const [showUpload, setShowUpload] = useState(false);
 
     useEffect(() => { fetchEntries(); fetchTabs(); }, [fetchEntries, fetchTabs]);
     useEffect(() => { fetchLink(activeTabId); clearForecast(); }, [activeTabId, fetchLink, clearForecast]);
@@ -96,7 +98,7 @@ const Budget = ({ onBackToTasks }) => {
 
     return (
         <div style={{ minHeight: '100vh', background: SYS.bg, fontFamily: 'inherit' }}>
-            <BudgetHeader onBackToTasks={onBackToTasks} exportBudgetCSV={exportBudgetCSV} activeTabId={activeTabId} entriesCount={entries.length} openAdd={openAdd} />
+            <BudgetHeader onBackToTasks={onBackToTasks} exportBudgetCSV={exportBudgetCSV} activeTabId={activeTabId} entriesCount={entries.length} openAdd={openAdd} onUpload={() => setShowUpload(true)} />
             <BudgetTabBar tabs={tabs} activeTabId={activeTabId} setActiveTabId={setActiveTabId} confirmDeleteTab={confirmDeleteTab} setConfirmDeleteTab={setConfirmDeleteTab} handleDeleteTab={handleDeleteTab} addingTab={addingTab} setAddingTab={setAddingTab} newTabName={newTabName} setNewTabName={setNewTabName} handleAddTab={handleAddTab} />
 
             <div style={{ maxWidth: 920, margin: '0 auto', padding: '24px 20px' }}>
@@ -128,6 +130,7 @@ const Budget = ({ onBackToTasks }) => {
                 <ForecastSection predictions={predictions} onFetch={() => fetchPredictions(3, activeTabId)} loading={loading} />
                 <BalanceForecast forecast={forecast} onFetch={() => fetchForecast(activeTabId, 3)} loading={forecastLoading} linkedTab={linkedTab} />
             </div>
+            <BudgetUploadModal show={showUpload} onClose={() => setShowUpload(false)} activeTabId={activeTabId} onComplete={fetchEntries} />
         </div>
     );
 };

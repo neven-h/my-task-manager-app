@@ -52,6 +52,7 @@ from routes.budget_tabs import budget_tabs_bp
 from routes.budget_export import budget_export_bp
 from routes.budget_predict import budget_predict_bp
 from routes.budget_links import budget_links_bp
+from routes.budget_upload import budget_upload_bp
 from routes.balance_forecast import balance_forecast_bp
 from routes.transaction_export import transaction_export_bp
 from routes.transaction_predict import transaction_predict_bp
@@ -106,6 +107,7 @@ app.register_blueprint(budget_tabs_bp)
 app.register_blueprint(budget_export_bp)
 app.register_blueprint(budget_predict_bp)
 app.register_blueprint(budget_links_bp)
+app.register_blueprint(budget_upload_bp)
 app.register_blueprint(balance_forecast_bp)
 app.register_blueprint(transaction_export_bp)
 app.register_blueprint(transaction_predict_bp)

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { ArrowLeft, TrendingUp, TrendingDown, Scale, Plus, FileDown } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Scale, Plus, FileDown, Upload } from 'lucide-react';
 import useBudget from '../../hooks/useBudget';
 import useBudgetTabs from '../../hooks/useBudgetTabs';
 import useBudgetLinks from '../../hooks/useBudgetLinks';
@@ -13,6 +13,7 @@ import ForecastSection from '../components/budget/MobileForecastSection';
 import { BudgetTabStrip } from '../components/budget/BudgetTabStrip';
 import { BudgetDatePicker } from '../components/budget/BudgetDatePicker';
 import { BudgetEntryListCard } from '../components/budget/BudgetEntryListCard';
+import MobileBudgetUploadFlow from '../components/budget/MobileBudgetUploadFlow';
 
 const IOS = {
     bg: '#F2F2F7', card: '#fff', separator: 'rgba(0,0,0,0.08)',
@@ -43,6 +44,7 @@ const MobileBudgetView = ({ onBack }) => {
     const [editingEntry, setEditingEntry] = useState(null);
     const [formInitial, setFormInitial]   = useState(emptyForm('income'));
     const [expandedDescriptionId, setExpandedDescriptionId] = useState(null);
+    const [showUpload, setShowUpload] = useState(false);
 
     useEffect(() => { fetchEntries(); fetchTabs(); }, [fetchEntries, fetchTabs]);
     useEffect(() => { fetchLink(activeTabId); clearForecast(); }, [activeTabId, fetchLink, clearForecast]);
@@ -102,6 +104,22 @@ const MobileBudgetView = ({ onBack }) => {
 
             <BudgetTabStrip tabs={tabs} activeTabId={activeTabId} setActiveTabId={setActiveTabId} />
 
+            {activeTabId && (
+                <div style={{ padding: '0 16px', marginBottom: 4 }}>
+                    <button onClick={() => setShowUpload(true)} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        width: '100%', padding: '10px 16px',
+                        border: '1px dashed rgba(0,0,0,0.15)', borderRadius: 12,
+                        background: '#fafafa', cursor: 'pointer',
+                        fontWeight: 600, fontSize: '0.85rem', color: IOS.blue,
+                        fontFamily: FONT_STACK,
+                    }}>
+                        <Upload size={16} />
+                        Upload Budget File
+                    </button>
+                </div>
+            )}
+
             <div style={{ padding: '16px 16px 0' }}>
                 {error && (
                     <div style={{ background: '#FFE5E5', borderRadius: 10, padding: '10px 14px', marginBottom: 12, color: '#CC0000', fontSize: '0.82rem' }}>
@@ -158,6 +176,9 @@ const MobileBudgetView = ({ onBack }) => {
             {showForm && (
                 <EntrySheet initial={formInitial} onSave={handleSave} onCancel={handleCancel} loading={loading} />
             )}
+
+            <MobileBudgetUploadFlow isOpen={showUpload} onClose={() => setShowUpload(false)}
+                activeTabId={activeTabId} onComplete={fetchEntries} />
         </div>
     );
 };
