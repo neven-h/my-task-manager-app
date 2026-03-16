@@ -30,7 +30,7 @@ const Budget = ({ onBackToTasks }) => {
         getDescriptionHistory, predictions, fetchPredictions, exportBudgetCSV } = useBudget();
     const { tabs, fetchTabs, createTab, deleteTab } = useBudgetTabs();
     const { linkedTab, fetchLink, setLink, removeLink } = useBudgetLinks();
-    const { forecast, loading: forecastLoading, fetchForecast, clearForecast } = useBalanceForecast();
+    const { forecast, loading: forecastLoading, fetchForecast, clearForecast, lastUpdated, refresh } = useBalanceForecast();
 
     const [cutoff, setCutoff]                         = useState(today());
     const [typeFilter, setTypeFilter]                 = useState('all');
@@ -54,7 +54,12 @@ const Budget = ({ onBackToTasks }) => {
 
     const income  = useMemo(() => tabEntries.filter(e => e.type === 'income'  && e.entry_date <= cutoff).reduce((s, e) => s + e.amount, 0), [tabEntries, cutoff]);
     const outcome = useMemo(() => tabEntries.filter(e => e.type === 'outcome' && e.entry_date <= cutoff).reduce((s, e) => s + e.amount, 0), [tabEntries, cutoff]);
-    const net     = income - outcome;
+    const net        = income - outcome;
+    const displayBal = forecast ? forecast.current_balance : net;
+
+    const refreshForecast = () => {
+        if (linkedTab && activeTabId) fetchForecast(activeTabId, 3);
+    };
 
     const visibleEntries = useMemo(() =>
         tabEntries.filter(e => typeFilter === 'all' || e.type === typeFilter),
@@ -78,11 +83,16 @@ const Budget = ({ onBackToTasks }) => {
     const handleSave = async (data) => {
         if (editingEntry) {
             const ok = await updateEntry(editingEntry.id, data);
-            if (ok) { setShowForm(false); setEditingEntry(null); }
+            if (ok) { setShowForm(false); setEditingEntry(null); refreshForecast(); }
         } else {
             const ok = await createEntry({ ...data, tab_id: activeTabId });
-            if (ok) setShowForm(false);
+            if (ok) { setShowForm(false); refreshForecast(); }
         }
+    };
+    const handleDelete = async (id) => {
+        const ok = await deleteEntry(id);
+        if (ok) refreshForecast();
+        return ok;
     };
     const handleCancel  = () => { setShowForm(false); setEditingEntry(null); };
     const handleAddTab  = async () => {
@@ -124,11 +134,13 @@ const Budget = ({ onBackToTasks }) => {
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 24 }}>
                     <SummaryCard icon={TrendingUp}   label="Total Income"   amount={income}  color={SYS.success} sub="+" />
                     <SummaryCard icon={TrendingDown} label="Total Expenses" amount={outcome} color={SYS.accent}  sub="−" />
-                    <SummaryCard icon={Scale}        label="Balance"        amount={net}     color={net >= 0 ? SYS.primary : SYS.accent} sub={net >= 0 ? '+' : '−'} />
+                    <SummaryCard icon={Scale}        label="Balance"        amount={displayBal}
+                        color={displayBal >= 0 ? SYS.primary : SYS.accent} sub={displayBal >= 0 ? '+' : '−'}
+                        badge={forecast && linkedTab ? '＋bank' : null} />
                 </div>
-                <BudgetEntryList loading={loading} entries={entries} visibleEntries={visibleEntries} typeFilter={typeFilter} setTypeFilter={setTypeFilter} cutoff={cutoff} openEdit={openEdit} openDuplicate={openDuplicate} deleteEntry={deleteEntry} expandedDescriptionId={expandedDescriptionId} setExpandedDescriptionId={setExpandedDescriptionId} getDescriptionHistory={getDescriptionHistory} />
+                <BudgetEntryList loading={loading} entries={entries} visibleEntries={visibleEntries} typeFilter={typeFilter} setTypeFilter={setTypeFilter} cutoff={cutoff} openEdit={openEdit} openDuplicate={openDuplicate} deleteEntry={handleDelete} expandedDescriptionId={expandedDescriptionId} setExpandedDescriptionId={setExpandedDescriptionId} getDescriptionHistory={getDescriptionHistory} />
                 <ForecastSection predictions={predictions} onFetch={() => fetchPredictions(3, activeTabId)} loading={loading} />
-                <BalanceForecast forecast={forecast} onFetch={() => fetchForecast(activeTabId, 3)} loading={forecastLoading} linkedTab={linkedTab} />
+                <BalanceForecast forecast={forecast} onFetch={() => fetchForecast(activeTabId, 3)} onRefresh={() => refresh(activeTabId, 3)} loading={forecastLoading} linkedTab={linkedTab} lastUpdated={lastUpdated} />
             </div>
             <BudgetUploadModal show={showUpload} onClose={() => setShowUpload(false)} activeTabId={activeTabId} onComplete={fetchEntries} />
         </div>

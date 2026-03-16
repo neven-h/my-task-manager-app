@@ -13,6 +13,7 @@ const MobileBankHeader = ({
     handleCreateTab,
     exportTransactionsCSV,
     hasTransactions,
+    budgetLink,
 }) => {
     return (
         <div style={{
@@ -60,6 +61,19 @@ const MobileBankHeader = ({
                     <FileDown size={22} color={THEME.primary} />
                 </button>
             </div>
+
+            {budgetLink && budgetLink.budget_tab_name && (
+                <div style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '4px 10px', marginBottom: 8,
+                    borderRadius: 12, background: 'rgba(0,122,255,0.08)',
+                    fontSize: '0.72rem', fontWeight: 500, color: 'rgba(0,80,180,0.75)',
+                    letterSpacing: '0.01em',
+                }}>
+                    <span role="img" aria-label="linked">&#x1F517;</span>
+                    Linked to Budget: {budgetLink.budget_tab_name}
+                </div>
+            )}
 
             {tabsLoading ? (
                 <div style={{padding: '8px 0', color: THEME.muted, fontSize: '0.85rem'}}>

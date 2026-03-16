@@ -2,6 +2,7 @@
 import logging
 from flask import Blueprint, request, jsonify
 from config import get_db_connection, token_required
+from ._balance_forecast_helpers import invalidate_balance_forecast_cache
 
 logger = logging.getLogger(__name__)
 
@@ -28,66 +29,46 @@ _CREATE_BUDGET_TABLE_SQL = """
 
 
 def _ensure_table(conn):
-    """Guarantee budget_entries exists with all required columns.
-
-    Called at the top of every handler so the table is always present even
-    if init_db() failed silently on startup (e.g. transient DB connection
-    error during Railway deploy).  Also adds tab_id if the table predates
-    the budget-tabs feature.
-    """
+    """Guarantee budget_entries exists with all required columns."""
     from mysql.connector import Error as MySQLError
-    cursor = conn.cursor()
-    cursor.execute(_CREATE_BUDGET_TABLE_SQL)
-    # Migration: add tab_id if the table was created before this column existed
+    cur = conn.cursor()
+    cur.execute(_CREATE_BUDGET_TABLE_SQL)
     try:
-        cursor.execute("ALTER TABLE budget_entries ADD COLUMN tab_id INT")
-        cursor.execute("ALTER TABLE budget_entries ADD INDEX idx_budget_tab (tab_id)")
+        cur.execute("ALTER TABLE budget_entries ADD COLUMN tab_id INT")
+        cur.execute("ALTER TABLE budget_entries ADD INDEX idx_budget_tab (tab_id)")
     except MySQLError as e:
         if 'Duplicate column' not in str(e) and 'Duplicate key' not in str(e):
             logger.warning('budget_entries tab_id migration note: %s', e)
-    cursor.close()
+    cur.close()
 
 
-def _owner_filter(username):
-    """Return (where_clause, params) for owner-scoped queries."""
-    return ' AND owner = %s', [username]
+def _serialize(e):
+    """Convert Decimal/date fields for JSON serialisation."""
+    e['amount'] = float(e['amount'])
+    for f in ('entry_date', 'created_at', 'updated_at'):
+        if e.get(f):
+            e[f] = str(e[f])
+    return e
 
-
-# ── GET all entries ───────────────────────────────────────────────────────────
 
 @budget_bp.route('/api/budget', methods=['GET'])
 @token_required
 def get_budget_entries(payload):
     username = payload.get('username')
-    user_role = payload.get('role', 'limited')
-
     try:
         with get_db_connection() as conn:
             _ensure_table(conn)
             cursor = conn.cursor(dictionary=True)
-            where, params = _owner_filter(username)
-            sql = "SELECT * FROM budget_entries WHERE 1=1"
-            if where:
-                sql += where
-            sql += " ORDER BY entry_date ASC, id ASC"
-            cursor.execute(sql, params)
-            entries = cursor.fetchall()
-            # Convert Decimal → float and date → str for JSON serialisation
-            for e in entries:
-                e['amount'] = float(e['amount'])
-                if e.get('entry_date'):
-                    e['entry_date'] = str(e['entry_date'])
-                if e.get('created_at'):
-                    e['created_at'] = str(e['created_at'])
-                if e.get('updated_at'):
-                    e['updated_at'] = str(e['updated_at'])
+            cursor.execute(
+                "SELECT * FROM budget_entries WHERE owner = %s ORDER BY entry_date ASC, id ASC",
+                (username,),
+            )
+            entries = [_serialize(e) for e in cursor.fetchall()]
         return jsonify(entries)
     except Exception as exc:
         logger.exception('Failed to get budget entries')
         return jsonify({'error': 'An internal error occurred'}), 500
 
-
-# ── POST create entry ─────────────────────────────────────────────────────────
 
 @budget_bp.route('/api/budget', methods=['POST'])
 @token_required
@@ -129,24 +110,18 @@ def create_budget_entry(payload):
             conn.commit()
             new_id = cursor.lastrowid
             cursor.execute("SELECT * FROM budget_entries WHERE id = %s", (new_id,))
-            entry = cursor.fetchone()
-            entry['amount'] = float(entry['amount'])
-            entry['entry_date'] = str(entry['entry_date'])
-            entry['created_at'] = str(entry['created_at'])
-            entry['updated_at'] = str(entry['updated_at'])
+            entry = _serialize(cursor.fetchone())
+        invalidate_balance_forecast_cache(username)
         return jsonify(entry), 201
     except Exception as exc:
         logger.exception('Failed to create budget entry')
         return jsonify({'error': 'An internal error occurred'}), 500
 
 
-# ── PUT update entry ──────────────────────────────────────────────────────────
-
 @budget_bp.route('/api/budget/<int:entry_id>', methods=['PUT'])
 @token_required
 def update_budget_entry(payload, entry_id):
     username = payload.get('username')
-    user_role = payload.get('role', 'limited')
     data = request.get_json() or {}
 
     try:
@@ -185,25 +160,18 @@ def update_budget_entry(payload, entry_id):
             conn.commit()
 
             cursor.execute("SELECT * FROM budget_entries WHERE id = %s", (entry_id,))
-            updated = cursor.fetchone()
-            updated['amount'] = float(updated['amount'])
-            updated['entry_date'] = str(updated['entry_date'])
-            updated['created_at'] = str(updated['created_at'])
-            updated['updated_at'] = str(updated['updated_at'])
+            updated = _serialize(cursor.fetchone())
+        invalidate_balance_forecast_cache(username)
         return jsonify(updated)
     except Exception as exc:
         logger.exception('Failed to update budget entry')
         return jsonify({'error': 'An internal error occurred'}), 500
 
 
-# ── DELETE entry ──────────────────────────────────────────────────────────────
-
 @budget_bp.route('/api/budget/<int:entry_id>', methods=['DELETE'])
 @token_required
 def delete_budget_entry(payload, entry_id):
     username = payload.get('username')
-    user_role = payload.get('role', 'limited')
-
     try:
         with get_db_connection() as conn:
             _ensure_table(conn)
@@ -216,6 +184,7 @@ def delete_budget_entry(payload, entry_id):
                 return jsonify({'error': 'Access denied'}), 403
             cursor.execute("DELETE FROM budget_entries WHERE id = %s", (entry_id,))
             conn.commit()
+        invalidate_balance_forecast_cache(username)
         return jsonify({'success': True})
     except Exception as exc:
         logger.exception('Failed to delete budget entry')

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Plus, Upload } from 'lucide-react';
 import { THEME, FONT_STACK, BAUHAUS } from '../theme';
 import API_BASE from '../../config';
@@ -9,6 +9,7 @@ import useDebounce from '../../hooks/useDebounce';
 import useMobileBankCRUD from '../hooks/useMobileBankCRUD';
 import useMobileBankFilters from '../hooks/useMobileBankFilters';
 import useMobileTransactionSelection from '../hooks/useMobileTransactionSelection';
+import useTransactionBudgetLink from '../../hooks/useTransactionBudgetLink';
 import MobileBankHeader from '../components/bank/MobileBankHeader';
 import MobileBankFilters from '../components/bank/MobileBankFilters';
 import MobileBankStats from '../components/bank/MobileBankStats';
@@ -34,6 +35,9 @@ const MobileBankTransactionsView = ({ authUser, authRole, onBack }) => {
         fetchTransactionPredictions, formatMonthYear, fetchTransactions, fetchStats,
         insights, insightsLoading, fetchInsights
     } = useMobileBankData(activeTabId);
+
+    const { budgetLink, fetchBudgetLink } = useTransactionBudgetLink();
+    useEffect(() => { fetchBudgetLink(activeTabId); }, [activeTabId, fetchBudgetLink]);
 
     const [showAddForm, setShowAddForm] = useState(false);
     const [showUpload, setShowUpload] = useState(false);
@@ -104,9 +108,9 @@ const MobileBankTransactionsView = ({ authUser, authRole, onBack }) => {
         <div style={{ minHeight: '100vh', background: '#fff', fontFamily: FONT_STACK }}>
             <MobileBankHeader onBack={onBack} tabs={tabs} activeTabId={activeTabId} setActiveTabId={setActiveTabId}
                 tabsLoading={tabsLoading} handleCreateTab={handleCreateTab}
-                exportTransactionsCSV={exportTransactionsCSV} hasTransactions={filteredTransactions.length > 0} />
+                exportTransactionsCSV={exportTransactionsCSV} hasTransactions={filteredTransactions.length > 0}
+                budgetLink={budgetLink} />
 
-            {/* Upload bar */}
             {activeTabId && !sel.selectMode && (
                 <div style={{ padding: '0 16px', marginBottom: 4 }}>
                     <button onClick={() => setShowUpload(true)} style={{
@@ -135,12 +139,10 @@ const MobileBankTransactionsView = ({ authUser, authRole, onBack }) => {
                 selectMode={sel.selectMode} onToggleSelectMode={sel.selectMode ? sel.exitSelectMode : sel.enterSelectMode}
             />
 
-            {/* Balance Forecast */}
             {activeTabId && !sel.selectMode && (
                 <MobileTransactionBalanceForecast activeTabId={activeTabId} />
             )}
 
-            {/* Spending Insights — above transaction list for visibility */}
             {activeTabId && !sel.selectMode && (
                 <MobileBankInsights
                     insights={insights}
@@ -157,7 +159,6 @@ const MobileBankTransactionsView = ({ authUser, authRole, onBack }) => {
                 onBatchRename={handleBatchRename}
             />
 
-            {/* FAB (hidden in select mode) */}
             {!sel.selectMode && (
                 <button onClick={handleOpenAdd} style={{
                     position: 'fixed', bottom: '20px', right: '20px',
@@ -171,7 +172,6 @@ const MobileBankTransactionsView = ({ authUser, authRole, onBack }) => {
                 </button>
             )}
 
-            {/* Selection bar */}
             {sel.selectMode && (
                 <MobileBankSelectionBar
                     count={sel.selectedIds.size} onDelete={sel.deleteSelected} onExport={sel.exportSelected}
@@ -185,14 +185,8 @@ const MobileBankTransactionsView = ({ authUser, authRole, onBack }) => {
                 newTransaction={newTransaction} setNewTransaction={setNewTransaction}
                 loading={loading} onSave={handleSaveTransaction}
                 onClose={() => { setShowAddForm(false); setEditingTransaction(null); }} />
-
-            <MobileBankUpload
-                show={showUpload}
-                onClose={() => setShowUpload(false)}
-                tabs={tabs}
-                activeTabId={activeTabId}
-                onSaved={handleUploadSaved}
-            />
+            <MobileBankUpload show={showUpload} onClose={() => setShowUpload(false)}
+                tabs={tabs} activeTabId={activeTabId} onSaved={handleUploadSaved} />
         </div>
     );
 };

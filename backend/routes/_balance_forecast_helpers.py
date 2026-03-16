@@ -3,13 +3,27 @@
 Contains prediction helpers and timeline merging logic extracted from
 balance_forecast.py to keep the route file under 200 lines.
 """
+import logging
 import math
 import re
 from collections import defaultdict
 from datetime import datetime, timedelta
 
 from config import decrypt_field
-from .forecast_engine import predict_sequence, confidence_score
+from .forecast_engine import predict_sequence, confidence_score, _cache
+
+logger = logging.getLogger(__name__)
+
+
+def invalidate_balance_forecast_cache(username: str):
+    """Remove all balance forecast cache entries for a user."""
+    prefix = f"balancefc:{username}:"
+    to_delete = [k for k in _cache if k.startswith(prefix)]
+    for key in to_delete:
+        _cache.pop(key, None)
+    if to_delete:
+        logger.debug('Invalidated %d balance forecast cache entries for %s',
+                      len(to_delete), username)
 
 _MIN_ENTRIES = 2
 _MAX_INTERVAL_STD_RATIO = 0.8

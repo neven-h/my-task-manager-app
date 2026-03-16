@@ -34,7 +34,7 @@ const MobileBudgetView = ({ onBack }) => {
 
     const { tabs, fetchTabs } = useBudgetTabs();
     const { linkedTab, fetchLink, setLink, removeLink } = useBudgetLinks();
-    const { forecast, loading: forecastLoading, fetchForecast, clearForecast } = useBalanceForecast();
+    const { forecast, loading: forecastLoading, fetchForecast, clearForecast, lastUpdated, refresh } = useBalanceForecast();
 
     const [activeTabId, setActiveTabId]   = useState(null);
     const [cutoff, setCutoff]             = useState(today());
@@ -67,6 +67,10 @@ const MobileBudgetView = ({ onBack }) => {
         tabEntries.filter(e => typeFilter === 'all' || e.type === typeFilter),
         [tabEntries, typeFilter]);
 
+    const refreshForecast = () => {
+        if (linkedTab && activeTabId) fetchForecast(activeTabId, 3);
+    };
+
     const openAdd  = (type) => { setEditingEntry(null); setFormInitial(emptyForm(type)); setShowForm(true); };
     const openEdit = (entry) => {
         setEditingEntry(entry);
@@ -76,9 +80,14 @@ const MobileBudgetView = ({ onBack }) => {
     };
     const handleSave = async (data) => {
         const ok = editingEntry ? await updateEntry(editingEntry.id, data) : await createEntry({ ...data, tab_id: activeTabId });
-        if (ok) { setShowForm(false); setEditingEntry(null); }
+        if (ok) { setShowForm(false); setEditingEntry(null); refreshForecast(); }
     };
     const handleCancel = () => { setShowForm(false); setEditingEntry(null); };
+    const handleDelete = async (id) => {
+        const ok = await deleteEntry(id);
+        if (ok) refreshForecast();
+        return ok;
+    };
 
     return (
         <div style={{ minHeight: '100vh', background: IOS.bg, fontFamily: FONT_STACK, paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}>
@@ -162,7 +171,7 @@ const MobileBudgetView = ({ onBack }) => {
             <BudgetEntryListCard
                 visibleEntries={visibleEntries} loading={loading} entries={entries}
                 typeFilter={typeFilter} setTypeFilter={setTypeFilter} cutoff={cutoff}
-                openEdit={openEdit} deleteEntry={deleteEntry}
+                openEdit={openEdit} deleteEntry={handleDelete}
                 expandedDescriptionId={expandedDescriptionId}
                 setExpandedDescriptionId={setExpandedDescriptionId}
                 getDescriptionHistory={getDescriptionHistory}
@@ -171,7 +180,7 @@ const MobileBudgetView = ({ onBack }) => {
             <ForecastSection predictions={predictions} onFetch={() => fetchPredictions(3, activeTabId)} loading={loading} />
 
             <MobileBalanceForecast forecast={forecast} onFetch={() => fetchForecast(activeTabId, 3)}
-                loading={forecastLoading} linkedTab={linkedTab} />
+                onRefresh={() => refresh(activeTabId, 3)} loading={forecastLoading} linkedTab={linkedTab} lastUpdated={lastUpdated} />
 
             {showForm && (
                 <EntrySheet initial={formInitial} onSave={handleSave} onCancel={handleCancel} loading={loading} />

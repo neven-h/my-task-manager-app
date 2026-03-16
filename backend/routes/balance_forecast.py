@@ -31,8 +31,9 @@ def balance_forecast(payload):
         if not tab_id:
             return jsonify({'error': 'tab_id is required'}), 400
 
+        force_refresh = request.args.get('refresh') == '1'
         cache_key = f"balancefc:{username}:{tab_id}:{months}"
-        if (cached := cache_get(cache_key)) is not None:
+        if not force_refresh and (cached := cache_get(cache_key)) is not None:
             return jsonify(cached)
 
         today = datetime.now().date()
@@ -166,6 +167,7 @@ def balance_forecast(payload):
             'history_timeline': history_months,
             'monthly_actuals': monthly_actuals if link else [],
             'as_of': today.isoformat(),
+            'last_updated': datetime.now().isoformat(),
             'linked_tab': link,
             'timeline': timeline,
             'forecast_end_balance': round(

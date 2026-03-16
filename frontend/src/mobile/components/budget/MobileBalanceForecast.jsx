@@ -1,8 +1,16 @@
-import React, { useState, useMemo } from 'react';
-import { TrendingUp } from 'lucide-react';
-import HistoryRow from './MobileHistoryRow';
-import PredRow from './MobilePredRow';
+import React, { useState, useMemo, useEffect } from 'react';
+import { TrendingUp, RefreshCw } from 'lucide-react';
 import MonthCard from './MobileMonthCard';
+import MobileForecastTimeline from './MobileForecastTimeline';
+import relativeTime from '../../../utils/relativeTime';
+
+// Inject spin keyframe once
+if (typeof document !== 'undefined' && !document.getElementById('bf-spin')) {
+    const s = document.createElement('style');
+    s.id = 'bf-spin';
+    s.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
+    document.head.appendChild(s);
+}
 
 const IOS = {
     bg: '#F2F2F7', card: '#fff', separator: 'rgba(0,0,0,0.08)',
@@ -14,9 +22,17 @@ const fmt = (n) => new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, 
 const round2 = (n) => Math.round(n * 100) / 100;
 const HIST_SHOW = 3;
 
-const MobileBalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
+const MobileBalanceForecast = ({ forecast, onFetch, onRefresh, loading, linkedTab, lastUpdated }) => {
     const [open, setOpen]               = useState(false);
     const [showAllHist, setShowAllHist] = useState(false);
+    const [timeAgo, setTimeAgo]         = useState(null);
+
+    useEffect(() => {
+        setTimeAgo(relativeTime(lastUpdated));
+        if (!lastUpdated) return;
+        const id = setInterval(() => setTimeAgo(relativeTime(lastUpdated)), 30_000);
+        return () => clearInterval(id);
+    }, [lastUpdated]);
 
     const tl   = useMemo(() => forecast?.timeline || [], [forecast]);
     const hist = useMemo(() => forecast?.history_timeline || [], [forecast]);
@@ -81,6 +97,12 @@ const MobileBalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
                         {tl.length} ahead
                     </span>
                 )}
+                {open && (
+                    <span onClick={e => { e.stopPropagation(); onRefresh(); }}
+                        style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', padding: 4 }}>
+                        <RefreshCw size={13} style={{ color: open ? '#fff' : IOS.blue, animation: loading ? 'spin 1s linear infinite' : 'none' }} />
+                    </span>
+                )}
             </button>
 
             {open && (
@@ -129,6 +151,10 @@ const MobileBalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
                                     </b>
                                 </div>
                             )}
+                            <div style={{ marginTop: 6, fontSize: '0.68rem', color: IOS.muted, display: 'flex', justifyContent: 'center', gap: 10 }}>
+                                {forecast.linked_tab && <span>🔗 {linkedTab?.name || forecast.linked_tab}</span>}
+                                {timeAgo && <span>Updated {timeAgo}</span>}
+                            </div>
                         </div>
 
                         {/* ── Monthly Outlook ── */}
@@ -143,51 +169,12 @@ const MobileBalanceForecast = ({ forecast, onFetch, loading, linkedTab }) => {
                             </>
                         )}
 
-                        {/* ── History ── */}
-                        {hist.length > 0 && (<>
-                            <div style={{ padding: '6px 16px', background: '#eff6ff', borderBottom: `0.5px solid #dbeafe`, fontSize: '0.65rem', fontWeight: 700, color: '#1e40af', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <span>Historical (actual)</span>
-                                {!showAllHist && hiddenHistCount > 0 && (
-                                    <button type="button" onClick={() => setShowAllHist(true)}
-                                        style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: '0.65rem', fontWeight: 700, color: '#1e40af', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
-                                        +{hiddenHistCount} more
-                                    </button>
-                                )}
-                                {showAllHist && hiddenHistCount > 0 && (
-                                    <button type="button" onClick={() => setShowAllHist(false)}
-                                        style={{ marginLeft: 'auto', background: 'none', border: 'none', fontSize: '0.65rem', fontWeight: 700, color: '#1e40af', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
-                                        Show less
-                                    </button>
-                                )}
-                            </div>
-                            {visHist.map((m, i) => (
-                                <HistoryRow key={m.month} m={m} isLast={i === visHist.length - 1} />
-                            ))}
-                        </>)}
-
-                        {/* ── TODAY divider ── */}
-                        {(hist.length > 0 || tl.length > 0) && (
-                            <div style={{ padding: '8px 16px', background: '#fef9c3', borderTop: `0.5px solid #fde68a`, borderBottom: `0.5px solid #fde68a`, fontSize: '0.72rem', fontWeight: 800, color: '#92400e', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <span>▶ Today</span>
-                                <span style={{ fontWeight: 500 }}>₪{fmt(forecast.current_balance)}</span>
-                            </div>
-                        )}
-
-                        {/* ── Individual predictions ── */}
-                        {tl.length > 0 && (<>
-                            <div style={{ padding: '6px 16px', background: '#f9fafb', borderBottom: `0.5px solid ${IOS.separator}`, fontSize: '0.65rem', fontWeight: 700, color: IOS.muted, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                                Upcoming · {tl.length} items
-                            </div>
-                            {tl.map((p, idx) => (
-                                <PredRow key={idx} p={p} isLast={idx === tl.length - 1} />
-                            ))}
-                        </>)}
-
-                        {tl.length === 0 && hist.length === 0 && (
-                            <div style={{ padding: 20, textAlign: 'center', color: IOS.muted, fontSize: '0.85rem' }}>
-                                No data yet — add budget entries and link a bank tab.
-                            </div>
-                        )}
+                        <MobileForecastTimeline
+                            hist={hist} tl={tl} visHist={visHist}
+                            hiddenHistCount={hiddenHistCount}
+                            showAllHist={showAllHist} setShowAllHist={setShowAllHist}
+                            forecast={forecast}
+                        />
                     </>)}
                 </div>
             )}

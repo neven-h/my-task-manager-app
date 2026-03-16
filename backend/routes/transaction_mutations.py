@@ -5,6 +5,7 @@ from config import (
 )
 from mysql.connector import Error
 from .forecast_engine import invalidate_prediction_cache
+from ._balance_forecast_helpers import invalidate_balance_forecast_cache
 
 transaction_mutations_bp = Blueprint('transaction_mutations', __name__)
 
@@ -47,6 +48,7 @@ def delete_transaction(payload, transaction_id):
                 transaction_ids=str(transaction_id)
             )
             invalidate_prediction_cache(username)
+            invalidate_balance_forecast_cache(username)
 
             return jsonify({'message': 'Transaction deleted successfully'})
 
@@ -93,6 +95,14 @@ def delete_month_transactions(payload, month_year):
                 transaction_ids=f"Count: {deleted_count}"
             )
             invalidate_prediction_cache(username, tab_id)
+            # Invalidate balance forecast if this tab is linked to a budget tab
+            cursor2 = connection.cursor(dictionary=True)
+            cursor2.execute(
+                "SELECT owner FROM budget_bank_links WHERE transaction_tab_id = %s",
+                (tab_id,),
+            )
+            for link_row in cursor2.fetchall():
+                invalidate_balance_forecast_cache(link_row['owner'])
 
             return jsonify({
                 'message': f'{deleted_count} transactions deleted successfully'

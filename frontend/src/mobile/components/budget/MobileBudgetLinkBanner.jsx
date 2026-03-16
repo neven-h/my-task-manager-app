@@ -8,13 +8,19 @@ const IOS = {
     card: '#fff', radius: 16, spring: 'cubic-bezier(0.22,1,0.36,1)',
 };
 
+const formatDate = (iso) => {
+    if (!iso) return null;
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+};
+
 /**
  * MobileBudgetLinkBanner — iOS-styled link/unlink banner for budget ↔ bank tabs.
- * NOTE: Requires MobileBudgetView to have tab support before wiring in.
  */
 const MobileBudgetLinkBanner = ({ budgetTabId, linkedTab, onSetLink, onRemoveLink }) => {
     const [txTabs, setTxTabs] = useState([]);
     const [expanded, setExpanded] = useState(false);
+    const [syncInfo, setSyncInfo] = useState(null);
 
     useEffect(() => {
         if (!expanded) return;
@@ -24,25 +30,46 @@ const MobileBudgetLinkBanner = ({ budgetTabId, linkedTab, onSetLink, onRemoveLin
             .catch(() => setTxTabs([]));
     }, [expanded]);
 
+    useEffect(() => {
+        if (!linkedTab || !budgetTabId) { setSyncInfo(null); return; }
+        fetch(`${API_BASE}/budget-tabs/${budgetTabId}/sync-status`, { headers: getAuthHeaders() })
+            .then(r => r.ok ? r.json() : null)
+            .then(d => setSyncInfo(d && d.linked ? d : null))
+            .catch(() => setSyncInfo(null));
+    }, [linkedTab, budgetTabId]);
+
     if (!budgetTabId) return null;
 
     if (linkedTab) {
+        const parts = [];
+        if (syncInfo) {
+            parts.push(`${syncInfo.transaction_count} transactions`);
+            const fmt = formatDate(syncInfo.last_transaction_date);
+            if (fmt) parts.push(`Last updated ${fmt}`);
+        }
         return (
-            <div style={{
-                display: 'flex', alignItems: 'center', gap: 8,
-                margin: '0 16px 12px', padding: '10px 14px',
-                background: IOS.card, borderRadius: IOS.radius,
-                boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-            }}>
-                <Link2 size={14} color={IOS.blue} />
-                <span style={{ fontSize: '0.82rem', fontWeight: 500, color: IOS.muted }}>Linked to</span>
-                <span style={{ fontSize: '0.82rem', fontWeight: 600, color: IOS.blue, flex: 1 }}>
-                    {linkedTab.transaction_tab_name}
-                </span>
-                <button type="button" onClick={onRemoveLink}
-                    style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer' }}>
-                    <X size={14} color={IOS.muted} />
-                </button>
+            <div style={{ margin: '0 16px 12px' }}>
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '10px 14px',
+                    background: IOS.card, borderRadius: IOS.radius,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                }}>
+                    <Link2 size={14} color={IOS.blue} />
+                    <span style={{ fontSize: '0.82rem', fontWeight: 500, color: IOS.muted }}>Linked to</span>
+                    <span style={{ fontSize: '0.82rem', fontWeight: 600, color: IOS.blue, flex: 1 }}>
+                        {linkedTab.transaction_tab_name}
+                    </span>
+                    <button type="button" onClick={onRemoveLink}
+                        style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer' }}>
+                        <X size={14} color={IOS.muted} />
+                    </button>
+                </div>
+                {parts.length > 0 && (
+                    <div style={{ padding: '4px 14px 0', fontSize: '0.72rem', color: IOS.muted }}>
+                        {parts.join(' \u00B7 ')}
+                    </div>
+                )}
             </div>
         );
     }
