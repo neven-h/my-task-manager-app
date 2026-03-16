@@ -1,5 +1,5 @@
-import React from 'react';
-import { Edit2, Trash2 } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { MoreVertical, Edit2, Trash2 } from 'lucide-react';
 import { useBankTransactionContext } from '../../context/BankTransactionContext';
 import { formatCurrency } from '../../utils/formatCurrency';
 import TransactionEditRow from './TransactionEditRow';
@@ -17,6 +17,17 @@ const TransactionRow = ({ transaction }) => {
     const isEditing = editingTransaction?.id === t.id;
     const isExpanded = expandedDescriptionId === t.id;
     const isSelected = selectedIds.has(t.id);
+    const [menuOpen, setMenuOpen] = useState(false);
+    const menuRef = useRef(null);
+
+    useEffect(() => {
+        if (!menuOpen) return;
+        const handleClickOutside = (e) => {
+            if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [menuOpen]);
 
     return (
         <React.Fragment>
@@ -44,14 +55,24 @@ const TransactionRow = ({ transaction }) => {
                             {formatCurrency(t.amount)}
                         </td>
                         <td style={{ padding: '0.65rem 0.75rem', textAlign: 'center' }}>
-                            <button onClick={() => setEditingTransaction({ ...t })}
-                                style={{ padding: '0.4rem 0.6rem', background: colors.accent, color: '#fff', border: `2px solid ${colors.border}`, cursor: 'pointer', marginRight: '0.4rem', fontFamily: '"Inter", sans-serif' }}>
-                                <Edit2 size={14} />
-                            </button>
-                            <button onClick={() => handleDeleteTransaction(t.id)}
-                                style={{ padding: '0.4rem 0.6rem', background: colors.accent, color: '#fff', border: `2px solid ${colors.border}`, cursor: 'pointer', fontFamily: '"Inter", sans-serif' }}>
-                                <Trash2 size={14} />
-                            </button>
+                            <div ref={menuRef} style={{ position: 'relative', display: 'inline-block' }}>
+                                <button onClick={() => setMenuOpen(o => !o)}
+                                    style={{ padding: '0.4rem 0.5rem', background: menuOpen ? colors.accent : '#fff', color: menuOpen ? '#fff' : colors.text, border: `2px solid ${colors.border}`, cursor: 'pointer', fontFamily: '"Inter", sans-serif', lineHeight: 0 }}>
+                                    <MoreVertical size={15} />
+                                </button>
+                                {menuOpen && (
+                                    <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 3px)', zIndex: 200, background: '#fff', border: `2px solid ${colors.border}`, minWidth: 130, boxShadow: '3px 3px 0 rgba(0,0,0,0.15)' }}>
+                                        <button onClick={() => { setEditingTransaction({ ...t }); setMenuOpen(false); }}
+                                            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.55rem 0.85rem', background: 'none', border: 'none', borderBottom: `1px solid ${colors.border}`, cursor: 'pointer', fontFamily: '"Inter", sans-serif', fontSize: '0.85rem', fontWeight: 600, color: colors.text, textAlign: 'left' }}>
+                                            <Edit2 size={13} /> Edit
+                                        </button>
+                                        <button onClick={() => { handleDeleteTransaction(t.id); setMenuOpen(false); }}
+                                            style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.55rem 0.85rem', background: 'none', border: 'none', cursor: 'pointer', fontFamily: '"Inter", sans-serif', fontSize: '0.85rem', fontWeight: 600, color: colors.accent, textAlign: 'left' }}>
+                                            <Trash2 size={13} /> Delete
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </td>
                     </>
                 )}

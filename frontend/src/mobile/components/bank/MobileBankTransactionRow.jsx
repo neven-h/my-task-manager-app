@@ -55,14 +55,9 @@ const MobileBankTransactionRow = ({ transaction, onEdit, onDelete, isLast, selec
                     {isIncome ? '+' : ''}{formatCurrency(transaction.amount)}
                 </div>
                 {!selectMode && (
-                    <div style={{ display: 'flex', gap: 0, flexShrink: 0 }}>
-                        <button onClick={() => onEdit(transaction)} style={{ background: 'none', border: 'none', padding: '8px', cursor: 'pointer', minWidth: 36, minHeight: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Edit2 size={15} color="#C7C7CC" />
-                        </button>
-                        <button onClick={handleDelete} style={{ background: 'none', border: 'none', padding: '8px', cursor: 'pointer', minWidth: 36, minHeight: 36, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Trash2 size={15} color="#FF3B30" />
-                        </button>
-                    </div>
+                    <button onClick={() => onEdit(transaction)} style={{ background: 'none', border: 'none', padding: '8px', cursor: 'pointer', minWidth: 36, minHeight: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Edit2 size={15} color="#C7C7CC" />
+                    </button>
                 )}
             </div>
         </div>

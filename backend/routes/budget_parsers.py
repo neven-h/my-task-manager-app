@@ -3,20 +3,37 @@ import os, re
 import pandas as pd
 
 _DATE_RE = re.compile(r'^\d{2}[./]\d{2}[./]\d{2,4}$|^\d{4}-\d{2}-\d{2}(\s|$)')
-_DATE_NAMES = {'תאריך', 'תאריך ערך', 'תאריך פעולה', 'date'}
-_DESC_NAMES = {'תיאור', 'פרטים', 'פעולה', 'תאור', 'בית עסק', 'description', 'details'}
+_DATE_NAMES = {'תאריך', 'תאריך ערך', 'תאריך פעולה', 'יום ערך', 'date'}
+_DESC_NAMES = {
+    'תיאור', 'תיאור התנועה', 'פרטים', 'פעולה', 'תאור',
+    'בית עסק', 'description', 'details',
+}
 _CREDIT_NAMES = {'זכות', 'credit', 'הכנסה'}
 _DEBIT_NAMES = {'חובה', 'debit', 'הוצאה'}
-_AMOUNT_NAMES = {'סכום', 'amount', 'סכום בש"ח', 'סכום עסקה'}
+_AMOUNT_NAMES = {
+    'סכום', 'amount', 'סכום בש"ח', 'סכום עסקה',
+    '₪ זכות/חובה', 'זכות/חובה',
+}
 _CATEGORY_NAMES = {'קטגוריה', 'category', 'סוג'}
 
 
 def _find_col(df_columns, name_set):
-    """Find first column whose lowered/stripped name matches any in name_set."""
+    """Find first column whose lowered/stripped name matches any in name_set.
+
+    Tries exact match first, then substring containment as fallback.
+    """
+    lower_names = {n.lower() for n in name_set}
+    # Exact match
     for col in df_columns:
         cleaned = re.sub(r'[\r\n]+', ' ', str(col)).strip().lower()
-        if cleaned in {n.lower() for n in name_set}:
+        if cleaned in lower_names:
             return col
+    # Substring fallback (e.g. 'זכות' matches '₪ זכות/חובה')
+    for col in df_columns:
+        cleaned = re.sub(r'[\r\n]+', ' ', str(col)).strip().lower()
+        for n in lower_names:
+            if n in cleaned or cleaned in n:
+                return col
     return None
 
 
@@ -26,6 +43,7 @@ def _load_df(file_path):
 
     HEADER_KEYWORDS = {
         "תאריך", "סכום", "תיאור", "פרטים", "חובה", "זכות", "יתרה",
+        "תיאור התנועה", "זכות/חובה", "יום ערך", "אסמכתה", "ערוץ ביצוע",
         "date", "amount", "description", "balance", "credit", "debit",
     }
 
@@ -102,6 +120,13 @@ def _detect_columns(df):
     credit_col = _find_col(df.columns, _CREDIT_NAMES)
     debit_col = _find_col(df.columns, _DEBIT_NAMES)
     category_col = _find_col(df.columns, _CATEGORY_NAMES)
+
+    # If credit/debit resolved to the same column as amount, clear them
+    # (happens when a combined column like '₪ זכות/חובה' matches all three)
+    if amount_col and credit_col == amount_col:
+        credit_col = None
+    if amount_col and debit_col == amount_col:
+        debit_col = None
 
     if not date_col or (not amount_col and not (credit_col or debit_col)):
         for col in df.columns:

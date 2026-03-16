@@ -25,9 +25,16 @@ const TransactionEditRow = ({ editingTransaction, setEditingTransaction, isSelec
             </select>
         </td>
         <td style={{ padding: '0.5rem' }}>
-            <input type="number" step="0.01" value={editingTransaction.amount}
-                onChange={(e) => setEditingTransaction({ ...editingTransaction, amount: parseFloat(e.target.value) })}
-                style={{ padding: '0.4rem', border: `2px solid ${colors.border}`, width: '100%', textAlign: 'right', fontSize: '0.9rem', fontFamily: '"Inter", sans-serif' }} />
+            <div style={{ display: 'flex', gap: 2 }}>
+                <input type="number" step="0.01" value={editingTransaction.amount}
+                    onChange={(e) => setEditingTransaction({ ...editingTransaction, amount: e.target.value })}
+                    style={{ padding: '0.4rem', border: `2px solid ${colors.border}`, flex: 1, minWidth: 0, textAlign: 'right', fontSize: '0.9rem', fontFamily: '"Inter", sans-serif', color: parseFloat(editingTransaction.amount) < 0 ? '#d00' : 'inherit' }} />
+                <button type="button" title="Toggle sign"
+                    onClick={() => { const v = parseFloat(editingTransaction.amount); if (!isNaN(v)) setEditingTransaction({ ...editingTransaction, amount: String(-v) }); }}
+                    style={{ padding: '0.4rem 0.5rem', border: `2px solid ${colors.border}`, background: colors.card, cursor: 'pointer', fontWeight: '700', fontSize: '1rem', color: colors.text, fontFamily: '"Inter", sans-serif', flexShrink: 0 }}>
+                    ±
+                </button>
+            </div>
         </td>
         <td style={{ padding: '0.5rem', textAlign: 'center' }}>
             <button onClick={() => handleUpdateTransaction(transactionId)}
