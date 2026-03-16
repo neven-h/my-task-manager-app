@@ -5,6 +5,7 @@ import useIOSTaskForm from './hooks/useIOSTaskForm';
 import IOSDiscardConfirm from './IOSDiscardConfirm';
 import { THEME, FONT_STACK } from './theme';
 import sanitizeUrl from '../utils/sanitizeUrl';
+import storage, { STORAGE_KEYS } from '../utils/storage';
 
 const labelStyle = {
     display: 'block', marginBottom: '8px', fontWeight: 700,
@@ -114,7 +115,9 @@ const IOSTaskFormModal = () => {
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
                                     {visibleAttachments.map(att => {
                                         const baseOrigin = apiBase.replace(/\/api\/?$/, '');
-                                        const fullUrl = att.cloudinary_url || (att.url?.startsWith('http') ? att.url : (att.url?.startsWith('/') ? baseOrigin + att.url : `${apiBase}/tasks/attachments/${att.id}/file`));
+                                        let fullUrl = att.cloudinary_url || (att.url?.startsWith('http') ? att.url : (att.url?.startsWith('/') ? baseOrigin + att.url : `${apiBase}/tasks/attachments/${att.id}/file`));
+                                        const _tok = storage.get(STORAGE_KEYS.AUTH_TOKEN);
+                                        if (!fullUrl.startsWith('http') || fullUrl.includes('/api/')) { if (_tok) fullUrl += `${fullUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(_tok)}`; }
                                         return (
                                             <div key={att.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', border: '2px solid #000', padding: '6px 10px', fontSize: '0.85rem', fontWeight: 600 }}>
                                                 <a href={sanitizeUrl(fullUrl)} target="_blank" rel="noopener noreferrer">{att.filename}</a>

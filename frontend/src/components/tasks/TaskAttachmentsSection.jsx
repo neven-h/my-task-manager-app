@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { Paperclip, X } from 'lucide-react';
 import API_BASE from '../../config';
+import storage, { STORAGE_KEYS } from '../../utils/storage';
 
 const TaskAttachmentsSection = ({ existingAttachments, removedAttachmentIds, newAttachments, onAddFile, onRemoveExisting, onRemoveNew, onPaste }) => {
     const fileInputRef = useRef(null);
@@ -26,7 +27,9 @@ const TaskAttachmentsSection = ({ existingAttachments, removedAttachmentIds, new
                 <div className="task-attachments-list" style={{ marginBottom: '10px' }}>
                     {visibleExisting.map(att => {
                         const baseOrigin = API_BASE.replace(/\/api\/?$/, '');
-                        const fullUrl = att.url?.startsWith('http') ? att.url : (att.url?.startsWith('/') ? baseOrigin + att.url : `${API_BASE}/${att.url || ''}`);
+                        let fullUrl = att.url?.startsWith('http') ? att.url : (att.url?.startsWith('/') ? baseOrigin + att.url : `${API_BASE}/${att.url || ''}`);
+                        const _tok = storage.get(STORAGE_KEYS.AUTH_TOKEN);
+                        if (!att.url?.startsWith('http') && _tok) { fullUrl += `${fullUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(_tok)}`; }
                         const isImage = (att.content_type || '').startsWith('image/');
                         return (
                             <div key={att.id} className="task-attachment-chip">

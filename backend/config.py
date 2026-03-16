@@ -127,7 +127,7 @@ app.config['MAIL_USE_SSL'] = os.getenv('MAIL_USE_SSL', 'True').lower() == 'true'
 app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_DEFAULT_SENDER', os.getenv('MAIL_USERNAME'))
-app.config['MAIL_TIMEOUT'] = int(os.getenv('MAIL_TIMEOUT', 10))  # seconds — prevent Gunicorn worker kill
+app.config['MAIL_TIMEOUT'] = int(os.getenv('MAIL_TIMEOUT', '10'))  # seconds — prevent Gunicorn worker kill
 mail = Mail(app)
 
 # ==================== CLOUDINARY ====================
