@@ -188,6 +188,29 @@ def get_drafts(payload):
             for draft in drafts:
                 serialize_task(draft)
 
+            if drafts:
+                draft_ids = [d['id'] for d in drafts]
+                placeholders = ','.join(['%s'] * len(draft_ids))
+                cursor.execute(
+                    f"SELECT id, task_id, filename, content_type, file_size, cloudinary_url FROM task_attachments WHERE task_id IN ({placeholders}) ORDER BY task_id, id",
+                    draft_ids
+                )
+                att_rows = cursor.fetchall()
+                att_by_task = {}
+                for r in att_rows:
+                    tid = r['task_id']
+                    if tid not in att_by_task:
+                        att_by_task[tid] = []
+                    att_by_task[tid].append({
+                        'id': r['id'],
+                        'filename': r['filename'],
+                        'content_type': r.get('content_type') or '',
+                        'file_size': r.get('file_size'),
+                        'url': r.get('cloudinary_url') or f"/api/tasks/attachments/{r['id']}/file",
+                    })
+                for draft in drafts:
+                    draft['attachments'] = att_by_task.get(draft['id'], [])
+
             return jsonify(drafts)
 
     except Error as e:

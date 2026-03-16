@@ -137,9 +137,21 @@ def upload_task_attachment(payload, task_id):
 
 
 @attachments_bp.route('/api/tasks/attachments/<int:attachment_id>/file', methods=['GET'])
-@token_required
-def serve_task_attachment(payload, attachment_id):
-    """Serve an attachment file by id."""
+def serve_task_attachment(attachment_id):
+    """Serve an attachment file by id.
+
+    Accepts auth via Authorization header OR ?token= query param.
+    The query-param form is needed because <img src> / <a href> cannot
+    send custom headers.
+    """
+    from config import verify_jwt_token
+    token = request.headers.get('Authorization') or request.args.get('token')
+    if not token:
+        return jsonify({'error': 'Authentication token is missing'}), 401
+    result = verify_jwt_token(token)
+    if not result['valid']:
+        return jsonify({'error': result.get('error', 'Invalid token')}), 401
+    payload = result['payload']
     username = payload.get('username')
     user_role = payload.get('role', 'limited')
     try:

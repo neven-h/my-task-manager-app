@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { X, Plus, Trash2, Paperclip } from 'lucide-react';
 import CustomAutocomplete from '../components/CustomAutocomplete';
 import useIOSTaskForm from './hooks/useIOSTaskForm';
 import IOSDiscardConfirm from './IOSDiscardConfirm';
 import { THEME, FONT_STACK } from './theme';
 import sanitizeUrl from '../utils/sanitizeUrl';
+import storage, { STORAGE_KEYS } from '../utils/storage';
 
 const labelStyle = {
     display: 'block', marginBottom: '8px', fontWeight: 700,
@@ -19,6 +20,12 @@ const IOSTaskFormModal = () => {
         visibleAttachments, allCategories, allTags, clients, loading, isAdmin, deleteTask,
         closeFormModal, apiBase
     } = useIOSTaskForm();
+
+    const autoSize = useCallback((el) => {
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = el.scrollHeight + 'px';
+    }, []);
 
     if (!isOpen) return null;
 
@@ -47,7 +54,9 @@ const IOSTaskFormModal = () => {
                         </div>
                         <div style={{ marginBottom: '16px' }}>
                             <label style={labelStyle}>Description</label>
-                            <textarea rows={4} value={formData.description} onChange={e => update('description', e.target.value)} placeholder="Task description..." />
+                            <textarea rows={1} value={formData.description} ref={autoSize}
+                                onChange={e => { update('description', e.target.value); autoSize(e.target); }}
+                                placeholder="Task description..." style={{ minHeight: '44px', maxHeight: '300px', overflow: 'auto' }} />
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '16px' }}>
                             <div><label style={labelStyle}>Date</label><input type="date" value={formData.task_date} onChange={e => update('task_date', e.target.value)} /></div>
@@ -99,7 +108,9 @@ const IOSTaskFormModal = () => {
                         </div>
                         <div style={{ marginBottom: '16px' }}>
                             <label style={labelStyle}>Notes</label>
-                            <textarea rows={3} value={formData.notes} onChange={e => update('notes', e.target.value)} placeholder="Additional notes..." />
+                            <textarea rows={1} value={formData.notes} ref={autoSize}
+                                onChange={e => { update('notes', e.target.value); autoSize(e.target); }}
+                                placeholder="Additional notes..." style={{ minHeight: '44px', maxHeight: '300px', overflow: 'auto' }} />
                         </div>
                         <div style={{ marginBottom: '16px' }}>
                             <label style={labelStyle}>Attachments</label>
@@ -114,7 +125,9 @@ const IOSTaskFormModal = () => {
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
                                     {visibleAttachments.map(att => {
                                         const baseOrigin = apiBase.replace(/\/api\/?$/, '');
-                                        const fullUrl = att.cloudinary_url || (att.url?.startsWith('http') ? att.url : (att.url?.startsWith('/') ? baseOrigin + att.url : `${apiBase}/tasks/attachments/${att.id}/file`));
+                                        let fullUrl = att.cloudinary_url || (att.url?.startsWith('http') ? att.url : (att.url?.startsWith('/') ? baseOrigin + att.url : `${apiBase}/tasks/attachments/${att.id}/file`));
+                                        const _tok = storage.get(STORAGE_KEYS.AUTH_TOKEN);
+                                        if (!fullUrl.startsWith('http') || fullUrl.includes('/api/')) { if (_tok) fullUrl += `${fullUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(_tok)}`; }
                                         return (
                                             <div key={att.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', border: '2px solid #000', padding: '6px 10px', fontSize: '0.85rem', fontWeight: 600 }}>
                                                 <a href={sanitizeUrl(fullUrl)} target="_blank" rel="noopener noreferrer">{att.filename}</a>

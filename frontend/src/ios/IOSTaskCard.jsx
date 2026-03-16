@@ -5,6 +5,7 @@ import useSwipeGesture from './hooks/useSwipeGesture';
 import { THEME, FONT_STACK } from './theme';
 import IOSTaskCardMeta from './IOSTaskCardMeta';
 import IOSTaskCardActions from './IOSTaskCardActions';
+import IOSTaskCardAttachments from './IOSTaskCardAttachments';
 
 const SNAP_WIDTH = 88;
 
@@ -118,6 +119,7 @@ const IOSTaskCard = ({ task }) => {
                             </p>
                         )}
                         <IOSTaskCardMeta task={task} />
+                        <IOSTaskCardAttachments attachments={task.attachments} />
                     </div>
                 </div>
             </div>
