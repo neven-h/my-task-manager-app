@@ -13,7 +13,7 @@ const fmt = (n) =>
 
 export const EMPTY_HISTORY = [];
 
-export const EntryRow = ({ entry, cutoff, onEdit, onDuplicate, onDelete, loading, isExpanded, onToggleExpand, history }) => {
+export const EntryRow = ({ entry, cutoff, onEdit, onDuplicate, onDelete, loading, isExpanded, onToggleExpand, history, selectMode, isSelected, onToggleSelect }) => {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const isPast = entry.entry_date <= cutoff;
     const isIncome = entry.type === 'income';
@@ -28,6 +28,15 @@ export const EntryRow = ({ entry, cutoff, onEdit, onDuplicate, onDelete, loading
                 borderBottom: `1px solid ${SYS.border}`,
                 opacity: isPast ? 1 : 0.4,
             }}>
+                {/* Select checkbox */}
+                {selectMode && (
+                    <div onClick={(e) => { e.stopPropagation(); onToggleSelect(entry.id); }}
+                        style={{ width: 20, height: 20, borderRadius: 4, border: `2px solid ${isSelected ? SYS.success : SYS.border}`,
+                            background: isSelected ? SYS.success : '#fff', cursor: 'pointer', flexShrink: 0,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.7rem', fontWeight: 800 }}>
+                        {isSelected && '✓'}
+                    </div>
+                )}
                 {/* Type indicator */}
                 <div style={{ width: 8, height: 8, background: amountColor, flexShrink: 0 }} />
 

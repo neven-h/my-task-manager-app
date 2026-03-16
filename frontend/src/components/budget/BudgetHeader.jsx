@@ -9,7 +9,7 @@ const SYS = {
     border:  '#000',
 };
 
-export const BudgetHeader = ({ onBackToTasks, exportBudgetCSV, activeTabId, entriesCount, openAdd, onUpload }) => (
+export const BudgetHeader = ({ onBackToTasks, exportBudgetCSV, activeTabId, entriesCount, openAdd, onUpload, selectMode, onToggleSelectMode }) => (
     <div style={{
         background: SYS.bg,
         borderBottom: `3px solid ${SYS.border}`,
@@ -32,6 +32,15 @@ export const BudgetHeader = ({ onBackToTasks, exportBudgetCSV, activeTabId, entr
             Budget Planner
         </h1>
         <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={onToggleSelectMode}
+                style={{
+                    padding: '7px 14px', border: `2px solid ${SYS.border}`,
+                    background: selectMode ? '#000' : '#fff', color: selectMode ? '#fff' : SYS.primary,
+                    fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer',
+                    textTransform: 'uppercase', letterSpacing: '0.4px',
+                }}>
+                {selectMode ? '✕ Cancel' : '☐ Select'}
+            </button>
             <button onClick={() => exportBudgetCSV(activeTabId)}
                 disabled={entriesCount === 0}
                 style={{

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Zap, MoreHorizontal, X, RotateCcw } from 'lucide-react';
 import { groupPredictions, GROUP_META, humanFrequency, humanBasis, activePredictions } from '../../utils/forecastHelpers';
+import { WhatIfControls } from '../transactions/WhatIfControls';
 
 const SYS = {
     primary:   '#0000FF',
@@ -93,6 +94,7 @@ const BudgetGroupSection = ({ groupKey, items, onDismiss, onRestore }) => {
 export const ForecastSection = ({ predictions, onFetch, loading }) => {
     const [open, setOpen] = useState(false);
     const [dismissed, setDismissed] = useState(new Set());
+    const [adjust, setAdjust] = useState(0);
 
     const handleToggle = () => {
         if (!open && predictions.length === 0) onFetch();
@@ -106,9 +108,10 @@ export const ForecastSection = ({ predictions, onFetch, loading }) => {
     const capped = predictions.length > 15
         ? [...predictions].sort((a, b) => (b.confidence || 0) - (a.confidence || 0)).slice(0, 15)
         : predictions;
+    const factor = 1 + adjust / 100;
     const active = activePredictions(capped, dismissed);
     const totalIncome = active.filter(p => p.type === 'income').reduce((s, p) => s + p.predicted_amount, 0);
-    const totalExpense = active.filter(p => p.type === 'outcome').reduce((s, p) => s + p.predicted_amount, 0);
+    const totalExpense = active.filter(p => p.type === 'outcome').reduce((s, p) => s + p.predicted_amount * factor, 0);
     const projectedNet = totalIncome - totalExpense;
     const groups = groupPredictions(capped, dismissed);
 
@@ -151,6 +154,7 @@ export const ForecastSection = ({ predictions, onFetch, loading }) => {
                         </div>
                         <BudgetGroupSection groupKey="fixed" items={groups.fixed} onDismiss={dismiss} onRestore={restore} />
                         <BudgetGroupSection groupKey="variable" items={groups.variable} onDismiss={dismiss} onRestore={restore} />
+                        <WhatIfControls adjust={adjust} setAdjust={setAdjust} />
                     </>)}
                 </div>
             )}
