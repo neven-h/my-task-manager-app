@@ -1,4 +1,5 @@
 import logging
+import socket
 
 from flask import Blueprint, request, jsonify, current_app
 from config import get_db_connection, token_required, DEBUG, app, mail, FRONTEND_URL
@@ -76,8 +77,18 @@ View your tasks at {FRONTEND_URL}
 Best regards,
 Task Tracker Team"""
                 )
-                mail.send(msg)
+                # Set socket timeout to prevent Gunicorn worker kill on
+                # unreachable SMTP server (which strips CORS headers).
+                prev_timeout = socket.getdefaulttimeout()
+                socket.setdefaulttimeout(10)
+                try:
+                    mail.send(msg)
+                finally:
+                    socket.setdefaulttimeout(prev_timeout)
                 return jsonify({'success': True, 'message': f'Task shared successfully with {email}'})
+            except (socket.timeout, OSError) as timeout_err:
+                logger.error('share_task: SMTP timeout: %s', timeout_err)
+                return jsonify({'error': 'Email server timed out. Please try again later.'}), 504
             except Exception as mail_error:
                 logger.error('share_task: email send failed: %s', mail_error, exc_info=True)
                 if DEBUG:
