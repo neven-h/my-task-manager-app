@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { X, Save } from 'lucide-react';
 import CustomAutocomplete from '../CustomAutocomplete';
 import useTaskFormModal from '../../hooks/useTaskFormModal';
@@ -20,6 +20,12 @@ const TaskFormModal = () => {
         attemptClose, handleDiscard, handleSubmit, update, addTag, handlePasteImage,
         closeFormModal
     } = useTaskFormModal();
+
+    const autoSize = useCallback((el) => {
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = el.scrollHeight + 'px';
+    }, []);
 
     if (!isOpen) return null;
 
@@ -55,9 +61,10 @@ const TaskFormModal = () => {
                             </div>
                             <div>
                                 <label style={labelStyle}>Description</label>
-                                <textarea rows={3} placeholder="Details..." value={formData.description}
-                                    onChange={(e) => { update('description', e.target.value); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-                                    enterKeyHint="next" style={{ minHeight: '80px', maxHeight: '300px', overflow: 'auto', resize: 'vertical' }} />
+                                <textarea rows={1} placeholder="Details..." value={formData.description}
+                                    ref={autoSize}
+                                    onChange={(e) => { update('description', e.target.value); autoSize(e.target); }}
+                                    enterKeyHint="next" style={{ minHeight: '44px', maxHeight: '300px', overflow: 'auto', resize: 'vertical' }} />
                             </div>
                             <TaskCategorySection
                                 allCategories={allCategories}
@@ -102,7 +109,10 @@ const TaskFormModal = () => {
                             />
                             <div>
                                 <label style={labelStyle}>Notes</label>
-                                <textarea rows={3} placeholder="Additional context..." value={formData.notes} onChange={(e) => update('notes', e.target.value)} enterKeyHint="done" />
+                                <textarea rows={1} placeholder="Additional context..." value={formData.notes}
+                                    ref={autoSize}
+                                    onChange={(e) => { update('notes', e.target.value); autoSize(e.target); }}
+                                    enterKeyHint="done" style={{ minHeight: '44px', maxHeight: '300px', overflow: 'auto', resize: 'vertical' }} />
                             </div>
                             <TaskAttachmentsSection
                                 existingAttachments={formData.attachments}

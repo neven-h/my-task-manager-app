@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { X, Plus, Trash2, Paperclip } from 'lucide-react';
 import CustomAutocomplete from '../components/CustomAutocomplete';
 import useIOSTaskForm from './hooks/useIOSTaskForm';
@@ -20,6 +20,12 @@ const IOSTaskFormModal = () => {
         visibleAttachments, allCategories, allTags, clients, loading, isAdmin, deleteTask,
         closeFormModal, apiBase
     } = useIOSTaskForm();
+
+    const autoSize = useCallback((el) => {
+        if (!el) return;
+        el.style.height = 'auto';
+        el.style.height = el.scrollHeight + 'px';
+    }, []);
 
     if (!isOpen) return null;
 
@@ -48,7 +54,9 @@ const IOSTaskFormModal = () => {
                         </div>
                         <div style={{ marginBottom: '16px' }}>
                             <label style={labelStyle}>Description</label>
-                            <textarea rows={4} value={formData.description} onChange={e => update('description', e.target.value)} placeholder="Task description..." />
+                            <textarea rows={1} value={formData.description} ref={autoSize}
+                                onChange={e => { update('description', e.target.value); autoSize(e.target); }}
+                                placeholder="Task description..." style={{ minHeight: '44px', maxHeight: '300px', overflow: 'auto' }} />
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '16px' }}>
                             <div><label style={labelStyle}>Date</label><input type="date" value={formData.task_date} onChange={e => update('task_date', e.target.value)} /></div>
@@ -100,7 +108,9 @@ const IOSTaskFormModal = () => {
                         </div>
                         <div style={{ marginBottom: '16px' }}>
                             <label style={labelStyle}>Notes</label>
-                            <textarea rows={3} value={formData.notes} onChange={e => update('notes', e.target.value)} placeholder="Additional notes..." />
+                            <textarea rows={1} value={formData.notes} ref={autoSize}
+                                onChange={e => { update('notes', e.target.value); autoSize(e.target); }}
+                                placeholder="Additional notes..." style={{ minHeight: '44px', maxHeight: '300px', overflow: 'auto' }} />
                         </div>
                         <div style={{ marginBottom: '16px' }}>
                             <label style={labelStyle}>Attachments</label>

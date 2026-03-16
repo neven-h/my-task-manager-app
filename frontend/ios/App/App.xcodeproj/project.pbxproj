@@ -22,6 +22,10 @@
 
 /* Begin PBXFileReference section */
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
+		42948CD52F68589C00D4CE8C /* biometricAuth.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = biometricAuth.js; sourceTree = "<group>"; };
+		42948CD62F6858AB00D4CE8C /* LoginPage-DWOvkNZX.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "LoginPage-DWOvkNZX.js"; sourceTree = "<group>"; };
+		42948CD72F6858B900D4CE8C /* SettingsPage-CqEj8Azt.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "SettingsPage-CqEj8Azt.js"; sourceTree = "<group>"; };
+		42948CD82F685B1100D4CE8C /* LoginPage-DWOvkNZX 2.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "LoginPage-DWOvkNZX 2.js"; sourceTree = "<group>"; };
 		42FFC1212F630A2800AB487D /* BiometricAuthPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricAuthPlugin.swift; sourceTree = "<group>"; };
 		42FFC1232F630A4700AB487D /* BiometricAuthPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BiometricAuthPlugin.m; sourceTree = "<group>"; };
 		42FFC1252F630DD100AB487D /* Info 2.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info 2.plist"; sourceTree = "<group>"; };
@@ -54,6 +58,10 @@
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
 				504EC3051FED79650016851F /* Products */,
+				42948CD52F68589C00D4CE8C /* biometricAuth.js */,
+				42948CD62F6858AB00D4CE8C /* LoginPage-DWOvkNZX.js */,
+				42948CD72F6858B900D4CE8C /* SettingsPage-CqEj8Azt.js */,
+				42948CD82F685B1100D4CE8C /* LoginPage-DWOvkNZX 2.js */,
 			);
 			sourceTree = "<group>";
 		};
