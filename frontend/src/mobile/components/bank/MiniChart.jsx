@@ -8,11 +8,10 @@ const IOS = {
 
 const fmtM = (ym) => {
     const [y, m] = ym.split('-');
-    return new Date(+y, +m - 1).toLocaleDateString(undefined, { month: 'short', year: '2-digit' });
+    return new Date(+y, +m - 1).toLocaleDateString(undefined, { month: 'short' });
 };
 
 const MiniChart = ({ monthly_history, predicted_monthly, adjust }) => {
-    const H = 90, BOTTOM = 18;
     const factor = 1 + adjust / 100;
     const allMonths = [
         ...monthly_history.map(m => ({ ...m, type: 'actual' })),
@@ -21,40 +20,43 @@ const MiniChart = ({ monthly_history, predicted_monthly, adjust }) => {
     if (!allMonths.length) return null;
 
     const maxVal = Math.max(...allMonths.map(m => m.total), 1);
-    const plotH  = H - BOTTOM;
     const total  = allMonths.length;
-    const bw     = 100 / total;
-    const gap    = bw * 0.22;
+
+    const barW = 22, barGap = 4, TOP = 4, BOTTOM = 22;
+    const chartW = total * (barW + barGap) + barGap;
+    const W = chartW;
+    const H = 110;
+    const plotH = H - BOTTOM - TOP;
 
     return (
-        <svg width="100%" height={H} viewBox={`0 0 100 ${H}`} preserveAspectRatio="none"
-            style={{ display: 'block' }}>
-            {allMonths.map((m, i) => {
-                const x    = i * bw + gap / 2;
-                const bwI  = bw - gap;
-                const barH = plotH * (m.total / maxVal);
-                const y    = plotH - barH;
-                const isPred = m.type === 'predicted';
-                const fill = isPred
-                    ? (adjust < 0 ? '#22c55e' : adjust > 0 ? '#ef4444' : 'rgba(48,176,199,0.45)')
-                    : IOS.teal;
-                return (
-                    <g key={`${m.month}-${i}`}>
-                        <rect x={x} y={y} width={bwI} height={barH} fill={fill} rx="1"
-                            strokeDasharray={isPred ? '1,0.8' : 'none'}
-                            stroke={isPred ? fill : 'none'} strokeWidth="0.4" opacity={isPred ? 0.9 : 1} />
-                        <text x={x + bwI / 2} y={H - 2} textAnchor="middle" fontSize="4" fill={IOS.label}>
-                            {fmtM(m.month).split(' ')[0]}
-                        </text>
-                    </g>
-                );
-            })}
-            {predicted_monthly.length > 0 && monthly_history.length > 0 && (
-                <line x1={monthly_history.length * bw} y1={0}
-                    x2={monthly_history.length * bw} y2={plotH}
-                    stroke={IOS.teal} strokeWidth="0.6" strokeDasharray="1.5,1" />
-            )}
-        </svg>
+        <div style={{ overflowX: total > 8 ? 'auto' : 'visible', WebkitOverflowScrolling: 'touch' }}>
+            <svg width={Math.max(W, 280)} height={H} style={{ display: 'block' }}>
+                {allMonths.map((m, i) => {
+                    const x    = barGap + i * (barW + barGap);
+                    const barH = plotH * (m.total / maxVal);
+                    const y    = TOP + plotH - barH;
+                    const isPred = m.type === 'predicted';
+                    const fill = isPred
+                        ? (adjust < 0 ? '#22c55e' : adjust > 0 ? '#ef4444' : 'rgba(48,176,199,0.45)')
+                        : IOS.teal;
+                    return (
+                        <g key={`${m.month}-${i}`}>
+                            <rect x={x} y={y} width={barW} height={barH} fill={fill} rx="4"
+                                strokeDasharray={isPred ? '4,3' : 'none'}
+                                stroke={isPred ? fill : 'none'} strokeWidth="1" opacity={isPred ? 0.9 : 1} />
+                            <text x={x + barW / 2} y={H - 4} textAnchor="middle" fontSize="11" fill={IOS.label} fontFamily="inherit">
+                                {fmtM(m.month)}
+                            </text>
+                        </g>
+                    );
+                })}
+                {predicted_monthly.length > 0 && monthly_history.length > 0 && (
+                    <line x1={barGap + monthly_history.length * (barW + barGap) - barGap / 2} y1={TOP}
+                        x2={barGap + monthly_history.length * (barW + barGap) - barGap / 2} y2={TOP + plotH}
+                        stroke={IOS.teal} strokeWidth="1.5" strokeDasharray="4,3" />
+                )}
+            </svg>
+        </div>
     );
 };
 

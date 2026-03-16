@@ -4,9 +4,18 @@ Shared lock prevents race conditions across both caches.
 """
 import time
 import threading
+import urllib.request
+import json as _json
 
 import yfinance as yf
 from yfinance.exceptions import YFRateLimitError
+
+# Last-resort fallback rates (updated periodically by hand if needed)
+_FALLBACK_RATES = {
+    'USDILS': 3.60,
+    'EURILS': 3.95,
+    'GBPILS': 4.55,
+}
 
 
 # ==================== SHARED LOCK ====================
@@ -74,6 +83,29 @@ def _fetch_exchange_rate_background(from_currency, to_currency):
             print(f"Exchange rate history rate limited for {ticker}: {e}")
         except Exception as e:
             print(f"Exchange rate history failed for {ticker}: {e}")
+
+        # ── Fallback: free exchangerate API ──
+        try:
+            url = f"https://open.er-api.com/v6/latest/{from_currency}"
+            req = urllib.request.Request(url, headers={'User-Agent': 'TaskManager/1.0'})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = _json.loads(resp.read())
+                rate = data.get('rates', {}).get(to_currency)
+                if rate and float(rate) > 0:
+                    with _cache_lock:
+                        _exchange_rate_cache[cache_key] = {'rate': float(rate), 'timestamp': time.time()}
+                    print(f"Exchange rate cached (er-api): {cache_key} = {float(rate)}")
+                    return
+        except Exception as e:
+            print(f"Exchange rate er-api fallback failed for {cache_key}: {e}")
+
+        # ── Last resort: hardcoded fallback ──
+        fallback = _FALLBACK_RATES.get(cache_key)
+        if fallback:
+            with _cache_lock:
+                if cache_key not in _exchange_rate_cache:
+                    _exchange_rate_cache[cache_key] = {'rate': fallback, 'timestamp': time.time() - EXCHANGE_RATE_CACHE_TTL + 60}
+                    print(f"Exchange rate using hardcoded fallback: {cache_key} = {fallback}")
     finally:
         with _cache_lock:
             _exchange_rate_fetching.discard(cache_key)

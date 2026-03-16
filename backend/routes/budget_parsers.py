@@ -2,7 +2,7 @@
 import os, re
 import pandas as pd
 
-_DATE_RE = re.compile(r'^\d{2}[./]\d{2}[./]\d{2,4}$|^\d{4}-\d{2}-\d{2}(\s|$)')
+_DATE_RE = re.compile(r'^\d{1,2}[./]\d{1,2}[./]\d{2,4}$|^\d{4}-\d{2}-\d{2}(\s|$)')
 _DATE_NAMES = {'תאריך', 'תאריך ערך', 'תאריך פעולה', 'יום ערך', 'date'}
 _DESC_NAMES = {
     'תיאור', 'תיאור התנועה', 'פרטים', 'פעולה', 'תאור',
@@ -15,6 +15,7 @@ _AMOUNT_NAMES = {
     '₪ זכות/חובה', 'זכות/חובה',
 }
 _CATEGORY_NAMES = {'קטגוריה', 'category', 'סוג'}
+_BALANCE_NAMES = {'יתרה', 'balance', '₪ יתרה'}
 
 
 def _find_col(df_columns, name_set):
@@ -83,19 +84,41 @@ def _load_df(file_path):
     return df
 
 
-def _parse_date(val):
-    """Parse a date value, handling common Israeli formats."""
+def _detect_date_order(df, date_col):
+    """Detect whether dates use D/M/Y or M/D/Y by scanning for values > 12."""
+    for _, val in df[date_col].dropna().head(50).items():
+        s = str(val).strip()
+        parts = re.split(r'[./]', s)
+        if len(parts) >= 2:
+            try:
+                second = int(parts[1])
+                if second > 12:
+                    return 'mdy'
+            except ValueError:
+                continue
+    return 'dmy'
+
+
+def _parse_date(val, date_order='dmy'):
+    """Parse a date value, handling common Israeli and US formats."""
     if isinstance(val, pd.Timestamp):
         return val
     s = str(val).strip()
     if not s or s in ('nan', 'NaT', 'NaN'):
         return pd.NaT
-    for fmt in ('%d/%m/%Y', '%d/%m/%y', '%d.%m.%Y', '%d.%m.%y',
-                '%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
+
+    if date_order == 'mdy':
+        fmts = ('%m/%d/%Y', '%m/%d/%y', '%m.%d.%Y', '%m.%d.%y',
+                '%Y-%m-%d %H:%M:%S', '%Y-%m-%d')
+    else:
+        fmts = ('%d/%m/%Y', '%d/%m/%y', '%d.%m.%Y', '%d.%m.%y',
+                '%Y-%m-%d %H:%M:%S', '%Y-%m-%d')
+
+    for fmt in fmts:
         result = pd.to_datetime(s, format=fmt, errors='coerce')
         if pd.notna(result):
             return result
-    return pd.to_datetime(s, dayfirst=True, errors='coerce')
+    return pd.to_datetime(s, dayfirst=(date_order == 'dmy'), errors='coerce')
 
 
 def _parse_amount(val):
@@ -113,13 +136,14 @@ def _parse_amount(val):
 
 
 def _detect_columns(df):
-    """Detect date/desc/amount columns by name or content fallback."""
+    """Detect date/desc/amount/balance columns by name or content fallback."""
     date_col = _find_col(df.columns, _DATE_NAMES)
     desc_col = _find_col(df.columns, _DESC_NAMES)
     amount_col = _find_col(df.columns, _AMOUNT_NAMES)
     credit_col = _find_col(df.columns, _CREDIT_NAMES)
     debit_col = _find_col(df.columns, _DEBIT_NAMES)
     category_col = _find_col(df.columns, _CATEGORY_NAMES)
+    balance_col = _find_col(df.columns, _BALANCE_NAMES)
 
     # If credit/debit resolved to the same column as amount, clear them
     # (happens when a combined column like '₪ זכות/חובה' matches all three)
@@ -127,6 +151,10 @@ def _detect_columns(df):
         credit_col = None
     if amount_col and debit_col == amount_col:
         debit_col = None
+
+    # Balance column must not collide with amount column
+    if balance_col and balance_col == amount_col:
+        balance_col = None
 
     if not date_col or (not amount_col and not (credit_col or debit_col)):
         for col in df.columns:
@@ -147,7 +175,7 @@ def _detect_columns(df):
                 if has_text.mean() > 0.3:
                     desc_col = col
 
-    return date_col, desc_col, amount_col, credit_col, debit_col, category_col
+    return date_col, desc_col, amount_col, credit_col, debit_col, category_col, balance_col
 
 
 def _resolve_amount(row, amount_col, credit_col, debit_col):
@@ -170,13 +198,38 @@ def _resolve_amount(row, amount_col, credit_col, debit_col):
     return ('income', amt) if amt > 0 else ('outcome', abs(amt))
 
 
+def _derive_expenses_from_balance(rows):
+    """Given rows sorted chronologically with (date, desc, income, balance),
+    derive implied expense entries from consecutive balance differences.
+
+    Formula: implied_expense = prev_balance + current_income - current_balance
+    """
+    expenses = []
+    for i in range(1, len(rows)):
+        prev_bal = rows[i - 1]['balance']
+        cur = rows[i]
+        implied = prev_bal + cur['income'] - cur['balance']
+        if implied > 0.01:  # threshold to avoid floating-point noise
+            expenses.append({
+                'type': 'outcome',
+                'description': f"Bank expense (derived)",
+                'amount': round(implied, 2),
+                'entry_date': cur['entry_date'],
+                'category': 'Bank expense',
+            })
+    return expenses
+
+
 def parse_budget_file(file_path):
     """Parse a bank statement file and return list of budget entry dicts.
 
     Each entry: {type, description, amount, entry_date, category}
+
+    When a balance column is detected, implied expenses are derived from
+    consecutive balance differences.
     """
     df = _load_df(file_path)
-    date_col, desc_col, amount_col, credit_col, debit_col, category_col = \
+    date_col, desc_col, amount_col, credit_col, debit_col, category_col, balance_col = \
         _detect_columns(df)
 
     if not date_col:
@@ -184,9 +237,14 @@ def parse_budget_file(file_path):
     if not amount_col and not (credit_col or debit_col):
         raise ValueError("Could not detect amount/credit/debit columns")
 
+    # Detect date format (M/D/Y vs D/M/Y)
+    date_order = _detect_date_order(df, date_col)
+
     entries = []
-    for _, row in df.iterrows():
-        dt = _parse_date(row[date_col])
+    balance_rows = []  # for deriving expenses when balance_col present
+
+    for row_idx, row in df.iterrows():
+        dt = _parse_date(row[date_col], date_order)
         if pd.isna(dt):
             continue
         result = _resolve_amount(row, amount_col, credit_col, debit_col)
@@ -208,13 +266,37 @@ def parse_budget_file(file_path):
             if cat not in ('nan', 'NaN', ''):
                 category = cat
 
+        entry_date = dt.strftime('%Y-%m-%d')
+
         entries.append({
             'type': entry_type,
             'description': description,
             'amount': round(amount, 2),
-            'entry_date': dt.strftime('%Y-%m-%d'),
+            'entry_date': entry_date,
             'category': category,
         })
+
+        # Collect balance data for expense derivation
+        if balance_col:
+            bal = _parse_amount(row[balance_col])
+            if bal is not None:
+                balance_rows.append({
+                    'row_idx': row_idx,
+                    'entry_date': entry_date,
+                    'income': amount if entry_type == 'income' else 0,
+                    'balance': bal,
+                })
+
+    # Derive expenses from balance differences (rows are in file order,
+    # which is newest-first for bank statements — reverse to chronological)
+    if balance_rows and len(balance_rows) >= 2:
+        # Detect order: if first date > last date, file is newest-first
+        if balance_rows[0]['entry_date'] > balance_rows[-1]['entry_date']:
+            balance_rows = list(reversed(balance_rows))
+
+        derived = _derive_expenses_from_balance(balance_rows)
+        entries.extend(derived)
+        print(f"[BUDGET_PARSER] Derived {len(derived)} expense entries from balance column", flush=True)
 
     if not entries:
         raise ValueError("No valid entries found in file")
