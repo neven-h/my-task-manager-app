@@ -49,12 +49,13 @@ const PortfolioOverviewTable = ({ getStockSummary, stockPrices, priceLoading, on
                             const entryCurrency = stock.latestEntry.currency || 'USD';
                             const entryValue = stock.latestEntry.value_ils;
                             const entryUnits = stock.latestEntry.units || 1;
-                            const totalValue = entryValue * entryUnits;
-                            const growth = calculateGrowth(entryValue, stock.basePrice);
-                            const growthValue = stock.basePrice != null ? (entryValue - stock.basePrice) * entryUnits : null;
-                            const isPositive = growth !== null && growth >= 0;
                             const livePrice = stock.tickerSymbol ? stockPrices[stock.tickerSymbol] : null;
                             const livePriceValue = livePrice?.currentPrice;
+                            const effectiveUnitValue = livePriceValue != null ? livePriceValue : entryValue;
+                            const totalValue = effectiveUnitValue * entryUnits;
+                            const growth = calculateGrowth(effectiveUnitValue, stock.basePrice);
+                            const growthValue = stock.basePrice != null ? (effectiveUnitValue - stock.basePrice) * entryUnits : null;
+                            const isPositive = growth !== null && growth >= 0;
                             const liveChange = livePrice?.change;
                             const liveChangePercent = livePrice?.changePercent;
                             const isLivePositive = liveChange !== null && liveChange >= 0;
