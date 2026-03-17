@@ -230,7 +230,6 @@ const TransactionBalanceForecast = () => {
                                     )}
                                 </div>
                                 <div style={{
-                                    minHeight: isDesktop ? 420 : 260,
                                     padding: isDesktop ? '8px 8px 0' : '0',
                                 }}>
                                     <SpendingChart

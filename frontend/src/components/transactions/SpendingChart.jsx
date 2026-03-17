@@ -25,15 +25,23 @@ export const SpendingChart = ({ monthly_history, predicted_monthly, adjust }) =>
 
     // Use pixel-based sizing for readable text
     const LEFT = 52, BOTTOM = 28, TOP = 8, RIGHT = 8;
-    const barW = 28, barGap = 6;
+    const barW = 36, barGap = 8;
     const chartW = total * (barW + barGap) + barGap;
     const W = LEFT + chartW + RIGHT;
-    const H = 180;
+    const H = 260;
     const plotH = H - BOTTOM - TOP;
 
+    const scrollable = allMonths.length > 10;
+
     return (
-        <div style={{ overflowX: allMonths.length > 10 ? 'auto' : 'visible', margin: '0 -4px', padding: '0 4px' }}>
-            <svg width={W} height={H} style={{ display: 'block' }}>
+        <div style={{ overflowX: scrollable ? 'auto' : 'visible', margin: '0 -4px', padding: '0 4px' }}>
+            <svg
+                viewBox={`0 0 ${W} ${H}`}
+                width={scrollable ? W : '100%'}
+                height={scrollable ? H : undefined}
+                preserveAspectRatio="xMidYMid meet"
+                style={{ display: 'block' }}
+            >
                 {/* Grid lines + axis labels */}
                 {[0.33, 0.67, 1].map(pct => {
                     const y = TOP + plotH * (1 - pct);
