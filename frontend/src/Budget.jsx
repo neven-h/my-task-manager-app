@@ -47,6 +47,7 @@ const Budget = ({ onBackToTasks }) => {
     const [newTabName, setNewTabName]                 = useState('');
     const [addingTab, setAddingTab]                   = useState(false);
     const [confirmDeleteTab, setConfirmDeleteTab]     = useState(null);
+    const [confirmClearTab, setConfirmClearTab]       = useState(false);
     const [expandedDescriptionId, setExpandedDescriptionId] = useState(null);
     const [showUpload, setShowUpload] = useState(false);
     const [selectMode, setSelectMode] = useState(false);
@@ -75,6 +76,11 @@ const Budget = ({ onBackToTasks }) => {
     const handleCancel  = () => { setShowForm(false); setEditingEntry(null); };
     const handleAddTab  = async () => { const name = newTabName.trim(); if (!name) return; const tab = await createTab(name); if (tab) { setNewTabName(''); setAddingTab(false); setActiveTabId(tab.id); } };
     const handleDeleteTab = async (tabId) => { const ok = await deleteTab(tabId); if (ok && activeTabId === tabId) setActiveTabId(null); setConfirmDeleteTab(null); };
+    const handleClearTab  = async () => {
+        if (!tabEntries.length) return;
+        const ok = await batchDelete(tabEntries.map(e => e.id));
+        if (ok) { setConfirmClearTab(false); refreshForecast(); }
+    };
 
     const toggleSelect = useCallback((id) => setSelectedIds(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; }), []);
     const handleBatchDelete = useCallback(async () => {
@@ -89,6 +95,32 @@ const Budget = ({ onBackToTasks }) => {
             <BudgetHeader onBackToTasks={onBackToTasks} exportBudgetCSV={exportBudgetCSV} activeTabId={activeTabId} entriesCount={entries.length} openAdd={openAdd} onUpload={() => setShowUpload(true)}
                 selectMode={selectMode} onToggleSelectMode={() => setSelectMode(m => !m)} />
             <BudgetTabBar tabs={tabs} activeTabId={activeTabId} setActiveTabId={setActiveTabId} confirmDeleteTab={confirmDeleteTab} setConfirmDeleteTab={setConfirmDeleteTab} handleDeleteTab={handleDeleteTab} addingTab={addingTab} setAddingTab={setAddingTab} newTabName={newTabName} setNewTabName={setNewTabName} handleAddTab={handleAddTab} />
+
+            {/* Clear-tab action strip — only when a specific tab is active and has entries */}
+            {activeTabId !== null && tabEntries.length > 0 && (
+                <div style={{ borderBottom: '1px solid #f0f0f0', padding: '6px 20px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, background: '#fafafa' }}>
+                    {confirmClearTab ? (
+                        <>
+                            <span style={{ fontSize: '0.78rem', color: '#666', fontWeight: 600 }}>
+                                Delete all {tabEntries.length} entries in this tab?
+                            </span>
+                            <button type="button" onClick={handleClearTab} disabled={loading}
+                                style={{ padding: '4px 14px', border: '2px solid #000', background: '#FF0000', color: '#fff', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                                {loading ? '…' : 'Yes, clear'}
+                            </button>
+                            <button type="button" onClick={() => setConfirmClearTab(false)}
+                                style={{ padding: '4px 10px', border: '2px solid #000', background: '#fff', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>
+                                Cancel
+                            </button>
+                        </>
+                    ) : (
+                        <button type="button" onClick={() => setConfirmClearTab(true)}
+                            style={{ padding: '4px 14px', border: '1px solid #ddd', background: 'none', color: '#999', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                            Clear tab
+                        </button>
+                    )}
+                </div>
+            )}
 
             <div style={{ maxWidth: 920, margin: '0 auto', padding: '24px 20px' }}>
                 {error && <div style={{ background: '#fff0f0', border: `2px solid ${SYS.accent}`, padding: '10px 14px', marginBottom: 16, color: SYS.accent, fontSize: '0.85rem', fontWeight: 600 }}>{error}</div>}

@@ -39,7 +39,7 @@ const MobileBudgetView = ({ onBack }) => {
         batchDelete, getDescriptionHistory,
         predictions, fetchPredictions, exportBudgetCSV } = useBudget();
 
-    const { tabs, fetchTabs } = useBudgetTabs();
+    const { tabs, fetchTabs, deleteTab } = useBudgetTabs();
     const { linkedTab, fetchLink, setLink, removeLink } = useBudgetLinks();
     const { forecast, loading: forecastLoading, fetchForecast, clearForecast, lastUpdated, refresh } = useBalanceForecast();
 
@@ -53,9 +53,23 @@ const MobileBudgetView = ({ onBack }) => {
     const [showUpload, setShowUpload] = useState(false);
     const [selectMode, setSelectMode] = useState(false);
     const [selectedIds, setSelectedIds] = useState(new Set());
+    const [confirmDeleteTab, setConfirmDeleteTab] = useState(null);
+    const [confirmClearTab, setConfirmClearTab]   = useState(false);
 
     const { tabEntries, monthlyTotals, chartData, allCategories, health } = useBudgetStats(entries, cutoff, activeTabId);
     const filters = useBudgetFilters(tabEntries);
+
+    const handleDeleteTab = useCallback(async (tabId) => {
+        const ok = await deleteTab(tabId);
+        if (ok && activeTabId === tabId) setActiveTabId(null);
+        setConfirmDeleteTab(null);
+    }, [deleteTab, activeTabId]);
+
+    const handleClearTab = useCallback(async () => {
+        if (!tabEntries.length) return;
+        const ok = await batchDelete(tabEntries.map(e => e.id));
+        if (ok) { setConfirmClearTab(false); if (linkedTab && activeTabId) fetchForecast(activeTabId, 3); }
+    }, [tabEntries, batchDelete, linkedTab, activeTabId, fetchForecast]);
 
     useEffect(() => { fetchEntries(); fetchTabs(); }, [fetchEntries, fetchTabs]);
     useEffect(() => { if (!activeTabId && tabs.length > 0) setActiveTabId(tabs[0].id); }, [tabs, activeTabId]);
@@ -129,7 +143,37 @@ const MobileBudgetView = ({ onBack }) => {
                 </div>
             </div>
 
-            <BudgetTabStrip tabs={tabs} activeTabId={activeTabId} setActiveTabId={setActiveTabId} />
+            <BudgetTabStrip tabs={tabs} activeTabId={activeTabId} setActiveTabId={setActiveTabId} confirmDeleteTab={confirmDeleteTab} setConfirmDeleteTab={setConfirmDeleteTab} handleDeleteTab={handleDeleteTab} />
+
+            {/* Clear-tab action strip */}
+            {activeTabId !== null && tabEntries.length > 0 && (
+                <div style={{
+                    display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8,
+                    padding: '6px 16px', borderBottom: `0.5px solid ${IOS.separator}`,
+                    background: IOS.card,
+                }}>
+                    {confirmClearTab ? (
+                        <>
+                            <span style={{ fontSize: '0.75rem', color: IOS.muted, fontWeight: 500 }}>
+                                Delete all {tabEntries.length} entries?
+                            </span>
+                            <button type="button" onClick={handleClearTab} disabled={loading}
+                                style={{ padding: '5px 14px', borderRadius: 20, border: 'none', background: IOS.red, color: '#fff', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer', fontFamily: FONT_STACK }}>
+                                {loading ? '…' : 'Clear'}
+                            </button>
+                            <button type="button" onClick={() => setConfirmClearTab(false)}
+                                style={{ padding: '5px 12px', borderRadius: 20, border: 'none', background: IOS.separator, color: IOS.muted, fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer', fontFamily: FONT_STACK }}>
+                                Cancel
+                            </button>
+                        </>
+                    ) : (
+                        <button type="button" onClick={() => setConfirmClearTab(true)}
+                            style={{ padding: '4px 12px', borderRadius: 20, border: 'none', background: 'none', color: IOS.muted, fontWeight: 500, fontSize: '0.75rem', cursor: 'pointer', fontFamily: FONT_STACK }}>
+                            Clear tab
+                        </button>
+                    )}
+                </div>
+            )}
 
             {activeTabId && (
                 <div style={{ padding: '0 16px', marginBottom: 4 }}>
