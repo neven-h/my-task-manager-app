@@ -15,7 +15,7 @@ const formatDate = (iso) => {
  * BudgetLinkBanner — banner to link/unlink a budget tab to a bank transaction tab.
  * Props: budgetTabId, linkedTab, onSetLink(txTabId), onRemoveLink
  */
-const BudgetLinkBanner = ({ budgetTabId, linkedTab, onSetLink, onRemoveLink }) => {
+const BudgetLinkBanner = ({ budgetTabId, linkedTab, linkError, onSetLink, onRemoveLink }) => {
     const [txTabs, setTxTabs] = useState([]);
     const [expanded, setExpanded] = useState(false);
     const [syncInfo, setSyncInfo] = useState(null);
@@ -74,21 +74,30 @@ const BudgetLinkBanner = ({ budgetTabId, linkedTab, onSetLink, onRemoveLink }) =
     }
 
     return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
-            <button type="button" onClick={() => setExpanded(e => !e)}
-                style={{ ...pill, background: expanded ? '#f5f5f5' : '#fff' }}>
-                <Link2 size={14} />
-                {expanded ? 'Cancel' : 'Link bank tab'}
-            </button>
-            {expanded && txTabs.map(tab => (
-                <button key={tab.id} type="button"
-                    onClick={() => { onSetLink(tab.id); setExpanded(false); }}
-                    style={{ ...pill, background: '#fff' }}>
-                    {tab.name}
+        <div style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => setExpanded(e => !e)}
+                    style={{ ...pill, background: expanded ? '#f5f5f5' : '#fff' }}>
+                    <Link2 size={14} />
+                    {expanded ? 'Cancel' : 'Link bank tab'}
                 </button>
-            ))}
-            {expanded && txTabs.length === 0 && (
-                <span style={{ fontSize: '0.78rem', color: SYS.light }}>No bank transaction tabs found</span>
+                {expanded && txTabs.map(tab => (
+                    <button key={tab.id} type="button"
+                        onClick={() => { onSetLink(tab.id); setExpanded(false); }}
+                        style={{ ...pill, background: '#fff' }}>
+                        {tab.name}
+                    </button>
+                ))}
+                {expanded && txTabs.length === 0 && (
+                    <span style={{ fontSize: '0.78rem', color: SYS.light }}>
+                        No bank transaction tabs found — create one in the Bank Transactions tab first
+                    </span>
+                )}
+            </div>
+            {linkError && (
+                <div style={{ marginTop: 6, fontSize: '0.76rem', color: '#CC0000', fontWeight: 600 }}>
+                    {linkError}
+                </div>
             )}
         </div>
     );

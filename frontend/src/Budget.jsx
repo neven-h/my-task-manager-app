@@ -37,7 +37,7 @@ const Budget = ({ onBackToTasks }) => {
     const { entries, loading, error, fetchEntries, createEntry, updateEntry, deleteEntry,
         batchDelete, batchUpdate, getDescriptionHistory, predictions, fetchPredictions, exportBudgetCSV } = useBudget();
     const { tabs, fetchTabs, createTab, deleteTab, duplicateTab } = useBudgetTabs();
-    const { linkedTab, fetchLink, setLink, removeLink } = useBudgetLinks();
+    const { linkedTab, linkError, fetchLink, setLink, removeLink } = useBudgetLinks();
     const { forecast, loading: forecastLoading, fetchForecast, clearForecast, lastUpdated, refresh } = useBalanceForecast();
 
     const [cutoff, setCutoff]                         = useState(today());
@@ -138,7 +138,7 @@ const Budget = ({ onBackToTasks }) => {
             <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 20px' }}>
                 {error && <div style={{ background: '#fff0f0', border: `2px solid ${SYS.accent}`, padding: '10px 14px', marginBottom: 16, color: SYS.accent, fontSize: '0.85rem', fontWeight: 600 }}>{error}</div>}
                 {showForm && <div id="budget-form"><EntryForm initial={formInitial} onSave={handleSave} onCancel={handleCancel} loading={loading} /></div>}
-                {activeTabId && <BudgetLinkBanner budgetTabId={activeTabId} linkedTab={linkedTab} onSetLink={(txTabId) => setLink(activeTabId, txTabId)} onRemoveLink={() => removeLink(activeTabId)} />}
+                {activeTabId && <BudgetLinkBanner budgetTabId={activeTabId} linkedTab={linkedTab} linkError={linkError} onSetLink={(txTabId) => setLink(activeTabId, txTabId)} onRemoveLink={() => removeLink(activeTabId)} />}
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
                     <span style={{ fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', color: SYS.light }}>Balance as of</span>

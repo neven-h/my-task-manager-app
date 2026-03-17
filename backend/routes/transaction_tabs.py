@@ -17,7 +17,10 @@ def get_transaction_tabs(payload):
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
 
-            query = "SELECT * FROM transaction_tabs WHERE owner = %s"
+            if user_role == 'admin':
+                query = "SELECT * FROM transaction_tabs WHERE owner = %s OR owner IS NULL"
+            else:
+                query = "SELECT * FROM transaction_tabs WHERE owner = %s"
             params = [username]
 
             query += " ORDER BY created_at ASC"
