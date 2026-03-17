@@ -5,7 +5,7 @@ import { formatCurrency } from '../../utils/formatCurrency';
 const SYS = { border: '#000', light: '#666' };
 const GREEN = '#00AA00';
 const RED = '#FF0000';
-const BAR_HEIGHT = 130;
+const BAR_HEIGHT = 140;
 
 const BudgetMonthlyChart = ({ monthlyTotals }) => {
     if (!monthlyTotals || monthlyTotals.length < 2) return null;
@@ -32,7 +32,7 @@ const BudgetMonthlyChart = ({ monthlyTotals }) => {
                 </span>
             </div>
             <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
-                <svg width={recent.length * (gapW * 2 + barW * 2 + 4) + 16} height={BAR_HEIGHT + 36} style={{ display: 'block' }}>
+                <svg width={recent.length * (gapW * 2 + barW * 2 + 4) + 16} height={BAR_HEIGHT + 52} style={{ display: 'block', paddingTop: 16 }}>
                     {recent.map(([month, data], i) => {
                         const x = i * (gapW * 2 + barW * 2 + 4) + 8;
                         const incH = (data.income / maxVal) * BAR_HEIGHT;
@@ -41,7 +41,9 @@ const BudgetMonthlyChart = ({ monthlyTotals }) => {
                         return (
                             <g key={month}>
                                 <rect x={x} y={BAR_HEIGHT - incH} width={barW} height={incH} fill={GREEN} stroke="#000" strokeWidth="1.5" />
+                                {incH > 0 && <text x={x + barW / 2} y={BAR_HEIGHT - incH - 4} textAnchor="middle" fontSize="9" fontWeight="700" fill={GREEN}>{Math.round(data.income).toLocaleString()}</text>}
                                 <rect x={x + barW + 2} y={BAR_HEIGHT - expH} width={barW} height={expH} fill={RED} stroke="#000" strokeWidth="1.5" />
+                                {expH > 0 && <text x={x + barW + 2 + barW / 2} y={BAR_HEIGHT - expH - 4} textAnchor="middle" fontSize="9" fontWeight="700" fill={RED}>{Math.round(data.expense).toLocaleString()}</text>}
                                 <text x={x + barW} y={BAR_HEIGHT + 14} textAnchor="middle" fontSize="11" fontWeight="700" fill={SYS.light}>{label}</text>
                             </g>
                         );
