@@ -66,8 +66,9 @@ const MobileBudgetView = ({ onBack }) => {
     }, [deleteTab, activeTabId]);
 
     const handleClearTab = useCallback(async () => {
-        if (!tabEntries.length) return;
-        const ok = await batchDelete(tabEntries.map(e => e.id));
+        const manualEntries = tabEntries.filter(e => !e.source || e.source === 'manual');
+        if (!manualEntries.length) return;
+        const ok = await batchDelete(manualEntries.map(e => e.id));
         if (ok) { setConfirmClearTab(false); if (linkedTab && activeTabId) fetchForecast(activeTabId, 3); }
     }, [tabEntries, batchDelete, linkedTab, activeTabId, fetchForecast]);
 
@@ -146,7 +147,10 @@ const MobileBudgetView = ({ onBack }) => {
             <BudgetTabStrip tabs={tabs} activeTabId={activeTabId} setActiveTabId={setActiveTabId} confirmDeleteTab={confirmDeleteTab} setConfirmDeleteTab={setConfirmDeleteTab} handleDeleteTab={handleDeleteTab} />
 
             {/* Clear-tab action strip */}
-            {activeTabId !== null && tabEntries.length > 0 && (
+            {activeTabId !== null && tabEntries.length > 0 && (() => {
+                const manualCount = tabEntries.filter(e => !e.source || e.source === 'manual').length;
+                const uploadCount = tabEntries.length - manualCount;
+                return (
                 <div style={{
                     display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8,
                     padding: '6px 16px', borderBottom: `0.5px solid ${IOS.separator}`,
@@ -154,15 +158,16 @@ const MobileBudgetView = ({ onBack }) => {
                 }}>
                     {confirmClearTab ? (
                         <>
-                            <span style={{ fontSize: '0.75rem', color: IOS.muted, fontWeight: 500 }}>
-                                Delete all {tabEntries.length} entries?
+                            <span style={{ fontSize: '0.72rem', color: IOS.muted, fontWeight: 500, flexShrink: 1 }}>
+                                Delete {manualCount} manual {manualCount === 1 ? 'entry' : 'entries'}?
+                                {uploadCount > 0 && <span style={{ fontSize: '0.68rem' }}> ({uploadCount} imported kept)</span>}
                             </span>
-                            <button type="button" onClick={handleClearTab} disabled={loading}
-                                style={{ padding: '5px 14px', borderRadius: 20, border: 'none', background: IOS.red, color: '#fff', fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer', fontFamily: FONT_STACK }}>
+                            <button type="button" onClick={handleClearTab} disabled={loading || manualCount === 0}
+                                style={{ padding: '5px 14px', borderRadius: 20, border: 'none', background: IOS.red, color: '#fff', fontWeight: 600, fontSize: '0.78rem', cursor: manualCount === 0 ? 'not-allowed' : 'pointer', fontFamily: FONT_STACK, opacity: manualCount === 0 ? 0.5 : 1, flexShrink: 0 }}>
                                 {loading ? '…' : 'Clear'}
                             </button>
                             <button type="button" onClick={() => setConfirmClearTab(false)}
-                                style={{ padding: '5px 12px', borderRadius: 20, border: 'none', background: IOS.separator, color: IOS.muted, fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer', fontFamily: FONT_STACK }}>
+                                style={{ padding: '5px 12px', borderRadius: 20, border: 'none', background: IOS.separator, color: IOS.muted, fontWeight: 600, fontSize: '0.78rem', cursor: 'pointer', fontFamily: FONT_STACK, flexShrink: 0 }}>
                                 Cancel
                             </button>
                         </>
@@ -173,7 +178,8 @@ const MobileBudgetView = ({ onBack }) => {
                         </button>
                     )}
                 </div>
-            )}
+                );
+            })()}
 
             {activeTabId && (
                 <div style={{ padding: '0 16px', marginBottom: 4 }}>
