@@ -18,7 +18,7 @@ const useMobileClients = (authUser) => {
     const fetchClients = async () => {
         try {
             setLoading(true);
-            const response = await fetch(`${API_BASE}/clients/manage`, { headers: getAuthHeaders() });
+            const response = await fetch(`${API_BASE}/clients`, { headers: getAuthHeaders() });
             const data = await response.json();
             setClients(Array.isArray(data) ? data : []);
         } catch (err) {

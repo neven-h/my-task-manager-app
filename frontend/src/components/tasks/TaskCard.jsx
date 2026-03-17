@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Check, Edit2, Trash2, Copy, Tag, Folder, Share2, CalendarPlus } from 'lucide-react';
 import { useTaskContext } from '../../context/TaskContext';
 import { openInCalendar } from '../../utils/generateICS';
 import TaskCardMeta from './TaskCardMeta';
 import TaskCardAttachments from './TaskCardAttachments';
+import TaskDetailModal from './TaskDetailModal';
 
 const TaskCard = React.memo(({ task }) => {
     const {
@@ -12,12 +13,14 @@ const TaskCard = React.memo(({ task }) => {
         getCategoryLabel, getStatusColor, getStatusLabel,
         toggleTaskStatus, openEditTaskForm, duplicateTask, deleteTask, openShareModal
     } = useTaskContext();
+    const [showDetail, setShowDetail] = useState(false);
 
     const textDir = rtlEnabled ? 'rtl' : undefined;
     const statusStyle = getStatusColor(task.status);
 
     return (
         <div className="task-card" style={{ background: '#fff', padding: '28px' }}>
+            {showDetail && <TaskDetailModal task={task} onClose={() => setShowDetail(false)} />}
             <div style={{
                 display: 'flex',
                 flexDirection: rtlEnabled ? 'row-reverse' : 'row',
@@ -30,13 +33,13 @@ const TaskCard = React.memo(({ task }) => {
                         display: 'flex', flexDirection: rtlEnabled ? 'row-reverse' : 'row',
                         alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap'
                     }}>
-                        <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }} dir={textDir}>{task.title}</h3>
+                        <h3 onClick={() => setShowDetail(true)} style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, cursor: 'pointer' }} dir={textDir}>{task.title}</h3>
                         <span className="status-badge" style={{ background: statusStyle.bg, borderColor: statusStyle.border, color: statusStyle.color }}>
                             {getStatusLabel(task.status)}
                         </span>
                     </div>
                     {task.description && (
-                        <p style={{ margin: '0 0 12px 0', color: '#666', fontSize: '1rem', lineHeight: '1.6', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }} dir={textDir}>
+                        <p onClick={() => setShowDetail(true)} style={{ margin: '0 0 12px 0', color: '#666', fontSize: '1rem', lineHeight: '1.6', whiteSpace: 'pre-wrap', wordBreak: 'break-word', cursor: 'pointer' }} dir={textDir}>
                             {task.description}
                         </p>
                     )}

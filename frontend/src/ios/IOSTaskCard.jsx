@@ -6,6 +6,7 @@ import { THEME, FONT_STACK } from './theme';
 import IOSTaskCardMeta from './IOSTaskCardMeta';
 import IOSTaskCardActions from './IOSTaskCardActions';
 import IOSTaskCardAttachments from './IOSTaskCardAttachments';
+import IOSTaskDetailModal from './IOSTaskDetailModal';
 
 const SNAP_WIDTH = 88;
 
@@ -43,10 +44,11 @@ const DeleteConfirmModal = ({ onConfirm, onCancel }) => (
 );
 
 const IOSTaskCard = ({ task }) => {
-    const { toggleTaskStatus, deleteTask, duplicateTask, openEditTaskForm, openShareModal } = useTaskContext();
+    const { toggleTaskStatus, deleteTask, duplicateTask, openEditTaskForm, openShareModal, getCategoryLabel } = useTaskContext();
     const isCompleted = task.status === 'completed';
     const [pressed, setPressed] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
+    const [showDetail, setShowDetail] = useState(false);
 
     const { swipeOffset, isOpen, isTracking, reset, handlers } = useSwipeGesture({ snapWidth: SNAP_WIDTH });
     const statusColor = isCompleted ? '#34C759' : THEME.accent;
@@ -64,9 +66,14 @@ const IOSTaskCard = ({ task }) => {
         reset();
     }, [reset]);
 
+    const handleCardTap = useCallback(() => {
+        if (!isOpen) setShowDetail(true);
+    }, [isOpen]);
+
     return (
         <>
             {showConfirm && <DeleteConfirmModal onConfirm={handleConfirmDelete} onCancel={handleCancelDelete} />}
+            {showDetail && <IOSTaskDetailModal task={task} onClose={() => setShowDetail(false)} getCategoryLabel={getCategoryLabel} />}
             <div style={{ position: 'relative', marginBottom: 10, overflow: 'hidden', borderRadius: 16 }}>
                 {/* Delete button — always behind the card, revealed on swipe */}
                 <div
@@ -106,20 +113,22 @@ const IOSTaskCard = ({ task }) => {
                                     ? <CheckCircle size={26} color="#34C759" fill="#34C759" />
                                     : <Circle size={26} color={THEME.accent} strokeWidth={2.5} />}
                             </button>
-                            <div style={{ flex: 1, minWidth: 0 }}>
+                            <div onClick={handleCardTap} style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}>
                                 <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: 0, lineHeight: 1.4, textDecoration: isCompleted ? 'line-through' : 'none', color: isCompleted ? '#8E8E93' : '#000', fontFamily: FONT_STACK, wordBreak: 'break-word' }}>
                                     {task.title}
                                 </h3>
                             </div>
                             <IOSTaskCardActions task={task} openEditTaskForm={openEditTaskForm} duplicateTask={duplicateTask} openShareModal={openShareModal} />
                         </div>
-                        {task.description && (
-                            <p style={{ fontSize: '0.875rem', color: '#8E8E93', margin: '8px 0 0 46px', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                {task.description}
-                            </p>
-                        )}
-                        <IOSTaskCardMeta task={task} />
-                        <IOSTaskCardAttachments attachments={task.attachments} />
+                        <div onClick={handleCardTap} style={{ cursor: 'pointer' }}>
+                            {task.description && (
+                                <p style={{ fontSize: '0.875rem', color: '#8E8E93', margin: '8px 0 0 46px', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                    {task.description}
+                                </p>
+                            )}
+                            <IOSTaskCardMeta task={task} />
+                            <IOSTaskCardAttachments attachments={task.attachments} />
+                        </div>
                     </div>
                 </div>
             </div>
