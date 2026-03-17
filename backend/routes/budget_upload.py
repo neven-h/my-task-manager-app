@@ -5,6 +5,7 @@ from flask import Blueprint, request, jsonify, current_app
 from config import get_db_connection, token_required, allowed_file
 from werkzeug.utils import secure_filename
 from routes.budget_parsers import parse_budget_file
+from routes.budget_helpers import ensure_budget_table
 
 logger = logging.getLogger(__name__)
 budget_upload_bp = Blueprint('budget_upload', __name__)
@@ -72,6 +73,7 @@ def save_budget_batch(payload):
             return jsonify({'error': 'Too many entries (max 5000)'}), 400
 
         with get_db_connection() as conn:
+            ensure_budget_table(conn)
             cursor = conn.cursor(dictionary=True)
             cursor.execute(
                 "SELECT id FROM budget_tabs WHERE id = %s AND owner = %s",
