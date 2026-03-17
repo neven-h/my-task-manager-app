@@ -59,7 +59,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         if (ok) {
             if (selectedMonth === 'all') await fetchAllTransactions(activeTabId);
             else await fetchMonthTransactions(selectedMonth, activeTabId);
-            await fetchAllDescriptions();
+            await fetchAllDescriptions(activeTabId);
         }
     }, [selection, selectedMonth, activeTabId, fetchAllTransactions, fetchMonthTransactions, fetchAllDescriptions]);
 
@@ -82,7 +82,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         setUploadedData(null); setUploadTargetTabId(null);
         setSearchTerm(''); setDescriptionFilter(''); setTypeFilter('all'); setVisibleTransactions(15);
         selection.clearSelection();
-        await Promise.all([fetchSavedMonths(tabId), fetchAllDescriptions(), fetchTransactionStats(tabId), fetchAllTransactions(tabId)]);
+        await Promise.all([fetchSavedMonths(tabId), fetchAllDescriptions(tabId), fetchTransactionStats(tabId), fetchAllTransactions(tabId)]);
     }, [fetchSavedMonths, fetchAllDescriptions, fetchTransactionStats, fetchAllTransactions,
         setActiveTabId, setSelectedMonth, setMonthTransactions, setTransactionStats, setUploadedData,
         setSearchTerm, setDescriptionFilter, setTypeFilter, selection]);
@@ -111,7 +111,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
             const savedMonth = storage.get(STORAGE_KEYS.SELECTED_MONTH);
             const useSpecific = savedMonth && savedMonth !== 'all';
             const [fetchedMonths] = await Promise.all([
-                fetchSavedMonths(tabId), fetchAllDescriptions(), fetchTransactionStats(tabId),
+                fetchSavedMonths(tabId), fetchAllDescriptions(tabId), fetchTransactionStats(tabId),
                 useSpecific ? fetchMonthTransactions(savedMonth, tabId) : fetchAllTransactions(tabId),
             ]);
             if (useSpecific && !(fetchedMonths || []).some(m => (m.month_year ?? m) === savedMonth))

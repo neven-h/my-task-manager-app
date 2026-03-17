@@ -27,10 +27,12 @@ const useBankTransactionData = () => {
 
     // ==================== DATA FETCHERS ====================
 
-    const fetchAllDescriptions = useCallback(async () => {
+    const fetchAllDescriptions = useCallback(async (tabId = null) => {
         try {
-            const response = await fetch(`${API_BASE}/transactions/descriptions`, { headers: getAuthHeaders() });
-            setAllDescriptions(await response.json());
+            const params = tabId ? `?tab_id=${tabId}` : '';
+            const response = await fetch(`${API_BASE}/transactions/descriptions${params}`, { headers: getAuthHeaders() });
+            const data = await response.json();
+            setAllDescriptions(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Error fetching descriptions:', err);
         }
