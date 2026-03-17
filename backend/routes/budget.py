@@ -39,6 +39,11 @@ def _ensure_table(conn):
     except MySQLError as e:
         if 'Duplicate column' not in str(e) and 'Duplicate key' not in str(e):
             logger.warning('budget_entries tab_id migration note: %s', e)
+    try:
+        cur.execute("ALTER TABLE budget_entries ADD COLUMN source VARCHAR(20) DEFAULT 'manual'")
+    except MySQLError as e:
+        if 'Duplicate column' not in str(e):
+            logger.warning('budget_entries source migration note: %s', e)
     cur.close()
 
 

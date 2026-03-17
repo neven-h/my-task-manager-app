@@ -77,8 +77,9 @@ const Budget = ({ onBackToTasks }) => {
     const handleAddTab  = async () => { const name = newTabName.trim(); if (!name) return; const tab = await createTab(name); if (tab) { setNewTabName(''); setAddingTab(false); setActiveTabId(tab.id); } };
     const handleDeleteTab = async (tabId) => { const ok = await deleteTab(tabId); if (ok && activeTabId === tabId) setActiveTabId(null); setConfirmDeleteTab(null); };
     const handleClearTab  = async () => {
-        if (!tabEntries.length) return;
-        const ok = await batchDelete(tabEntries.map(e => e.id));
+        const manualEntries = tabEntries.filter(e => !e.source || e.source === 'manual');
+        if (!manualEntries.length) return;
+        const ok = await batchDelete(manualEntries.map(e => e.id));
         if (ok) { setConfirmClearTab(false); refreshForecast(); }
     };
 
@@ -97,15 +98,19 @@ const Budget = ({ onBackToTasks }) => {
             <BudgetTabBar tabs={tabs} activeTabId={activeTabId} setActiveTabId={setActiveTabId} confirmDeleteTab={confirmDeleteTab} setConfirmDeleteTab={setConfirmDeleteTab} handleDeleteTab={handleDeleteTab} addingTab={addingTab} setAddingTab={setAddingTab} newTabName={newTabName} setNewTabName={setNewTabName} handleAddTab={handleAddTab} />
 
             {/* Clear-tab action strip — only when a specific tab is active and has entries */}
-            {activeTabId !== null && tabEntries.length > 0 && (
+            {activeTabId !== null && tabEntries.length > 0 && (() => {
+                const manualCount = tabEntries.filter(e => !e.source || e.source === 'manual').length;
+                const uploadCount = tabEntries.length - manualCount;
+                return (
                 <div style={{ borderBottom: '1px solid #f0f0f0', padding: '6px 20px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, background: '#fafafa' }}>
                     {confirmClearTab ? (
                         <>
                             <span style={{ fontSize: '0.78rem', color: '#666', fontWeight: 600 }}>
-                                Delete all {tabEntries.length} entries in this tab?
+                                Delete {manualCount} manual {manualCount === 1 ? 'entry' : 'entries'}?
+                                {uploadCount > 0 && <span style={{ color: '#999', fontWeight: 400 }}> ({uploadCount} imported entries will be kept)</span>}
                             </span>
-                            <button type="button" onClick={handleClearTab} disabled={loading}
-                                style={{ padding: '4px 14px', border: '2px solid #000', background: '#FF0000', color: '#fff', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                            <button type="button" onClick={handleClearTab} disabled={loading || manualCount === 0}
+                                style={{ padding: '4px 14px', border: '2px solid #000', background: '#FF0000', color: '#fff', fontSize: '0.75rem', fontWeight: 700, cursor: manualCount === 0 ? 'not-allowed' : 'pointer', textTransform: 'uppercase', letterSpacing: '0.3px', opacity: manualCount === 0 ? 0.5 : 1 }}>
                                 {loading ? '…' : 'Yes, clear'}
                             </button>
                             <button type="button" onClick={() => setConfirmClearTab(false)}
@@ -120,7 +125,8 @@ const Budget = ({ onBackToTasks }) => {
                         </button>
                     )}
                 </div>
-            )}
+                );
+            })()}
 
             <div style={{ maxWidth: 920, margin: '0 auto', padding: '24px 20px' }}>
                 {error && <div style={{ background: '#fff0f0', border: `2px solid ${SYS.accent}`, padding: '10px 14px', marginBottom: 16, color: SYS.accent, fontSize: '0.85rem', fontWeight: 600 }}>{error}</div>}
