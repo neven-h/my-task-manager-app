@@ -10,6 +10,7 @@ const useMobileClients = (authUser) => {
     const [showAddForm, setShowAddForm] = useState(false);
     const [newClient, setNewClient] = useState({ name: '', email: '', phone: '', notes: '' });
     const [createLoading, setCreateLoading] = useState(false);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         fetchClients();
@@ -58,10 +59,15 @@ const useMobileClients = (authUser) => {
             if (response.ok) {
                 setNewClient({ name: '', email: '', phone: '', notes: '' });
                 setShowAddForm(false);
+                setError(null);
                 await fetchClients();
+            } else {
+                const data = await response.json().catch(() => ({}));
+                setError(data.error || 'Failed to create client');
             }
         } catch (err) {
             console.error('Failed to create client:', err);
+            setError('Failed to create client: ' + err.message);
         } finally {
             setCreateLoading(false);
         }
@@ -84,7 +90,7 @@ const useMobileClients = (authUser) => {
 
     return {
         clients, selectedClient, setSelectedClient, clientTasks,
-        loading, showAddForm, setShowAddForm,
+        loading, error, setError, showAddForm, setShowAddForm,
         newClient, setNewClient, createLoading,
         fetchClientTasks, handleCreateClient, handleDeleteClient
     };
