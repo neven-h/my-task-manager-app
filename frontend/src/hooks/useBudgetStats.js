@@ -30,7 +30,7 @@ const useBudgetStats = (entries, cutoff, activeTabId) => {
     const chartData = useMemo(() => {
         const catMap = {};
         filtered.filter(e => e.type === 'outcome').forEach(e => {
-            const cat = e.category || 'Uncategorized';
+            const cat = e.category || e.description || 'Other';
             if (!catMap[cat]) catMap[cat] = { total: 0, count: 0 };
             catMap[cat].total += e.amount;
             catMap[cat].count += 1;

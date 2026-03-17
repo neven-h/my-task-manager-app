@@ -173,6 +173,40 @@ def update_budget_entry(payload, entry_id):
         return jsonify({'error': 'An internal error occurred'}), 500
 
 
+@budget_bp.route('/api/budget/batch', methods=['PUT'])
+@token_required
+def batch_update_budget_entries(payload):
+    """Bulk-update description and/or category for a list of entry IDs."""
+    username = payload.get('username')
+    data = request.get_json() or {}
+    ids = data.get('ids', [])
+    fields = data.get('fields', {})
+    if not ids or not isinstance(ids, list) or len(ids) > 5000:
+        return jsonify({'error': 'ids must be a list (max 5000)'}), 400
+    allowed = {'description', 'category'}
+    updates = {k: v for k, v in fields.items() if k in allowed}
+    if not updates:
+        return jsonify({'error': 'No valid fields to update'}), 400
+    try:
+        with get_db_connection() as conn:
+            _ensure_table(conn)
+            cursor = conn.cursor()
+            set_clause = ', '.join(f"{k} = %s" for k in updates)
+            placeholders = ','.join(['%s'] * len(ids))
+            params = [*updates.values(), *ids, username]
+            cursor.execute(
+                f"UPDATE budget_entries SET {set_clause} WHERE id IN ({placeholders}) AND owner = %s",
+                params,
+            )
+            updated = cursor.rowcount
+            conn.commit()
+        invalidate_balance_forecast_cache(username)
+        return jsonify({'updated': updated})
+    except Exception as exc:
+        logger.exception('Failed to batch update budget entries')
+        return jsonify({'error': 'An internal error occurred'}), 500
+
+
 @budget_bp.route('/api/budget/batch', methods=['DELETE'])
 @token_required
 def batch_delete_budget_entries(payload):

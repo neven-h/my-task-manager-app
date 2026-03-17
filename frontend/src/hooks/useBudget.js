@@ -139,6 +139,31 @@ const useBudget = () => {
         }
     }, []);
 
+    // ── batch update ─────────────────────────────────────────────────────
+    const batchUpdate = useCallback(async (ids, fields) => {
+        if (!ids.length || !Object.keys(fields).length) return false;
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await fetch(`${BASE}/batch`, {
+                method: 'PUT',
+                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids, fields }),
+            });
+            if (!res.ok) {
+                const json = await res.json().catch(() => ({}));
+                throw new Error(json.error || 'Batch update failed');
+            }
+            setEntries(prev => prev.map(e => ids.includes(e.id) ? { ...e, ...fields } : e));
+            return true;
+        } catch (err) {
+            setError(err.message);
+            return false;
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     // ── computed helpers ────────────────────────────────────────────────────
     const totalIncome = useCallback((cutoff) =>
         entries
@@ -210,6 +235,7 @@ const useBudget = () => {
         updateEntry,
         deleteEntry,
         batchDelete,
+        batchUpdate,
         totalIncome,
         totalOutcome,
         balance,
