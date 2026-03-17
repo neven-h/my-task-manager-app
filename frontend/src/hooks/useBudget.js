@@ -1,170 +1,18 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 import API_BASE from '../config';
 import { getAuthHeaders } from '../api.js';
-
-const BASE = `${API_BASE}/budget`;
+import useBudgetEntries from './useBudgetEntries';
 
 /**
- * useBudget — manages budget entries (incomes + outcomes).
- *
- * Returns:
- *   entries[]              – all entries sorted by entry_date ASC
- *   loading                – bool
- *   error                  – string | null
- *   fetchEntries()         – reload from API
- *   createEntry(data)      – POST; data: {type,description,amount,entry_date,category?,notes?}
- *   updateEntry(id, data)  – PUT
- *   deleteEntry(id)        – DELETE
- *   getDescriptionHistory(entry) – 5 most recent entries with same description
- *   predictions[]          – AI-predicted future entries
- *   fetchPredictions(months) – GET /api/budget/predict
- *   exportBudgetCSV(tabId) – download CSV
- *
- * Computed helpers (need a cutoffDate string 'YYYY-MM-DD'):
- *   totalIncome(cutoff)  – sum of income entries on/before cutoff
- *   totalOutcome(cutoff) – sum of outcome entries on/before cutoff
- *   balance(cutoff)      – totalIncome(cutoff) - totalOutcome(cutoff)
+ * useBudget — wraps useBudgetEntries and adds computed helpers,
+ * AI predictions, and CSV export.
  */
 const useBudget = () => {
-    const [entries, setEntries] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const crudHook = useBudgetEntries();
+    const { entries, setError } = crudHook;
     const [predictions, setPredictions] = useState([]);
 
-    const fetchEntries = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const res = await fetch(BASE, { headers: getAuthHeaders() });
-            if (!res.ok) throw new Error(`Server error ${res.status}`);
-            const data = await res.json();
-            setEntries(Array.isArray(data) ? data : []);
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    const createEntry = useCallback(async (data) => {
-        setLoading(true);
-        setError(null);
-        try {
-            const res = await fetch(BASE, {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify(data),
-            });
-            const json = await res.json();
-            if (!res.ok) throw new Error(json.error || 'Failed to create entry');
-            setEntries(prev => [...prev, json].sort((a, b) =>
-                a.entry_date < b.entry_date ? -1 : a.entry_date > b.entry_date ? 1 : a.id - b.id
-            ));
-            return json;
-        } catch (err) {
-            setError(err.message);
-            return null;
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    const updateEntry = useCallback(async (id, data) => {
-        setLoading(true);
-        setError(null);
-        try {
-            const res = await fetch(`${BASE}/${id}`, {
-                method: 'PUT',
-                headers: getAuthHeaders(),
-                body: JSON.stringify(data),
-            });
-            const json = await res.json();
-            if (!res.ok) throw new Error(json.error || 'Failed to update entry');
-            setEntries(prev => prev.map(e => e.id === id ? json : e).sort((a, b) =>
-                a.entry_date < b.entry_date ? -1 : a.entry_date > b.entry_date ? 1 : a.id - b.id
-            ));
-            return json;
-        } catch (err) {
-            setError(err.message);
-            return null;
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    const deleteEntry = useCallback(async (id) => {
-        setLoading(true);
-        setError(null);
-        try {
-            const res = await fetch(`${BASE}/${id}`, {
-                method: 'DELETE',
-                headers: getAuthHeaders(),
-            });
-            if (!res.ok) {
-                const json = await res.json();
-                throw new Error(json.error || 'Failed to delete entry');
-            }
-            setEntries(prev => prev.filter(e => e.id !== id));
-            return true;
-        } catch (err) {
-            setError(err.message);
-            return false;
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    // ── batch delete ─────────────────────────────────────────────────────
-    const batchDelete = useCallback(async (ids) => {
-        if (!ids.length) return false;
-        setLoading(true);
-        setError(null);
-        try {
-            const res = await fetch(`${BASE}/batch`, {
-                method: 'DELETE',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({ ids }),
-            });
-            if (!res.ok) {
-                const json = await res.json().catch(() => ({}));
-                throw new Error(json.error || 'Batch delete failed');
-            }
-            setEntries(prev => prev.filter(e => !ids.includes(e.id)));
-            return true;
-        } catch (err) {
-            setError(err.message);
-            return false;
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    // ── batch update ─────────────────────────────────────────────────────
-    const batchUpdate = useCallback(async (ids, fields) => {
-        if (!ids.length || !Object.keys(fields).length) return false;
-        setLoading(true);
-        setError(null);
-        try {
-            const res = await fetch(`${BASE}/batch`, {
-                method: 'PUT',
-                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ids, fields }),
-            });
-            if (!res.ok) {
-                const json = await res.json().catch(() => ({}));
-                throw new Error(json.error || 'Batch update failed');
-            }
-            setEntries(prev => prev.map(e => ids.includes(e.id) ? { ...e, ...fields } : e));
-            return true;
-        } catch (err) {
-            setError(err.message);
-            return false;
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
-    // ── computed helpers ────────────────────────────────────────────────────
+    // ── computed helpers ─────────────────────────────────────────────────
     const totalIncome = useCallback((cutoff) =>
         entries
             .filter(e => e.type === 'income' && e.entry_date <= cutoff)
@@ -177,17 +25,12 @@ const useBudget = () => {
             .reduce((s, e) => s + e.amount, 0),
         [entries]);
 
-    const balance = useCallback((cutoff) => totalIncome(cutoff) - totalOutcome(cutoff), [totalIncome, totalOutcome]);
+    const balance = useCallback(
+        (cutoff) => totalIncome(cutoff) - totalOutcome(cutoff),
+        [totalIncome, totalOutcome],
+    );
 
-    // ── similar transactions (description history) ──────────────────────────
-    const getDescriptionHistory = useCallback((entry) =>
-        entries
-            .filter(e => e.id !== entry.id && e.description === entry.description)
-            .sort((a, b) => new Date(b.entry_date) - new Date(a.entry_date))
-            .slice(0, 5),
-        [entries]);
-
-    // ── AI predictions ──────────────────────────────────────────────────────
+    // ── AI predictions ───────────────────────────────────────────────────
     const fetchPredictions = useCallback(async (months = 3, tabId = null) => {
         try {
             const params = new URLSearchParams({ months: String(months) });
@@ -202,7 +45,7 @@ const useBudget = () => {
         }
     }, []);
 
-    // ── CSV export ──────────────────────────────────────────────────────────
+    // ── CSV export ───────────────────────────────────────────────────────
     const exportBudgetCSV = useCallback(async (tabId = null) => {
         try {
             const params = new URLSearchParams();
@@ -213,9 +56,9 @@ const useBudget = () => {
                 throw new Error(err.error || 'Export failed');
             }
             const blob = await res.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
+            const url  = window.URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href     = url;
             a.download = `budget_export_${new Date().toISOString().split('T')[0]}.csv`;
             document.body.appendChild(a);
             a.click();
@@ -227,19 +70,10 @@ const useBudget = () => {
     }, [setError]);
 
     return {
-        entries,
-        loading,
-        error,
-        fetchEntries,
-        createEntry,
-        updateEntry,
-        deleteEntry,
-        batchDelete,
-        batchUpdate,
+        ...crudHook,
         totalIncome,
         totalOutcome,
         balance,
-        getDescriptionHistory,
         predictions,
         fetchPredictions,
         exportBudgetCSV,
