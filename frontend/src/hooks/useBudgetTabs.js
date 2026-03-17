@@ -91,7 +91,24 @@ const useBudgetTabs = () => {
         }
     }, []);
 
-    return { tabs, loading, error, fetchTabs, createTab, renameTab, deleteTab };
+    const duplicateTab = useCallback(async (id) => {
+        setError(null);
+        try {
+            const res = await fetch(`${BASE}/${id}/duplicate`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+            });
+            const json = await res.json();
+            if (!res.ok) throw new Error(json.error || 'Failed to duplicate tab');
+            setTabs(prev => [...prev, json]);
+            return json;
+        } catch (err) {
+            setError(err.message);
+            return null;
+        }
+    }, []);
+
+    return { tabs, loading, error, fetchTabs, createTab, renameTab, deleteTab, duplicateTab };
 };
 
 export default useBudgetTabs;

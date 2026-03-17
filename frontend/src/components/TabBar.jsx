@@ -70,6 +70,20 @@ export default function TabBar({
         }
     };
 
+    const handleDuplicateTab = async (tabId) => {
+        try {
+            const headers = getAuthHeaders ? getAuthHeaders() : {};
+            const response = await fetch(`${apiBase}/${tabEndpoint}/${tabId}/duplicate`, { method: 'POST', headers });
+            const data = await response.json();
+            if (response.ok) {
+                const updatedTabs = await fetchTabs();
+                onTabCreated(data.id, updatedTabs);
+            } else { onError(data.error || 'Failed to duplicate tab'); }
+        } catch (err) {
+            onError('Failed to duplicate tab');
+        }
+    };
+
     const handleDeleteTab = async (tabId) => {
         const tab = tabs.find(t => t.id == tabId);
         const message = deleteConfirmMessage ? deleteConfirmMessage(tab?.name) : `Delete "${tab?.name}" and all its data?`;
@@ -108,6 +122,7 @@ export default function TabBar({
                     onCancelEdit={() => { setEditingTab(null); setEditingTabName(''); }}
                     onRenameTab={handleRenameTab}
                     onDeleteTab={handleDeleteTab}
+                    onDuplicateTab={handleDuplicateTab}
                     onToggleMenu={(id) => setTabMenuOpen(tabMenuOpen == id ? null : id)}
                     tabMenuRef={tabMenuRef}
                     colors={colors}

@@ -110,6 +110,40 @@ def update_transaction_tab(payload, tab_id):
         return jsonify({'error': 'A database error occurred'}), 500
 
 
+@transaction_tabs_bp.route('/api/transaction-tabs/<int:tab_id>/duplicate', methods=['POST'])
+@token_required
+def duplicate_transaction_tab(payload, tab_id):
+    """Create a copy of a tab and all its transactions."""
+    try:
+        username = payload['username']
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM transaction_tabs WHERE id = %s AND owner = %s", (tab_id, username))
+            source = cursor.fetchone()
+            if not source:
+                return jsonify({'error': 'Tab not found'}), 404
+            new_name = source['name'] + ' (copy)'
+            cursor.execute("INSERT INTO transaction_tabs (name, owner) VALUES (%s, %s)", (new_name, username))
+            connection.commit()
+            new_id = cursor.lastrowid
+            cursor.execute(
+                "INSERT INTO bank_transactions "
+                "  (account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by, tab_id) "
+                "SELECT account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by, %s "
+                "FROM bank_transactions WHERE tab_id = %s",
+                (new_id, tab_id),
+            )
+            connection.commit()
+            cursor.execute("SELECT * FROM transaction_tabs WHERE id = %s", (new_id,))
+            new_tab = cursor.fetchone()
+            if new_tab.get('created_at'):
+                new_tab['created_at'] = new_tab['created_at'].isoformat()
+        return jsonify(new_tab), 201
+    except Error as e:
+        current_app.logger.error('duplicate_transaction_tab db error: %s', e)
+        return jsonify({'error': 'A database error occurred'}), 500
+
+
 @transaction_tabs_bp.route('/api/transaction-tabs/<int:tab_id>', methods=['DELETE'])
 @token_required
 def delete_transaction_tab(payload, tab_id):
