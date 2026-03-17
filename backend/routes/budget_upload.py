@@ -84,8 +84,8 @@ def save_budget_batch(payload):
 
             cursor = conn.cursor()
             query = """INSERT INTO budget_entries
-                       (type, description, amount, entry_date, category, owner, tab_id, source)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
+                       (type, description, amount, entry_date, category, notes, owner, tab_id, source)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"""
 
             values = []
             for e in entries:
@@ -103,8 +103,9 @@ def save_budget_batch(payload):
                 if not entry_date:
                     continue
                 category = (e.get('category') or '').strip() or None
+                notes = (e.get('notes') or '').strip() or None
                 values.append((entry_type, desc, amount, entry_date,
-                               category, username, tab_id, 'upload'))
+                               category, notes, username, tab_id, 'upload'))
 
             if not values:
                 return jsonify({'error': 'No valid entries after validation'}), 400

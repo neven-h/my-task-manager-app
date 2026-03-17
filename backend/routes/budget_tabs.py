@@ -113,6 +113,42 @@ def rename_budget_tab(payload, tab_id):
         return jsonify({'error': 'An internal error occurred'}), 500
 
 
+# ── POST duplicate tab ─────────────────────────────────────────────────────────
+
+@budget_tabs_bp.route('/api/budget-tabs/<int:tab_id>/duplicate', methods=['POST'])
+@token_required
+def duplicate_budget_tab(payload, tab_id):
+    """Create a copy of a tab and all its entries."""
+    username = payload.get('username')
+    try:
+        with get_db_connection() as conn:
+            _ensure_tabs_table(conn)
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM budget_tabs WHERE id = %s AND owner = %s", (tab_id, username))
+            source = cursor.fetchone()
+            if not source:
+                return jsonify({'error': 'Tab not found'}), 404
+            new_name = source['name'] + ' (copy)'
+            cursor.execute("INSERT INTO budget_tabs (name, owner) VALUES (%s, %s)", (new_name, username))
+            conn.commit()
+            new_id = cursor.lastrowid
+            cursor.execute(
+                "INSERT INTO budget_entries "
+                "  (type, description, amount, entry_date, category, notes, owner, tab_id, source) "
+                "SELECT type, description, amount, entry_date, category, notes, owner, %s, 'manual' "
+                "FROM budget_entries WHERE tab_id = %s AND owner = %s",
+                (new_id, tab_id, username),
+            )
+            conn.commit()
+            cursor.execute("SELECT * FROM budget_tabs WHERE id = %s", (new_id,))
+            new_tab = cursor.fetchone()
+            new_tab['created_at'] = str(new_tab['created_at'])
+        return jsonify(new_tab), 201
+    except Exception:
+        logger.exception('Failed to duplicate budget tab')
+        return jsonify({'error': 'An internal error occurred'}), 500
+
+
 # ── DELETE tab ─────────────────────────────────────────────────────────────────
 
 @budget_tabs_bp.route('/api/budget-tabs/<int:tab_id>', methods=['DELETE'])

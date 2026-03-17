@@ -1,9 +1,9 @@
 import React from 'react';
-import { Edit2, Trash2, X, Users, Save, MoreVertical } from 'lucide-react';
+import { Edit2, Trash2, Copy, Users, Save, MoreVertical } from 'lucide-react';
 
 const TabBarItem = ({
     tab, isActive, isEditing, editingTabName, setEditingTabName, tabMenuOpen,
-    onSwitchTab, onStartEdit, onCancelEdit, onRenameTab, onDeleteTab, onToggleMenu,
+    onSwitchTab, onStartEdit, onCancelEdit, onRenameTab, onDeleteTab, onDuplicateTab, onToggleMenu,
     tabMenuRef, colors
 }) => (
     <div style={{ position: 'relative', display: 'flex', alignItems: 'stretch' }}>
@@ -61,16 +61,24 @@ const TabBarItem = ({
                 <button
                     onClick={() => { onStartEdit(tab.id, tab.name); }}
                     style={{ width: '100%', padding: '0.65rem 1rem', border: 'none', background: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '0.9rem', fontFamily: '"Inter", sans-serif', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                    onMouseEnter={(e) => e.target.style.background = '#f0f0f0'}
-                    onMouseLeave={(e) => e.target.style.background = '#fff'}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#f0f0f0'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
                 >
                     <Edit2 size={14} /> Rename
                 </button>
                 <button
+                    onClick={() => { onDuplicateTab(tab.id); }}
+                    style={{ width: '100%', padding: '0.65rem 1rem', border: 'none', background: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '0.9rem', fontFamily: '"Inter", sans-serif', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#f0f0f0'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
+                >
+                    <Copy size={14} /> Duplicate
+                </button>
+                <button
                     onClick={() => onDeleteTab(tab.id)}
                     style={{ width: '100%', padding: '0.65rem 1rem', border: 'none', background: '#fff', cursor: 'pointer', textAlign: 'left', fontSize: '0.9rem', fontFamily: '"Inter", sans-serif', color: colors.accent, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                    onMouseEnter={(e) => e.target.style.background = '#fff0f0'}
-                    onMouseLeave={(e) => e.target.style.background = '#fff'}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#fff0f0'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = '#fff'}
                 >
                     <Trash2 size={14} /> Delete
                 </button>

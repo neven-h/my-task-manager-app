@@ -13,6 +13,9 @@ _DEBIT_NAMES    = {'חובה', 'debit', 'הוצאה'}
 _AMOUNT_NAMES   = {'סכום', 'amount', 'סכום בש"ח', 'סכום עסקה', '₪ זכות/חובה', 'זכות/חובה'}
 _CATEGORY_NAMES = {'קטגוריה', 'category', 'סוג'}
 _BALANCE_NAMES  = {'יתרה', 'balance', '₪ יתרה'}
+# Self-export columns
+_TYPE_NAMES     = {'type', 'entry type', 'transaction type', 'סוג פעולה'}
+_NOTES_NAMES    = {'notes', 'note', 'הערות', 'הערה', 'remarks'}
 
 
 def _find_col(df_columns, name_set):
