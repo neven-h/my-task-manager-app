@@ -57,7 +57,7 @@ export const useBankTransactionCRUDHandlers = ({
         if (ok) {
             setShowAddForm(false);
             await fetchSavedMonths(activeTabId);
-            await fetchAllDescriptions();
+            await fetchAllDescriptions(activeTabId);
             await fetchTransactionStats(activeTabId);
             if (selectedMonth === 'all') await fetchAllTransactions(activeTabId);
             else if (selectedMonth) await fetchMonthTransactions(selectedMonth, activeTabId);
@@ -72,7 +72,7 @@ export const useBankTransactionCRUDHandlers = ({
             setEditingTransaction(null);
             if (selectedMonth === 'all') await fetchAllTransactions(activeTabId);
             else await fetchMonthTransactions(selectedMonth, activeTabId);
-            await fetchAllDescriptions();
+            await fetchAllDescriptions(activeTabId);
             await fetchTransactionStats(activeTabId);
         }
     }, [handleUpdateRaw, editingTransaction, selectedMonth, activeTabId,
@@ -113,7 +113,7 @@ export const useBankTransactionCRUDHandlers = ({
             setDescriptionFilter('');
             if (selectedMonth === 'all') await fetchAllTransactions(activeTabId);
             else await fetchMonthTransactions(selectedMonth, activeTabId);
-            await fetchAllDescriptions();
+            await fetchAllDescriptions(activeTabId);
             setSuccess(`${result.updated} transactions renamed`);
         } catch (err) {
             setError(err.message);
