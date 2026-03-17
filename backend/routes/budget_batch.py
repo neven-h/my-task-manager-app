@@ -19,20 +19,25 @@ def batch_update_budget_entries(payload):
     fields = data.get('fields', {})
     if not ids or not isinstance(ids, list) or len(ids) > 5000:
         return jsonify({'error': 'ids must be a list (max 5000)'}), 400
-    # Column names come from this hardcoded tuple — never from user input.
-    _ALLOWED_COLS = ('description', 'category')
-    col_values = [(col, fields[col]) for col in _ALLOWED_COLS if col in fields]
-    if not col_values:
+    # Build SET clause from static string literals — column names never come from user input.
+    set_parts, params = [], []
+    if 'description' in fields:
+        set_parts.append('description = %s')
+        params.append(fields['description'])
+    if 'category' in fields:
+        set_parts.append('category = %s')
+        params.append(fields['category'])
+    if not set_parts:
         return jsonify({'error': 'No valid fields to update'}), 400
     try:
         with get_db_connection() as conn:
             ensure_budget_table(conn)
             cursor = conn.cursor()
-            set_clause   = ', '.join(f"{col} = %s" for col, _ in col_values)
+            set_clause   = ', '.join(set_parts)
             placeholders = ','.join(['%s'] * len(ids))
             cursor.execute(
                 f"UPDATE budget_entries SET {set_clause} WHERE id IN ({placeholders}) AND owner = %s",
-                [*(v for _, v in col_values), *ids, username],
+                [*params, *ids, username],
             )
             updated = cursor.rowcount
             conn.commit()
