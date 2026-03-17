@@ -51,8 +51,8 @@ export const EntryRow = memo(({ entry, cutoff, onEdit, onDelete, isLast, isExpan
                 <div style={{ width: 9, height: 9, borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
 
                 {/* Date */}
-                <div style={{ fontSize: '0.78rem', color: IOS.muted, width: 60, flexShrink: 0, lineHeight: 1.3 }}>
-                    {new Date(entry.entry_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                <div style={{ fontSize: '0.78rem', color: IOS.muted, width: 80, flexShrink: 0, lineHeight: 1.3 }}>
+                    {new Date(entry.entry_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                 </div>
 
                 {/* Description + meta (clickable to expand) */}
@@ -123,8 +123,8 @@ export const EntryRow = memo(({ entry, cutoff, onEdit, onDelete, isLast, isExpan
                             fontSize: '0.78rem', color: IOS.muted,
                         }}>
                             <div style={{ width: 6, height: 6, borderRadius: '50%', background: h.type === 'income' ? IOS.green : IOS.red, flexShrink: 0 }} />
-                            <div style={{ width: 55, flexShrink: 0, fontWeight: 600 }}>
-                                {new Date(h.entry_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            <div style={{ width: 75, flexShrink: 0, fontWeight: 600 }}>
+                                {new Date(h.entry_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                             </div>
                             <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {h.description}

@@ -41,8 +41,8 @@ export const EntryRow = ({ entry, cutoff, onEdit, onDuplicate, onDelete, loading
                 <div style={{ width: 8, height: 8, background: amountColor, flexShrink: 0 }} />
 
                 {/* Date */}
-                <div style={{ fontSize: '0.78rem', color: SYS.light, width: 68, flexShrink: 0, fontWeight: 600 }}>
-                    {new Date(entry.entry_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                <div style={{ fontSize: '0.78rem', color: SYS.light, width: 90, flexShrink: 0, fontWeight: 600 }}>
+                    {new Date(entry.entry_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                 </div>
 
                 {/* Description + category (clickable to expand) */}
@@ -115,8 +115,8 @@ export const EntryRow = ({ entry, cutoff, onEdit, onDuplicate, onDelete, loading
                             fontSize: '0.82rem', color: SYS.light,
                         }}>
                             <div style={{ width: 8, height: 8, background: h.type === 'income' ? SYS.success : SYS.accent, flexShrink: 0 }} />
-                            <div style={{ width: 68, flexShrink: 0, fontWeight: 600 }}>
-                                {new Date(h.entry_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            <div style={{ width: 90, flexShrink: 0, fontWeight: 600 }}>
+                                {new Date(h.entry_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                             </div>
                             <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {h.description}
