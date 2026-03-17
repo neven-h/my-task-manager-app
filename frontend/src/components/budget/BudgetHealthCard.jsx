@@ -1,5 +1,5 @@
-import React from 'react';
-import { Activity, Timer, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import React, { useState } from 'react';
+import { Activity, Timer, TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
 
 const SYS = { border: '#000', light: '#666', text: '#000' };
 
@@ -28,6 +28,50 @@ const ScoreRing = ({ score, label }) => {
     );
 };
 
+const SCORE_TIERS = [
+    { range: '80 – 100', label: 'Healthy',    color: '#059669', desc: 'Good runway (6+ months), spending stable.' },
+    { range: '60 – 79',  label: 'Moderate',   color: '#d97706', desc: 'Runway 3–6 months. Monitor spending trends.' },
+    { range: '40 – 59',  label: 'Watch Out',  color: '#ea580c', desc: 'Runway under 3 months. Review fixed costs.' },
+    { range: '0 – 39',   label: 'Critical',   color: '#dc2626', desc: 'Runway under 1 month. Immediate action needed.' },
+];
+
+const ScoreInfoTooltip = () => {
+    const [open, setOpen] = useState(false);
+    return (
+        <div
+            style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', marginLeft: 4 }}
+            onMouseEnter={() => setOpen(true)}
+            onMouseLeave={() => setOpen(false)}
+        >
+            <Info size={15} color="#0000FF" style={{ cursor: 'pointer', opacity: 0.7 }} />
+            {open && (
+                <div style={{
+                    position: 'absolute', top: '100%', left: 0, zIndex: 100,
+                    marginTop: 8, width: 300,
+                    background: '#fff', border: `2px solid ${SYS.border}`,
+                    boxShadow: '4px 4px 0 #000', padding: '12px 14px',
+                    fontSize: '0.78rem', lineHeight: 1.5,
+                }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 8, borderBottom: `1px solid #eee`, paddingBottom: 6 }}>
+                        How the score is calculated
+                    </div>
+                    {SCORE_TIERS.map(t => (
+                        <div key={t.range} style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
+                            <span style={{ fontWeight: 800, color: t.color, width: 54, flexShrink: 0, fontSize: '0.72rem' }}>{t.range}</span>
+                            <span style={{ fontWeight: 700, color: t.color, width: 70, flexShrink: 0 }}>{t.label}</span>
+                            <span style={{ color: SYS.light }}>{t.desc}</span>
+                        </div>
+                    ))}
+                    <div style={{ borderTop: `1px solid #eee`, marginTop: 8, paddingTop: 8, color: SYS.light, fontSize: '0.72rem' }}>
+                        <strong style={{ color: SYS.text }}>Factors:</strong>{' '}
+                        runway length · spending momentum · anomaly count
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const BudgetHealthCard = ({ health }) => {
     if (!health) return null;
     const { score, label, rwInfo, momentum, avgMonthly, insights } = health;
@@ -36,7 +80,7 @@ const BudgetHealthCard = ({ health }) => {
     return (
         <div style={{ background: '#fff', border: `2px solid ${SYS.border}`, padding: '1.25rem', marginBottom: '1.5rem' }}>
             <h3 style={{ margin: '0 0 1rem', fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.3px', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Activity size={18} color="#0000FF" /> Financial Health
+                <Activity size={18} color="#0000FF" /> Financial Health <ScoreInfoTooltip />
             </h3>
             <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <ScoreRing score={score} label={label} />
