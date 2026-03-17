@@ -25,7 +25,8 @@ const useBudgetFilters = (entries) => {
         if (!isNaN(min)) result = result.filter(e => e.amount >= min);
         const max = parseFloat(amountMax);
         if (!isNaN(max)) result = result.filter(e => e.amount <= max);
-        return result;
+        // Sort newest-first
+        return [...result].sort((a, b) => b.entry_date.localeCompare(a.entry_date) || b.id - a.id);
     }, [entries, typeFilter, searchTerm, categoryFilter, amountMin, amountMax]);
 
     const clearFilters = useCallback(() => {

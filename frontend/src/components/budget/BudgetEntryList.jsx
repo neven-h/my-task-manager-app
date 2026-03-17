@@ -69,6 +69,23 @@ export const BudgetEntryList = ({
                 </span>
             </div>
 
+            {/* Column headers */}
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '5px 16px',
+                borderBottom: `2px solid ${SYS.border}`,
+                background: '#ECECEC',
+                fontSize: '0.68rem', fontWeight: 800, color: SYS.light,
+                textTransform: 'uppercase', letterSpacing: '0.5px',
+            }}>
+                <div style={{ width: 8, flexShrink: 0 }} />
+                <div style={{ width: 90, flexShrink: 0 }}>Date</div>
+                <div style={{ flex: 1, minWidth: 0 }}>Description</div>
+                <div style={{ flexShrink: 0 }}>Amount</div>
+                <div style={{ width: 90, flexShrink: 0, textAlign: 'right', borderLeft: '2px solid #ddd', paddingLeft: 10 }}>Balance</div>
+                <div style={{ width: 80, flexShrink: 0 }} />
+            </div>
+
             {/* Rows */}
             {loading && entries.length === 0 ? (
                 <div style={{ padding: '32px', textAlign: 'center', color: SYS.light, fontSize: '0.9rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px' }}>

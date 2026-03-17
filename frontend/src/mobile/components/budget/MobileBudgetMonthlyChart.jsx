@@ -6,6 +6,9 @@ import { FONT_STACK } from '../../../ios/theme';
 const IOS = { card: '#fff', muted: '#8E8E93', radius: 16 };
 const GREEN = '#34C759';
 const RED = '#FF3B30';
+const TOP_PAD = 18;
+
+const abbr = (n) => n >= 1000 ? Math.round(n / 1000) + 'K' : Math.round(n);
 
 const MobileBudgetMonthlyChart = ({ monthlyTotals }) => {
     if (!monthlyTotals || monthlyTotals.length < 2) return null;
@@ -16,6 +19,7 @@ const MobileBudgetMonthlyChart = ({ monthlyTotals }) => {
     const barW = 14;
     const groupW = barW * 2 + 6;
     const gap = Math.max(20, Math.floor((window.innerWidth - 64) / recent.length) - groupW);
+    const SVG_H = TOP_PAD + barH + 28;
 
     return (
         <div style={{ margin: '0 16px 12px', background: IOS.card, borderRadius: IOS.radius, padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', fontFamily: FONT_STACK }}>
@@ -32,37 +36,39 @@ const MobileBudgetMonthlyChart = ({ monthlyTotals }) => {
                 </span>
             </div>
             <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
-                <svg width={recent.length * (groupW + gap) + 8} height={barH + 90} style={{ display: 'block' }}>
+                <svg width={recent.length * (groupW + gap) + 8} height={SVG_H} style={{ display: 'block' }}>
                     {recent.map(([month, data], i) => {
                         const x = i * (groupW + gap) + 4;
                         const incH = (data.income / maxVal) * barH;
                         const expH = (data.expense / maxVal) * barH;
+                        const incY = TOP_PAD + barH - incH;
+                        const expY = TOP_PAD + barH - expH;
+                        const axisY = TOP_PAD + barH;
                         const incX = x + barW / 2;
                         const expX = x + barW + 2 + barW / 2;
+                        const [y, m] = month.split('-');
+                        const label = new Date(+y, +m - 1).toLocaleDateString(undefined, { month: 'short' });
                         return (
                             <g key={month}>
-                                <rect x={x} y={barH - incH} width={barW} height={incH} rx="3" fill={GREEN} />
-                                <rect x={x + barW + 2} y={barH - expH} width={barW} height={expH} rx="3" fill={RED} />
-                                {/* Month label */}
-                                <text x={x + groupW / 2} y={barH + 13} textAnchor="middle" fontSize="10" fontWeight="600" fill={IOS.muted}>{month.slice(5)}</text>
-                                {/* Income value — rotated -45° below baseline */}
-                                {incH > 0 && (
-                                    <text
-                                        transform={`translate(${incX + 2}, ${barH + 24}) rotate(-45)`}
-                                        textAnchor="start" fontSize="9" fontWeight="600" fill={GREEN}
-                                    >{Math.round(data.income).toLocaleString()}</text>
+                                <rect x={x} y={incY} width={barW} height={incH} rx="3" fill={GREEN} />
+                                <rect x={x + barW + 2} y={expY} width={barW} height={expH} rx="3" fill={RED} />
+                                {/* Month label below axis */}
+                                <text x={x + groupW / 2} y={axisY + 14} textAnchor="middle" fontSize="10" fontWeight="600" fill={IOS.muted}>{label}</text>
+                                {/* Abbreviated value labels above bars */}
+                                {incH > 10 && (
+                                    <text x={incX} y={incY - 3} textAnchor="middle" fontSize="8" fontWeight="700" fill={GREEN}>
+                                        {abbr(data.income)}
+                                    </text>
                                 )}
-                                {/* Expense value — rotated -45° below baseline */}
-                                {expH > 0 && (
-                                    <text
-                                        transform={`translate(${expX + 2}, ${barH + 24}) rotate(-45)`}
-                                        textAnchor="start" fontSize="9" fontWeight="600" fill={RED}
-                                    >{Math.round(data.expense).toLocaleString()}</text>
+                                {expH > 10 && (
+                                    <text x={expX} y={expY - 3} textAnchor="middle" fontSize="8" fontWeight="700" fill={RED}>
+                                        {abbr(data.expense)}
+                                    </text>
                                 )}
                             </g>
                         );
                     })}
-                    <line x1="0" y1={barH} x2="100%" y2={barH} stroke="rgba(0,0,0,0.08)" strokeWidth="1" />
+                    <line x1="0" y1={TOP_PAD + barH} x2="100%" y2={TOP_PAD + barH} stroke="rgba(0,0,0,0.08)" strokeWidth="1" />
                 </svg>
             </div>
             {recent.length > 0 && (() => {
