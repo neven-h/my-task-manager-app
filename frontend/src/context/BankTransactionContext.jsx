@@ -54,6 +54,15 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         }
     }, [selection, selectedMonth, activeTabId, fetchAllTransactions, fetchMonthTransactions, fetchSavedMonths, fetchTransactionStats]);
 
+    const handleRenameSelected = useCallback(async (newDescription) => {
+        const ok = await selection.renameSelected(newDescription);
+        if (ok) {
+            if (selectedMonth === 'all') await fetchAllTransactions(activeTabId);
+            else await fetchMonthTransactions(selectedMonth, activeTabId);
+            await fetchAllDescriptions();
+        }
+    }, [selection, selectedMonth, activeTabId, fetchAllTransactions, fetchMonthTransactions, fetchAllDescriptions]);
+
     const [transactionType, setTransactionType] = useState('credit');
     const [visibleTransactions, setVisibleTransactions] = useState(15);
     const [editingTransaction, setEditingTransaction] = useState(null);
@@ -151,7 +160,9 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         expandedDescriptionId, setExpandedDescriptionId,
         selectedIds: selection.selectedIds, toggleSelected: selection.toggleSelected,
         toggleSelectAll: selection.selectAll, clearSelection: selection.clearSelection,
-        handleDeleteSelected, exportSelectedCSV: selection.exportSelected,
+        selectAllFiltered: () => selection.selectAll(filteredTransactions.map(t => t.id)),
+        handleDeleteSelected, handleRenameSelected, exportSelectedCSV: selection.exportSelected,
+        filteredCount: filteredTransactions.length,
         tabs, setTabs, activeTabId, orphanedCount,
         handleSwitchTab, onTabCreated, onTabDeleted,
         fetchAllTransactions: fetchAllTransactionsWrapped,

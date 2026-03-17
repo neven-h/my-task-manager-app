@@ -60,7 +60,24 @@ const useTransactionSelection = (activeTabId, setError) => {
         }
     }, [selectedIds, activeTabId, setError]);
 
-    return { selectedIds, toggleSelected, selectAll, clearSelection, deleteSelected, exportSelected };
+    const renameSelected = useCallback(async (newDescription) => {
+        if (selectedIds.size === 0 || !newDescription.trim()) return false;
+        try {
+            const res = await fetch(`${API_BASE}/transactions/batch/rename-ids`, {
+                method: 'PUT',
+                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: [...selectedIds], tab_id: activeTabId, new_description: newDescription.trim() }),
+            });
+            if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Rename failed');
+            clearSelection();
+            return true;
+        } catch (err) {
+            setError(err.message);
+            return false;
+        }
+    }, [selectedIds, activeTabId, clearSelection, setError]);
+
+    return { selectedIds, toggleSelected, selectAll, clearSelection, deleteSelected, exportSelected, renameSelected };
 };
 
 export default useTransactionSelection;
