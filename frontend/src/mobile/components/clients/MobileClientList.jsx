@@ -21,7 +21,7 @@ const MobileClientList = ({ clients, loading, selectedClient, onClientClick, onD
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '0.85rem', color: THEME.muted }}>
                         <div>
-                            <div style={{ fontWeight: 700 }}>{(client.total_hours || 0).toFixed(1)}h</div>
+                            <div style={{ fontWeight: 700 }}>{Number(client.total_hours || 0).toFixed(1)}h</div>
                             <div style={{ fontSize: '0.75rem' }}>Total Hours</div>
                         </div>
                         <div>

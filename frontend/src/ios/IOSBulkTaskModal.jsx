@@ -158,7 +158,7 @@ const IOSBulkTaskModal = () => {
                         <CustomAutocomplete
                             value={bulkClient}
                             onChange={value => setBulkClient(value)}
-                            options={clients.map(c => typeof c === 'string' ? c : String(c))}
+                            options={clients.map(c => typeof c === 'string' ? c : (c.name || c.client || ''))}
                             placeholder="Client name..."
                         />
                     </div>

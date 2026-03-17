@@ -38,7 +38,7 @@ const BulkTaskOptions = ({ allCategories, clients, bulkCategories, bulkClient, s
             />
             <datalist id="clients-list-bulk">
                 {clients.map(client => {
-                    const clientName = typeof client === 'string' ? client : client.name;
+                    const clientName = typeof client === 'string' ? client : (client.name || client.client || '');
                     return <option key={clientName} value={clientName} />;
                 })}
             </datalist>

@@ -44,7 +44,8 @@ const useBudgetUpload = () => {
     };
 
     const handleSave = async (tabId) => {
-        if (!parsedData?.entries || !tabId) return;
+        if (!parsedData?.entries) return;
+        if (!tabId) { setError('Please select a budget tab first'); return; }
         setError(null); setSaving(true);
         try {
             const res = await fetch(`${API_BASE}/budget/save-batch`, {

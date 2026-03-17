@@ -34,7 +34,7 @@ const TaskFilterPanel = () => {
                     label="Client" placeholder="Client name..."
                     value={filters.client}
                     onChange={(value) => setFilters({ ...filters, client: value })}
-                    options={clients.map(client => typeof client === 'string' ? client : client.name)}
+                    options={clients.map(client => typeof client === 'string' ? client : (client.name || client.client || ''))}
                 />
                 <div>
                     <label style={{ display: 'block', marginBottom: '8px', fontWeight: 700, fontSize: '0.85rem' }}>Date From</label>

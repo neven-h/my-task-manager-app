@@ -67,7 +67,7 @@ const IOSTaskFormModal = () => {
                             <div>
                                 <label style={labelStyle}>Client</label>
                                 <CustomAutocomplete value={formData.client} onChange={value => update('client', value)}
-                                    options={clients.map(c => typeof c === 'string' ? c : String(c))} placeholder="Client name..." />
+                                    options={clients.map(c => typeof c === 'string' ? c : (c.name || c.client || ''))} placeholder="Client name..." />
                             </div>
                         </div>
                         <div style={{ marginBottom: '16px' }}>

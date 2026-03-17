@@ -76,7 +76,7 @@ const TaskFormModal = () => {
                             />
                             <CustomAutocomplete label="Client" placeholder="Client..." value={formData.client}
                                 onChange={(value) => update('client', value)}
-                                options={clients.map(c => typeof c === 'string' ? c : c.name)} />
+                                options={clients.map(c => typeof c === 'string' ? c : (c.name || c.client || ''))} />
                             <div className="form-grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                 <div>
                                     <label style={labelStyle}>Date <span style={{ color: '#FF0000' }}>*</span></label>

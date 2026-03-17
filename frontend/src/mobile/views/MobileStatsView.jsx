@@ -68,12 +68,12 @@ const MobileStatsView = ({ authUser, authRole, onBack }) => {
                         <StatCard label="Total Tasks" value={stats.total_tasks || 0} />
                         <StatCard label="Completed" value={stats.done_count || 0} />
                         <StatCard label="Active" value={stats.active_count || 0} bg={THEME.secondary} />
-                        <StatCard label="Total Hours" value={`${(stats.total_hours || 0).toFixed(1)}h`} />
+                        <StatCard label="Total Hours" value={`${Number(stats.total_hours || 0).toFixed(1)}h`} />
                     </div>
 
                     {stats.total_revenue !== undefined && (
                         <div style={{ padding: `0 ${BAUHAUS.spacing.lg} ${BAUHAUS.spacing.lg}` }}>
-                            <StatCard label="Total Revenue" value={`₪${(stats.total_revenue || 0).toFixed(2)}`} bg={THEME.primary} color="#fff" />
+                            <StatCard label="Total Revenue" value={`₪${Number(stats.total_revenue || 0).toFixed(2)}`} bg={THEME.primary} color="#fff" />
                         </div>
                     )}
 

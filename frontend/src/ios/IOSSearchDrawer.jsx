@@ -91,8 +91,8 @@ const IOSSearchDrawer = ({ isOpen, onClose }) => {
                         <select value={filters.client || ''} onChange={e => updateFilter('client', e.target.value)} style={{ ...fieldStyle, background: '#fff' }}>
                             <option value="">All Clients</option>
                             {clients.map(c => {
-                                const name = typeof c === 'string' ? c : c.name;
-                                const id = typeof c === 'string' ? c : c.id;
+                                const name = typeof c === 'string' ? c : (c.name || c.client || '');
+                                const id = typeof c === 'string' ? c : (c.id || c.client || '');
                                 return <option key={id} value={name}>{name}</option>;
                             })}
                         </select>

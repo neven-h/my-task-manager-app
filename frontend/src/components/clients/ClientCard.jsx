@@ -39,7 +39,7 @@ const ClientCard = ({ client, isSelected, editingClient, newClientName, colors, 
                             Total Hours
                         </div>
                         <div style={{ fontSize: '1.8rem', fontWeight: 900, color: colors.primary }}>
-                            {(client.total_hours || 0).toFixed(1)}h
+                            {Number(client.total_hours || 0).toFixed(1)}h
                         </div>
                     </div>
                     <div>
