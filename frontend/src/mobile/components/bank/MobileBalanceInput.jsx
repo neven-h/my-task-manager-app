@@ -19,7 +19,7 @@ const MobileBalanceInput = ({ startingBalance, editingBal, setEditingBal, balInp
                 <>
                     <input autoFocus type="number" inputMode="decimal" value={balInput}
                         onChange={e => setBalInput(e.target.value)} placeholder="e.g. 15000"
-                        style={{ border: `1.5px solid ${IOS.teal}`, borderRadius: 8, padding: '6px 10px', fontSize: '0.88rem', fontWeight: 700, width: 110, outline: 'none', fontFamily: FONT_STACK }} />
+                        style={{ border: `1.5px solid ${IOS.teal}`, borderRadius: 8, padding: '6px 10px', fontSize: '16px', fontWeight: 700, width: 110, outline: 'none', fontFamily: FONT_STACK }} />
                     <button onClick={onSave} style={{ background: IOS.teal, color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontWeight: 700, fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 4, fontFamily: FONT_STACK }}>
                         <Check size={13} /> Save
                     </button>
