@@ -6,7 +6,7 @@ const IOS_INPUT = {
     border: 'none',
     borderRadius: '10px',
     padding: '9px 12px',
-    fontSize: '0.9rem',
+    fontSize: '16px',
     color: '#000',
     outline: 'none',
     WebkitAppearance: 'none',

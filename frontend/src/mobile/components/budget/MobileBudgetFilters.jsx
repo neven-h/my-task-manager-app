@@ -5,7 +5,7 @@ import { FONT_STACK } from '../../../ios/theme';
 const IOS = { bg: '#F2F2F7', card: '#fff', blue: '#007AFF', red: '#FF3B30', muted: '#8E8E93', radius: 12 };
 
 const pill = {
-    padding: '8px 12px', border: 'none', borderRadius: 10, fontSize: '0.82rem',
+    padding: '8px 12px', border: 'none', borderRadius: 10, fontSize: '16px',
     fontWeight: 600, fontFamily: FONT_STACK, background: IOS.bg,
 };
 

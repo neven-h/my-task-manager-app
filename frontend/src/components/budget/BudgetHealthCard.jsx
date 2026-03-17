@@ -29,10 +29,30 @@ const ScoreRing = ({ score, label }) => {
 };
 
 const SCORE_TIERS = [
-    { range: '80 – 100', label: 'Healthy',    color: '#059669', desc: 'Good runway (6+ months), spending stable.' },
-    { range: '60 – 79',  label: 'Moderate',   color: '#d97706', desc: 'Runway 3–6 months. Monitor spending trends.' },
-    { range: '40 – 59',  label: 'Watch Out',  color: '#ea580c', desc: 'Runway under 3 months. Review fixed costs.' },
-    { range: '0 – 39',   label: 'Critical',   color: '#dc2626', desc: 'Runway under 1 month. Immediate action needed.' },
+    {
+        range: '80 – 100',
+        label: 'Healthy',
+        color: '#059669',
+        desc: 'Cash coverage is strong: your current balance could cover more than 6 months of typical spending, and spending looks stable.',
+    },
+    {
+        range: '60 – 79',
+        label: 'Moderate',
+        color: '#d97706',
+        desc: 'Cash coverage is decent: your current balance could cover about 3 to 6 months of typical spending, but trends should be watched.',
+    },
+    {
+        range: '40 – 59',
+        label: 'Watch Out',
+        color: '#ea580c',
+        desc: 'Cash coverage is limited: your current balance could cover less than 3 months of typical spending, so fixed costs should be reviewed.',
+    },
+    {
+        range: '0 – 39',
+        label: 'Critical',
+        color: '#dc2626',
+        desc: 'Cash coverage is very low: your current balance could cover less than 1 month of typical spending, so immediate action may be needed.',
+    },
 ];
 
 const ScoreInfoTooltip = () => {
@@ -53,7 +73,7 @@ const ScoreInfoTooltip = () => {
                     fontSize: '0.78rem', lineHeight: 1.5,
                 }}>
                     <div style={{ fontWeight: 800, fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 8, borderBottom: `1px solid #eee`, paddingBottom: 6 }}>
-                        How the score is calculated
+                        How the Financial Health Score works
                     </div>
                     {SCORE_TIERS.map(t => (
                         <div key={t.range} style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
@@ -64,7 +84,7 @@ const ScoreInfoTooltip = () => {
                     ))}
                     <div style={{ borderTop: `1px solid #eee`, marginTop: 8, paddingTop: 8, color: SYS.light, fontSize: '0.72rem' }}>
                         <strong style={{ color: SYS.text }}>Factors:</strong>{' '}
-                        runway length · spending momentum · anomaly count
+                        cash coverage (how many months your current balance can support your usual spending) · spending momentum (whether spending is rising, falling, or stable) · anomaly count (unusual spikes or irregular months)
                     </div>
                 </div>
             )}
@@ -88,7 +108,7 @@ const BudgetHealthCard = ({ health }) => {
                     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
                         <div style={{ padding: '6px 10px', border: `2px solid ${SYS.border}`, background: '#f8f8f8', fontSize: '0.82rem' }}>
                             <Timer size={13} style={{ verticalAlign: -2, marginRight: 4 }} />
-                            <strong>Runway:</strong>{' '}
+                            <strong>Cash coverage:</strong>{' '}
                             <span style={{ color: rwInfo.color, fontWeight: 700 }}>{rwInfo.label}</span>
                         </div>
                         <div style={{ padding: '6px 10px', border: `2px solid ${SYS.border}`, background: '#f8f8f8', fontSize: '0.82rem' }}>
