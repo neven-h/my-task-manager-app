@@ -33,25 +33,25 @@ const SCORE_TIERS = [
         range: '80 – 100',
         label: 'Healthy',
         color: '#059669',
-        desc: 'Cash coverage is strong: your current balance could cover more than 6 months of typical spending, and spending looks stable.',
+        desc: 'Your balance can cover 6+ months of usual spending.',
     },
     {
         range: '60 – 79',
         label: 'Moderate',
         color: '#d97706',
-        desc: 'Cash coverage is decent: your current balance could cover about 3 to 6 months of typical spending, but trends should be watched.',
+        desc: 'Your balance can cover about 3–6 months.',
     },
     {
         range: '40 – 59',
         label: 'Watch Out',
         color: '#ea580c',
-        desc: 'Cash coverage is limited: your current balance could cover less than 3 months of typical spending, so fixed costs should be reviewed.',
+        desc: 'Your balance can cover less than 3 months.',
     },
     {
         range: '0 – 39',
         label: 'Critical',
         color: '#dc2626',
-        desc: 'Cash coverage is very low: your current balance could cover less than 1 month of typical spending, so immediate action may be needed.',
+        desc: 'Your balance can cover less than 1 month.',
     },
 ];
 
@@ -84,7 +84,7 @@ const ScoreInfoTooltip = () => {
                     ))}
                     <div style={{ borderTop: `1px solid #eee`, marginTop: 8, paddingTop: 8, color: SYS.light, fontSize: '0.72rem' }}>
                         <strong style={{ color: SYS.text }}>Factors:</strong>{' '}
-                        cash coverage (how many months your current balance can support your usual spending) · spending momentum (whether spending is rising, falling, or stable) · anomaly count (unusual spikes or irregular months)
+                        cash coverage · spending trend · unusual spikes
                     </div>
                 </div>
             )}
