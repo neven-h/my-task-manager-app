@@ -24,6 +24,16 @@ const BudgetExpenseChart = ({ chartData }) => {
                 <div style={{ display: 'flex', justifyContent: 'center' }}>
                     <svg viewBox="0 0 200 200" style={{ width: '100%', maxWidth: 240 }}>
                         {(() => {
+                            // Single category = full circle (SVG arc to same point collapses)
+                            if (sortedCategories.length === 1) {
+                                return (
+                                    <g>
+                                        <circle cx="100" cy="100" r="90" fill={PIE_COLORS[0]} stroke="#000" strokeWidth="2" />
+                                        <text x="100" y="100" textAnchor="middle" dominantBaseline="middle"
+                                            fill="#fff" fontSize="14" fontWeight="800">100%</text>
+                                    </g>
+                                );
+                            }
                             let angle = 0;
                             return sortedCategories.map(([cat, data], i) => {
                                 const pct = (data.total / totalAmount) * 100;
