@@ -20,6 +20,7 @@ import BudgetExpenseChart from './components/budget/BudgetExpenseChart';
 import BudgetMonthlyChart from './components/budget/BudgetMonthlyChart';
 import BudgetFilterBar from './components/budget/BudgetFilterBar';
 import BudgetSelectionToolbar from './components/budget/BudgetSelectionToolbar';
+import BudgetMonthSidebar from './components/budget/BudgetMonthSidebar';
 
 const SYS = {
     primary: '#0000FF', success: '#00AA00', accent: '#FF0000',
@@ -41,24 +42,44 @@ const Budget = ({ onBackToTasks }) => {
 
     const [cutoff, setCutoff]                         = useState(today());
     const [activeTabId, setActiveTabId]               = useState(null);
+    const [selectedMonth, setSelectedMonth]           = useState(null); // null = all
     const [showForm, setShowForm]                     = useState(false);
     const [editingEntry, setEditingEntry]             = useState(null);
     const [formInitial, setFormInitial]               = useState(emptyForm('income'));
     const [newTabName, setNewTabName]                 = useState('');
     const [addingTab, setAddingTab]                   = useState(false);
     const [confirmDeleteTab, setConfirmDeleteTab]     = useState(null);
-    const [confirmClearTab, setConfirmClearTab]       = useState(false);
     const [expandedDescriptionId, setExpandedDescriptionId] = useState(null);
-    const [showUpload, setShowUpload] = useState(false);
-    const [selectMode, setSelectMode] = useState(false);
-    const [selectedIds, setSelectedIds] = useState(new Set());
+    const [showUpload, setShowUpload]                 = useState(false);
+    const [selectMode, setSelectMode]                 = useState(false);
+    const [selectedIds, setSelectedIds]               = useState(new Set());
 
     const { tabEntries, monthlyTotals, chartData, allCategories, health } = useBudgetStats(entries, cutoff, activeTabId);
-    const filters = useBudgetFilters(tabEntries);
+
+    // Month sidebar data: derived from all tab entries (not filtered)
+    const monthsData = useMemo(() => {
+        const map = {};
+        tabEntries.forEach(e => {
+            const m = e.entry_date.slice(0, 7);
+            if (!map[m]) map[m] = { income: 0, expense: 0, count: 0 };
+            map[m].count++;
+            if (e.type === 'income') map[m].income += e.amount;
+            else map[m].expense += e.amount;
+        });
+        return Object.entries(map).sort(([a], [b]) => b.localeCompare(a));
+    }, [tabEntries]);
+
+    // Filter tab entries by selected month before applying search/category filters
+    const monthFilteredEntries = useMemo(() =>
+        selectedMonth ? tabEntries.filter(e => e.entry_date.slice(0, 7) === selectedMonth) : tabEntries,
+        [tabEntries, selectedMonth]);
+
+    const filters = useBudgetFilters(monthFilteredEntries);
 
     useEffect(() => { fetchEntries(); fetchTabs(); }, [fetchEntries, fetchTabs]);
+    // Auto-select first tab, never stay on null when tabs exist
     useEffect(() => { if (!activeTabId && tabs.length > 0) setActiveTabId(tabs[0].id); }, [tabs, activeTabId]);
-    useEffect(() => { fetchLink(activeTabId); clearForecast(); }, [activeTabId, fetchLink, clearForecast]);
+    useEffect(() => { fetchLink(activeTabId); clearForecast(); setSelectedMonth(null); }, [activeTabId, fetchLink, clearForecast]);
     useEffect(() => { if (linkedTab && activeTabId) fetchForecast(activeTabId, 3); }, [linkedTab, activeTabId, fetchForecast]);
 
     const income  = useMemo(() => tabEntries.filter(e => e.type === 'income'  && e.entry_date <= cutoff).reduce((s, e) => s + e.amount, 0), [tabEntries, cutoff]);
@@ -66,7 +87,7 @@ const Budget = ({ onBackToTasks }) => {
     const net        = income - outcome;
     const displayBal = forecast ? forecast.current_balance : net;
 
-    const refreshForecast = () => { if (linkedTab && activeTabId) fetchForecast(activeTabId, 3); };
+    const refreshForecast = useCallback(() => { if (linkedTab && activeTabId) fetchForecast(activeTabId, 3); }, [linkedTab, activeTabId, fetchForecast]);
 
     const openAdd = (type) => { setEditingEntry(null); setFormInitial(emptyForm(type)); setShowForm(true); setTimeout(() => document.getElementById('budget-form')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50); };
     const openDuplicate = (entry) => { setEditingEntry(null); setFormInitial({ type: entry.type, description: entry.description, amount: String(entry.amount), entry_date: today(), category: entry.category || '', notes: entry.notes || '' }); setShowForm(true); setTimeout(() => document.getElementById('budget-form')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50); };
@@ -75,20 +96,29 @@ const Budget = ({ onBackToTasks }) => {
     const handleDelete = async (id) => { const ok = await deleteEntry(id); if (ok) refreshForecast(); return ok; };
     const handleCancel  = () => { setShowForm(false); setEditingEntry(null); };
     const handleAddTab  = async () => { const name = newTabName.trim(); if (!name) return; const tab = await createTab(name); if (tab) { setNewTabName(''); setAddingTab(false); setActiveTabId(tab.id); } };
-    const handleDeleteTab = async (tabId) => { const ok = await deleteTab(tabId); if (ok && activeTabId === tabId) setActiveTabId(null); setConfirmDeleteTab(null); };
-    const handleClearTab  = async () => {
-        const manualEntries = tabEntries.filter(e => !e.source || e.source === 'manual');
-        if (!manualEntries.length) return;
-        const ok = await batchDelete(manualEntries.map(e => e.id));
-        if (ok) { setConfirmClearTab(false); refreshForecast(); }
-    };
+    const handleDeleteTab = async (tabId) => { const ok = await deleteTab(tabId); if (ok && activeTabId === tabId) setActiveTabId(tabs.find(t => t.id !== tabId)?.id ?? null); setConfirmDeleteTab(null); };
+
+    // Clear all entries from the active tab — only deletes from budget_entries, never bank_transactions
+    const handleClearTab = useCallback(async () => {
+        if (!tabEntries.length) return;
+        const ok = await batchDelete(tabEntries.map(e => e.id));
+        if (ok) { setSelectedMonth(null); refreshForecast(); }
+    }, [tabEntries, batchDelete, refreshForecast]);
+
+    // Clear all entries for a specific month
+    const handleClearMonth = useCallback(async (ym) => {
+        const ids = tabEntries.filter(e => e.entry_date.slice(0, 7) === ym).map(e => e.id);
+        if (!ids.length) return;
+        const ok = await batchDelete(ids);
+        if (ok && selectedMonth === ym) setSelectedMonth(null);
+    }, [tabEntries, batchDelete, selectedMonth]);
 
     const toggleSelect = useCallback((id) => setSelectedIds(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; }), []);
     const handleBatchDelete = useCallback(async () => {
         if (selectedIds.size === 0) return;
         const ok = await batchDelete([...selectedIds]);
         if (ok) { setSelectedIds(new Set()); setSelectMode(false); refreshForecast(); }
-    }, [selectedIds, batchDelete]);
+    }, [selectedIds, batchDelete, refreshForecast]);
     const handleBatchUpdate = useCallback(async (fields) => {
         if (selectedIds.size === 0) return;
         const ok = await batchUpdate([...selectedIds], fields);
@@ -104,38 +134,7 @@ const Budget = ({ onBackToTasks }) => {
             <BudgetHeader onBackToTasks={onBackToTasks} exportBudgetCSV={exportBudgetCSV} activeTabId={activeTabId} entriesCount={entries.length} openAdd={openAdd} onUpload={() => setShowUpload(true)} />
             <BudgetTabBar tabs={tabs} activeTabId={activeTabId} setActiveTabId={setActiveTabId} confirmDeleteTab={confirmDeleteTab} setConfirmDeleteTab={setConfirmDeleteTab} handleDeleteTab={handleDeleteTab} addingTab={addingTab} setAddingTab={setAddingTab} newTabName={newTabName} setNewTabName={setNewTabName} handleAddTab={handleAddTab} />
 
-            {/* Clear-tab action strip — only when a specific tab is active and has entries */}
-            {activeTabId !== null && tabEntries.length > 0 && (() => {
-                const manualCount = tabEntries.filter(e => !e.source || e.source === 'manual').length;
-                const uploadCount = tabEntries.length - manualCount;
-                return (
-                <div style={{ borderBottom: '1px solid #f0f0f0', padding: '6px 20px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, background: '#fafafa' }}>
-                    {confirmClearTab ? (
-                        <>
-                            <span style={{ fontSize: '0.78rem', color: '#666', fontWeight: 600 }}>
-                                Delete {manualCount} manual {manualCount === 1 ? 'entry' : 'entries'}?
-                                {uploadCount > 0 && <span style={{ color: '#999', fontWeight: 400 }}> ({uploadCount} imported entries will be kept)</span>}
-                            </span>
-                            <button type="button" onClick={handleClearTab} disabled={loading || manualCount === 0}
-                                style={{ padding: '4px 14px', border: '2px solid #000', background: '#FF0000', color: '#fff', fontSize: '0.75rem', fontWeight: 700, cursor: manualCount === 0 ? 'not-allowed' : 'pointer', textTransform: 'uppercase', letterSpacing: '0.3px', opacity: manualCount === 0 ? 0.5 : 1 }}>
-                                {loading ? '…' : 'Yes, clear'}
-                            </button>
-                            <button type="button" onClick={() => setConfirmClearTab(false)}
-                                style={{ padding: '4px 10px', border: '2px solid #000', background: '#fff', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>
-                                Cancel
-                            </button>
-                        </>
-                    ) : (
-                        <button type="button" onClick={() => setConfirmClearTab(true)}
-                            style={{ padding: '4px 14px', border: '1px solid #ddd', background: 'none', color: '#999', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
-                            Clear tab
-                        </button>
-                    )}
-                </div>
-                );
-            })()}
-
-            <div style={{ maxWidth: 920, margin: '0 auto', padding: '24px 20px' }}>
+            <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 20px' }}>
                 {error && <div style={{ background: '#fff0f0', border: `2px solid ${SYS.accent}`, padding: '10px 14px', marginBottom: 16, color: SYS.accent, fontSize: '0.85rem', fontWeight: 600 }}>{error}</div>}
                 {showForm && <div id="budget-form"><EntryForm initial={formInitial} onSave={handleSave} onCancel={handleCancel} loading={loading} /></div>}
                 {activeTabId && <BudgetLinkBanner budgetTabId={activeTabId} linkedTab={linkedTab} onSetLink={(txTabId) => setLink(activeTabId, txTabId)} onRemoveLink={() => removeLink(activeTabId)} />}
@@ -156,16 +155,28 @@ const Budget = ({ onBackToTasks }) => {
                 <BudgetExpenseChart chartData={chartData} />
                 <BudgetMonthlyChart monthlyTotals={monthlyTotals} />
 
-                <BudgetFilterBar {...filters} allCategories={allCategories} />
-                {selectMode && <BudgetSelectionToolbar count={selectedIds.size} onDelete={handleBatchDelete} onExport={() => exportBudgetCSV(activeTabId)} onCancel={cancelSelection} onBatchUpdate={handleBatchUpdate} allCategories={allCategories} />}
-
-                <BudgetEntryList loading={loading} entries={entries} visibleEntries={filters.filtered}
-                    typeFilter={filters.typeFilter} setTypeFilter={filters.setTypeFilter} cutoff={cutoff}
-                    openEdit={openEdit} openDuplicate={openDuplicate} deleteEntry={handleDelete}
-                    expandedDescriptionId={expandedDescriptionId} setExpandedDescriptionId={setExpandedDescriptionId}
-                    getDescriptionHistory={getDescriptionHistory}
-                    selectMode={selectMode} onToggleSelectMode={() => setSelectMode(m => !m)}
-                    selectedIds={selectedIds} toggleSelect={toggleSelect} onSelectAll={selectAll} />
+                {/* Sidebar + entry list */}
+                <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '1.5rem', alignItems: 'start' }}>
+                    <BudgetMonthSidebar
+                        monthsData={monthsData}
+                        selectedMonth={selectedMonth}
+                        onSelectMonth={(m) => { setSelectedMonth(m); cancelSelection(); }}
+                        onClearMonth={handleClearMonth}
+                        onClearTab={handleClearTab}
+                        tabEntries={tabEntries}
+                    />
+                    <div>
+                        <BudgetFilterBar {...filters} allCategories={allCategories} />
+                        {selectMode && <BudgetSelectionToolbar count={selectedIds.size} onDelete={handleBatchDelete} onExport={() => exportBudgetCSV(activeTabId)} onCancel={cancelSelection} onBatchUpdate={handleBatchUpdate} allCategories={allCategories} />}
+                        <BudgetEntryList loading={loading} entries={entries} visibleEntries={filters.filtered}
+                            typeFilter={filters.typeFilter} setTypeFilter={filters.setTypeFilter} cutoff={cutoff}
+                            openEdit={openEdit} openDuplicate={openDuplicate} deleteEntry={handleDelete}
+                            expandedDescriptionId={expandedDescriptionId} setExpandedDescriptionId={setExpandedDescriptionId}
+                            getDescriptionHistory={getDescriptionHistory}
+                            selectMode={selectMode} onToggleSelectMode={() => setSelectMode(m => !m)}
+                            selectedIds={selectedIds} toggleSelect={toggleSelect} onSelectAll={selectAll} />
+                    </div>
+                </div>
 
                 <ForecastSection predictions={predictions} onFetch={() => fetchPredictions(3, activeTabId)} loading={loading} />
                 <BalanceForecast forecast={forecast} onFetch={() => fetchForecast(activeTabId, 3)} onRefresh={() => refresh(activeTabId, 3)} loading={forecastLoading} linkedTab={linkedTab} lastUpdated={lastUpdated} />

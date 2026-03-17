@@ -28,19 +28,6 @@ export const BudgetTabBar = ({
         display: 'flex', alignItems: 'center', gap: 0,
         overflowX: 'auto',
     }}>
-        {/* "All" tab */}
-        <button type="button" onClick={() => setActiveTabId(null)}
-            style={{
-                padding: '10px 18px', border: 'none', background: 'none', cursor: 'pointer',
-                fontSize: '0.82rem', fontWeight: 700,
-                color: activeTabId === null ? SYS.primary : SYS.text,
-                borderBottom: activeTabId === null ? `3px solid ${SYS.primary}` : '3px solid transparent',
-                textTransform: 'uppercase', letterSpacing: '0.4px',
-                whiteSpace: 'nowrap', flexShrink: 0,
-            }}>
-            All
-        </button>
-
         {tabs.map(tab => (
             <div key={tab.id} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                 <button type="button" onClick={() => setActiveTabId(tab.id)}
