@@ -2,13 +2,13 @@
 import pandas as pd
 from .budget_parsers_io import (
     _DATE_RE, _DATE_NAMES, _DESC_NAMES, _CREDIT_NAMES, _DEBIT_NAMES,
-    _AMOUNT_NAMES, _CATEGORY_NAMES, _BALANCE_NAMES,
+    _AMOUNT_NAMES, _CATEGORY_NAMES, _BALANCE_NAMES, _TYPE_NAMES, _NOTES_NAMES,
     _find_col, _load_df, _detect_date_order, _parse_date, _parse_amount,
 )
 
 
 def _detect_columns(df):
-    """Detect date/desc/amount/credit/debit/category/balance columns."""
+    """Detect date/desc/amount/credit/debit/category/balance/type/notes columns."""
     date_col     = _find_col(df.columns, _DATE_NAMES)
     desc_col     = _find_col(df.columns, _DESC_NAMES)
     amount_col   = _find_col(df.columns, _AMOUNT_NAMES)
@@ -16,6 +16,8 @@ def _detect_columns(df):
     debit_col    = _find_col(df.columns, _DEBIT_NAMES)
     category_col = _find_col(df.columns, _CATEGORY_NAMES)
     balance_col  = _find_col(df.columns, _BALANCE_NAMES)
+    type_col     = _find_col(df.columns, _TYPE_NAMES)
+    notes_col    = _find_col(df.columns, _NOTES_NAMES)
 
     if amount_col and credit_col == amount_col:
         credit_col = None
@@ -23,6 +25,8 @@ def _detect_columns(df):
         debit_col = None
     if balance_col and balance_col == amount_col:
         balance_col = None
+    if type_col and type_col == amount_col:
+        type_col = None
 
     if not date_col or (not amount_col and not (credit_col or debit_col)):
         for col in df.columns:
@@ -40,7 +44,7 @@ def _detect_columns(df):
                 if non_empty.str.contains(r'[\u0590-\u05FF]|[a-zA-Z]{3,}', regex=True).mean() > 0.3:
                     desc_col = col
 
-    return date_col, desc_col, amount_col, credit_col, debit_col, category_col, balance_col
+    return date_col, desc_col, amount_col, credit_col, debit_col, category_col, balance_col, type_col, notes_col
 
 
 def _resolve_amount(row, amount_col, credit_col, debit_col):
@@ -87,7 +91,7 @@ def parse_budget_file(file_path):
     Each entry: {type, description, amount, entry_date, category}
     """
     df = _load_df(file_path)
-    date_col, desc_col, amount_col, credit_col, debit_col, category_col, balance_col = \
+    date_col, desc_col, amount_col, credit_col, debit_col, category_col, balance_col, type_col, notes_col = \
         _detect_columns(df)
 
     if not date_col:
@@ -106,6 +110,15 @@ def parse_budget_file(file_path):
         if result is None:
             continue
         entry_type, amount = result
+
+        # Self-export round-trip: override type from explicit Type column
+        if type_col and pd.notna(row[type_col]):
+            type_str = str(row[type_col]).strip().lower()
+            if type_str in ('income', 'הכנסה'):
+                entry_type = 'income'
+            elif type_str in ('expense', 'outcome', 'הוצאה'):
+                entry_type = 'outcome'
+
         if entry_type == 'outcome':
             has_direct_expenses = True
 
@@ -119,9 +132,16 @@ def parse_budget_file(file_path):
             if cat not in ('nan', 'NaN', ''):
                 category = cat
 
+        notes = None
+        if notes_col and pd.notna(row[notes_col]):
+            n = str(row[notes_col]).strip()
+            if n not in ('nan', 'NaN', ''):
+                notes = n
+
         entry_date = dt.strftime('%Y-%m-%d')
         entries.append({'type': entry_type, 'description': description,
-                        'amount': round(amount, 2), 'entry_date': entry_date, 'category': category})
+                        'amount': round(amount, 2), 'entry_date': entry_date,
+                        'category': category, 'notes': notes})
 
         if balance_col:
             bal = _parse_amount(row[balance_col])
