@@ -32,19 +32,34 @@ const BudgetMonthlyChart = ({ monthlyTotals }) => {
                 </span>
             </div>
             <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
-                <svg width={recent.length * (gapW * 2 + barW * 2 + 4) + 16} height={BAR_HEIGHT + 52} style={{ display: 'block', paddingTop: 16 }}>
+                <svg width={recent.length * (gapW * 2 + barW * 2 + 4) + 16} height={BAR_HEIGHT + 100} style={{ display: 'block' }}>
                     {recent.map(([month, data], i) => {
                         const x = i * (gapW * 2 + barW * 2 + 4) + 8;
                         const incH = (data.income / maxVal) * BAR_HEIGHT;
                         const expH = (data.expense / maxVal) * BAR_HEIGHT;
                         const label = month.slice(5); // "MM"
+                        const incX = x + barW / 2;
+                        const expX = x + barW + 2 + barW / 2;
                         return (
                             <g key={month}>
                                 <rect x={x} y={BAR_HEIGHT - incH} width={barW} height={incH} fill={GREEN} stroke="#000" strokeWidth="1.5" />
-                                {incH > 0 && <text x={x + barW / 2} y={BAR_HEIGHT - incH - 4} textAnchor="middle" fontSize="9" fontWeight="700" fill={GREEN}>{Math.round(data.income).toLocaleString()}</text>}
                                 <rect x={x + barW + 2} y={BAR_HEIGHT - expH} width={barW} height={expH} fill={RED} stroke="#000" strokeWidth="1.5" />
-                                {expH > 0 && <text x={x + barW + 2 + barW / 2} y={BAR_HEIGHT - expH - 4} textAnchor="middle" fontSize="9" fontWeight="700" fill={RED}>{Math.round(data.expense).toLocaleString()}</text>}
-                                <text x={x + barW} y={BAR_HEIGHT + 14} textAnchor="middle" fontSize="11" fontWeight="700" fill={SYS.light}>{label}</text>
+                                {/* Month label */}
+                                <text x={x + barW} y={BAR_HEIGHT + 13} textAnchor="middle" fontSize="11" fontWeight="700" fill={SYS.light}>{label}</text>
+                                {/* Income value — rotated -45° below baseline */}
+                                {incH > 0 && (
+                                    <text
+                                        transform={`translate(${incX + 2}, ${BAR_HEIGHT + 26}) rotate(-45)`}
+                                        textAnchor="start" fontSize="9" fontWeight="700" fill={GREEN}
+                                    >{Math.round(data.income).toLocaleString()}</text>
+                                )}
+                                {/* Expense value — rotated -45° below baseline */}
+                                {expH > 0 && (
+                                    <text
+                                        transform={`translate(${expX + 2}, ${BAR_HEIGHT + 26}) rotate(-45)`}
+                                        textAnchor="start" fontSize="9" fontWeight="700" fill={RED}
+                                    >{Math.round(data.expense).toLocaleString()}</text>
+                                )}
                             </g>
                         );
                     })}
