@@ -94,8 +94,13 @@ const ScoreInfoTooltip = () => {
 
 const BudgetHealthCard = ({ health }) => {
     if (!health) return null;
-    const { score, label, rwInfo, momentum, avgMonthly, insights } = health;
+    const { score, label, momentum, avgMonthly, avgMonthlyIncome = 0, monthlyNet = 0, insights } = health;
     const fmt = n => Math.abs(n).toLocaleString('he-IL', { maximumFractionDigits: 0 });
+    const netColor = monthlyNet >= 0 ? '#059669' : '#dc2626';
+    const netSign  = monthlyNet >= 0 ? '+' : '−';
+
+    // Skip runway/months insights — they require an external starting balance we don't have
+    const cleanInsights = insights.filter(t => !t.includes('runway') && !t.includes('months of') && !t.includes('month of'));
 
     return (
         <div style={{ background: '#fff', border: `2px solid ${SYS.border}`, padding: '1.25rem', marginBottom: '1.5rem' }}>
@@ -104,21 +109,36 @@ const BudgetHealthCard = ({ health }) => {
             </h3>
             <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <ScoreRing score={score} label={label} />
-                <div style={{ flex: 1, minWidth: 180, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                        <div style={{ padding: '6px 10px', border: `2px solid ${SYS.border}`, background: '#f8f8f8', fontSize: '0.82rem' }}>
-                            <Timer size={13} style={{ verticalAlign: -2, marginRight: 4 }} />
-                            <strong>Cash coverage:</strong>{' '}
-                            <span style={{ color: rwInfo.color, fontWeight: 700 }}>{rwInfo.label}</span>
+                <div style={{ flex: 1, minWidth: 200, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {/* Three clear monthly metrics */}
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <div style={{ padding: '7px 10px', border: `2px solid ${SYS.border}`, background: '#f0fff4', flex: 1, minWidth: 100 }}>
+                            <div style={{ fontSize: '0.62rem', color: SYS.light, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: 3 }}>Avg monthly income</div>
+                            <span style={{ color: '#059669', fontWeight: 800, fontSize: '0.9rem' }}>+₪{fmt(avgMonthlyIncome)}</span>
                         </div>
-                        <div style={{ padding: '6px 10px', border: `2px solid ${SYS.border}`, background: '#f8f8f8', fontSize: '0.82rem' }}>
-                            <MomentumIcon m={momentum} />{' '}
-                            <strong>Avg/mo:</strong> ₪{fmt(avgMonthly)}
+                        <div style={{ padding: '7px 10px', border: `2px solid ${SYS.border}`, background: '#fff5f5', flex: 1, minWidth: 100 }}>
+                            <div style={{ fontSize: '0.62rem', color: SYS.light, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: 3 }}>Avg monthly expenses</div>
+                            <span style={{ color: '#dc2626', fontWeight: 800, fontSize: '0.9rem' }}>−₪{fmt(avgMonthly)}</span>
+                        </div>
+                        <div style={{ padding: '7px 10px', border: `2px solid ${SYS.border}`, background: monthlyNet >= 0 ? '#f0fff4' : '#fff5f5', flex: 1, minWidth: 100 }}>
+                            <div style={{ fontSize: '0.62rem', color: SYS.light, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px', marginBottom: 3 }}>Monthly net</div>
+                            <span style={{ color: netColor, fontWeight: 800, fontSize: '0.9rem' }}>{netSign}₪{fmt(monthlyNet)}</span>
+                            <span style={{ fontSize: '0.68rem', color: SYS.light, marginLeft: 5 }}>{monthlyNet >= 0 ? 'surplus' : 'deficit'}</span>
                         </div>
                     </div>
-                    {insights.length > 0 && (
+                    {/* Spending trend */}
+                    <div style={{ padding: '6px 10px', border: `2px solid ${SYS.border}`, background: '#f8f8f8', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <MomentumIcon m={momentum} />
+                        <span>
+                            <strong>Spending trend: </strong>
+                            {momentum === 'increasing' && <span style={{ color: '#dc2626' }}>↑ Increasing — expenses are rising month over month</span>}
+                            {momentum === 'decreasing' && <span style={{ color: '#059669' }}>↓ Decreasing — expenses are falling month over month</span>}
+                            {momentum === 'stable'     && <span style={{ color: SYS.light }}>→ Stable — expenses are consistent month over month</span>}
+                        </span>
+                    </div>
+                    {cleanInsights.length > 0 && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            {insights.map((text, i) => (
+                            {cleanInsights.map((text, i) => (
                                 <div key={i} style={{ fontSize: '0.82rem', color: SYS.text, lineHeight: 1.45 }}>{text}</div>
                             ))}
                         </div>
