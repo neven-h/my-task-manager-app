@@ -242,6 +242,7 @@ def parse_budget_file(file_path):
 
     entries = []
     balance_rows = []  # for deriving expenses when balance_col present
+    has_direct_expenses = False  # True if file already contains explicit expense rows
 
     for row_idx, row in df.iterrows():
         dt = _parse_date(row[date_col], date_order)
@@ -251,6 +252,9 @@ def parse_budget_file(file_path):
         if result is None:
             continue
         entry_type, amount = result
+
+        if entry_type == 'outcome':
+            has_direct_expenses = True
 
         description = ''
         if desc_col and pd.notna(row[desc_col]):
@@ -276,7 +280,7 @@ def parse_budget_file(file_path):
             'category': category,
         })
 
-        # Collect balance data for expense derivation
+        # Collect balance data for expense derivation (only used for income-only files)
         if balance_col:
             bal = _parse_amount(row[balance_col])
             if bal is not None:
@@ -287,9 +291,10 @@ def parse_budget_file(file_path):
                     'balance': bal,
                 })
 
-    # Derive expenses from balance differences (rows are in file order,
-    # which is newest-first for bank statements — reverse to chronological)
-    if balance_rows and len(balance_rows) >= 2:
+    # Only derive implied expenses from balance when the file has NO direct expense rows.
+    # Combined income+expense files (e.g. עובר ושב / checking account export) already
+    # contain every transaction explicitly — running the derivation would create duplicates.
+    if not has_direct_expenses and balance_rows and len(balance_rows) >= 2:
         # Detect order: if first date > last date, file is newest-first
         if balance_rows[0]['entry_date'] > balance_rows[-1]['entry_date']:
             balance_rows = list(reversed(balance_rows))
@@ -297,6 +302,8 @@ def parse_budget_file(file_path):
         derived = _derive_expenses_from_balance(balance_rows)
         entries.extend(derived)
         print(f"[BUDGET_PARSER] Derived {len(derived)} expense entries from balance column", flush=True)
+    elif has_direct_expenses and balance_rows:
+        print(f"[BUDGET_PARSER] Skipping balance derivation — file contains explicit expense rows", flush=True)
 
     if not entries:
         raise ValueError("No valid entries found in file")
