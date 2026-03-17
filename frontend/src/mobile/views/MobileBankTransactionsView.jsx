@@ -178,6 +178,7 @@ const MobileBankTransactionsView = ({ authUser, authRole, onBack }) => {
                     onSelectAll={() => sel.selectAll(filteredTransactions.map(t => t.id))}
                     allSelected={sel.selectedIds.size === filteredTransactions.length && filteredTransactions.length > 0}
                     onCancel={sel.exitSelectMode}
+                    onRename={sel.renameSelected}
                 />
             )}
 
