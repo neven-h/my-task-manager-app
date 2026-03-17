@@ -23,22 +23,31 @@ const useTaskSubmit = ({ setLoading, setError, loadTasks, fetchStats, fetchClien
             const responseData = await response.json().catch(() => ({}));
             const taskId = editingTask ? editingTask.id : responseData.id;
 
+            let attachmentError = null;
             if (taskId) {
                 for (const { file, name } of (newAttachments || [])) {
-                    const fd = new FormData();
-                    fd.append('file', file, name || file.name || `image-${Date.now()}.png`);
-                    const upRes = await fetch(`${API_BASE}/tasks/${taskId}/attachments`, { method: 'POST', headers: getAuthHeaders(false), body: fd });
-                    if (!upRes.ok) { const upErr = await upRes.json().catch(() => ({})); throw new Error(upErr.error || 'Failed to upload attachment'); }
+                    try {
+                        const fd = new FormData();
+                        fd.append('file', file, name || file.name || `image-${Date.now()}.png`);
+                        const upRes = await fetch(`${API_BASE}/tasks/${taskId}/attachments`, { method: 'POST', headers: getAuthHeaders(false), body: fd });
+                        if (!upRes.ok) { const upErr = await upRes.json().catch(() => ({})); attachmentError = upErr.error || 'Failed to upload attachment'; }
+                    } catch (err) {
+                        attachmentError = 'Failed to upload attachment: ' + err.message;
+                    }
                 }
                 for (const attId of (removedAttachmentIds || [])) {
-                    await fetch(`${API_BASE}/tasks/${taskId}/attachments/${attId}`, { method: 'DELETE', headers: getAuthHeaders() });
+                    await fetch(`${API_BASE}/tasks/${taskId}/attachments/${attId}`, { method: 'DELETE', headers: getAuthHeaders() }).catch(() => {});
                 }
             }
 
             await loadTasks();
             await fetchStats();
             await fetchClients();
-            setError(null);
+            if (attachmentError) {
+                setError('Task saved but attachment failed: ' + attachmentError);
+            } else {
+                setError(null);
+            }
             return true;
         } catch (err) {
             setError(err.message);
