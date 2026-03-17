@@ -34,7 +34,7 @@ const emptyForm = (type = 'income') => ({
 
 const Budget = ({ onBackToTasks }) => {
     const { entries, loading, error, fetchEntries, createEntry, updateEntry, deleteEntry,
-        batchDelete, getDescriptionHistory, predictions, fetchPredictions, exportBudgetCSV } = useBudget();
+        batchDelete, batchUpdate, getDescriptionHistory, predictions, fetchPredictions, exportBudgetCSV } = useBudget();
     const { tabs, fetchTabs, createTab, deleteTab } = useBudgetTabs();
     const { linkedTab, fetchLink, setLink, removeLink } = useBudgetLinks();
     const { forecast, loading: forecastLoading, fetchForecast, clearForecast, lastUpdated, refresh } = useBalanceForecast();
@@ -89,12 +89,19 @@ const Budget = ({ onBackToTasks }) => {
         const ok = await batchDelete([...selectedIds]);
         if (ok) { setSelectedIds(new Set()); setSelectMode(false); refreshForecast(); }
     }, [selectedIds, batchDelete]);
+    const handleBatchUpdate = useCallback(async (fields) => {
+        if (selectedIds.size === 0) return;
+        const ok = await batchUpdate([...selectedIds], fields);
+        if (ok) { setSelectedIds(new Set()); setSelectMode(false); }
+    }, [selectedIds, batchUpdate]);
+    const selectAll = useCallback((ids) => {
+        setSelectedIds(prev => prev.size === ids.length ? new Set() : new Set(ids));
+    }, []);
     const cancelSelection = useCallback(() => { setSelectMode(false); setSelectedIds(new Set()); }, []);
 
     return (
         <div style={{ minHeight: '100vh', background: SYS.bg, fontFamily: 'inherit' }}>
-            <BudgetHeader onBackToTasks={onBackToTasks} exportBudgetCSV={exportBudgetCSV} activeTabId={activeTabId} entriesCount={entries.length} openAdd={openAdd} onUpload={() => setShowUpload(true)}
-                selectMode={selectMode} onToggleSelectMode={() => setSelectMode(m => !m)} />
+            <BudgetHeader onBackToTasks={onBackToTasks} exportBudgetCSV={exportBudgetCSV} activeTabId={activeTabId} entriesCount={entries.length} openAdd={openAdd} onUpload={() => setShowUpload(true)} />
             <BudgetTabBar tabs={tabs} activeTabId={activeTabId} setActiveTabId={setActiveTabId} confirmDeleteTab={confirmDeleteTab} setConfirmDeleteTab={setConfirmDeleteTab} handleDeleteTab={handleDeleteTab} addingTab={addingTab} setAddingTab={setAddingTab} newTabName={newTabName} setNewTabName={setNewTabName} handleAddTab={handleAddTab} />
 
             {/* Clear-tab action strip — only when a specific tab is active and has entries */}
@@ -150,14 +157,15 @@ const Budget = ({ onBackToTasks }) => {
                 <BudgetMonthlyChart monthlyTotals={monthlyTotals} />
 
                 <BudgetFilterBar {...filters} allCategories={allCategories} />
-                {selectMode && <BudgetSelectionToolbar count={selectedIds.size} onDelete={handleBatchDelete} onExport={() => exportBudgetCSV(activeTabId)} onCancel={cancelSelection} />}
+                {selectMode && <BudgetSelectionToolbar count={selectedIds.size} onDelete={handleBatchDelete} onExport={() => exportBudgetCSV(activeTabId)} onCancel={cancelSelection} onBatchUpdate={handleBatchUpdate} allCategories={allCategories} />}
 
                 <BudgetEntryList loading={loading} entries={entries} visibleEntries={filters.filtered}
                     typeFilter={filters.typeFilter} setTypeFilter={filters.setTypeFilter} cutoff={cutoff}
                     openEdit={openEdit} openDuplicate={openDuplicate} deleteEntry={handleDelete}
                     expandedDescriptionId={expandedDescriptionId} setExpandedDescriptionId={setExpandedDescriptionId}
                     getDescriptionHistory={getDescriptionHistory}
-                    selectMode={selectMode} selectedIds={selectedIds} toggleSelect={toggleSelect} />
+                    selectMode={selectMode} onToggleSelectMode={() => setSelectMode(m => !m)}
+                    selectedIds={selectedIds} toggleSelect={toggleSelect} onSelectAll={selectAll} />
 
                 <ForecastSection predictions={predictions} onFetch={() => fetchPredictions(3, activeTabId)} loading={loading} />
                 <BalanceForecast forecast={forecast} onFetch={() => fetchForecast(activeTabId, 3)} onRefresh={() => refresh(activeTabId, 3)} loading={forecastLoading} linkedTab={linkedTab} lastUpdated={lastUpdated} />
