@@ -17,7 +17,7 @@ const formatDate = (iso) => {
 /**
  * MobileBudgetLinkBanner — iOS-styled link/unlink banner for budget ↔ bank tabs.
  */
-const MobileBudgetLinkBanner = ({ budgetTabId, linkedTab, onSetLink, onRemoveLink }) => {
+const MobileBudgetLinkBanner = ({ budgetTabId, linkedTab, linkError, onSetLink, onRemoveLink }) => {
     const [txTabs, setTxTabs] = useState([]);
     const [expanded, setExpanded] = useState(false);
     const [syncInfo, setSyncInfo] = useState(null);
@@ -95,7 +95,7 @@ const MobileBudgetLinkBanner = ({ budgetTabId, linkedTab, onSetLink, onRemoveLin
                 }}>
                     {txTabs.length === 0 && (
                         <div style={{ padding: '14px 16px', fontSize: '0.82rem', color: IOS.muted, textAlign: 'center' }}>
-                            No bank transaction tabs found
+                            No bank transaction tabs found — create one in the Bank Transactions tab first
                         </div>
                     )}
                     {txTabs.map((tab, idx) => (
@@ -111,6 +111,11 @@ const MobileBudgetLinkBanner = ({ budgetTabId, linkedTab, onSetLink, onRemoveLin
                             {tab.name}
                         </button>
                     ))}
+                </div>
+            )}
+            {linkError && (
+                <div style={{ marginTop: 6, padding: '0 4px', fontSize: '0.76rem', color: '#FF3B30', fontWeight: 600 }}>
+                    {linkError}
                 </div>
             )}
         </div>

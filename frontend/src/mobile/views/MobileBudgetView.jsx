@@ -40,7 +40,7 @@ const MobileBudgetView = ({ onBack }) => {
         predictions, fetchPredictions, exportBudgetCSV } = useBudget();
 
     const { tabs, fetchTabs, deleteTab } = useBudgetTabs();
-    const { linkedTab, fetchLink, setLink, removeLink } = useBudgetLinks();
+    const { linkedTab, linkError, fetchLink, setLink, removeLink } = useBudgetLinks();
     const { forecast, loading: forecastLoading, fetchForecast, clearForecast, lastUpdated, refresh } = useBalanceForecast();
 
     const [activeTabId, setActiveTabId]   = useState(null);
@@ -164,6 +164,7 @@ const MobileBudgetView = ({ onBack }) => {
 
             {activeTabId && (
                 <MobileBudgetLinkBanner budgetTabId={activeTabId} linkedTab={linkedTab}
+                    linkError={linkError}
                     onSetLink={(txTabId) => setLink(activeTabId, txTabId)}
                     onRemoveLink={() => removeLink(activeTabId)} />
             )}

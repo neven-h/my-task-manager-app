@@ -15,6 +15,7 @@ import { getAuthHeaders } from '../api.js';
 const useBudgetLinks = () => {
     const [linkedTab, setLinkedTab] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [linkError, setLinkError] = useState(null);
 
     const fetchLink = useCallback(async (budgetTabId) => {
         if (!budgetTabId) { setLinkedTab(null); return; }
@@ -32,17 +33,23 @@ const useBudgetLinks = () => {
 
     const setLink = useCallback(async (budgetTabId, transactionTabId) => {
         setLoading(true);
+        setLinkError(null);
         try {
             const res = await fetch(`${API_BASE}/budget-tabs/${budgetTabId}/link`, {
                 method: 'PUT',
                 headers: getAuthHeaders(),
                 body: JSON.stringify({ transaction_tab_id: transactionTabId }),
             });
-            if (!res.ok) throw new Error('Failed to set link');
             const data = await res.json();
+            if (!res.ok) {
+                setLinkError(data.error || 'Failed to link tabs');
+                return false;
+            }
             setLinkedTab(data || null);
+            return true;
         } catch {
-            setLinkedTab(null);
+            setLinkError('Failed to link tabs — server may be unavailable');
+            return false;
         } finally { setLoading(false); }
     }, []);
 
@@ -57,7 +64,7 @@ const useBudgetLinks = () => {
         finally { setLoading(false); }
     }, []);
 
-    return { linkedTab, loading, fetchLink, setLink, removeLink };
+    return { linkedTab, loading, linkError, fetchLink, setLink, removeLink };
 };
 
 export default useBudgetLinks;

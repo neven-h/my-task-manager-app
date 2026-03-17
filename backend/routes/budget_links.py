@@ -74,7 +74,10 @@ def set_link(payload, tab_id):
             cur.execute("SELECT id FROM budget_tabs WHERE id = %s AND owner = %s", (tab_id, username))
             if not cur.fetchone():
                 return jsonify({'error': 'Budget tab not found'}), 404
-            cur.execute("SELECT id FROM transaction_tabs WHERE id = %s AND owner = %s", (tx_tab_id, username))
+            cur.execute(
+                "SELECT id FROM transaction_tabs WHERE id = %s AND (owner = %s OR owner IS NULL)",
+                (tx_tab_id, username)
+            )
             if not cur.fetchone():
                 return jsonify({'error': 'Transaction tab not found'}), 404
             # Remove any existing link for this budget tab, then insert
