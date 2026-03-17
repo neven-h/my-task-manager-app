@@ -62,17 +62,19 @@ const useBudgetStats = (entries, cutoff, activeTabId) => {
         }
 
         const totalIncome = monthlyTotals.reduce((s, [, d]) => s + d.income, 0);
+        const avgMonthlyIncome = totalIncome / monthlyTotals.length;
         const balance = totalIncome - totalExpense;
-        const runway = runwayMonths(balance, avgMonthly);
+        const monthlyNet = avgMonthlyIncome - avgMonthly; // positive = monthly surplus
+        const runway = runwayMonths(balance > 0 ? balance : null, avgMonthly);
         const rwInfo = runwayInfo(runway);
         const score = healthScore(runway, momentum, 0);
         const label = healthLabel(score);
         const insights = generateInsights(
             { avg_monthly_spend: avgMonthly, momentum, anomalies: [] },
-            balance,
+            balance > 0 ? balance : null, // don't pass negative balance to avoid misleading runway insight
         );
 
-        return { score, label, runway, rwInfo, momentum, avgMonthly, insights, balance };
+        return { score, label, runway, rwInfo, momentum, avgMonthly, avgMonthlyIncome, monthlyNet, insights, balance };
     }, [monthlyTotals]);
 
     return { tabEntries, monthlyTotals, chartData, allCategories, health };

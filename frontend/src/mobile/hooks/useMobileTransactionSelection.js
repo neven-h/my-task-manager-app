@@ -73,11 +73,28 @@ const useMobileTransactionSelection = (activeTabId, setError, fetchTransactions,
         }
     }, [selectedIds, activeTabId, setError]);
 
+    const renameSelected = useCallback(async (newDescription) => {
+        if (selectedIds.size === 0 || !newDescription.trim()) return;
+        try {
+            const res = await fetch(`${API_BASE}/transactions/batch/rename-ids`, {
+                method: 'PUT',
+                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: [...selectedIds], tab_id: activeTabId, new_description: newDescription.trim() }),
+            });
+            if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Rename failed');
+            exitSelectMode();
+            await fetchTransactions();
+            await fetchStats();
+        } catch (err) {
+            setError(err.message);
+        }
+    }, [selectedIds, activeTabId, exitSelectMode, fetchTransactions, fetchStats, setError]);
+
     return {
         selectMode, selectedIds,
         enterSelectMode, exitSelectMode,
         toggleSelected, selectAll,
-        deleteSelected, exportSelected,
+        deleteSelected, exportSelected, renameSelected,
     };
 };
 

@@ -199,3 +199,46 @@ def batch_rename(payload):
     except Error as e:
         logger.error('batch_rename db error: %s', e, exc_info=True)
         return jsonify({'error': 'A database error occurred'}), 500
+
+
+@transaction_batch_bp.route('/api/transactions/batch/rename-ids', methods=['PUT'])
+@token_required
+def batch_rename_by_ids(payload):
+    """Rename specific transactions (by ID list) to a new description."""
+    try:
+        username = payload['username']
+        user_role = payload['role']
+        data = request.json or {}
+        tab_id = data.get('tab_id')
+        ids = data.get('ids', [])
+        new_description = (data.get('new_description') or '').strip()
+
+        if not tab_id or not ids or not new_description:
+            return jsonify({'error': 'tab_id, ids, and new_description are required'}), 400
+        if len(ids) > 500:
+            return jsonify({'error': 'Maximum 500 transactions per batch'}), 400
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            if not _ownership_check(cursor, tab_id, username, user_role):
+                return jsonify({'error': 'Access denied'}), 403
+
+            encrypted_new = encrypt_field(new_description)
+            placeholders = ','.join(['%s'] * len(ids))
+            cursor.execute(
+                f"UPDATE bank_transactions SET description = %s "
+                f"WHERE id IN ({placeholders}) AND tab_id = %s",
+                [encrypted_new, *ids, tab_id]
+            )
+            updated = cursor.rowcount
+            connection.commit()
+
+        log_bank_transaction_access(
+            username=username, action='BATCH_RENAME_IDS',
+            transaction_ids=f"Renamed {updated} IDs -> '{new_description}'"
+        )
+        return jsonify({'message': f'{updated} transactions renamed', 'updated': updated})
+
+    except Error as e:
+        logger.error('batch_rename_by_ids db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
