@@ -92,27 +92,33 @@ const useClientsManagement = () => {
     };
 
     const handleCreateClient = async (newClient) => {
-        const username = storage.get(STORAGE_KEYS.AUTH_USER);
-        if (!username) { setError('User not authenticated. Please log in again.'); return; }
-        const response = await fetch(`${API_BASE}/clients`, {
-            method: 'POST',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({
-                name: newClient.name.trim(),
-                email: newClient.email?.trim() || '',
-                phone: newClient.phone?.trim() || '',
-                notes: newClient.notes?.trim() || '',
-                owner: username
-            })
-        });
-        if (!response.ok) {
-            const data = await response.json();
-            throw new Error(data.error || 'Failed to create client');
+        try {
+            const username = storage.get(STORAGE_KEYS.AUTH_USER);
+            if (!username) { setError('User not authenticated. Please log in again.'); return; }
+            const response = await fetch(`${API_BASE}/clients`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    name: newClient.name.trim(),
+                    email: newClient.email?.trim() || '',
+                    phone: newClient.phone?.trim() || '',
+                    notes: newClient.notes?.trim() || '',
+                    owner: username
+                })
+            });
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                setError(data.error || 'Failed to create client');
+                return;
+            }
+            setShowAddForm(false);
+            setSuccessMessage('Client created successfully!');
+            await fetchClients();
+            setTimeout(() => setSuccessMessage(null), 3000);
+        } catch (err) {
+            console.error('Failed to create client:', err);
+            setError('Failed to create client: ' + err.message);
         }
-        setShowAddForm(false);
-        setSuccessMessage('Client created successfully!');
-        await fetchClients();
-        setTimeout(() => setSuccessMessage(null), 3000);
     };
 
     return {
