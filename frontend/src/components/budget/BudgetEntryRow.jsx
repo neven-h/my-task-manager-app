@@ -13,7 +13,7 @@ const fmt = (n) =>
 
 export const EMPTY_HISTORY = [];
 
-export const EntryRow = ({ entry, cutoff, onEdit, onDuplicate, onDelete, loading, isExpanded, onToggleExpand, history, selectMode, isSelected, onToggleSelect }) => {
+export const EntryRow = ({ entry, balance, cutoff, onEdit, onDuplicate, onDelete, loading, isExpanded, onToggleExpand, history, selectMode, isSelected, onToggleSelect }) => {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const isPast = entry.entry_date <= cutoff;
     const isIncome = entry.type === 'income';
@@ -66,6 +66,18 @@ export const EntryRow = ({ entry, cutoff, onEdit, onDuplicate, onDelete, loading
                 <div style={{ fontWeight: 800, fontSize: '0.95rem', color: amountColor, flexShrink: 0 }}>
                     {sign}{fmt(entry.amount)}
                 </div>
+
+                {/* Balance (יתרה) */}
+                {balance !== undefined && (
+                    <div style={{
+                        fontWeight: 700, fontSize: '0.85rem', flexShrink: 0,
+                        width: 90, textAlign: 'right',
+                        color: balance >= 0 ? SYS.success : SYS.accent,
+                        borderLeft: `2px solid #eee`, paddingLeft: 10,
+                    }}>
+                        {fmt(balance)}
+                    </div>
+                )}
 
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>

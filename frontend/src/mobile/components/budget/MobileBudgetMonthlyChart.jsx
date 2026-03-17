@@ -32,16 +32,33 @@ const MobileBudgetMonthlyChart = ({ monthlyTotals }) => {
                 </span>
             </div>
             <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
-                <svg width={recent.length * (groupW + gap) + 8} height={barH + 28} style={{ display: 'block' }}>
+                <svg width={recent.length * (groupW + gap) + 8} height={barH + 90} style={{ display: 'block' }}>
                     {recent.map(([month, data], i) => {
                         const x = i * (groupW + gap) + 4;
                         const incH = (data.income / maxVal) * barH;
                         const expH = (data.expense / maxVal) * barH;
+                        const incX = x + barW / 2;
+                        const expX = x + barW + 2 + barW / 2;
                         return (
                             <g key={month}>
                                 <rect x={x} y={barH - incH} width={barW} height={incH} rx="3" fill={GREEN} />
                                 <rect x={x + barW + 2} y={barH - expH} width={barW} height={expH} rx="3" fill={RED} />
-                                <text x={x + groupW / 2} y={barH + 14} textAnchor="middle" fontSize="10" fontWeight="600" fill={IOS.muted}>{month.slice(5)}</text>
+                                {/* Month label */}
+                                <text x={x + groupW / 2} y={barH + 13} textAnchor="middle" fontSize="10" fontWeight="600" fill={IOS.muted}>{month.slice(5)}</text>
+                                {/* Income value — rotated -45° below baseline */}
+                                {incH > 0 && (
+                                    <text
+                                        transform={`translate(${incX + 2}, ${barH + 24}) rotate(-45)`}
+                                        textAnchor="start" fontSize="9" fontWeight="600" fill={GREEN}
+                                    >{Math.round(data.income).toLocaleString()}</text>
+                                )}
+                                {/* Expense value — rotated -45° below baseline */}
+                                {expH > 0 && (
+                                    <text
+                                        transform={`translate(${expX + 2}, ${barH + 24}) rotate(-45)`}
+                                        textAnchor="start" fontSize="9" fontWeight="600" fill={RED}
+                                    >{Math.round(data.expense).toLocaleString()}</text>
+                                )}
                             </g>
                         );
                     })}

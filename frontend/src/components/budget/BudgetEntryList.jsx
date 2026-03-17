@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { EntryRow, EMPTY_HISTORY } from './BudgetEntryRow';
 
 const SYS = {
@@ -28,6 +28,17 @@ export const BudgetEntryList = ({
     selectedIds,
     toggleSelect,
 }) => {
+    // Running balance keyed by entry id, computed from all entries in date order
+    const balanceMap = useMemo(() => {
+        const map = {};
+        let running = 0;
+        (entries || []).forEach(e => {
+            running += e.type === 'income' ? Number(e.amount) : -Number(e.amount);
+            map[e.id] = running;
+        });
+        return map;
+    }, [entries]);
+
     const filterBtn = (active, color = SYS.primary) => ({
         padding: '5px 16px',
         border: `2px solid ${SYS.border}`,
@@ -74,6 +85,7 @@ export const BudgetEntryList = ({
                     <EntryRow
                         key={e.id}
                         entry={e}
+                        balance={balanceMap[e.id]}
                         cutoff={cutoff}
                         onEdit={openEdit}
                         onDuplicate={openDuplicate}

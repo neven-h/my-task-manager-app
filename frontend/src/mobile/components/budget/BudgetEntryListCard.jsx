@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { FONT_STACK } from '../../../ios/theme';
 import { EntryRow, EMPTY_HISTORY } from './BudgetEntryRow';
 
@@ -27,7 +27,19 @@ const BudgetEntryListCard = ({
     visibleEntries, loading, entries, typeFilter, setTypeFilter, cutoff,
     openEdit, deleteEntry, expandedDescriptionId, setExpandedDescriptionId,
     getDescriptionHistory, selectMode, selectedIds, toggleSelect,
-}) => (
+}) => {
+    // Running balance keyed by entry id, computed from all entries in date order
+    const balanceMap = useMemo(() => {
+        const map = {};
+        let running = 0;
+        (entries || []).forEach(e => {
+            running += e.type === 'income' ? Number(e.amount) : -Number(e.amount);
+            map[e.id] = running;
+        });
+        return map;
+    }, [entries]);
+
+    return (
     <div style={{
         margin: '0 16px', background: IOS.card, borderRadius: IOS.radius,
         boxShadow: '0 1px 3px rgba(0,0,0,0.07)', overflow: 'hidden',
@@ -78,6 +90,7 @@ const BudgetEntryListCard = ({
                 <EntryRow
                     key={e.id}
                     entry={e}
+                    balance={balanceMap[e.id]}
                     cutoff={cutoff}
                     onEdit={openEdit}
                     onDelete={deleteEntry}
@@ -92,7 +105,8 @@ const BudgetEntryListCard = ({
             ))
         )}
     </div>
-);
+    );
+};
 
 export { BudgetEntryListCard };
 export default BudgetEntryListCard;

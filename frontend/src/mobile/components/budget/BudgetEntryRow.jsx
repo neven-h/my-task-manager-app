@@ -16,7 +16,7 @@ const fmt = (n) =>
 // Stable empty array to avoid creating new [] reference on every render
 export const EMPTY_HISTORY = [];
 
-export const EntryRow = memo(({ entry, cutoff, onEdit, onDelete, isLast, isExpanded, onToggleExpand, history, selectMode, isSelected, onToggleSelect }) => {
+export const EntryRow = memo(({ entry, balance, cutoff, onEdit, onDelete, isLast, isExpanded, onToggleExpand, history, selectMode, isSelected, onToggleSelect }) => {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [pressed, setPressed] = useState(false);
     const isPast = entry.entry_date <= cutoff;
@@ -74,9 +74,21 @@ export const EntryRow = memo(({ entry, cutoff, onEdit, onDelete, isLast, isExpan
                 </div>
 
                 {/* Amount */}
-                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: dotColor, flexShrink: 0, marginRight: 4 }}>
+                <div style={{ fontWeight: 700, fontSize: '0.9rem', color: dotColor, flexShrink: 0 }}>
                     {sign}{fmt(entry.amount)}
                 </div>
+
+                {/* Balance (יתרה) */}
+                {balance !== undefined && (
+                    <div style={{
+                        fontWeight: 600, fontSize: '0.82rem', flexShrink: 0,
+                        width: 76, textAlign: 'right',
+                        color: balance >= 0 ? IOS.green : IOS.red,
+                        borderLeft: `0.5px solid ${IOS.separator}`, paddingLeft: 8,
+                    }}>
+                        {fmt(balance)}
+                    </div>
+                )}
 
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
