@@ -4,25 +4,34 @@ import { getAuthHeaders } from '../api.js';
 
 const STORAGE_KEY = (tabId) => `balance_start:${tabId}`;
 
-const useTransactionBalanceForecast = (activeTabId) => {
+/**
+ * @param {number|null} activeTabId
+ * @param {number|null} tabLastKnownBalance  – last_known_balance from the tab record (DB source of truth)
+ */
+const useTransactionBalanceForecast = (activeTabId, tabLastKnownBalance = null) => {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    // Starting balance is persisted per tab in localStorage
+    // Starting balance: DB value takes priority; fall back to localStorage
     const [startingBalance, _setStartingBalance] = useState(() => {
         if (!activeTabId) return null;
+        if (tabLastKnownBalance != null) return tabLastKnownBalance;
         const v = localStorage.getItem(STORAGE_KEY(activeTabId));
         return v !== null ? parseFloat(v) : null;
     });
 
-    // Reload when tab changes
+    // Reload when tab changes — prefer DB value over localStorage
     useEffect(() => {
         if (!activeTabId) return;
-        const v = localStorage.getItem(STORAGE_KEY(activeTabId));
-        _setStartingBalance(v !== null ? parseFloat(v) : null);
+        if (tabLastKnownBalance != null) {
+            _setStartingBalance(tabLastKnownBalance);
+        } else {
+            const v = localStorage.getItem(STORAGE_KEY(activeTabId));
+            _setStartingBalance(v !== null ? parseFloat(v) : null);
+        }
         setData(null);
-    }, [activeTabId]);
+    }, [activeTabId, tabLastKnownBalance]);
 
     const setStartingBalance = useCallback((value) => {
         const num = parseFloat(value);

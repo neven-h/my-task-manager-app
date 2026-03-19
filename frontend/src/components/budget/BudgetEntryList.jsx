@@ -30,15 +30,22 @@ export const BudgetEntryList = ({
     toggleSelect,
     onSelectAll,
 }) => {
-    // Running balance keyed by entry id, computed from tab entries sorted by date (oldest first)
+    // Running balance keyed by entry id.
+    // Prefer the stored balance from the bank file (יתרה column) when available;
+    // fall back to computing a cumulative sum from the first entry.
     const balanceMap = useMemo(() => {
         const map = {};
-        let running = 0;
         const sorted = [...(entries || [])].sort((a, b) => a.entry_date.localeCompare(b.entry_date));
-        sorted.forEach(e => {
-            running += e.type === 'income' ? Number(e.amount) : -Number(e.amount);
-            map[e.id] = running;
-        });
+        const hasStoredBalance = sorted.some(e => e.balance != null);
+        if (hasStoredBalance) {
+            sorted.forEach(e => { map[e.id] = e.balance != null ? Number(e.balance) : null; });
+        } else {
+            let running = 0;
+            sorted.forEach(e => {
+                running += e.type === 'income' ? Number(e.amount) : -Number(e.amount);
+                map[e.id] = running;
+            });
+        }
         return map;
     }, [entries]);
 

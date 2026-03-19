@@ -109,10 +109,19 @@ def save_budget_batch(payload):
             if not cursor.fetchone():
                 return jsonify({'error': 'Tab not found or access denied'}), 404
 
+            # Add balance column if not present (migration-safe)
+            try:
+                conn.cursor().execute(
+                    "ALTER TABLE budget_entries ADD COLUMN IF NOT EXISTS "
+                    "balance DECIMAL(14,2) DEFAULT NULL"
+                )
+            except Exception:
+                pass
+
             cursor = conn.cursor()
             query = """INSERT INTO budget_entries
-                       (type, description, amount, entry_date, category, notes, owner, tab_id, source)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+                       (type, description, amount, entry_date, category, notes, balance, owner, tab_id, source)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
 
             values = []
             for e in entries:
@@ -131,8 +140,12 @@ def save_budget_batch(payload):
                     continue
                 category = (e.get('category') or '').strip() or None
                 notes = (e.get('notes') or '').strip() or None
+                try:
+                    balance = round(float(e['balance']), 2) if e.get('balance') is not None else None
+                except (ValueError, TypeError):
+                    balance = None
                 values.append((entry_type, desc, amount, entry_date,
-                               category, notes, username, tab_id, 'upload'))
+                               category, notes, balance, username, tab_id, 'upload'))
 
             if not values:
                 return jsonify({'error': 'No valid entries after validation'}), 400

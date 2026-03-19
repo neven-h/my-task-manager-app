@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { TrendingUp, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { useBankTransactionContext } from '../../context/BankTransactionContext';
 import useTransactionBalanceForecast from '../../hooks/useTransactionBalanceForecast';
@@ -8,14 +8,21 @@ import { WhatIfControls } from './WhatIfControls';
 import { ProjectionTable } from './ProjectionTable';
 import { BalanceInputBar } from './BalanceInputBar';
 import { HealthCard, AnomalyCard } from './HealthCard';
+import API_BASE from '../../config';
+import { getAuthHeaders } from '../../api.js';
 
 const TransactionBalanceForecast = () => {
-    const { activeTabId } = useBankTransactionContext();
+    const { activeTabId, tabs, setTabs } = useBankTransactionContext();
+
+    // Find the active tab's stored real balance (from DB, set on upload or manual entry)
+    const activeTab = tabs?.find(t => t.id === activeTabId);
+    const tabLastKnownBalance = activeTab?.last_known_balance ?? null;
+
     const {
         data, loading,
         startingBalance, setStartingBalance,
         fetchForecast,
-    } = useTransactionBalanceForecast(activeTabId);
+    } = useTransactionBalanceForecast(activeTabId, tabLastKnownBalance);
 
     const [open, setOpen]            = useState(false);
     const [editingBal, setEditingBal] = useState(false);
@@ -37,11 +44,29 @@ const TransactionBalanceForecast = () => {
         if (!open && !data) await fetchForecast(3);
         setOpen(v => !v);
     };
-    const saveBalance = () => {
+
+    // Save balance to localStorage + DB so budget forecast also picks it up
+    const saveBalance = useCallback(async () => {
         const v = parseFloat(balInput.replace(/[^0-9.-]/g, ''));
-        if (!isNaN(v)) { setStartingBalance(v); }
+        if (!isNaN(v)) {
+            setStartingBalance(v);
+            try {
+                const res = await fetch(`${API_BASE}/transaction-tabs/${activeTabId}/balance`, {
+                    method: 'PATCH',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ balance: v, balance_date: new Date().toISOString().slice(0, 10) }),
+                });
+                if (res.ok && setTabs) {
+                    setTabs(prev => prev.map(t =>
+                        t.id === activeTabId ? { ...t, last_known_balance: v } : t
+                    ));
+                }
+            } catch (e) {
+                console.warn('Could not persist balance to server:', e);
+            }
+        }
         setEditingBal(false);
-    };
+    }, [balInput, activeTabId, setStartingBalance, setTabs]);
 
     // ── Derived values ──────────────────────────────────────────────────────
     const runway   = useMemo(() =>

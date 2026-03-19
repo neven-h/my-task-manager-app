@@ -30,6 +30,10 @@ def get_transaction_tabs(payload):
             for tab in tabs:
                 if tab.get('created_at'):
                     tab['created_at'] = tab['created_at'].isoformat()
+                if tab.get('balance_date') and hasattr(tab['balance_date'], 'isoformat'):
+                    tab['balance_date'] = tab['balance_date'].isoformat()
+                if tab.get('last_known_balance') is not None:
+                    tab['last_known_balance'] = float(tab['last_known_balance'])
 
             return jsonify(tabs)
 
@@ -69,6 +73,55 @@ def create_transaction_tab(payload):
 
     except Error as e:
         current_app.logger.error('transaction_tabs db error: %s', e, exc_info=True)
+        return jsonify({'error': 'A database error occurred'}), 500
+
+
+@transaction_tabs_bp.route('/api/transaction-tabs/<int:tab_id>/balance', methods=['PATCH'])
+@token_required
+def set_tab_balance(payload, tab_id):
+    """Save the real account balance (from bank statement) for a tab."""
+    try:
+        username = payload['username']
+        data = request.json or {}
+        balance = data.get('balance')
+        balance_date = data.get('balance_date')
+
+        if balance is None:
+            return jsonify({'error': 'balance is required'}), 400
+
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT owner FROM transaction_tabs WHERE id = %s", (tab_id,)
+            )
+            tab = cursor.fetchone()
+            if not tab:
+                return jsonify({'error': 'Tab not found'}), 404
+            if tab['owner'] != username and payload.get('role') != 'admin':
+                return jsonify({'error': 'Access denied'}), 403
+
+            # Add columns if they don't exist yet (migration-safe)
+            for ddl in (
+                "ALTER TABLE transaction_tabs ADD COLUMN IF NOT EXISTS "
+                "last_known_balance DECIMAL(14,2) DEFAULT NULL",
+                "ALTER TABLE transaction_tabs ADD COLUMN IF NOT EXISTS "
+                "balance_date DATE DEFAULT NULL",
+            ):
+                try:
+                    cursor.execute(ddl)
+                except Exception:
+                    pass
+
+            cursor.execute(
+                "UPDATE transaction_tabs SET last_known_balance = %s, balance_date = %s "
+                "WHERE id = %s",
+                (float(balance), balance_date, tab_id),
+            )
+            connection.commit()
+            return jsonify({'success': True, 'balance': float(balance), 'balance_date': balance_date})
+
+    except Error as e:
+        current_app.logger.error('set_tab_balance db error: %s', e, exc_info=True)
         return jsonify({'error': 'A database error occurred'}), 500
 
 
