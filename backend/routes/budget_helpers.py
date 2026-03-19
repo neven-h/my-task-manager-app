@@ -13,6 +13,7 @@ _CREATE_BUDGET_TABLE_SQL = """
         entry_date  DATE NOT NULL,
         category    VARCHAR(100),
         notes       TEXT,
+        balance     DECIMAL(14,2) DEFAULT NULL,
         owner       VARCHAR(255),
         tab_id      INT,
         created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -49,6 +50,8 @@ def ensure_budget_table(conn):
         "ALTER TABLE budget_entries ADD COLUMN tab_id INT",
         "ALTER TABLE budget_entries ADD INDEX idx_budget_tab (tab_id)",
         "ALTER TABLE budget_entries ADD COLUMN source VARCHAR(20) DEFAULT 'manual'",
+        "ALTER TABLE budget_entries ADD COLUMN notes TEXT",
+        "ALTER TABLE budget_entries ADD COLUMN balance DECIMAL(14,2) DEFAULT NULL",
     ):
         try:
             cur.execute(ddl)
