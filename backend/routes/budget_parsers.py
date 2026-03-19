@@ -139,15 +139,18 @@ def parse_budget_file(file_path):
                 notes = n
 
         entry_date = dt.strftime('%Y-%m-%d')
+        row_balance = None
+        if balance_col:
+            row_balance = _parse_amount(row[balance_col])
+            if row_balance is not None:
+                balance_rows.append({'entry_date': entry_date,
+                                     'income': amount if entry_type == 'income' else 0,
+                                     'balance': row_balance})
+
         entries.append({'type': entry_type, 'description': description,
                         'amount': round(amount, 2), 'entry_date': entry_date,
-                        'category': category, 'notes': notes})
-
-        if balance_col:
-            bal = _parse_amount(row[balance_col])
-            if bal is not None:
-                balance_rows.append({'entry_date': entry_date,
-                                     'income': amount if entry_type == 'income' else 0, 'balance': bal})
+                        'category': category, 'notes': notes,
+                        'balance': round(row_balance, 2) if row_balance is not None else None})
 
     if not has_direct_expenses and len(balance_rows) >= 2:
         if balance_rows[0]['entry_date'] > balance_rows[-1]['entry_date']:
