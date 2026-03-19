@@ -1,6 +1,3 @@
-// CalendarPlugin — Capacitor plugin to add events directly to Apple Calendar via EventKit
-// Follows the same structure as BiometricAuthPlugin.swift
-
 import Foundation
 import EventKit
 import Capacitor
@@ -9,15 +6,11 @@ import Capacitor
 public class CalendarPlugin: CAPPlugin {
     private let store = EKEventStore()
 
-    // Returns the current calendar authorisation status as a string.
-    // Possible values: "authorized", "writeOnly", "denied", "restricted", "notDetermined"
     @objc func checkAccess(_ call: CAPPluginCall) {
         let status = EKEventStore.authorizationStatus(for: .event)
         call.resolve(["status": statusString(status)])
     }
 
-    // Requests calendar access from the user.
-    // Returns { granted: bool, status: string }
     @objc func requestAccess(_ call: CAPPluginCall) {
         if #available(iOS 17.0, *) {
             store.requestFullAccessToEvents { granted, error in
@@ -40,9 +33,6 @@ public class CalendarPlugin: CAPPlugin {
         }
     }
 
-    // Adds an event to the default calendar.
-    // Expects: { title, startDate, endDate, notes?, location?, allDay? }
-    // Returns: { success: bool, eventId: string }
     @objc func addEvent(_ call: CAPPluginCall) {
         let status = EKEventStore.authorizationStatus(for: .event)
         if #available(iOS 17.0, *) {
@@ -62,7 +52,7 @@ public class CalendarPlugin: CAPPlugin {
             return
         }
         guard let startStr = call.getString("startDate"),
-              let endStr   = call.getString("endDate") else {
+              let endStr = call.getString("endDate") else {
             call.reject("Missing startDate or endDate")
             return
         }
@@ -70,17 +60,17 @@ public class CalendarPlugin: CAPPlugin {
         let allDay = call.getBool("allDay") ?? false
 
         guard let startDate = parseDate(startStr, allDay: allDay),
-              let endDate   = parseDate(endStr,   allDay: allDay) else {
+              let endDate = parseDate(endStr, allDay: allDay) else {
             call.reject("Could not parse startDate or endDate")
             return
         }
 
-        let event        = EKEvent(eventStore: store)
-        event.title      = title
-        event.startDate  = startDate
-        event.endDate    = endDate
-        event.isAllDay   = allDay
-        event.calendar   = store.defaultCalendarForNewEvents
+        let event = EKEvent(eventStore: store)
+        event.title = title
+        event.startDate = startDate
+        event.endDate = endDate
+        event.isAllDay = allDay
+        event.calendar = store.defaultCalendarForNewEvents
 
         if let notes = call.getString("notes"), !notes.isEmpty {
             event.notes = notes
@@ -97,42 +87,35 @@ public class CalendarPlugin: CAPPlugin {
         }
     }
 
-    // MARK: - Helpers
-
     private func statusString(_ status: EKAuthorizationStatus) -> String {
-        if #available(iOS 17.0, *) {
-            switch status {
-            case .fullAccess:      return "fullAccess"
-            case .writeOnly:       return "writeOnly"
-            case .denied:          return "denied"
-            case .restricted:      return "restricted"
-            case .notDetermined:   return "notDetermined"
-            @unknown default:      return "notDetermined"
-            }
-        } else {
-            switch status {
-            case .authorized:      return "authorized"
-            case .denied:          return "denied"
-            case .restricted:      return "restricted"
-            case .notDetermined:   return "notDetermined"
-            @unknown default:      return "notDetermined"
-            }
+        switch status {
+        case .fullAccess:
+            return "fullAccess"
+        case .writeOnly:
+            return "writeOnly"
+        case .authorized:
+            return "authorized"
+        case .denied:
+            return "denied"
+        case .restricted:
+            return "restricted"
+        case .notDetermined:
+            return "notDetermined"
+        @unknown default:
+            return "notDetermined"
         }
     }
 
     private func parseDate(_ str: String, allDay: Bool) -> Date? {
+        let fmt = DateFormatter()
+        fmt.timeZone = TimeZone.current
+
         if allDay {
-            // Expects "YYYY-MM-DD"
-            let fmt = DateFormatter()
             fmt.dateFormat = "yyyy-MM-dd"
-            fmt.timeZone = TimeZone.current
-            return fmt.date(from: str)
         } else {
-            // Expects "YYYY-MM-DDTHH:MM:SS"
-            let fmt = DateFormatter()
             fmt.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-            fmt.timeZone = TimeZone.current
-            return fmt.date(from: str)
         }
+
+        return fmt.date(from: str)
     }
 }
