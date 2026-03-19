@@ -197,3 +197,54 @@ def _load_excel_df(file_path):
     # Drop rows that are entirely NaN (trailing footer rows)
     df = df.dropna(how='all').reset_index(drop=True)
     return df, int(header_row)
+
+
+_BALANCE_COL_NAMES = {'יתרה', '₪ יתרה', 'balance', 'יתרה בש"ח', 'יתרה ב-₪'}
+
+def _extract_last_balance(df):
+    """Return (last_balance: float, balance_date: str|None) from the DataFrame's balance column.
+
+    Looks for a column whose name matches known Hebrew/English balance column names.
+    Returns (None, None) if no balance column is found or all values are NaN.
+    The 'last' balance is taken from the FIRST data row (bank exports list newest first).
+    """
+    bal_col = None
+    for col in df.columns:
+        col_clean = str(col).strip()
+        if col_clean in _BALANCE_COL_NAMES or col_clean.lower() == 'balance':
+            bal_col = col
+            break
+        # Partial match: column name contains יתרה
+        if 'יתרה' in col_clean or 'balance' in col_clean.lower():
+            bal_col = col
+            break
+
+    if bal_col is None:
+        return None, None
+
+    # Find date column for the balance date
+    date_col = None
+    for col in df.columns:
+        col_clean = str(col).strip()
+        if 'תאריך' in col_clean or col_clean.lower().startswith('date'):
+            date_col = col
+            break
+
+    # Israeli bank exports are newest-first; take the first non-null balance row
+    for i, row in df.iterrows():
+        try:
+            val = str(row[bal_col]).strip().replace(',', '')
+            if val in ('', 'nan', 'NaN', 'None'):
+                continue
+            balance = float(val)
+            date_str = None
+            if date_col and pd.notna(row[date_col]):
+                raw_date = str(row[date_col]).strip()
+                parsed = pd.to_datetime(raw_date, dayfirst=True, errors='coerce')
+                if pd.notna(parsed):
+                    date_str = parsed.strftime('%Y-%m-%d')
+            return balance, date_str
+        except (ValueError, TypeError):
+            continue
+
+    return None, None
