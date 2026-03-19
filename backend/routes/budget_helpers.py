@@ -23,6 +23,23 @@ _CREATE_BUDGET_TABLE_SQL = """
     )
 """
 
+_CREATE_BUDGET_DAILY_BALANCES_SQL = """
+    CREATE TABLE IF NOT EXISTS budget_daily_balances (
+        id          INT AUTO_INCREMENT PRIMARY KEY,
+        owner       VARCHAR(255) NOT NULL,
+        tab_id      INT NOT NULL,
+        entry_date  DATE NOT NULL,
+        balance     DECIMAL(14,2) NOT NULL,
+        source      VARCHAR(20) DEFAULT 'upload',
+        created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_budget_balance (owner, tab_id, entry_date),
+        INDEX idx_budget_bal_owner  (owner),
+        INDEX idx_budget_bal_tab    (tab_id),
+        INDEX idx_budget_bal_date  (entry_date)
+    )
+"""
+
 
 def ensure_budget_table(conn):
     """Guarantee budget_entries exists with all required columns."""
@@ -38,6 +55,25 @@ def ensure_budget_table(conn):
         except MySQLError as e:
             if 'Duplicate column' not in str(e) and 'Duplicate key' not in str(e):
                 logger.warning('budget migration note: %s', e)
+    cur.close()
+
+
+def ensure_budget_daily_balances_table(conn):
+    """Guarantee budget_daily_balances exists with required columns and keys."""
+    cur = conn.cursor()
+    cur.execute(_CREATE_BUDGET_DAILY_BALANCES_SQL)
+    # (Best-effort) migrations for existing installations.
+    for ddl in (
+        "ALTER TABLE budget_daily_balances ADD COLUMN source VARCHAR(20) DEFAULT 'upload'",
+        "ALTER TABLE budget_daily_balances ADD INDEX idx_budget_bal_owner (owner)",
+        "ALTER TABLE budget_daily_balances ADD INDEX idx_budget_bal_tab (tab_id)",
+        "ALTER TABLE budget_daily_balances ADD INDEX idx_budget_bal_date (entry_date)",
+    ):
+        try:
+            cur.execute(ddl)
+        except MySQLError as e:
+            if 'Duplicate column' not in str(e) and 'Duplicate key' not in str(e):
+                logger.warning('budget balances migration note: %s', e)
     cur.close()
 
 

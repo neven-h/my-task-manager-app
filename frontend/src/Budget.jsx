@@ -6,6 +6,8 @@ import useBudgetLinks from './hooks/useBudgetLinks';
 import useBalanceForecast from './hooks/useBalanceForecast';
 import useBudgetStats from './hooks/useBudgetStats';
 import useBudgetFilters from './hooks/useBudgetFilters';
+import API_BASE from './config';
+import { getAuthHeaders } from './api.js';
 import BudgetLinkBanner from './components/budget/BudgetLinkBanner';
 import BalanceForecast from './components/budget/BalanceForecast';
 import { SummaryCard } from './components/budget/BudgetSummaryCard';
@@ -54,6 +56,15 @@ const Budget = ({ onBackToTasks }) => {
     const [selectMode, setSelectMode]                 = useState(false);
     const [selectedIds, setSelectedIds]               = useState(new Set());
 
+    const [fileBalance, setFileBalance]             = useState(null);
+    const [fileBalanceEntryDate, setFileBalanceEntryDate] = useState(null);
+
+    const [rangeOpen, setRangeOpen]                 = useState(false);
+    const [rangeLoading, setRangeLoading]         = useState(false);
+    const [rangeResult, setRangeResult]           = useState(null); // { income_total, expense_total, balance_as_of, ... }
+    const [customStart, setCustomStart]           = useState('');
+    const [customEnd, setCustomEnd]               = useState('');
+
     const { tabEntries, monthlyTotals, chartData, allCategories, health } = useBudgetStats(entries, cutoff, activeTabId);
 
     // Month sidebar data: derived from all tab entries (not filtered)
@@ -82,10 +93,36 @@ const Budget = ({ onBackToTasks }) => {
     useEffect(() => { fetchLink(activeTabId); clearForecast(); setSelectedMonth(null); }, [activeTabId, fetchLink, clearForecast]);
     useEffect(() => { if (linkedTab && activeTabId) fetchForecast(activeTabId, 3); }, [linkedTab, activeTabId, fetchForecast]);
 
+    useEffect(() => {
+        // Range totals depend on the selected end date.
+        setRangeResult(null);
+    }, [cutoff]);
+
+    useEffect(() => {
+        if (!activeTabId || !cutoff) { setFileBalance(null); setFileBalanceEntryDate(null); return; }
+        fetch(`${API_BASE}/budget/balance-as-of?${new URLSearchParams({ tab_id: String(activeTabId), date: cutoff })}`, {
+            headers: getAuthHeaders(),
+        })
+            .then(r => r.ok ? r.json() : null)
+            .then(d => {
+                const bal = d?.balance;
+                setFileBalance(typeof bal === 'number' ? bal : null);
+                setFileBalanceEntryDate(d?.entry_date || null);
+            })
+            .catch(() => { setFileBalance(null); setFileBalanceEntryDate(null); });
+    }, [activeTabId, cutoff]);
+
     const income  = useMemo(() => tabEntries.filter(e => e.type === 'income'  && e.entry_date <= cutoff).reduce((s, e) => s + e.amount, 0), [tabEntries, cutoff]);
     const outcome = useMemo(() => tabEntries.filter(e => e.type === 'outcome' && e.entry_date <= cutoff).reduce((s, e) => s + e.amount, 0), [tabEntries, cutoff]);
     const net        = income - outcome;
-    const displayBal = forecast ? forecast.current_balance : net;
+    // Prefer the parsed-file balance-as-of (when available). Fall back to forecast/net otherwise.
+    const displayBal = (fileBalance ?? (forecast ? forecast.current_balance : net));
+
+    const rangeActive = rangeResult && !rangeResult.error;
+    const incomeForSummary = rangeActive ? (rangeResult.income_total ?? income) : income;
+    const expenseForSummary = rangeActive ? (rangeResult.expense_total ?? outcome) : outcome;
+    const balanceForSummary = rangeActive && rangeResult.balance_as_of != null ? rangeResult.balance_as_of : displayBal;
+    const balanceBadgeForSummary = rangeActive ? null : (!fileBalance && forecast && linkedTab ? '＋bank' : null);
 
     const refreshForecast = useCallback(() => { if (linkedTab && activeTabId) fetchForecast(activeTabId, 3); }, [linkedTab, activeTabId, fetchForecast]);
 
@@ -130,6 +167,33 @@ const Budget = ({ onBackToTasks }) => {
     }, []);
     const cancelSelection = useCallback(() => { setSelectMode(false); setSelectedIds(new Set()); }, []);
 
+    const endMinusDays = useCallback((endDateStr, days) => {
+        if (!endDateStr) return '';
+        const parts = endDateStr.split('-').map(Number);
+        if (parts.length !== 3) return '';
+        const [y, m, d] = parts;
+        const dt = new Date(Date.UTC(y, m - 1, d));
+        dt.setUTCDate(dt.getUTCDate() - days);
+        return dt.toISOString().slice(0, 10);
+    }, []);
+
+    const fetchRange = useCallback(async ({ start, end }) => {
+        if (!activeTabId || !start || !end) return;
+        setRangeLoading(true);
+        setRangeResult(null);
+        try {
+            const params = new URLSearchParams({ tab_id: String(activeTabId), start, end });
+            const res = await fetch(`${API_BASE}/budget/balance-range?${params}`, { headers: getAuthHeaders() });
+            const data = await res.json().catch(() => null);
+            if (!res.ok) { setRangeResult({ error: data?.error || 'Failed to load range totals' }); return; }
+            setRangeResult(data);
+        } catch {
+            setRangeResult({ error: 'Failed to load range totals' });
+        } finally {
+            setRangeLoading(false);
+        }
+    }, [activeTabId]);
+
     return (
         <div style={{ minHeight: '100vh', background: SYS.bg, fontFamily: 'inherit' }}>
             <BudgetHeader onBackToTasks={onBackToTasks} exportBudgetCSV={exportBudgetCSV} activeTabId={activeTabId} entriesCount={entries.length} openAdd={openAdd} onUpload={() => setShowUpload(true)} />
@@ -144,12 +208,131 @@ const Budget = ({ onBackToTasks }) => {
                     <span style={{ fontSize: '0.82rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', color: SYS.light }}>Balance as of</span>
                     <input type="date" value={cutoff} onChange={e => setCutoff(e.target.value)} style={{ padding: '6px 10px', border: `2px solid ${SYS.border}`, fontSize: '0.88rem', fontFamily: 'inherit', outline: 'none' }} />
                     <span style={{ fontSize: '0.75rem', color: SYS.light }}>(future entries are dimmed)</span>
+                    <button type="button" onClick={() => setRangeOpen(o => !o)}
+                        style={{
+                            marginLeft: 'auto',
+                            padding: '7px 14px',
+                            border: `2px solid ${SYS.border}`,
+                            background: rangeOpen ? '#f5f5f5' : '#fff',
+                            cursor: 'pointer',
+                            fontWeight: 800,
+                            fontSize: '0.78rem',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.4px',
+                            borderRadius: 10,
+                        }}>
+                        {rangeOpen ? 'Hide' : 'Balance Details'}
+                    </button>
                 </div>
 
+                {rangeOpen && (
+                    <div style={{
+                        border: '2px solid #e5e7eb',
+                        background: '#fafafa',
+                        padding: 16,
+                        borderRadius: 12,
+                        marginBottom: 24,
+                    }}>
+                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
+                            <span style={{ fontSize: '0.75rem', color: SYS.light, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                                Range ending: {cutoff || '—'}
+                            </span>
+                            <button type="button"
+                                onClick={() => fetchRange({ start: endMinusDays(cutoff, 7), end: cutoff })}
+                                disabled={!cutoff || rangeLoading}
+                                style={{ padding: '7px 12px', border: `2px solid ${SYS.border}`, background: '#fff', cursor: (!cutoff || rangeLoading) ? 'not-allowed' : 'pointer', fontWeight: 800 }}>
+                                7 days
+                            </button>
+                            <button type="button"
+                                onClick={() => fetchRange({ start: endMinusDays(cutoff, 30), end: cutoff })}
+                                disabled={!cutoff || rangeLoading}
+                                style={{ padding: '7px 12px', border: `2px solid ${SYS.border}`, background: '#fff', cursor: (!cutoff || rangeLoading) ? 'not-allowed' : 'pointer', fontWeight: 800 }}>
+                                30 days
+                            </button>
+                            <button type="button"
+                                onClick={() => fetchRange({ start: endMinusDays(cutoff, 90), end: cutoff })}
+                                disabled={!cutoff || rangeLoading}
+                                style={{ padding: '7px 12px', border: `2px solid ${SYS.border}`, background: '#fff', cursor: (!cutoff || rangeLoading) ? 'not-allowed' : 'pointer', fontWeight: 800 }}>
+                                90 days
+                            </button>
+                            <button type="button"
+                                onClick={() => { setRangeResult(null); setCustomStart(''); setCustomEnd(''); setRangeOpen(false); }}
+                                disabled={rangeLoading}
+                                style={{ padding: '7px 12px', border: `2px solid ${SYS.border}`, background: '#fff', cursor: rangeLoading ? 'not-allowed' : 'pointer', fontWeight: 800 }}>
+                                Reset
+                            </button>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: SYS.light, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                                    Custom:
+                                </span>
+                                <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)}
+                                    style={{ padding: '6px 10px', border: `2px solid ${SYS.border}`, fontSize: '0.88rem', fontFamily: 'inherit', outline: 'none' }} />
+                                <span style={{ fontSize: '0.8rem', color: SYS.light, fontWeight: 700 }}>→</span>
+                                <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)}
+                                    style={{ padding: '6px 10px', border: `2px solid ${SYS.border}`, fontSize: '0.88rem', fontFamily: 'inherit', outline: 'none' }} />
+                            </div>
+                            <button type="button"
+                                onClick={() => fetchRange({ start: customStart, end: customEnd || cutoff })}
+                                disabled={!customStart || rangeLoading || !cutoff}
+                                style={{ padding: '7px 14px', border: `2px solid ${SYS.border}`, background: '#0000FF', color: '#fff', cursor: (!customStart || rangeLoading || !cutoff) ? 'not-allowed' : 'pointer', fontWeight: 800, borderRadius: 10 }}>
+                                Apply
+                            </button>
+                        </div>
+
+                        {rangeLoading && (
+                            <div style={{ padding: 12, color: SYS.light, fontWeight: 700 }}>
+                                Loading…
+                            </div>
+                        )}
+
+                        {rangeResult && !rangeLoading && (
+                            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                                {rangeResult.error ? (
+                                    <div style={{ color: '#CC0000', fontWeight: 800 }}>{rangeResult.error}</div>
+                                ) : (
+                                    <>
+                                        <div style={{ flex: '1 1 200px', background: '#fff', border: `2px solid ${SYS.border}`, padding: '12px 14px', borderRadius: 10 }}>
+                                            <div style={{ fontSize: '0.72rem', color: SYS.light, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                                                Income
+                                            </div>
+                                            <div style={{ fontSize: '1.3rem', fontWeight: 900, color: SYS.success }}>
+                                                +₪{new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(rangeResult.income_total || 0))}
+                                            </div>
+                                        </div>
+                                        <div style={{ flex: '1 1 200px', background: '#fff', border: `2px solid ${SYS.border}`, padding: '12px 14px', borderRadius: 10 }}>
+                                            <div style={{ fontSize: '0.72rem', color: SYS.light, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                                                Expenses
+                                            </div>
+                                            <div style={{ fontSize: '1.3rem', fontWeight: 900, color: SYS.accent }}>
+                                                −₪{new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(rangeResult.expense_total || 0))}
+                                            </div>
+                                        </div>
+                                        <div style={{ flex: '1 1 240px', background: '#fff', border: `2px solid ${SYS.border}`, padding: '12px 14px', borderRadius: 10 }}>
+                                            <div style={{ fontSize: '0.72rem', color: SYS.light, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                                                Balance as of {rangeResult.end_date}
+                                            </div>
+                                            <div style={{ fontSize: '1.25rem', fontWeight: 900, color: (rangeResult.balance_as_of ?? 0) >= 0 ? SYS.primary : SYS.accent }}>
+                                                {(rangeResult.balance_as_of ?? 0) >= 0 ? '+' : '−'}₪{new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(rangeResult.balance_as_of || 0))}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 24 }}>
-                    <SummaryCard icon={TrendingUp} label="Total Income" amount={income} color={SYS.success} sub="+" />
-                    <SummaryCard icon={TrendingDown} label="Total Expenses" amount={outcome} color={SYS.accent} sub="−" />
-                    <SummaryCard icon={Scale} label="Balance" amount={displayBal} color={displayBal >= 0 ? SYS.primary : SYS.accent} sub={displayBal >= 0 ? '+' : '−'} badge={forecast && linkedTab ? '＋bank' : null} />
+                    <SummaryCard icon={TrendingUp} label="Total Income" amount={incomeForSummary} color={SYS.success} sub="+" />
+                    <SummaryCard icon={TrendingDown} label="Total Expenses" amount={expenseForSummary} color={SYS.accent} sub="−" />
+                    <SummaryCard icon={Scale} label="Balance"
+                        amount={balanceForSummary}
+                        color={balanceForSummary >= 0 ? SYS.primary : SYS.accent}
+                        sub={balanceForSummary >= 0 ? '+' : '−'}
+                        badge={balanceBadgeForSummary} />
                 </div>
 
                 <BudgetHealthCard health={health} />
