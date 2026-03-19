@@ -18,9 +18,17 @@ _CREATE_BUDGET_TABS_SQL = """
 """
 
 
+_orphan_cleanup_done = False
+
+
 def _ensure_tabs_table(conn):
+    global _orphan_cleanup_done
     cursor = conn.cursor()
     cursor.execute(_CREATE_BUDGET_TABS_SQL)
+    if not _orphan_cleanup_done:
+        cursor.execute("DELETE FROM budget_entries WHERE tab_id IS NULL")
+        _orphan_cleanup_done = True
+    conn.commit()
     cursor.close()
 
 
@@ -146,34 +154,4 @@ def duplicate_budget_tab(payload, tab_id):
         return jsonify(new_tab), 201
     except Exception:
         logger.exception('Failed to duplicate budget tab')
-        return jsonify({'error': 'An internal error occurred'}), 500
-
-
-# ── DELETE tab ─────────────────────────────────────────────────────────────────
-
-@budget_tabs_bp.route('/api/budget-tabs/<int:tab_id>', methods=['DELETE'])
-@token_required
-def delete_budget_tab(payload, tab_id):
-    username  = payload.get('username')
-    user_role = payload.get('role', 'limited')
-    try:
-        with get_db_connection() as conn:
-            _ensure_tabs_table(conn)
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute("SELECT * FROM budget_tabs WHERE id = %s", (tab_id,))
-            tab = cursor.fetchone()
-            if not tab:
-                return jsonify({'error': 'Tab not found'}), 404
-            if tab.get('owner') != username:
-                return jsonify({'error': 'Access denied'}), 403
-            # Unassign entries from this tab (keep the entries, just remove the tab link)
-            cursor.execute(
-                "UPDATE budget_entries SET tab_id = NULL WHERE tab_id = %s",
-                (tab_id,)
-            )
-            cursor.execute("DELETE FROM budget_tabs WHERE id = %s", (tab_id,))
-            conn.commit()
-        return jsonify({'success': True})
-    except Exception:
-        logger.exception('Failed to delete budget tab')
         return jsonify({'error': 'An internal error occurred'}), 500

@@ -11,6 +11,7 @@ const fmtMonth = (ym) => {
 
 const BudgetMonthSidebar = ({ monthsData, selectedMonth, onSelectMonth, onClearMonth, onClearTab, tabEntries }) => {
     const [confirmClear, setConfirmClear] = useState(false);
+    const [confirmMonthClear, setConfirmMonthClear] = useState(null);
 
     return (
         <div style={{ background: SYS.bg, border: `2px solid ${SYS.border}`, overflow: 'hidden' }}>
@@ -38,43 +39,61 @@ const BudgetMonthSidebar = ({ monthsData, selectedMonth, onSelectMonth, onClearM
                 </span>
             </button>
 
-            {/* Month rows */}
-            {monthsData.map(([ym, d]) => (
-                <div key={ym} style={{
-                    display: 'flex', alignItems: 'stretch',
-                    borderBottom: `1px solid #eee`,
-                    background: selectedMonth === ym ? SYS.primary : 'transparent',
-                }}>
-                    <button
-                        type="button"
-                        onClick={() => onSelectMonth(ym)}
-                        style={{
-                            flex: 1, padding: '9px 14px', border: 'none', background: 'transparent',
-                            color: selectedMonth === ym ? '#fff' : SYS.text,
-                            cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
-                        }}
-                    >
-                        <div style={{ fontSize: '0.82rem', fontWeight: 700 }}>{fmtMonth(ym)}</div>
-                        <div style={{ fontSize: '0.7rem', marginTop: 2, opacity: 0.8, display: 'flex', gap: 6 }}>
-                            <span style={{ color: selectedMonth === ym ? '#cfc' : SYS.success }}>+{formatCurrency(d.income)}</span>
-                            <span style={{ color: selectedMonth === ym ? '#fcc' : SYS.accent }}>−{formatCurrency(d.expense)}</span>
+            {monthsData.map(([ym, d]) => {
+                const isSelected = selectedMonth === ym;
+                const isConfirming = confirmMonthClear === ym;
+
+                return (
+                    <div key={ym} style={{
+                        borderBottom: `1px solid #eee`,
+                        background: isSelected ? SYS.primary : 'transparent',
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'stretch' }}>
+                            <button type="button" onClick={() => onSelectMonth(ym)}
+                                style={{
+                                    flex: 1, padding: '9px 14px', border: 'none', background: 'transparent',
+                                    color: isSelected ? '#fff' : SYS.text,
+                                    cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+                                }}>
+                                <div style={{ fontSize: '0.82rem', fontWeight: 700 }}>{fmtMonth(ym)}</div>
+                                <div style={{ fontSize: '0.7rem', marginTop: 2, opacity: 0.8, display: 'flex', gap: 6 }}>
+                                    <span style={{ color: isSelected ? '#cfc' : SYS.success }}>+{formatCurrency(d.income)}</span>
+                                    <span style={{ color: isSelected ? '#fcc' : SYS.accent }}>−{formatCurrency(d.expense)}</span>
+                                </div>
+                            </button>
+                            <button type="button"
+                                onClick={() => setConfirmMonthClear(isConfirming ? null : ym)}
+                                title={`Delete all entries for ${fmtMonth(ym)}`}
+                                style={{
+                                    padding: '0 10px', border: 'none', background: 'transparent',
+                                    borderLeft: `1px solid ${isSelected ? 'rgba(255,255,255,0.2)' : '#ddd'}`,
+                                    cursor: 'pointer',
+                                    color: isConfirming ? SYS.accent : (isSelected ? 'rgba(255,255,255,0.7)' : '#ccc'),
+                                }}>
+                                <Trash2 size={13} />
+                            </button>
                         </div>
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => onClearMonth(ym)}
-                        title={`Delete all entries for ${fmtMonth(ym)}`}
-                        style={{
-                            padding: '0 10px', border: 'none', background: 'transparent',
-                            borderLeft: `1px solid ${selectedMonth === ym ? 'rgba(255,255,255,0.2)' : '#ddd'}`,
-                            cursor: 'pointer',
-                            color: selectedMonth === ym ? 'rgba(255,255,255,0.7)' : '#ccc',
-                        }}
-                    >
-                        <Trash2 size={13} />
-                    </button>
-                </div>
-            ))}
+                        {isConfirming && (
+                            <div style={{ padding: '6px 14px 8px', background: isSelected ? 'rgba(0,0,0,0.15)' : '#fff8f8' }}>
+                                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: isSelected ? '#fff' : SYS.light, marginBottom: 5 }}>
+                                    Delete all {d.count} entries for {fmtMonth(ym)}?
+                                </div>
+                                <div style={{ display: 'flex', gap: 4 }}>
+                                    <button type="button"
+                                        onClick={() => { onClearMonth(ym); setConfirmMonthClear(null); }}
+                                        style={{ flex: 1, padding: '4px 0', border: `2px solid ${SYS.border}`, background: SYS.accent, color: '#fff', fontWeight: 700, fontSize: '0.72rem', cursor: 'pointer', textTransform: 'uppercase' }}>
+                                        Delete
+                                    </button>
+                                    <button type="button" onClick={() => setConfirmMonthClear(null)}
+                                        style={{ padding: '4px 8px', border: `2px solid ${SYS.border}`, background: '#fff', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 700 }}>
+                                        ✕
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
 
             {monthsData.length === 0 && (
                 <div style={{ padding: '24px 14px', textAlign: 'center', color: SYS.light, fontSize: '0.82rem' }}>

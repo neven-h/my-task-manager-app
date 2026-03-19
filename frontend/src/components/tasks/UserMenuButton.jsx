@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Settings, LogOut, UserCircle } from 'lucide-react';
+import { Settings, LogOut, UserCircle, Trash2 } from 'lucide-react';
 
 const MENU_ITEM = {
     display: 'flex', alignItems: 'center', gap: 8, width: '100%',
@@ -52,6 +52,14 @@ const UserMenuButton = ({ authUser, isAdmin, onLogout }) => {
                         onMouseLeave={e => e.currentTarget.style.background = 'none'}
                     >
                         <Settings size={14} /> Settings
+                    </button>
+                    <button
+                        onClick={() => { navigate('/trash'); setOpen(false); }}
+                        style={MENU_ITEM}
+                        onMouseEnter={e => e.currentTarget.style.background = '#f5f5f5'}
+                        onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    >
+                        <Trash2 size={14} /> Trash
                     </button>
                     <div style={{ borderTop: '2px solid #000' }} />
                     {onLogout && (

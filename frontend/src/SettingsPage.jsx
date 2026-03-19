@@ -9,6 +9,7 @@ import DangerZoneSection from './components/settings/DangerZoneSection';
 import DisableTwoFactorModal from './components/settings/DisableTwoFactorModal';
 import DeleteAccountModal from './components/settings/DeleteAccountModal';
 
+
 const SettingsPage = () => {
     const settings = useSecuritySettings();
 

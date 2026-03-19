@@ -116,3 +116,43 @@ def _parse_amount(val):
         return float(s)
     except ValueError:
         return None
+
+
+def parse_normalized_poalim_csv_to_entries(csv_path):
+    """Parse normalized Poalim-style CSV into entries and balances for budget upload."""
+    df = pd.read_csv(csv_path, dtype=str, encoding="utf-8")
+    df = df.dropna(how="all").reset_index(drop=True)
+    entries, last_balance_by_date = [], {}
+    for _, row in df.iterrows():
+        entry_date = str(row.get("transaction_date") or "").strip()
+        if not entry_date or entry_date.lower() == "nan":
+            continue
+        bal_raw = str(row.get("balance") or "").strip()
+        if bal_raw and bal_raw.lower() not in ("nan", ""):
+            try:
+                last_balance_by_date[entry_date] = round(float(bal_raw.replace(",", "")), 2)
+            except Exception:
+                pass
+        amt_raw = str(row.get("amount") or "").strip()
+        if not amt_raw or amt_raw.lower() in ("nan", ""):
+            continue
+        try:
+            amt = float(amt_raw.replace(",", ""))
+        except Exception:
+            continue
+        if amt == 0:
+            continue
+        entry_type = "income" if amt > 0 else "outcome"
+        description = str(row.get("description") or "").strip()
+        if not description or description.lower() == "nan":
+            description = "Unknown"
+        entries.append({
+            "type": entry_type,
+            "description": description,
+            "amount": round(abs(amt), 2),
+            "entry_date": entry_date,
+            "category": None,
+            "notes": None,
+        })
+    balances = [{"entry_date": d, "balance": b} for d, b in sorted(last_balance_by_date.items())]
+    return entries, balances

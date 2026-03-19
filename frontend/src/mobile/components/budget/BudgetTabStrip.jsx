@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FONT_STACK } from '../../../ios/theme';
 
 const IOS = {
@@ -11,12 +11,18 @@ const IOS = {
     spring:    'cubic-bezier(0.22,1,0.36,1)',
 };
 
-/**
- * Scrollable pill-button tab strip for budget tabs.
- * Props: { tabs, activeTabId, setActiveTabId, confirmDeleteTab, setConfirmDeleteTab, handleDeleteTab }
- */
-const BudgetTabStrip = ({ tabs, activeTabId, setActiveTabId, confirmDeleteTab, setConfirmDeleteTab, handleDeleteTab }) => {
+const BudgetTabStrip = ({ tabs, activeTabId, setActiveTabId, confirmDeleteTab, setConfirmDeleteTab, handleDeleteTab, onAddTab }) => {
+    const [adding, setAdding] = useState(false);
+    const [newName, setNewName] = useState('');
+
     if (!tabs || tabs.length === 0) return null;
+
+    const handleAdd = async () => {
+        if (!newName.trim() || !onAddTab) return;
+        await onAddTab(newName.trim());
+        setNewName('');
+        setAdding(false);
+    };
 
     return (
         <div style={{
@@ -29,32 +35,12 @@ const BudgetTabStrip = ({ tabs, activeTabId, setActiveTabId, confirmDeleteTab, s
             msOverflowStyle: 'none',
             alignItems: 'center',
         }}>
-            {/* "All" tab — no delete */}
-            {(() => {
-                const isActive = activeTabId === null;
-                return (
-                    <button key="all" type="button" onClick={() => setActiveTabId(null)}
-                        style={{
-                            padding: '6px 16px', borderRadius: 20, border: 'none',
-                            background: isActive ? IOS.blue : IOS.bg,
-                            color: isActive ? '#fff' : IOS.muted,
-                            fontWeight: isActive ? 600 : 500,
-                            fontSize: '0.82rem', whiteSpace: 'nowrap',
-                            cursor: 'pointer', fontFamily: FONT_STACK, flexShrink: 0,
-                            transition: `all 200ms ${IOS.spring}`,
-                        }}>
-                        All
-                    </button>
-                );
-            })()}
-
             {tabs.map(tab => {
                 const isActive = activeTabId === tab.id;
                 const confirming = confirmDeleteTab === tab.id;
                 return (
                     <div key={tab.id} style={{ display: 'flex', alignItems: 'center', flexShrink: 0, gap: 2 }}>
                         {confirming ? (
-                            /* Confirm-delete state */
                             <>
                                 <button type="button" onClick={() => handleDeleteTab?.(tab.id)}
                                     style={{
@@ -76,7 +62,6 @@ const BudgetTabStrip = ({ tabs, activeTabId, setActiveTabId, confirmDeleteTab, s
                                 </button>
                             </>
                         ) : (
-                            /* Normal tab pill with × */
                             <div style={{ display: 'flex', alignItems: 'center',
                                 background: isActive ? IOS.blue : IOS.bg,
                                 borderRadius: 20,
@@ -91,7 +76,7 @@ const BudgetTabStrip = ({ tabs, activeTabId, setActiveTabId, confirmDeleteTab, s
                                         fontSize: '0.82rem', whiteSpace: 'nowrap',
                                         cursor: 'pointer', fontFamily: FONT_STACK,
                                     }}>
-                                    {tab.name}
+                                    {tab.name?.trim() || `Tab ${tab.id}`}
                                 </button>
                                 <button type="button"
                                     onClick={(e) => { e.stopPropagation(); setConfirmDeleteTab?.(tab.id); }}
@@ -110,6 +95,30 @@ const BudgetTabStrip = ({ tabs, activeTabId, setActiveTabId, confirmDeleteTab, s
                     </div>
                 );
             })}
+
+            {adding ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                    <input autoFocus value={newName} onChange={e => setNewName(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') { setAdding(false); setNewName(''); } }}
+                        placeholder="Tab name..."
+                        style={{ padding: '4px 10px', border: `1px solid ${IOS.muted}`, borderRadius: 8, fontSize: '0.82rem', width: 110, fontFamily: FONT_STACK }} />
+                    <button type="button" onClick={handleAdd} style={{
+                        padding: '4px 10px', borderRadius: 8, border: 'none',
+                        background: IOS.blue, color: '#fff', fontWeight: 600,
+                        fontSize: '0.78rem', cursor: 'pointer', fontFamily: FONT_STACK,
+                    }}>Add</button>
+                    <button type="button" onClick={() => { setAdding(false); setNewName(''); }} style={{
+                        padding: '4px 6px', border: 'none', background: 'none',
+                        color: IOS.muted, fontSize: '0.82rem', cursor: 'pointer', fontWeight: 700,
+                    }}>✕</button>
+                </div>
+            ) : (
+                <button type="button" onClick={() => setAdding(true)} style={{
+                    padding: '6px 14px', borderRadius: 20, border: 'none',
+                    background: IOS.bg, color: IOS.blue, fontWeight: 700,
+                    fontSize: '1rem', cursor: 'pointer', fontFamily: FONT_STACK, flexShrink: 0,
+                }}>+</button>
+            )}
         </div>
     );
 };

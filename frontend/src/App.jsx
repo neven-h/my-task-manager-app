@@ -12,6 +12,7 @@ const TaskTracker = lazy(() => import('./TaskTracker'));
 const IOSTaskTracker = lazy(() => import('./ios/IOSTaskTracker'));
 const TwoFactorSetup = lazy(() => import('./TwoFactorSetup'));
 const SettingsPage = lazy(() => import('./SettingsPage'));
+const TrashPage = lazy(() => import('./TrashPage'));
 
 const App = () => {
   const navigate = useNavigate();
@@ -167,6 +168,10 @@ const App = () => {
 
         <Route path="/settings" element={
           authToken ? <SettingsPage /> : <Navigate to="/login" />
+        } />
+
+        <Route path="/trash" element={
+          authToken ? <TrashPage /> : <Navigate to="/login" />
         } />
 
         {/* Catch all */}
