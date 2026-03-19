@@ -51,7 +51,7 @@ const useBudgetUpload = () => {
             const res = await fetch(`${API_BASE}/budget/save-batch`, {
                 method: 'POST',
                 headers: getAuthHeaders(),
-                body: JSON.stringify({ entries: parsedData.entries, tab_id: tabId })
+                body: JSON.stringify({ entries: parsedData.entries, balances: parsedData.balances || [], tab_id: tabId })
             });
             const data = await res.json().catch(() => null);
             if (!res.ok) { setError(data?.error || 'Save failed'); return; }
