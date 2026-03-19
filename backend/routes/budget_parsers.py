@@ -156,6 +156,9 @@ def parse_budget_file(file_path):
         if balance_rows[0]['entry_date'] > balance_rows[-1]['entry_date']:
             balance_rows = list(reversed(balance_rows))
         derived = _derive_expenses_from_balance(balance_rows)
+        # Ensure derived entries always have a balance key (None) for consistency
+        for d in derived:
+            d.setdefault('balance', None)
         entries.extend(derived)
 
     if not entries:
