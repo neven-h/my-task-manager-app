@@ -76,12 +76,11 @@ def balance_forecast(payload):
                 )
                 for row in cur.fetchall():
                     try:
-                        amt = abs(float(decrypt_field(row['amount'])))
-                        tx_type = row.get('transaction_type', 'credit')
-                        if tx_type == 'transfer_in':
+                        amt = float(decrypt_field(row['amount']))
+                        if amt >= 0:
                             bank_income += amt
                         else:
-                            bank_expense += amt
+                            bank_expense += abs(amt)
                     except Exception:
                         continue
 

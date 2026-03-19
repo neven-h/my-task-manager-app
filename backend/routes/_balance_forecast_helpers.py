@@ -100,16 +100,17 @@ def _predict_bank(rows, today, cutoff, n_ahead):
     for r in rows:
         try:
             desc = decrypt_field(r['description'])
-            amount = abs(float(decrypt_field(r['amount'])))
+            raw_amt = float(decrypt_field(r['amount']))
+            amount = abs(raw_amt)
+            entry_type = 'income' if raw_amt >= 0 else 'expense'
         except Exception:
             continue
         d = r['transaction_date']
         if isinstance(d, str):
             d = datetime.strptime(d[:10], '%Y-%m-%d').date()
         norm_key = re.sub(r'\s+', ' ', desc.strip().lower())
-        groups[(norm_key, r['transaction_type'])].append(
-            {'description': desc, 'amount': amount, 'date': d,
-             'type': 'income' if r['transaction_type'] == 'transfer_in' else 'expense'}
+        groups[(norm_key, entry_type)].append(
+            {'description': desc, 'amount': amount, 'date': d, 'type': entry_type}
         )
     return _group_and_predict(groups, today, cutoff, n_ahead, 'bank')
 
@@ -122,8 +123,7 @@ def _build_monthly_actuals(bank_rows, today):
     monthly_actuals_map: dict = {}
     for row in bank_rows:
         try:
-            amt = abs(float(decrypt_field(row['amount'])))
-            tx_type = row.get('transaction_type', 'credit')
+            raw_amt = float(decrypt_field(row['amount']))
             d = row['transaction_date']
             if isinstance(d, str):
                 d = datetime.strptime(d[:10], '%Y-%m-%d').date()
@@ -132,10 +132,10 @@ def _build_monthly_actuals(bank_rows, today):
             mk = d.strftime('%Y-%m')
             if mk not in monthly_actuals_map:
                 monthly_actuals_map[mk] = {'expense': 0.0, 'income': 0.0}
-            if tx_type == 'transfer_in':
-                monthly_actuals_map[mk]['income'] += amt
+            if raw_amt >= 0:
+                monthly_actuals_map[mk]['income'] += raw_amt
             else:
-                monthly_actuals_map[mk]['expense'] += amt
+                monthly_actuals_map[mk]['expense'] += abs(raw_amt)
         except Exception:
             continue
     return [
