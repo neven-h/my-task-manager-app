@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Plus, RefreshCw, Search, BookOpen, DollarSign, Upload,
-    TrendingUp, Users, BarChart3, Download, Settings, LogOut, PiggyBank
+    TrendingUp, Users, BarChart3, Download, Settings, LogOut, PiggyBank, Trash2
 } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { FONT_STACK } from './theme';
@@ -85,7 +85,8 @@ const IOSSidebar = ({ isOpen, onClose, onOpenSearch, onOpenUpload }) => {
                 <SectionLabel>More</SectionLabel>
                 <SectionCard>
                     <Row icon={Download} iconBg="#007AFF" label="Export CSV" isAction onClick={() => { exportToCSV(); handleClose(); }} showDivider />
-                    <Row icon={Settings} iconBg="#8E8E93" label="Settings"   onClick={() => { navigate('/settings'); handleClose(); }} showDivider={false} />
+                    <Row icon={Settings} iconBg="#8E8E93" label="Settings"   onClick={() => { navigate('/settings'); handleClose(); }} showDivider />
+                    <Row icon={Trash2}   iconBg="#FF3B30" label="Trash"      onClick={() => { navigate('/trash'); handleClose(); }} showDivider={false} />
                 </SectionCard>
 
                 <SectionLabel>Account</SectionLabel>

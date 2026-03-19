@@ -18,7 +18,6 @@ const Section = ({ icon: Icon, label, children }) => (
 const IOSTaskDetailModal = ({ task, onClose, getCategoryLabel }) => {
     if (!task) return null;
     const isCompleted = task.status === 'completed';
-
     return (
         <div
             onClick={onClose}
@@ -195,7 +194,5 @@ const IOSTaskDetailModal = ({ task, onClose, getCategoryLabel }) => {
                 </div>
             </div>
         </div>
-    );
-};
-
+    );};
 export default IOSTaskDetailModal;

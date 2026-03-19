@@ -6,8 +6,9 @@ import { healthScore, healthLabel, runwayMonths, runwayInfo, generateInsights } 
  * and chart data from budget entries.
  */
 const useBudgetStats = (entries, cutoff, activeTabId) => {
+    // Only show entries that belong to the active tab; if no tab is selected, show nothing
     const tabEntries = useMemo(() =>
-        activeTabId === null ? entries : entries.filter(e => e.tab_id === activeTabId),
+        activeTabId === null ? [] : entries.filter(e => e.tab_id === activeTabId),
         [entries, activeTabId]);
 
     const filtered = useMemo(() =>

@@ -30,11 +30,12 @@ export const BudgetEntryList = ({
     toggleSelect,
     onSelectAll,
 }) => {
-    // Running balance keyed by entry id, computed from all entries in date order
+    // Running balance keyed by entry id, computed from tab entries sorted by date (oldest first)
     const balanceMap = useMemo(() => {
         const map = {};
         let running = 0;
-        (entries || []).forEach(e => {
+        const sorted = [...(entries || [])].sort((a, b) => a.entry_date.localeCompare(b.entry_date));
+        sorted.forEach(e => {
             running += e.type === 'income' ? Number(e.amount) : -Number(e.amount);
             map[e.id] = running;
         });

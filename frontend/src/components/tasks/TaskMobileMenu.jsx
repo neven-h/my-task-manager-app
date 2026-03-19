@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Plus, BarChart3, Filter, Settings, LogOut } from 'lucide-react';
+import { X, Plus, BarChart3, Filter, Settings, LogOut, Trash2 } from 'lucide-react';
 import { useTaskContext } from '../../context/TaskContext';
 
 const TaskMobileMenu = ({ isOpen, onClose, onOpenMobileSidebar }) => {
@@ -120,6 +120,13 @@ const TaskMobileMenu = ({ isOpen, onClose, onOpenMobileSidebar }) => {
                     }} style={{width: '100%', marginTop: '20px'}}>
                         <Settings size={18} style={{marginRight: '8px'}}/>
                         Settings
+                    </button>
+                    <button className="btn btn-white" onClick={() => {
+                        navigate('/trash');
+                        onClose();
+                    }} style={{width: '100%'}}>
+                        <Trash2 size={18} style={{marginRight: '8px'}}/>
+                        Trash
                     </button>
                     {onLogout && (
                         <button className="btn btn-white" onClick={() => {
