@@ -39,8 +39,11 @@ const useBudgetRange = (activeTabId, cutoff, income, outcome, forecast, linkedTa
     const displayBal = fileBalance ?? (forecast ? forecast.current_balance : net);
 
     const rangeActive = rangeResult && !rangeResult.error;
-    const incomeForSummary = rangeActive ? (rangeResult.income_total ?? income) : income;
-    const expenseForSummary = rangeActive ? (rangeResult.expense_total ?? outcome) : outcome;
+    // When linked to a bank tab and forecast is loaded, include bank totals in the summary cards
+    const bankIncome  = (!rangeActive && linkedTab && forecast) ? (forecast.bank_income  ?? 0) : 0;
+    const bankExpense = (!rangeActive && linkedTab && forecast) ? (forecast.bank_expense ?? 0) : 0;
+    const incomeForSummary  = rangeActive ? (rangeResult.income_total  ?? income)  : income  + bankIncome;
+    const expenseForSummary = rangeActive ? (rangeResult.expense_total ?? outcome) : outcome + bankExpense;
     const balanceForSummary = rangeActive && rangeResult.balance_as_of != null ? rangeResult.balance_as_of : displayBal;
     const balanceBadgeForSummary = rangeActive ? null : (fileBalance == null && forecast && linkedTab ? '＋bank' : null);
 

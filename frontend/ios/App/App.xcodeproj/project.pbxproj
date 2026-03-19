@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
+		4288275F2F6C34C000CF07EE /* CalendarPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4288275E2F6C34C000CF07EE /* CalendarPlugin.swift */; };
+		428827602F6C34C000CF07EE /* CalendarPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = 4288275D2F6C34C000CF07EE /* CalendarPlugin.m */; };
 		42FFC1222F630A2800AB487D /* BiometricAuthPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42FFC1212F630A2800AB487D /* BiometricAuthPlugin.swift */; };
 		42FFC1242F630A4700AB487D /* BiometricAuthPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = 42FFC1232F630A4700AB487D /* BiometricAuthPlugin.m */; };
 		42FFC1262F630DD100AB487D /* Info 2.plist in Resources */ = {isa = PBXBuildFile; fileRef = 42FFC1252F630DD100AB487D /* Info 2.plist */; };
@@ -22,6 +24,8 @@
 
 /* Begin PBXFileReference section */
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
+		4288275D2F6C34C000CF07EE /* CalendarPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CalendarPlugin.m; sourceTree = "<group>"; };
+		4288275E2F6C34C000CF07EE /* CalendarPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarPlugin.swift; sourceTree = "<group>"; };
 		42948CD52F68589C00D4CE8C /* biometricAuth.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = biometricAuth.js; sourceTree = "<group>"; };
 		42948CD62F6858AB00D4CE8C /* LoginPage-DWOvkNZX.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "LoginPage-DWOvkNZX.js"; sourceTree = "<group>"; };
 		42948CD72F6858B900D4CE8C /* SettingsPage-CqEj8Azt.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "SettingsPage-CqEj8Azt.js"; sourceTree = "<group>"; };
@@ -78,6 +82,8 @@
 			children = (
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
+				4288275D2F6C34C000CF07EE /* CalendarPlugin.m */,
+				4288275E2F6C34C000CF07EE /* CalendarPlugin.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -174,6 +180,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4288275F2F6C34C000CF07EE /* CalendarPlugin.swift in Sources */,
+				428827602F6C34C000CF07EE /* CalendarPlugin.m in Sources */,
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				42FFC1242F630A4700AB487D /* BiometricAuthPlugin.m in Sources */,
 				42FFC1222F630A2800AB487D /* BiometricAuthPlugin.swift in Sources */,
