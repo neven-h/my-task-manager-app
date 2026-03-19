@@ -83,6 +83,8 @@ def ensure_budget_daily_balances_table(conn):
 def serialize_entry(e):
     """Convert Decimal/date fields to JSON-safe types."""
     e['amount'] = float(e['amount'])
+    if e.get('balance') is not None:
+        e['balance'] = float(e['balance'])
     for f in ('entry_date', 'created_at', 'updated_at'):
         if e.get(f):
             e[f] = str(e[f])
