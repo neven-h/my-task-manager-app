@@ -45,7 +45,7 @@ def upload_transactions(payload):
                     'month_year': row['month_year'],
                     'transaction_type': row.get('transaction_type', transaction_type),
                 })
-            return jsonify({
+            response = {
                 'success': True,
                 'total_amount': float(df['amount'].sum()),
                 'transaction_count': len(transactions),
@@ -55,7 +55,11 @@ def upload_transactions(payload):
                 'transaction_type': transaction_type,
                 'normalizer_profile': df.attrs.get('normalizer_profile'),
                 'normalizer_confidence': df.attrs.get('normalizer_confidence'),
-            })
+            }
+            if df.attrs.get('last_balance') is not None:
+                response['last_balance'] = df.attrs['last_balance']
+                response['balance_date'] = df.attrs.get('balance_date')
+            return jsonify(response)
         except Exception as e:
             if os.path.exists(file_path):
                 os.remove(file_path)
@@ -77,6 +81,8 @@ def save_transactions(payload):
         transactions = data.get('transactions', [])
         username = payload['username']  # Get uploader username from JWT
         tab_id = data.get('tab_id')
+        last_balance = data.get('last_balance')
+        balance_date = data.get('balance_date')
 
         if not transactions:
             return jsonify({'error': 'No transactions to save'}), 400
@@ -114,6 +120,26 @@ def save_transactions(payload):
                 username=username, action='SAVE',
                 transaction_ids=','.join(tx_ids[:10]) + ('...' if len(tx_ids) > 10 else ''),
                 month_year=transactions[0].get('month_year'))
+            # Persist the real bank balance from the יתרה column if provided
+            if last_balance is not None:
+                try:
+                    cur.execute(
+                        "ALTER TABLE transaction_tabs ADD COLUMN IF NOT EXISTS "
+                        "last_known_balance DECIMAL(14,2) DEFAULT NULL",
+                    )
+                    cur.execute(
+                        "ALTER TABLE transaction_tabs ADD COLUMN IF NOT EXISTS "
+                        "balance_date DATE DEFAULT NULL",
+                    )
+                    cur.execute(
+                        "UPDATE transaction_tabs SET last_known_balance = %s, balance_date = %s "
+                        "WHERE id = %s AND owner = %s",
+                        (float(last_balance), balance_date, tab_id, username),
+                    )
+                    connection.commit()
+                except Exception as bal_err:
+                    current_app.logger.warning('Could not save last_balance: %s', bal_err)
+
             invalidate_prediction_cache(username, tab_id)
             cur2 = connection.cursor(dictionary=True)
             cur2.execute("SELECT owner FROM budget_bank_links WHERE transaction_tab_id = %s", (tab_id,))

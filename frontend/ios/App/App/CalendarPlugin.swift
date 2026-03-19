@@ -115,10 +115,6 @@ public class CalendarPlugin: CAPPlugin {
             case .denied:          return "denied"
             case .restricted:      return "restricted"
             case .notDetermined:   return "notDetermined"
-            case .fullAccess:
-                <#code#>
-            case .writeOnly:
-                <#code#>
             @unknown default:      return "notDetermined"
             }
         }
@@ -140,4 +136,3 @@ public class CalendarPlugin: CAPPlugin {
         }
     }
 }
-

@@ -64,11 +64,28 @@ def balance_forecast(payload):
 
             bank_income = 0.0
             bank_expense = 0.0
+            real_balance = None   # actual balance from bank statement (יתרה column)
+            real_balance_date = None
             monthly_actuals = []
             bank_predictions = []
             if link:
                 tx_tab_id = link['transaction_tab_id']
-                # Sum historical bank transactions, split by type
+
+                # Use the real bank balance stored from the יתרה column if available
+                try:
+                    cur.execute(
+                        "SELECT last_known_balance, balance_date FROM transaction_tabs "
+                        "WHERE id = %s LIMIT 1",
+                        (tx_tab_id,),
+                    )
+                    tab_row = cur.fetchone()
+                    if tab_row and tab_row.get('last_known_balance') is not None:
+                        real_balance = float(tab_row['last_known_balance'])
+                        real_balance_date = tab_row.get('balance_date')
+                except Exception:
+                    pass  # column may not exist yet; fall through to calculated balance
+
+                # Sum historical bank transactions (used for income/expense split in summary)
                 cur.execute(
                     "SELECT amount, transaction_type FROM bank_transactions WHERE tab_id = %s"
                     + ("" if user_role == 'shared' else " AND uploaded_by = %s"),
@@ -121,7 +138,11 @@ def balance_forecast(payload):
             budget_predictions = _predict_budget(budget_pred_rows, today, cutoff, months)
 
         # 5. Build unified timeline with running balance
-        current_balance = round(budget_income - budget_expense - bank_expense + bank_income, 2)
+        # Prefer the real bank balance from the יתרה column; fall back to calculated sum
+        if real_balance is not None:
+            current_balance = round(real_balance + budget_income - budget_expense, 2)
+        else:
+            current_balance = round(budget_income - budget_expense - bank_expense + bank_income, 2)
         timeline = _merge_timeline(budget_predictions, bank_predictions, current_balance)
 
         # 6. Build history timeline (last 12 months, budget + bank combined per month)
@@ -159,6 +180,8 @@ def balance_forecast(payload):
 
         result = {
             'current_balance': current_balance,
+            'real_balance': real_balance,
+            'real_balance_date': real_balance_date.isoformat() if real_balance_date else None,
             'budget_income': round(budget_income, 2),
             'budget_expense': round(budget_expense, 2),
             'bank_expense': round(bank_expense, 2),

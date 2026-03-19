@@ -105,7 +105,12 @@ const useMobileUploadFlow = ({ isOpen, onClose, onUploadComplete }) => {
             const res = await fetch(`${API_BASE}/transactions/save`, {
                 method: 'POST',
                 headers: getAuthHeaders(),
-                body: JSON.stringify({ transactions: parsedData.transactions, tab_id: selectedTabId })
+                body: JSON.stringify({
+                    transactions: parsedData.transactions,
+                    tab_id: selectedTabId,
+                    last_balance: parsedData.last_balance ?? null,
+                    balance_date: parsedData.balance_date ?? null,
+                })
             });
             const data = await res.json().catch(() => null);
             if (!res.ok) { setError(data?.error || 'Save failed'); return; }
