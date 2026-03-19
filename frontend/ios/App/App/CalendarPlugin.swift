@@ -45,9 +45,16 @@ public class CalendarPlugin: CAPPlugin {
     // Returns: { success: bool, eventId: string }
     @objc func addEvent(_ call: CAPPluginCall) {
         let status = EKEventStore.authorizationStatus(for: .event)
-        guard status == .authorized || (status.rawValue == 4) /* writeOnly iOS17 */ else {
-            call.reject("Calendar access not granted")
-            return
+        if #available(iOS 17.0, *) {
+            guard status == .fullAccess || status == .writeOnly else {
+                call.reject("Calendar access not granted")
+                return
+            }
+        } else {
+            guard status == .authorized else {
+                call.reject("Calendar access not granted")
+                return
+            }
         }
 
         guard let title = call.getString("title"), !title.isEmpty else {
@@ -93,14 +100,27 @@ public class CalendarPlugin: CAPPlugin {
     // MARK: - Helpers
 
     private func statusString(_ status: EKAuthorizationStatus) -> String {
-        switch status {
-        case .authorized:       return "authorized"
-        case .denied:           return "denied"
-        case .restricted:       return "restricted"
-        case .notDetermined:    return "notDetermined"
-        @unknown default:
-            // iOS 17 writeOnly = raw value 4
-            return status.rawValue == 4 ? "writeOnly" : "notDetermined"
+        if #available(iOS 17.0, *) {
+            switch status {
+            case .fullAccess:      return "fullAccess"
+            case .writeOnly:       return "writeOnly"
+            case .denied:          return "denied"
+            case .restricted:      return "restricted"
+            case .notDetermined:   return "notDetermined"
+            @unknown default:      return "notDetermined"
+            }
+        } else {
+            switch status {
+            case .authorized:      return "authorized"
+            case .denied:          return "denied"
+            case .restricted:      return "restricted"
+            case .notDetermined:   return "notDetermined"
+            case .fullAccess:
+                <#code#>
+            case .writeOnly:
+                <#code#>
+            @unknown default:      return "notDetermined"
+            }
         }
     }
 
@@ -120,3 +140,4 @@ public class CalendarPlugin: CAPPlugin {
         }
     }
 }
+
