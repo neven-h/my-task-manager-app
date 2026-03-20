@@ -59,7 +59,7 @@ const Budget = ({ onBackToTasks }) => {
     const [selectedIds, setSelectedIds]               = useState(new Set());
 
     const { activeTabId, setActiveTabId } = useBudgetActiveTab(tabs);
-    const { tabEntries, monthlyTotals, chartData, allCategories, health } = useBudgetStats(entries, cutoff, activeTabId);
+    const { tabEntries, monthlyTotals, chartData, allCategories, health } = useBudgetStats(entries, cutoff, activeTabId, forecast, linkedTab);
 
     // Month sidebar data: derived from all tab entries (not filtered)
     const monthsData = useMemo(() => {

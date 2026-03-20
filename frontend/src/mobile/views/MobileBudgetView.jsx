@@ -58,7 +58,7 @@ const MobileBudgetView = ({ onBack }) => {
     const [confirmClearTab, setConfirmClearTab]   = useState(false);
     const { activeTabId, setActiveTabId } = useBudgetActiveTab(tabs);
 
-    const { tabEntries, monthlyTotals, chartData, allCategories, health } = useBudgetStats(entries, cutoff, activeTabId);
+    const { tabEntries, monthlyTotals, chartData, allCategories, health } = useBudgetStats(entries, cutoff, activeTabId, forecast, linkedTab);
     const filters = useBudgetFilters(tabEntries);
 
     useEffect(() => { fetchEntries(); fetchTabs(); }, [fetchEntries, fetchTabs]);
