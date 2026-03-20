@@ -128,9 +128,11 @@ def parse_normalized_poalim_csv_to_entries(csv_path):
         if not entry_date or entry_date.lower() == "nan":
             continue
         bal_raw = str(row.get("balance") or "").strip()
+        row_balance = None
         if bal_raw and bal_raw.lower() not in ("nan", ""):
             try:
-                last_balance_by_date[entry_date] = round(float(bal_raw.replace(",", "")), 2)
+                row_balance = round(float(bal_raw.replace(",", "")), 2)
+                last_balance_by_date[entry_date] = row_balance
             except Exception:
                 pass
         amt_raw = str(row.get("amount") or "").strip()
@@ -153,6 +155,7 @@ def parse_normalized_poalim_csv_to_entries(csv_path):
             "entry_date": entry_date,
             "category": None,
             "notes": None,
+            "balance": row_balance,
         })
     balances = [{"entry_date": d, "balance": b} for d, b in sorted(last_balance_by_date.items())]
     return entries, balances
