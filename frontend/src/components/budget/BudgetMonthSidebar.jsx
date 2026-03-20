@@ -9,7 +9,12 @@ const fmtMonth = (ym) => {
     return new Date(+y, +m - 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 };
 
-const BudgetMonthSidebar = ({ monthsData, selectedMonth, onSelectMonth, onClearMonth, onClearTab, tabEntries }) => {
+const fmtBal = (n) => {
+    const abs = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(n));
+    return (n < 0 ? '−' : '+') + abs;
+};
+
+const BudgetMonthSidebar = ({ monthsData, monthBalances = {}, selectedMonth, onSelectMonth, onClearMonth, onClearTab, tabEntries }) => {
     const [confirmClear, setConfirmClear] = useState(false);
     const [confirmMonthClear, setConfirmMonthClear] = useState(null);
 
@@ -60,6 +65,12 @@ const BudgetMonthSidebar = ({ monthsData, selectedMonth, onSelectMonth, onClearM
                                     <span style={{ color: isSelected ? '#cfc' : SYS.success }}>+{formatCurrency(d.income)}</span>
                                     <span style={{ color: isSelected ? '#fcc' : SYS.accent }}>−{formatCurrency(d.expense)}</span>
                                 </div>
+                                {monthBalances[ym] != null && (
+                                    <div style={{ fontSize: '0.7rem', marginTop: 2, fontWeight: 700,
+                                        color: isSelected ? '#fff' : (monthBalances[ym] >= 0 ? SYS.success : SYS.accent) }}>
+                                        ⚖ {fmtBal(monthBalances[ym])}
+                                    </div>
+                                )}
                             </button>
                             <button type="button"
                                 onClick={() => setConfirmMonthClear(isConfirming ? null : ym)}
