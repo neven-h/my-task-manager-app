@@ -6,6 +6,7 @@ import useBudgetLinks from '../../hooks/useBudgetLinks';
 import useBalanceForecast from '../../hooks/useBalanceForecast';
 import useBudgetStats from '../../hooks/useBudgetStats';
 import useBudgetFilters from '../../hooks/useBudgetFilters';
+import useBudgetActiveTab from '../../hooks/useBudgetActiveTab';
 import MobileBudgetHeader from '../components/budget/MobileBudgetHeader';
 import MobileBudgetClearStrip from '../components/budget/MobileBudgetClearStrip';
 import MobileBudgetLinkBanner from '../components/budget/MobileBudgetLinkBanner';
@@ -44,7 +45,6 @@ const MobileBudgetView = ({ onBack }) => {
     const { linkedTab, linkError, fetchLink, setLink, removeLink } = useBudgetLinks();
     const { forecast, loading: forecastLoading, fetchForecast, clearForecast, lastUpdated, refresh } = useBalanceForecast();
 
-    const [activeTabId, setActiveTabId]   = useState(null);
     const [cutoff, setCutoff]             = useState(today());
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showForm, setShowForm]         = useState(false);
@@ -56,12 +56,12 @@ const MobileBudgetView = ({ onBack }) => {
     const [selectedIds, setSelectedIds]   = useState(new Set());
     const [confirmDeleteTab, setConfirmDeleteTab] = useState(null);
     const [confirmClearTab, setConfirmClearTab]   = useState(false);
+    const { activeTabId, setActiveTabId } = useBudgetActiveTab(tabs);
 
     const { tabEntries, monthlyTotals, chartData, allCategories, health } = useBudgetStats(entries, cutoff, activeTabId);
     const filters = useBudgetFilters(tabEntries);
 
     useEffect(() => { fetchEntries(); fetchTabs(); }, [fetchEntries, fetchTabs]);
-    useEffect(() => { if (!activeTabId && tabs.length > 0) setActiveTabId(tabs[0].id); }, [tabs, activeTabId]);
     useEffect(() => { fetchLink(activeTabId); clearForecast(); }, [activeTabId, fetchLink, clearForecast]);
     useEffect(() => { if (linkedTab && activeTabId) fetchForecast(activeTabId, 3); }, [linkedTab, activeTabId, fetchForecast]);
 
