@@ -7,6 +7,7 @@ import useBalanceForecast from './hooks/useBalanceForecast';
 import useBudgetStats from './hooks/useBudgetStats';
 import useBudgetFilters from './hooks/useBudgetFilters';
 import useBudgetRange from './hooks/useBudgetRange';
+import useBudgetActiveTab from './hooks/useBudgetActiveTab';
 import BudgetLinkBanner from './components/budget/BudgetLinkBanner';
 import BalanceForecast from './components/budget/BalanceForecast';
 import { SummaryCard } from './components/budget/BudgetSummaryCard';
@@ -44,7 +45,6 @@ const Budget = ({ onBackToTasks }) => {
     const { forecast, loading: forecastLoading, fetchForecast, clearForecast, lastUpdated, refresh } = useBalanceForecast();
 
     const [cutoff, setCutoff]                         = useState(today());
-    const [activeTabId, setActiveTabId]               = useState(null);
     const [selectedMonth, setSelectedMonth]           = useState(null); // null = all
     const [showForm, setShowForm]                     = useState(false);
     const [editingEntry, setEditingEntry]             = useState(null);
@@ -58,6 +58,7 @@ const Budget = ({ onBackToTasks }) => {
     const [selectedIds, setSelectedIds]               = useState(new Set());
 
     const { tabEntries, monthlyTotals, chartData, allCategories, health } = useBudgetStats(entries, cutoff, activeTabId);
+    const { activeTabId, setActiveTabId } = useBudgetActiveTab(tabs);
 
     // Month sidebar data: derived from all tab entries (not filtered)
     const monthsData = useMemo(() => {
@@ -79,8 +80,6 @@ const Budget = ({ onBackToTasks }) => {
 
     const filters = useBudgetFilters(monthFilteredEntries);
     useEffect(() => { fetchEntries(); fetchTabs(); }, [fetchEntries, fetchTabs]);
-    // Auto-select first tab, never stay on null when tabs exist
-    useEffect(() => { if (!activeTabId && tabs.length > 0) setActiveTabId(tabs[0].id); }, [tabs, activeTabId]);
     useEffect(() => { fetchLink(activeTabId); clearForecast(); setSelectedMonth(null); }, [activeTabId, fetchLink, clearForecast]);
     useEffect(() => { if (linkedTab && activeTabId) fetchForecast(activeTabId, 3); }, [linkedTab, activeTabId, fetchForecast]);
     const income  = useMemo(() => tabEntries.filter(e => e.type === 'income'  && e.entry_date <= cutoff).reduce((s, e) => s + e.amount, 0), [tabEntries, cutoff]);
