@@ -68,7 +68,7 @@ export const EntryRow = ({ entry, balance, cutoff, onEdit, onDuplicate, onDelete
                 </div>
 
                 {/* Balance (יתרה) */}
-                {balance !== undefined && (
+                {balance != null && (
                     <div style={{
                         fontWeight: 700, fontSize: '0.85rem', flexShrink: 0,
                         width: 90, textAlign: 'right',

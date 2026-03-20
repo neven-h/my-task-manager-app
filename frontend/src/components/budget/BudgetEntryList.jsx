@@ -30,22 +30,11 @@ export const BudgetEntryList = ({
     toggleSelect,
     onSelectAll,
 }) => {
-    // Running balance keyed by entry id.
-    // Prefer the stored balance from the bank file (יתרה column) when available;
-    // fall back to computing a cumulative sum from the first entry.
+    // Balance keyed by entry id — use stored value from source file (יתרה column) only.
+    // Never compute a running total; if no stored balance, the cell is hidden.
     const balanceMap = useMemo(() => {
         const map = {};
-        const sorted = [...(entries || [])].sort((a, b) => a.entry_date.localeCompare(b.entry_date));
-        const hasStoredBalance = sorted.some(e => e.balance != null);
-        if (hasStoredBalance) {
-            sorted.forEach(e => { map[e.id] = e.balance != null ? Number(e.balance) : null; });
-        } else {
-            let running = 0;
-            sorted.forEach(e => {
-                running += e.type === 'income' ? Number(e.amount) : -Number(e.amount);
-                map[e.id] = running;
-            });
-        }
+        (entries || []).forEach(e => { map[e.id] = e.balance != null ? Number(e.balance) : null; });
         return map;
     }, [entries]);
 

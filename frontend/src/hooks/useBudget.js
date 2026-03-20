@@ -11,6 +11,7 @@ const useBudget = () => {
     const crudHook = useBudgetEntries();
     const { entries, setError } = crudHook;
     const [predictions, setPredictions] = useState([]);
+    const [monthBalances, setMonthBalances] = useState({});
 
     // ── computed helpers ─────────────────────────────────────────────────
     const totalIncome = useCallback((cutoff) =>
@@ -45,6 +46,20 @@ const useBudget = () => {
         }
     }, []);
 
+    // ── Monthly balances (last יתרה per month) ───────────────────────────
+    const fetchMonthlyBalances = useCallback(async (tabId) => {
+        if (!tabId) { setMonthBalances({}); return; }
+        try {
+            const res = await fetch(`${API_BASE}/budget/monthly-balances?tab_id=${tabId}`, { headers: getAuthHeaders() });
+            if (!res.ok) throw new Error(`Server error ${res.status}`);
+            const data = await res.json();
+            setMonthBalances(data && typeof data === 'object' ? data : {});
+        } catch (err) {
+            console.error('Failed to fetch monthly balances:', err);
+            setMonthBalances({});
+        }
+    }, []);
+
     // ── CSV export ───────────────────────────────────────────────────────
     const exportBudgetCSV = useCallback(async (tabId = null) => {
         try {
@@ -76,6 +91,8 @@ const useBudget = () => {
         balance,
         predictions,
         fetchPredictions,
+        monthBalances,
+        fetchMonthlyBalances,
         exportBudgetCSV,
     };
 };

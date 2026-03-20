@@ -39,7 +39,8 @@ const emptyForm = (type = 'income') => ({
 
 const Budget = ({ onBackToTasks }) => {
     const { entries, loading, error, fetchEntries, createEntry, updateEntry, deleteEntry,
-        batchDelete, batchUpdate, getDescriptionHistory, predictions, fetchPredictions, exportBudgetCSV } = useBudget();
+        batchDelete, batchUpdate, getDescriptionHistory, predictions, fetchPredictions,
+        monthBalances, fetchMonthlyBalances, exportBudgetCSV } = useBudget();
     const { tabs, loading: tabsLoading, fetchTabs, createTab, deleteTab, duplicateTab, renameTab } = useBudgetTabs();
     const { linkedTab, linkError, fetchLink, setLink, removeLink } = useBudgetLinks();
     const { forecast, loading: forecastLoading, fetchForecast, clearForecast, lastUpdated, refresh } = useBalanceForecast();
@@ -80,7 +81,7 @@ const Budget = ({ onBackToTasks }) => {
 
     const filters = useBudgetFilters(monthFilteredEntries);
     useEffect(() => { fetchEntries(); fetchTabs(); }, [fetchEntries, fetchTabs]);
-    useEffect(() => { fetchLink(activeTabId); clearForecast(); setSelectedMonth(null); }, [activeTabId, fetchLink, clearForecast]);
+    useEffect(() => { fetchLink(activeTabId); clearForecast(); setSelectedMonth(null); fetchMonthlyBalances(activeTabId); }, [activeTabId, fetchLink, clearForecast, fetchMonthlyBalances]);
     useEffect(() => { if (linkedTab && activeTabId) fetchForecast(activeTabId, 3); }, [linkedTab, activeTabId, fetchForecast]);
     const income  = useMemo(() => tabEntries.filter(e => e.type === 'income'  && e.entry_date <= cutoff).reduce((s, e) => s + e.amount, 0), [tabEntries, cutoff]);
     const outcome = useMemo(() => tabEntries.filter(e => e.type === 'outcome' && e.entry_date <= cutoff).reduce((s, e) => s + e.amount, 0), [tabEntries, cutoff]);
@@ -170,6 +171,7 @@ const Budget = ({ onBackToTasks }) => {
                 <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '1.5rem', alignItems: 'start' }}>
                     <BudgetMonthSidebar
                         monthsData={monthsData}
+                        monthBalances={monthBalances}
                         selectedMonth={selectedMonth}
                         onSelectMonth={(m) => { setSelectedMonth(m); cancelSelection(); }}
                         onClearMonth={handleClearMonth}
@@ -192,7 +194,7 @@ const Budget = ({ onBackToTasks }) => {
                 <ForecastSection predictions={predictions} onFetch={() => fetchPredictions(3, activeTabId)} loading={loading} />
                 <BalanceForecast forecast={forecast} onFetch={() => fetchForecast(activeTabId, 3)} onRefresh={() => refresh(activeTabId, 3)} loading={forecastLoading} linkedTab={linkedTab} lastUpdated={lastUpdated} />
             </div>
-            <BudgetUploadModal show={showUpload} onClose={() => setShowUpload(false)} activeTabId={activeTabId} onComplete={fetchEntries} />
+            <BudgetUploadModal show={showUpload} onClose={() => setShowUpload(false)} activeTabId={activeTabId} onComplete={() => { fetchEntries(); fetchMonthlyBalances(activeTabId); }} />
         </div>
     );
 };

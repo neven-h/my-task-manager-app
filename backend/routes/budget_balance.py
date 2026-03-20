@@ -134,6 +134,38 @@ def get_balance_range(payload):
         return jsonify({'error': 'An unexpected error occurred'}), 500
 
 
+@budget_balance_bp.route('/api/budget/monthly-balances', methods=['GET'])
+@token_required
+def get_monthly_balances(payload):
+    """Return the last-known balance per calendar month for a tab (from budget_entries.balance)."""
+    try:
+        username = payload['username']
+        tab_id = request.args.get('tab_id', type=int)
+        if not tab_id:
+            return jsonify({'error': 'tab_id is required'}), 400
+        with get_db_connection() as conn:
+            from routes.budget_helpers import ensure_budget_table
+            ensure_budget_table(conn)
+            cur = conn.cursor(dictionary=True)
+            cur.execute("""
+                SELECT t.month, t.balance FROM (
+                    SELECT DATE_FORMAT(entry_date, '%%Y-%%m') AS month,
+                           balance,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY DATE_FORMAT(entry_date, '%%Y-%%m')
+                               ORDER BY entry_date DESC, id DESC
+                           ) AS rn
+                    FROM budget_entries
+                    WHERE owner = %s AND tab_id = %s AND balance IS NOT NULL
+                ) t WHERE t.rn = 1
+            """, (username, tab_id))
+            rows = cur.fetchall()
+        return jsonify({r['month']: float(r['balance']) for r in rows})
+    except Exception:
+        logger.exception('budget monthly-balances error')
+        return jsonify({'error': 'An unexpected error occurred'}), 500
+
+
 @budget_balance_bp.route('/api/budget/batch-delete', methods=['DELETE'])
 @token_required
 def delete_budget_batch(payload):
