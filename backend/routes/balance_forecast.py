@@ -88,16 +88,20 @@ def balance_forecast(payload):
                 # Sum historical bank transactions (used for income/expense split in summary)
                 cur.execute(
                     "SELECT amount, transaction_type FROM bank_transactions WHERE tab_id = %s"
-                    + ("" if user_role == 'shared' else " AND uploaded_by = %s"),
+                    + ("" if user_role == 'shared' else " AND (uploaded_by = %s OR uploaded_by IS NULL)"),
                     (tx_tab_id,) if user_role == 'shared' else (tx_tab_id, username),
                 )
                 for row in cur.fetchall():
                     try:
                         amt = float(decrypt_field(row['amount']))
-                        if amt >= 0:
-                            bank_income += amt
-                        else:
+                        tx_type = (row.get('transaction_type') or '').lower()
+                        if amt < 0:
                             bank_expense += abs(amt)
+                        elif amt > 0 and tx_type == 'debit':
+                            bank_expense += amt
+                        elif amt > 0:
+                            bank_income += amt
+                        # amt == 0 is ignored
                     except Exception:
                         continue
 
@@ -106,7 +110,7 @@ def balance_forecast(payload):
                     "SELECT description, amount, transaction_date, transaction_type "
                     "FROM bank_transactions WHERE tab_id = %s"
                     " AND transaction_date >= DATE_SUB(NOW(), INTERVAL 24 MONTH)"
-                    + ("" if user_role == 'shared' else " AND uploaded_by = %s")
+                    + ("" if user_role == 'shared' else " AND (uploaded_by = %s OR uploaded_by IS NULL)")
                     + " ORDER BY transaction_date ASC, id ASC",
                     (tx_tab_id,) if user_role == 'shared' else (tx_tab_id, username),
                 )
