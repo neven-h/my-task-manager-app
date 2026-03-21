@@ -4,6 +4,32 @@ import MobileBankTransactionRow from './MobileBankTransactionRow';
 
 const PAGE_SIZE = 15;
 
+const SHIMMER = {
+    background: 'linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%)',
+    backgroundSize: '800px 100%',
+    animation: 'shimmer 1.4s ease infinite',
+    borderRadius: 8,
+};
+
+const SkeletonRow = ({ isLast }) => (
+    <div style={{ padding: '14px 16px', background: '#fff', display: 'flex', alignItems: 'center', gap: 12, borderBottom: isLast ? 'none' : '0.5px solid rgba(0,0,0,0.08)' }}>
+        <div style={{ ...SHIMMER, width: 36, height: 36, borderRadius: 10, flexShrink: 0 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ ...SHIMMER, height: 13, width: '55%', marginBottom: 7 }} />
+            <div style={{ ...SHIMMER, height: 10, width: '35%' }} />
+        </div>
+        <div style={{ ...SHIMMER, height: 13, width: 56, borderRadius: 6 }} />
+    </div>
+);
+
+const TransactionSkeleton = ({ count = 8 }) => (
+    <div style={{ borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        {Array.from({ length: count }, (_, i) => (
+            <SkeletonRow key={i} isLast={i === count - 1} />
+        ))}
+    </div>
+);
+
 const MobileBankTransactionList = ({
     transactions, filteredTransactions, loading, tabsLoading,
     activeTabId, tabs, onEdit, onDelete,
@@ -18,13 +44,13 @@ const MobileBankTransactionList = ({
     return (
         <div style={{ padding: '0 16px 16px 16px', minHeight: '200px', paddingBottom: selectMode ? '100px' : '16px' }}>
             {tabsLoading ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: THEME.muted }}>Loading...</div>
+                <TransactionSkeleton count={5} />
             ) : !activeTabId ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: THEME.muted }}>
                     {tabs.length === 0 ? 'Create a tab to start tracking transactions' : 'Select a tab to view transactions'}
                 </div>
             ) : loading ? (
-                <div style={{ textAlign: 'center', padding: '40px' }}>Loading transactions...</div>
+                <TransactionSkeleton count={8} />
             ) : filteredTransactions.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: THEME.muted }}>No transactions found</div>
             ) : (

@@ -18,6 +18,11 @@
           font-family: 'Inter', 'Helvetica Neue', Calibri, sans-serif;
         }
 
+        @keyframes shimmer {
+          0%   { background-position: -400px 0; }
+          100% { background-position:  400px 0; }
+        }
+
         @keyframes slideInLeft {
           from {
             transform: translateX(-100%);
