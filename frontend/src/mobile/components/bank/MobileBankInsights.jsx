@@ -26,7 +26,7 @@ const MobileBankInsights = ({ insights, onFetch, loading }) => {
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 width: '100%', padding: '13px 16px',
                 border: 'none', borderRadius: open ? `${IOS.radius}px ${IOS.radius}px 0 0` : IOS.radius,
-                background: open ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : IOS.card,
+                background: open ? '#0000FF' : IOS.card,
                 boxShadow: open ? 'none' : '0 1px 3px rgba(0,0,0,0.07)',
                 fontWeight: 600, fontSize: '0.88rem',
                 fontFamily: FONT_STACK, color: open ? '#fff' : '#000',

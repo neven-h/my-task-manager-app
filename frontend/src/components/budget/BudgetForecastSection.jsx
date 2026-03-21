@@ -122,7 +122,7 @@ export const ForecastSection = ({ predictions, onFetch, loading }) => {
                     display: 'flex', alignItems: 'center', gap: 8, width: '100%',
                     padding: '12px 16px', borderRadius: open ? '10px 10px 0 0' : 10,
                     border: '2px solid #e0e0e0',
-                    background: open ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : '#f9fafb',
+                    background: open ? '#0000FF' : '#f9fafb',
                     color: open ? '#fff' : SYS.text,
                     cursor: 'pointer', fontWeight: 700, fontSize: '0.82rem',
                     textTransform: 'uppercase', letterSpacing: '0.4px',
