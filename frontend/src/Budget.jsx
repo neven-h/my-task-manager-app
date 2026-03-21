@@ -168,6 +168,9 @@ const Budget = ({ onBackToTasks }) => {
                 <BudgetExpenseChart chartData={chartData} />
                 <BudgetMonthlyChart monthlyTotals={monthlyTotals} />
 
+                <ForecastSection predictions={predictions} onFetch={() => fetchPredictions(3, activeTabId)} loading={loading} />
+                <BalanceForecast forecast={forecast} onFetch={() => fetchForecast(activeTabId, 3)} onRefresh={() => refresh(activeTabId, 3)} loading={forecastLoading} linkedTab={linkedTab} lastUpdated={lastUpdated} />
+
                 <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '1.5rem', alignItems: 'start' }}>
                     <BudgetMonthSidebar
                         monthsData={monthsData}
@@ -191,8 +194,6 @@ const Budget = ({ onBackToTasks }) => {
                     </div>
                 </div>
 
-                <ForecastSection predictions={predictions} onFetch={() => fetchPredictions(3, activeTabId)} loading={loading} />
-                <BalanceForecast forecast={forecast} onFetch={() => fetchForecast(activeTabId, 3)} onRefresh={() => refresh(activeTabId, 3)} loading={forecastLoading} linkedTab={linkedTab} lastUpdated={lastUpdated} />
             </div>
             <BudgetUploadModal show={showUpload} onClose={() => setShowUpload(false)} activeTabId={activeTabId} onComplete={() => { fetchEntries(); fetchMonthlyBalances(activeTabId); }} />
         </div>
