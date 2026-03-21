@@ -150,7 +150,7 @@ const Budget = ({ onBackToTasks }) => {
             <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 20px' }}>
                 {error && <div style={{ background: '#fff0f0', border: `2px solid ${SYS.accent}`, padding: '10px 14px', marginBottom: 16, color: SYS.accent, fontSize: '0.85rem', fontWeight: 600 }}>{error}</div>}
                 {showForm && <div id="budget-form"><EntryForm initial={formInitial} onSave={handleSave} onCancel={handleCancel} loading={loading} /></div>}
-                {activeTabId && <BudgetLinkBanner budgetTabId={activeTabId} linkedTab={linkedTab} linkError={linkError} onSetLink={(txTabId) => setLink(activeTabId, txTabId)} onRemoveLink={() => removeLink(activeTabId)} />}
+                {activeTabId && <BudgetLinkBanner budgetTabId={activeTabId} linkedTab={linkedTab} linkError={linkError} onSetLink={(txTabId, linkType) => setLink(activeTabId, txTabId, linkType)} onRemoveLink={() => removeLink(activeTabId)} />}
 
                 <BudgetRangePanel rangeOpen={rangeOpen} rangeLoading={rangeLoading} rangeResult={rangeResult} cutoff={cutoff} setCutoff={setCutoff} activeTabId={activeTabId} customStart={customStart} setCustomStart={setCustomStart} customEnd={customEnd} setCustomEnd={setCustomEnd} fetchRange={fetchRange} endMinusDays={endMinusDays} setRangeResult={setRangeResult} setRangeOpen={setRangeOpen} />
 

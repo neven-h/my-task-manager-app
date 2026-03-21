@@ -31,14 +31,14 @@ const useBudgetLinks = () => {
         } finally { setLoading(false); }
     }, []);
 
-    const setLink = useCallback(async (budgetTabId, transactionTabId) => {
+    const setLink = useCallback(async (budgetTabId, transactionTabId, linkType = 'expense') => {
         setLoading(true);
         setLinkError(null);
         try {
             const res = await fetch(`${API_BASE}/budget-tabs/${budgetTabId}/link`, {
                 method: 'PUT',
                 headers: getAuthHeaders(),
-                body: JSON.stringify({ transaction_tab_id: transactionTabId }),
+                body: JSON.stringify({ transaction_tab_id: transactionTabId, link_type: linkType }),
             });
             const data = await res.json();
             if (!res.ok) {

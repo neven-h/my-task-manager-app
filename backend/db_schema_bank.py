@@ -91,12 +91,22 @@ def init_bank_tables(cursor, connection):
             budget_tab_id INT NOT NULL,
             transaction_tab_id INT NOT NULL,
             owner VARCHAR(255) NOT NULL,
+            link_type VARCHAR(10) DEFAULT 'expense' NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE KEY uk_budget_tx_link (budget_tab_id, transaction_tab_id),
             INDEX idx_bbl_owner (owner)
         )
     """)
     print("Created budget_bank_links table")
+
+    try:
+        cursor.execute(
+            "ALTER TABLE budget_bank_links ADD COLUMN link_type VARCHAR(10) DEFAULT 'expense' NOT NULL"
+        )
+        print("Added link_type column to budget_bank_links")
+    except Error as e:
+        if 'Duplicate column' not in str(e):
+            print(f"Note: {e}")
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS bank_transaction_audit_log (

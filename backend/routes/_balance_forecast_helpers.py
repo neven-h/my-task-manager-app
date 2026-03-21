@@ -93,7 +93,7 @@ def _predict_budget(rows, today, cutoff, n_ahead):
     return _group_and_predict(groups, today, cutoff, n_ahead, 'budget')
 
 
-def _predict_bank(rows, today, cutoff, n_ahead):
+def _predict_bank(rows, today, cutoff, n_ahead, link_type='expense'):
     if not rows:
         return []
     groups = defaultdict(list)
@@ -102,7 +102,12 @@ def _predict_bank(rows, today, cutoff, n_ahead):
             desc = decrypt_field(r['description'])
             raw_amt = float(decrypt_field(r['amount']))
             amount = abs(raw_amt)
-            entry_type = 'income' if raw_amt >= 0 else 'expense'
+            if link_type == 'expense':
+                entry_type = 'expense'
+            elif link_type == 'income':
+                entry_type = 'income'
+            else:  # mixed
+                entry_type = 'income' if raw_amt >= 0 else 'expense'
         except Exception:
             continue
         d = r['transaction_date']
@@ -115,7 +120,7 @@ def _predict_bank(rows, today, cutoff, n_ahead):
     return _group_and_predict(groups, today, cutoff, n_ahead, 'bank')
 
 
-def _build_monthly_actuals(bank_rows, today):
+def _build_monthly_actuals(bank_rows, today, link_type='expense'):
     """Aggregate bank rows into monthly income/expense totals for last 12 months."""
     history_start = today.replace(day=1)
     for _ in range(11):
@@ -132,10 +137,15 @@ def _build_monthly_actuals(bank_rows, today):
             mk = d.strftime('%Y-%m')
             if mk not in monthly_actuals_map:
                 monthly_actuals_map[mk] = {'expense': 0.0, 'income': 0.0}
-            if raw_amt >= 0:
-                monthly_actuals_map[mk]['income'] += raw_amt
-            else:
+            if link_type == 'expense':
                 monthly_actuals_map[mk]['expense'] += abs(raw_amt)
+            elif link_type == 'income':
+                monthly_actuals_map[mk]['income'] += abs(raw_amt)
+            else:  # mixed
+                if raw_amt >= 0:
+                    monthly_actuals_map[mk]['income'] += raw_amt
+                else:
+                    monthly_actuals_map[mk]['expense'] += abs(raw_amt)
         except Exception:
             continue
     return [

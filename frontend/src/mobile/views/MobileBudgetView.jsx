@@ -179,7 +179,7 @@ const MobileBudgetView = ({ onBack }) => {
             {activeTabId && (
                 <MobileBudgetLinkBanner budgetTabId={activeTabId} linkedTab={linkedTab}
                     linkError={linkError}
-                    onSetLink={(txTabId) => setLink(activeTabId, txTabId)}
+                    onSetLink={(txTabId, linkType) => setLink(activeTabId, txTabId, linkType)}
                     onRemoveLink={() => removeLink(activeTabId)} />
             )}
 

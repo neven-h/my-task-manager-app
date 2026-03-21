@@ -17,7 +17,7 @@ def get_link(payload, tab_id):
         with get_db_connection() as conn:
             cur = conn.cursor(dictionary=True)
             cur.execute(
-                "SELECT l.transaction_tab_id, t.name AS transaction_tab_name "
+                "SELECT l.transaction_tab_id, l.link_type, t.name AS transaction_tab_name "
                 "FROM budget_bank_links l "
                 "JOIN transaction_tabs t ON t.id = l.transaction_tab_id "
                 "WHERE l.budget_tab_id = %s AND l.owner = %s "
@@ -42,7 +42,7 @@ def get_budget_link_for_transaction_tab(payload, tab_id):
         with get_db_connection() as conn:
             cur = conn.cursor(dictionary=True)
             cur.execute(
-                "SELECT l.budget_tab_id, b.name AS budget_tab_name "
+                "SELECT l.budget_tab_id, l.link_type, b.name AS budget_tab_name "
                 "FROM budget_bank_links l "
                 "JOIN budget_tabs b ON b.id = l.budget_tab_id "
                 "WHERE l.transaction_tab_id = %s AND l.owner = %s "
@@ -67,6 +67,9 @@ def set_link(payload, tab_id):
     tx_tab_id = data.get('transaction_tab_id')
     if not tx_tab_id:
         return jsonify({'error': 'transaction_tab_id is required'}), 400
+    link_type = data.get('link_type', 'expense')
+    if link_type not in ('expense', 'income', 'mixed'):
+        link_type = 'expense'
     try:
         with get_db_connection() as conn:
             cur = conn.cursor(dictionary=True)
@@ -83,13 +86,13 @@ def set_link(payload, tab_id):
             # Remove any existing link for this budget tab, then insert
             cur.execute("DELETE FROM budget_bank_links WHERE budget_tab_id = %s AND owner = %s", (tab_id, username))
             cur.execute(
-                "INSERT INTO budget_bank_links (budget_tab_id, transaction_tab_id, owner) VALUES (%s, %s, %s)",
-                (tab_id, tx_tab_id, username),
+                "INSERT INTO budget_bank_links (budget_tab_id, transaction_tab_id, owner, link_type) VALUES (%s, %s, %s, %s)",
+                (tab_id, tx_tab_id, username, link_type),
             )
             conn.commit()
             # Return the new link
             cur.execute(
-                "SELECT l.transaction_tab_id, t.name AS transaction_tab_name "
+                "SELECT l.transaction_tab_id, l.link_type, t.name AS transaction_tab_name "
                 "FROM budget_bank_links l "
                 "JOIN transaction_tabs t ON t.id = l.transaction_tab_id "
                 "WHERE l.budget_tab_id = %s AND l.owner = %s",
@@ -130,7 +133,7 @@ def sync_status(payload, tab_id):
         with get_db_connection() as conn:
             cur = conn.cursor(dictionary=True)
             cur.execute(
-                "SELECT l.transaction_tab_id, t.name AS transaction_tab_name "
+                "SELECT l.transaction_tab_id, l.link_type, t.name AS transaction_tab_name "
                 "FROM budget_bank_links l "
                 "JOIN transaction_tabs t ON t.id = l.transaction_tab_id "
                 "WHERE l.budget_tab_id = %s AND l.owner = %s LIMIT 1",
