@@ -146,6 +146,7 @@ def normalize_poalim_osh_file_to_utf8_csv(
     header_map: Optional[Dict[str, str]] = None,
     apply_description_rules: bool = True,
     encoding: str = "utf-8",
+    description_rules: Optional[list] = None,
 ) -> NormalizeReport:
     """Normalize a Poalim/Discount bank export to a canonical UTF-8 CSV."""
     input_path = str(Path(input_path).expanduser().resolve())
@@ -159,7 +160,7 @@ def normalize_poalim_osh_file_to_utf8_csv(
     df = _rename_headers(df, mapping=header_map)
 
     if apply_description_rules and "description" in df.columns:
-        df = normalize_descriptions_df(df, col="description")
+        df = normalize_descriptions_df(df, col="description", rules=description_rules)
 
     if "transaction_date" in df.columns:
         order = bio._detect_date_order(df, "transaction_date")

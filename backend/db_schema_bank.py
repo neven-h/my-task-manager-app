@@ -111,6 +111,34 @@ def init_bank_tables(cursor, connection):
             print(f"Note: {e}")
 
     cursor.execute("""
+        CREATE TABLE IF NOT EXISTS description_rules (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            needles TEXT NOT NULL,
+            replacement VARCHAR(500) NOT NULL,
+            sort_order INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    print("Created description_rules table")
+
+    # Seed default rules if table is empty
+    cursor.execute("SELECT COUNT(*) AS cnt FROM description_rules")
+    if cursor.fetchone()['cnt'] == 0:
+        import json
+        default_rules = [
+            (json.dumps(["AIRBNB PAYMENTS UK LIMITED", "פיוניר אינ"]), "Airbnb", 0),
+            (json.dumps(["העברה מנועה אבן חשבון ב.הפועלים-ביט"]), "bit", 1),
+            (json.dumps(["הפקדת מזומן לדיסקונט"]), "הפקדת מזומן", 2),
+            (json.dumps(["משיכה מכספומט כספונט", "משיכת מזומן ללא כרטיס"]), "משיכת מזומן", 3),
+        ]
+        cursor.executemany(
+            "INSERT INTO description_rules (needles, replacement, sort_order) VALUES (%s, %s, %s)",
+            default_rules,
+        )
+        connection.commit()
+        print("Seeded description_rules with default rules")
+
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS bank_transaction_audit_log (
             id INT AUTO_INCREMENT PRIMARY KEY,
             username VARCHAR(255) NOT NULL,

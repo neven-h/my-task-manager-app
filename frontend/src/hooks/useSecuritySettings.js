@@ -145,6 +145,7 @@ const useSecuritySettings = () => {
         deleteConfirmText, setDeleteConfirmText,
         deleteError, setDeleteError, deleteLoading, handleDeleteAccount,
         canUseRtl, rtlEnabled, toggleRtl,
+        userRole,
     };
 };
 
