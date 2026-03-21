@@ -84,46 +84,52 @@ def migrate_encrypt_transactions(payload):
 @admin_migrations_bp.route('/api/migrate-backfill-amount-plain', methods=['POST'])
 @admin_required
 def backfill_amount_plain(payload):
-    """Backfill amount_plain for existing rows that have encrypted amount TEXT but no amount_plain value."""
+    """Backfill amount_plain in batches of 200 to avoid gunicorn worker timeout.
+    Call repeatedly until remaining == 0."""
     try:
         with get_db_connection() as connection:
             cursor = connection.cursor(dictionary=True)
+            # Count remaining before processing
+            cursor.execute("SELECT COUNT(*) AS cnt FROM bank_transactions WHERE amount_plain IS NULL")
+            remaining_before = cursor.fetchone()['cnt']
+            if remaining_before == 0:
+                return jsonify({'success': True, 'message': 'All rows already backfilled', 'updated': 0, 'remaining': 0})
+
             cursor.execute(
-                "SELECT id, amount FROM bank_transactions WHERE amount_plain IS NULL LIMIT 10000"
+                "SELECT id, amount FROM bank_transactions WHERE amount_plain IS NULL LIMIT 200"
             )
             rows = cursor.fetchall()
-            if not rows:
-                return jsonify({'success': True, 'message': 'No rows to backfill', 'updated': 0})
 
             updated = 0
             failed = 0
             batch = []
             for row in rows:
                 try:
-                    val = float(decrypt_field(row['amount']))
+                    amt_raw = row['amount']
+                    # Try decryption first; fall back to direct float for legacy unencrypted rows
+                    try:
+                        val = float(decrypt_field(amt_raw))
+                    except Exception:
+                        val = float(amt_raw)
                     batch.append((val, row['id']))
-                    if len(batch) >= 500:
-                        cursor.executemany(
-                            "UPDATE bank_transactions SET amount_plain = %s WHERE id = %s", batch
-                        )
-                        connection.commit()
-                        updated += len(batch)
-                        batch = []
                 except Exception:
                     failed += 1
                     continue
             if batch:
-                cursor.executemany(
+                cursor2 = connection.cursor()
+                cursor2.executemany(
                     "UPDATE bank_transactions SET amount_plain = %s WHERE id = %s", batch
                 )
                 connection.commit()
                 updated += len(batch)
 
+            remaining_after = remaining_before - updated
             return jsonify({
                 'success': True,
                 'message': 'Backfill complete',
                 'updated': updated,
                 'failed': failed,
+                'remaining': remaining_after,
             })
     except Exception as e:
         current_app.logger.error('backfill_amount_plain error: %s', e, exc_info=True)
