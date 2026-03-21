@@ -42,7 +42,7 @@ def transaction_balance_forecast(payload):
 
         with get_db_connection() as conn:
             cur = conn.cursor(dictionary=True)
-            q = ("SELECT description, amount, transaction_date, transaction_type "
+            q = ("SELECT description, amount, amount_plain, transaction_date, transaction_type "
                  "FROM bank_transactions "
                  "WHERE transaction_date >= DATE_SUB(NOW(), INTERVAL 24 MONTH)")
             p = []
@@ -65,7 +65,7 @@ def transaction_balance_forecast(payload):
         for r in rows:
             try:
                 desc   = decrypt_field(r['description'])
-                raw_amount = abs(float(decrypt_field(r['amount'])))
+                raw_amount = abs(float(r['amount_plain']) if r.get('amount_plain') is not None else float(decrypt_field(r['amount'])))
                 is_income = r['transaction_type'] == 'transfer_in'
             except Exception:
                 continue

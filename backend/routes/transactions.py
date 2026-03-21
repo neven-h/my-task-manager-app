@@ -98,8 +98,8 @@ def save_transactions(payload):
                 return jsonify({'error': 'Tab not found or access denied'}), 404
             cur = connection.cursor()
             query = ("INSERT INTO bank_transactions (account_number, transaction_date, "
-                     "description, amount, month_year, transaction_type, uploaded_by, tab_id) "
-                     "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)")
+                     "description, amount, amount_plain, month_year, transaction_type, uploaded_by, tab_id) "
+                     "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)")
 
             def _enc(t):
                 return (encrypt_field(t.get('account_number', '')),
@@ -108,7 +108,7 @@ def save_transactions(payload):
             with ThreadPoolExecutor(max_workers=min(len(transactions), 8)) as ex:
                 encrypted = list(ex.map(_enc, transactions))
             all_values = [
-                (ea, t['transaction_date'], ed, em, t['month_year'],
+                (ea, t['transaction_date'], ed, em, float(t['amount']), t['month_year'],
                  t.get('transaction_type', 'credit'), username, tab_id)
                 for t, (ea, ed, em) in zip(transactions, encrypted)
             ]

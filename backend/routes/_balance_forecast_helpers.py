@@ -100,7 +100,7 @@ def _predict_bank(rows, today, cutoff, n_ahead, link_type='expense'):
     for r in rows:
         try:
             desc = decrypt_field(r['description'])
-            raw_amt = float(decrypt_field(r['amount']))
+            raw_amt = float(r['amount_plain']) if r.get('amount_plain') is not None else float(decrypt_field(r['amount']))
             amount = abs(raw_amt)
             if link_type == 'expense':
                 entry_type = 'expense'
@@ -128,7 +128,7 @@ def _build_monthly_actuals(bank_rows, today, link_type='expense'):
     monthly_actuals_map: dict = {}
     for row in bank_rows:
         try:
-            raw_amt = float(decrypt_field(row['amount']))
+            raw_amt = float(row['amount_plain']) if row.get('amount_plain') is not None else float(decrypt_field(row['amount']))
             d = row['transaction_date']
             if isinstance(d, str):
                 d = datetime.strptime(d[:10], '%Y-%m-%d').date()

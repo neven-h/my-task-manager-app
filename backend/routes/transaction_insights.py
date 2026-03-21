@@ -48,7 +48,7 @@ def get_spending_insights(payload):
             where_clause = " AND ".join(filters)
 
             cursor.execute(f"""
-                SELECT amount, description, transaction_date, month_year
+                SELECT amount, amount_plain, description, transaction_date, month_year
                 FROM bank_transactions
                 WHERE {where_clause}
                 ORDER BY transaction_date
@@ -67,7 +67,7 @@ def get_spending_insights(payload):
         # Decrypt amounts and descriptions in parallel
         def _decrypt_row(row):
             try:
-                amt = float(decrypt_field(row['amount']) or 0)
+                amt = float(row['amount_plain']) if row.get('amount_plain') is not None else float(decrypt_field(row['amount']) or 0)
             except (ValueError, TypeError):
                 amt = 0.0
             try:

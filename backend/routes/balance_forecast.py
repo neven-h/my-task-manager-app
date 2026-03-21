@@ -90,14 +90,14 @@ def balance_forecast(payload):
 
                 # Sum historical bank transactions (used for income/expense split in summary)
                 cur.execute(
-                    "SELECT amount, transaction_date FROM bank_transactions WHERE tab_id = %s"
+                    "SELECT amount, amount_plain, transaction_date FROM bank_transactions WHERE tab_id = %s"
                     + ("" if user_role == 'shared' else " AND (uploaded_by = %s OR uploaded_by IS NULL)"),
                     (tx_tab_id,) if user_role == 'shared' else (tx_tab_id, username),
                 )
                 bank_tx_rows = cur.fetchall()
                 for row in bank_tx_rows:
                     try:
-                        amt = float(decrypt_field(row['amount']))
+                        amt = float(row['amount_plain']) if row.get('amount_plain') is not None else float(decrypt_field(row['amount']))
                         abs_amt = abs(amt)
                         if link_type == 'expense':
                             bank_expense += abs_amt
@@ -113,7 +113,7 @@ def balance_forecast(payload):
 
                 # Get bank transaction predictions (24-month window)
                 cur.execute(
-                    "SELECT description, amount, transaction_date, transaction_type "
+                    "SELECT description, amount, amount_plain, transaction_date, transaction_type "
                     "FROM bank_transactions WHERE tab_id = %s"
                     " AND transaction_date >= DATE_SUB(NOW(), INTERVAL 24 MONTH)"
                     + ("" if user_role == 'shared' else " AND (uploaded_by = %s OR uploaded_by IS NULL)")
@@ -171,7 +171,8 @@ def balance_forecast(payload):
                 for r in bank_tx_rows:
                     try:
                         if _to_date(r['transaction_date']) > bal_date:
-                            bank_expense_after += abs(float(decrypt_field(r['amount'])))
+                            _a = float(r['amount_plain']) if r.get('amount_plain') is not None else float(decrypt_field(r['amount']))
+                            bank_expense_after += abs(_a)
                     except Exception:
                         continue
             elif link_type == 'income':
