@@ -105,7 +105,7 @@ export const BudgetEntryList = ({
             </div>
 
             {/* Rows */}
-            {loading && entries.length === 0 ? (
+            {!privacyMode && (loading && entries.length === 0 ? (
                 <div style={{ padding: '32px', textAlign: 'center', color: SYS.light, fontSize: '0.9rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                     Loading…
                 </div>
@@ -132,10 +132,9 @@ export const BudgetEntryList = ({
                         selectMode={selectMode}
                         isSelected={selectedIds?.has(e.id)}
                         onToggleSelect={toggleSelect}
-                        privacyMode={privacyMode}
                     />
                 ))
-            )}
+            ))}
         </div>
     );
 };
