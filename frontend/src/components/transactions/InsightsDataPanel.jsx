@@ -51,7 +51,7 @@ const InsightsDataPanel = ({ data, maxMonthly, fetchSpendingInsights }) => (
                 style={{
                     marginLeft: 'auto', fontSize: '0.78rem', fontWeight: 700,
                     padding: '4px 12px', border: '1px solid #d1d5db', borderRadius: 6,
-                    background: '#fff', cursor: 'pointer', color: '#6366f1',
+                    background: '#fff', cursor: 'pointer', color: '#0000FF',
                 }}
             >
                 Refresh
@@ -80,7 +80,7 @@ const InsightsDataPanel = ({ data, maxMonthly, fetchSpendingInsights }) => (
                                     width: barWidth(m.total, maxMonthly),
                                     background: isPeak
                                         ? 'linear-gradient(90deg, #dc2626, #ef4444)'
-                                        : 'linear-gradient(90deg, #6366f1, #818cf8)',
+                                        : 'linear-gradient(90deg, #0000FF, #1d4ed8)',
                                     transition: 'width 0.3s ease',
                                 }} />
                             </div>

@@ -53,7 +53,7 @@ const TransactionInsights = () => {
             {open && (
                 <div style={{ background: '#fff' }}>
                     {insightsLoading && !data && (
-                        <div style={{ padding: 20, textAlign: 'center', fontWeight: 700, color: '#6366f1' }}>
+                        <div style={{ padding: 20, textAlign: 'center', fontWeight: 700, color: '#0000FF' }}>
                             Analyzing your spending…
                         </div>
                     )}

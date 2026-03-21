@@ -52,7 +52,7 @@ const TransactionForecast = () => {
             {open && (
                 <div style={{ background: '#fff' }}>
                     {loading && (
-                        <div style={{ padding: 20, textAlign: 'center', fontWeight: 700, color: '#6366f1' }}>
+                        <div style={{ padding: 20, textAlign: 'center', fontWeight: 700, color: '#0000FF' }}>
                             <span style={{ marginRight: 8 }}>✦</span> Analyzing recurring patterns…
                         </div>
                     )}
@@ -61,14 +61,14 @@ const TransactionForecast = () => {
                     )}
                     {!loading && txPredictions.length > 0 && (<>
                         <div style={{ padding: '10px 20px', background: '#f5f3ff', borderBottom: '1px solid #e5e7eb', display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-                            <span style={{ fontWeight: 700, fontSize: '0.82rem', color: '#6366f1' }}>Next 3 months:</span>
+                            <span style={{ fontWeight: 700, fontSize: '0.82rem', color: '#0000FF' }}>Next 3 months:</span>
                             <span style={{ fontWeight: 900, fontSize: '1.1rem', color: colors?.accent || '#dc2626' }}>₪{fmt(projectedTotal)}</span>
                             {dismissed.size > 0 && (
                                 <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 600 }}>({dismissed.size} dismissed)</span>
                             )}
                             <button
                                 onClick={async (e) => { e.stopPropagation(); setLoading(true); const s = new Set(); setDismissed(s); saveDismissed(activeTabId, s); await fetchTransactionPredictions(3); setLoading(false); }}
-                                style={{ marginLeft: 'auto', fontSize: '0.78rem', fontWeight: 700, padding: '4px 12px', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer', color: '#6366f1' }}
+                                style={{ marginLeft: 'auto', fontSize: '0.78rem', fontWeight: 700, padding: '4px 12px', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer', color: '#0000FF' }}
                             >
                                 Refresh
                             </button>
