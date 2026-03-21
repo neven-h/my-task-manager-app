@@ -22,6 +22,7 @@ def get_transaction_months(payload):
             query = """
                 SELECT month_year,
                        amount,
+                       amount_plain,
                        transaction_date,
                        upload_date
                 FROM bank_transactions
@@ -47,8 +48,11 @@ def get_transaction_months(payload):
         # Decrypt amounts in parallel, then aggregate by month
         def _decrypt_row_amount(row):
             try:
-                decrypted = decrypt_field(row['amount'])
-                amount = float(decrypted) if decrypted else 0.0
+                if row.get('amount_plain') is not None:
+                    amount = float(row['amount_plain'])
+                else:
+                    decrypted = decrypt_field(row['amount'])
+                    amount = float(decrypted) if decrypted else 0.0
             except (ValueError, TypeError):
                 amount = 0.0
             return row['month_year'], amount, row['transaction_date'], row['upload_date']
@@ -118,6 +122,7 @@ def get_all_transactions(payload):
                        transaction_date,
                        description,
                        amount,
+                       amount_plain,
                        month_year,
                        transaction_type,
                        upload_date,
@@ -144,11 +149,14 @@ def get_all_transactions(payload):
             cursor.execute(query, params)
             transactions = cursor.fetchall()
 
-        # Decrypt 3 fields per row in parallel — big win for large datasets
+        # Decrypt 2 fields per row in parallel — amount_plain used directly
         def _decrypt_transaction(trans):
             trans['account_number'] = decrypt_field(trans['account_number'])
             trans['description'] = decrypt_field(trans['description'])
-            trans['amount'] = decrypt_field(trans['amount'])
+            if trans.get('amount_plain') is not None:
+                trans['amount'] = float(trans['amount_plain'])
+            else:
+                trans['amount'] = decrypt_field(trans['amount'])
             if trans['transaction_date']:
                 trans['transaction_date'] = trans['transaction_date'].isoformat()
             if trans['amount']:

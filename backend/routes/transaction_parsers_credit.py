@@ -5,6 +5,7 @@ from .transaction_parsers_excel import (
     _fix_credit_card_column_alignment,
     _fallback_credit_parse,
     _load_excel_df,
+    _extract_last_balance,
 )
 
 
@@ -32,6 +33,9 @@ def parse_transaction_file(file_path, transaction_type='credit'):
             header_row_index = load_res.header_row_index
             print(f"[NORMALIZER] Loaded {len(df)} rows, encoding={load_res.encoding}, "
                   f"header_row={header_row_index}", flush=True)
+
+        # Extract real bank balance from יתרה / balance column before normalizer strips it
+        _last_balance, _balance_date = _extract_last_balance(df)
 
         # Fix known column-alignment issues before the normalizer sees the data
         df = _fix_credit_card_column_alignment(df)
@@ -64,6 +68,9 @@ def parse_transaction_file(file_path, transaction_type='credit'):
         # Store report metadata on the df for the endpoint to expose
         canonical.attrs['normalizer_profile'] = report.profile
         canonical.attrs['normalizer_confidence'] = report.confidence
+        if _last_balance is not None:
+            canonical.attrs['last_balance'] = _last_balance
+            canonical.attrs['balance_date'] = _balance_date
 
         print(f"[NORMALIZER] Successfully parsed {len(canonical)} credit transactions", flush=True)
         return canonical

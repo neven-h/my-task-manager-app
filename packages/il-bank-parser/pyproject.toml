@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "il-bank-parser"
+version = "0.1.0"
+description = "Parser for Israeli bank statement files (CSV/Excel) — Poalim, Leumi, Isracard and more"
+requires-python = ">=3.9"
+dependencies = [
+    "pandas>=1.5",
+    "openpyxl>=3.0",
+    "xlrd>=2.0",
+]
+
+[project.optional-dependencies]
+normalizer = ["bank-csv-normalizer"]
+dev = ["pytest>=7", "pytest-cov"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["il_bank_parser*"]

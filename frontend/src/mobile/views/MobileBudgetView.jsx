@@ -6,6 +6,7 @@ import useBudgetLinks from '../../hooks/useBudgetLinks';
 import useBalanceForecast from '../../hooks/useBalanceForecast';
 import useBudgetStats from '../../hooks/useBudgetStats';
 import useBudgetFilters from '../../hooks/useBudgetFilters';
+import useBudgetActiveTab from '../../hooks/useBudgetActiveTab';
 import MobileBudgetHeader from '../components/budget/MobileBudgetHeader';
 import MobileBudgetClearStrip from '../components/budget/MobileBudgetClearStrip';
 import MobileBudgetLinkBanner from '../components/budget/MobileBudgetLinkBanner';
@@ -23,6 +24,7 @@ import MobileBudgetExpenseChart from '../components/budget/MobileBudgetExpenseCh
 import MobileBudgetMonthlyChart from '../components/budget/MobileBudgetMonthlyChart';
 import MobileBudgetFilters from '../components/budget/MobileBudgetFilters';
 import MobileBudgetSelectionBar from '../components/budget/MobileBudgetSelectionBar';
+import BudgetCreateFirstTab from '../../components/budget/BudgetCreateFirstTab';
 
 const IOS = {
     bg: '#F2F2F7', card: '#fff', separator: 'rgba(0,0,0,0.08)',
@@ -39,11 +41,10 @@ const MobileBudgetView = ({ onBack }) => {
         batchDelete, getDescriptionHistory,
         predictions, fetchPredictions, exportBudgetCSV } = useBudget();
 
-    const { tabs, fetchTabs, deleteTab } = useBudgetTabs();
+    const { tabs, loading: tabsLoading, fetchTabs, createTab, deleteTab } = useBudgetTabs();
     const { linkedTab, linkError, fetchLink, setLink, removeLink } = useBudgetLinks();
     const { forecast, loading: forecastLoading, fetchForecast, clearForecast, lastUpdated, refresh } = useBalanceForecast();
 
-    const [activeTabId, setActiveTabId]   = useState(null);
     const [cutoff, setCutoff]             = useState(today());
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showForm, setShowForm]         = useState(false);
@@ -55,24 +56,21 @@ const MobileBudgetView = ({ onBack }) => {
     const [selectedIds, setSelectedIds]   = useState(new Set());
     const [confirmDeleteTab, setConfirmDeleteTab] = useState(null);
     const [confirmClearTab, setConfirmClearTab]   = useState(false);
+    const { activeTabId, setActiveTabId } = useBudgetActiveTab(tabs);
 
-    const { tabEntries, monthlyTotals, chartData, allCategories, health } = useBudgetStats(entries, cutoff, activeTabId);
+    const { tabEntries, monthlyTotals, chartData, allCategories, health } = useBudgetStats(entries, cutoff, activeTabId, forecast, linkedTab);
     const filters = useBudgetFilters(tabEntries);
 
     useEffect(() => { fetchEntries(); fetchTabs(); }, [fetchEntries, fetchTabs]);
-    useEffect(() => { if (!activeTabId && tabs.length > 0) setActiveTabId(tabs[0].id); }, [tabs, activeTabId]);
     useEffect(() => { fetchLink(activeTabId); clearForecast(); }, [activeTabId, fetchLink, clearForecast]);
     useEffect(() => { if (linkedTab && activeTabId) fetchForecast(activeTabId, 3); }, [linkedTab, activeTabId, fetchForecast]);
 
     const income  = useMemo(() => tabEntries.filter(e => e.type === 'income'  && e.entry_date <= cutoff).reduce((s, e) => s + parseFloat(e.amount), 0), [tabEntries, cutoff]);
     const outcome = useMemo(() => tabEntries.filter(e => e.type === 'outcome' && e.entry_date <= cutoff).reduce((s, e) => s + parseFloat(e.amount), 0), [tabEntries, cutoff]);
-    const net        = income - outcome;
-    const displayBal = forecast ? forecast.current_balance : net;
-
+    const displayBal = forecast ? forecast.current_balance : (income - outcome);
     const refreshForecast = useCallback(() => {
         if (linkedTab && activeTabId) fetchForecast(activeTabId, 3);
     }, [linkedTab, activeTabId, fetchForecast]);
-
     const handleDeleteTab = useCallback(async (tabId) => {
         const ok = await deleteTab(tabId);
         if (ok && activeTabId === tabId) setActiveTabId(null);
@@ -106,6 +104,22 @@ const MobileBudgetView = ({ onBack }) => {
     }, [selectedIds, batchDelete, refreshForecast]);
     const cancelSelection = useCallback(() => { setSelectMode(false); setSelectedIds(new Set()); }, []);
 
+    const handleCreateFirstTab = async (name) => {
+        const tab = await createTab(name);
+        if (tab) setActiveTabId(tab.id);
+        return tab;
+    };
+
+    if (!tabsLoading && tabs.length === 0) {
+        return (
+            <div style={{ minHeight: '100vh', background: IOS.bg, fontFamily: FONT_STACK }}>
+                <MobileBudgetHeader onBack={onBack} selectMode={false}
+                    onToggleSelectMode={() => {}} entriesEmpty onExport={() => {}} />
+                <BudgetCreateFirstTab onCreateTab={handleCreateFirstTab} />
+            </div>
+        );
+    }
+
     return (
         <div style={{ minHeight: '100vh', background: IOS.bg, fontFamily: FONT_STACK, paddingBottom: selectMode ? 'calc(env(safe-area-inset-bottom, 0px) + 140px)' : 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}>
 
@@ -116,7 +130,7 @@ const MobileBudgetView = ({ onBack }) => {
 
             <BudgetTabStrip tabs={tabs} activeTabId={activeTabId} setActiveTabId={setActiveTabId}
                 confirmDeleteTab={confirmDeleteTab} setConfirmDeleteTab={setConfirmDeleteTab}
-                handleDeleteTab={handleDeleteTab} />
+                handleDeleteTab={handleDeleteTab} onAddTab={handleCreateFirstTab} />
 
             {activeTabId !== null && (
                 <MobileBudgetClearStrip tabEntries={tabEntries} loading={loading}
@@ -165,7 +179,7 @@ const MobileBudgetView = ({ onBack }) => {
             {activeTabId && (
                 <MobileBudgetLinkBanner budgetTabId={activeTabId} linkedTab={linkedTab}
                     linkError={linkError}
-                    onSetLink={(txTabId) => setLink(activeTabId, txTabId)}
+                    onSetLink={(txTabId, linkType) => setLink(activeTabId, txTabId, linkType)}
                     onRemoveLink={() => removeLink(activeTabId)} />
             )}
 
@@ -175,7 +189,7 @@ const MobileBudgetView = ({ onBack }) => {
             <MobileBudgetFilters {...filters} allCategories={allCategories} />
 
             <BudgetEntryListCard
-                visibleEntries={filters.filtered} loading={loading} entries={entries}
+                visibleEntries={filters.filtered} loading={loading} entries={tabEntries}
                 typeFilter={filters.typeFilter} setTypeFilter={filters.setTypeFilter} cutoff={cutoff}
                 openEdit={openEdit} deleteEntry={handleDelete}
                 expandedDescriptionId={expandedDescriptionId}

@@ -53,7 +53,12 @@ const MobileBankUpload = ({ show, onClose, tabs, activeTabId, onSaved }) => {
         try {
             const res = await fetch(`${API_BASE}/transactions/save`, {
                 method: 'POST', headers: getAuthHeaders(),
-                body: JSON.stringify({ transactions: uploadedData.transactions, tab_id: Number(targetTabId) }),
+                body: JSON.stringify({
+                    transactions: uploadedData.transactions,
+                    tab_id: Number(targetTabId),
+                    last_balance: uploadedData.last_balance ?? null,
+                    balance_date: uploadedData.balance_date ?? null,
+                }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Save failed');

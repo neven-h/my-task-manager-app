@@ -1,0 +1,42 @@
+---
+description: Core coding standards — file size limits, button factory, secure error handling, anti-regression
+alwaysApply: true
+---
+
+# File Length Constraint
+
+No file may exceed 220 lines (except `.css` files). If a file grows beyond this, decompose it into smaller sub-components or utility modules.
+
+# Button Factory
+
+Do not write inline `<button>` or `<Button>` tags. All buttons must go through the centralized generator at `src/components/common/ButtonFactory`.
+
+```jsx
+// BAD
+<button onClick={handleClick} style={{...}}>Save</button>
+
+// GOOD
+<ButtonFactory variant="primary" onClick={handleClick}>Save</ButtonFactory>
+```
+
+# Secure Error Handling
+
+**Prohibited in any `jsonify` or client-facing response:**
+- `str(e)`, `str(exc)`, `exc_info=True`
+
+Log detailed errors server-side; return a generic message to the client.
+
+```python
+# BAD
+except Exception as e:
+    return jsonify({'error': str(e)}), 500
+
+# GOOD
+except Exception:
+    logger.exception('descriptive context for devs')
+    return jsonify({'error': 'An unexpected error occurred'}), 500
+```
+
+# Anti-Regression
+
+Before finalizing code, cross-reference `knowledge-base.md` (if present) to ensure previously solved mistakes are not re-introduced.

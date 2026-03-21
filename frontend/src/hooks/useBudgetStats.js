@@ -5,9 +5,10 @@ import { healthScore, healthLabel, runwayMonths, runwayInfo, generateInsights } 
  * useBudgetStats — derives monthly aggregations, health score, runway,
  * and chart data from budget entries.
  */
-const useBudgetStats = (entries, cutoff, activeTabId) => {
+const useBudgetStats = (entries, cutoff, activeTabId, forecast = null, linkedTab = null) => {
+    // Only show entries that belong to the active tab; if no tab is selected, show nothing
     const tabEntries = useMemo(() =>
-        activeTabId === null ? entries : entries.filter(e => e.tab_id === activeTabId),
+        activeTabId === null ? [] : entries.filter(e => e.tab_id === activeTabId),
         [entries, activeTabId]);
 
     const filtered = useMemo(() =>
@@ -45,10 +46,18 @@ const useBudgetStats = (entries, cutoff, activeTabId) => {
         [...new Set(tabEntries.map(e => e.category).filter(Boolean))].sort(),
         [tabEntries]);
 
-    // Health metrics
+    // Health metrics — when linked to a bank tab, include bank income/expense
     const health = useMemo(() => {
         if (monthlyTotals.length === 0) return null;
-        const totalExpense = monthlyTotals.reduce((s, [, d]) => s + d.expense, 0);
+        const budgetExpense = monthlyTotals.reduce((s, [, d]) => s + d.expense, 0);
+        const budgetIncome  = monthlyTotals.reduce((s, [, d]) => s + d.income, 0);
+
+        // Add bank data when linked
+        const bankExpense = (linkedTab && forecast) ? (forecast.bank_expense ?? 0) : 0;
+        const bankIncome  = (linkedTab && forecast) ? (forecast.bank_income  ?? 0) : 0;
+        const totalExpense = budgetExpense + bankExpense;
+        const totalIncome  = budgetIncome  + bankIncome;
+
         const avgMonthly = totalExpense / monthlyTotals.length;
 
         // Momentum: compare last 3 months
@@ -61,7 +70,6 @@ const useBudgetStats = (entries, cutoff, activeTabId) => {
             else if (last < prev * 0.9) momentum = 'decreasing';
         }
 
-        const totalIncome = monthlyTotals.reduce((s, [, d]) => s + d.income, 0);
         const avgMonthlyIncome = totalIncome / monthlyTotals.length;
         const balance = totalIncome - totalExpense;
         const monthlyNet = avgMonthlyIncome - avgMonthly; // positive = monthly surplus
@@ -71,11 +79,11 @@ const useBudgetStats = (entries, cutoff, activeTabId) => {
         const label = healthLabel(score);
         const insights = generateInsights(
             { avg_monthly_spend: avgMonthly, momentum, anomalies: [] },
-            balance > 0 ? balance : null, // don't pass negative balance to avoid misleading runway insight
+            balance > 0 ? balance : null,
         );
 
         return { score, label, runway, rwInfo, momentum, avgMonthly, avgMonthlyIncome, monthlyNet, insights, balance };
-    }, [monthlyTotals]);
+    }, [monthlyTotals, forecast, linkedTab]);
 
     return { tabEntries, monthlyTotals, chartData, allCategories, health };
 };

@@ -93,28 +93,34 @@ def _predict_budget(rows, today, cutoff, n_ahead):
     return _group_and_predict(groups, today, cutoff, n_ahead, 'budget')
 
 
-def _predict_bank(rows, today, cutoff, n_ahead):
+def _predict_bank(rows, today, cutoff, n_ahead, link_type='expense'):
     if not rows:
         return []
     groups = defaultdict(list)
     for r in rows:
         try:
             desc = decrypt_field(r['description'])
-            amount = abs(float(decrypt_field(r['amount'])))
+            raw_amt = float(r['amount_plain']) if r.get('amount_plain') is not None else float(decrypt_field(r['amount']))
+            amount = abs(raw_amt)
+            if link_type == 'expense':
+                entry_type = 'expense'
+            elif link_type == 'income':
+                entry_type = 'income'
+            else:  # mixed
+                entry_type = 'income' if raw_amt >= 0 else 'expense'
         except Exception:
             continue
         d = r['transaction_date']
         if isinstance(d, str):
             d = datetime.strptime(d[:10], '%Y-%m-%d').date()
         norm_key = re.sub(r'\s+', ' ', desc.strip().lower())
-        groups[(norm_key, r['transaction_type'])].append(
-            {'description': desc, 'amount': amount, 'date': d,
-             'type': 'income' if r['transaction_type'] == 'transfer_in' else 'expense'}
+        groups[(norm_key, entry_type)].append(
+            {'description': desc, 'amount': amount, 'date': d, 'type': entry_type}
         )
     return _group_and_predict(groups, today, cutoff, n_ahead, 'bank')
 
 
-def _build_monthly_actuals(bank_rows, today):
+def _build_monthly_actuals(bank_rows, today, link_type='expense'):
     """Aggregate bank rows into monthly income/expense totals for last 12 months."""
     history_start = today.replace(day=1)
     for _ in range(11):
@@ -122,8 +128,7 @@ def _build_monthly_actuals(bank_rows, today):
     monthly_actuals_map: dict = {}
     for row in bank_rows:
         try:
-            amt = abs(float(decrypt_field(row['amount'])))
-            tx_type = row.get('transaction_type', 'credit')
+            raw_amt = float(row['amount_plain']) if row.get('amount_plain') is not None else float(decrypt_field(row['amount']))
             d = row['transaction_date']
             if isinstance(d, str):
                 d = datetime.strptime(d[:10], '%Y-%m-%d').date()
@@ -132,10 +137,15 @@ def _build_monthly_actuals(bank_rows, today):
             mk = d.strftime('%Y-%m')
             if mk not in monthly_actuals_map:
                 monthly_actuals_map[mk] = {'expense': 0.0, 'income': 0.0}
-            if tx_type == 'transfer_in':
-                monthly_actuals_map[mk]['income'] += amt
-            else:
-                monthly_actuals_map[mk]['expense'] += amt
+            if link_type == 'expense':
+                monthly_actuals_map[mk]['expense'] += abs(raw_amt)
+            elif link_type == 'income':
+                monthly_actuals_map[mk]['income'] += abs(raw_amt)
+            else:  # mixed
+                if raw_amt >= 0:
+                    monthly_actuals_map[mk]['income'] += raw_amt
+                else:
+                    monthly_actuals_map[mk]['expense'] += abs(raw_amt)
         except Exception:
             continue
     return [

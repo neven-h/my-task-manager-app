@@ -8,6 +8,12 @@ const IOS = {
     card: '#fff', radius: 16, spring: 'cubic-bezier(0.22,1,0.36,1)',
 };
 
+const LINK_TYPES = [
+    { value: 'expense', label: 'Expenses' },
+    { value: 'income', label: 'Income' },
+    { value: 'mixed', label: 'Mixed' },
+];
+
 const formatDate = (iso) => {
     if (!iso) return null;
     const d = new Date(iso + 'T00:00:00');
@@ -21,6 +27,7 @@ const MobileBudgetLinkBanner = ({ budgetTabId, linkedTab, linkError, onSetLink, 
     const [txTabs, setTxTabs] = useState([]);
     const [expanded, setExpanded] = useState(false);
     const [syncInfo, setSyncInfo] = useState(null);
+    const [selectedLinkType, setSelectedLinkType] = useState('expense');
 
     useEffect(() => {
         if (!expanded) return;
@@ -41,6 +48,7 @@ const MobileBudgetLinkBanner = ({ budgetTabId, linkedTab, linkError, onSetLink, 
     if (!budgetTabId) return null;
 
     if (linkedTab) {
+        const linkTypeLabel = (linkedTab.link_type || 'expense').toLowerCase();
         const parts = [];
         if (syncInfo) {
             parts.push(`${syncInfo.transaction_count} transactions`);
@@ -59,6 +67,7 @@ const MobileBudgetLinkBanner = ({ budgetTabId, linkedTab, linkError, onSetLink, 
                     <span style={{ fontSize: '0.82rem', fontWeight: 500, color: IOS.muted }}>Linked to</span>
                     <span style={{ fontSize: '0.82rem', fontWeight: 600, color: IOS.blue, flex: 1 }}>
                         {linkedTab.transaction_tab_name}
+                        <span style={{ fontWeight: 400, color: IOS.muted, marginLeft: 4 }}>· {linkTypeLabel}</span>
                     </span>
                     <button type="button" onClick={onRemoveLink}
                         style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer' }}>
@@ -89,29 +98,48 @@ const MobileBudgetLinkBanner = ({ budgetTabId, linkedTab, linkError, onSetLink, 
                 {expanded ? 'Cancel' : 'Link bank transaction tab'}
             </button>
             {expanded && (
-                <div style={{
-                    marginTop: 8, background: IOS.card, borderRadius: IOS.radius,
-                    overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-                }}>
-                    {txTabs.length === 0 && (
-                        <div style={{ padding: '14px 16px', fontSize: '0.82rem', color: IOS.muted, textAlign: 'center' }}>
-                            No bank transaction tabs found — create one in the Bank Transactions tab first
-                        </div>
-                    )}
-                    {txTabs.map((tab, idx) => (
-                        <button key={tab.id} type="button"
-                            onClick={() => { onSetLink(tab.id); setExpanded(false); }}
-                            style={{
-                                display: 'block', width: '100%', padding: '13px 16px',
-                                background: 'none', border: 'none',
-                                borderBottom: idx < txTabs.length - 1 ? `0.5px solid ${IOS.separator}` : 'none',
-                                textAlign: 'left', fontSize: '0.88rem', fontWeight: 500,
-                                fontFamily: 'inherit', cursor: 'pointer', color: '#000',
-                            }}>
-                            {tab.name}
-                        </button>
-                    ))}
-                </div>
+                <>
+                    <div style={{
+                        marginTop: 8, display: 'flex', gap: 6, justifyContent: 'center',
+                    }}>
+                        {LINK_TYPES.map(lt => (
+                            <button key={lt.value} type="button"
+                                onClick={() => setSelectedLinkType(lt.value)}
+                                style={{
+                                    padding: '7px 14px', borderRadius: 20, border: 'none',
+                                    fontFamily: 'inherit', fontSize: '0.78rem', fontWeight: 600,
+                                    cursor: 'pointer',
+                                    background: selectedLinkType === lt.value ? IOS.blue : '#F2F2F7',
+                                    color: selectedLinkType === lt.value ? '#fff' : IOS.muted,
+                                }}>
+                                {lt.label}
+                            </button>
+                        ))}
+                    </div>
+                    <div style={{
+                        marginTop: 8, background: IOS.card, borderRadius: IOS.radius,
+                        overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                    }}>
+                        {txTabs.length === 0 && (
+                            <div style={{ padding: '14px 16px', fontSize: '0.82rem', color: IOS.muted, textAlign: 'center' }}>
+                                No bank transaction tabs found — create one in the Bank Transactions tab first
+                            </div>
+                        )}
+                        {txTabs.map((tab, idx) => (
+                            <button key={tab.id} type="button"
+                                onClick={() => { onSetLink(tab.id, selectedLinkType); setExpanded(false); }}
+                                style={{
+                                    display: 'block', width: '100%', padding: '13px 16px',
+                                    background: 'none', border: 'none',
+                                    borderBottom: idx < txTabs.length - 1 ? `0.5px solid ${IOS.separator}` : 'none',
+                                    textAlign: 'left', fontSize: '0.88rem', fontWeight: 500,
+                                    fontFamily: 'inherit', cursor: 'pointer', color: '#000',
+                                }}>
+                                {tab.name}
+                            </button>
+                        ))}
+                    </div>
+                </>
             )}
             {linkError && (
                 <div style={{ marginTop: 6, padding: '0 4px', fontSize: '0.76rem', color: '#FF3B30', fontWeight: 600 }}>

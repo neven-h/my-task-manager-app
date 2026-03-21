@@ -11,6 +11,7 @@ def init_bank_tables(cursor, connection):
             transaction_date DATE NOT NULL,
             description VARCHAR(500) NOT NULL,
             amount DECIMAL(10, 2) NOT NULL,
+            amount_plain DECIMAL(14,4) DEFAULT NULL,
             month_year VARCHAR(7) NOT NULL,
             transaction_type VARCHAR(20) DEFAULT 'credit',
             upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -25,6 +26,7 @@ def init_bank_tables(cursor, connection):
         ("transaction_type", "VARCHAR(20) DEFAULT 'credit'", "transaction_type"),
         ("uploaded_by", "VARCHAR(255)", "uploaded_by"),
         ("tab_id", "INT", "tab_id"),
+        ("amount_plain", "DECIMAL(14,4) DEFAULT NULL", "amount_plain"),
     ]:
         try:
             cursor.execute(f"ALTER TABLE bank_transactions ADD COLUMN {col} {col_def}")
@@ -91,12 +93,22 @@ def init_bank_tables(cursor, connection):
             budget_tab_id INT NOT NULL,
             transaction_tab_id INT NOT NULL,
             owner VARCHAR(255) NOT NULL,
+            link_type VARCHAR(10) DEFAULT 'expense' NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE KEY uk_budget_tx_link (budget_tab_id, transaction_tab_id),
             INDEX idx_bbl_owner (owner)
         )
     """)
     print("Created budget_bank_links table")
+
+    try:
+        cursor.execute(
+            "ALTER TABLE budget_bank_links ADD COLUMN link_type VARCHAR(10) DEFAULT 'expense' NOT NULL"
+        )
+        print("Added link_type column to budget_bank_links")
+    except Error as e:
+        if 'Duplicate column' not in str(e):
+            print(f"Note: {e}")
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS bank_transaction_audit_log (

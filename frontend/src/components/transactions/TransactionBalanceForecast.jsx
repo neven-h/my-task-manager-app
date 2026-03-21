@@ -1,27 +1,28 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import {
-    TrendingUp, ChevronDown, ChevronUp, AlertTriangle,
-} from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { TrendingUp, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { useBankTransactionContext } from '../../context/BankTransactionContext';
 import useTransactionBalanceForecast from '../../hooks/useTransactionBalanceForecast';
-import {
-    runwayMonths, runwayInfo, healthScore, healthLabel,
-    generateInsights, applyWhatIf,
-} from '../../utils/cashflowHelpers';
-import { SpendingChart } from './SpendingChart';
+import { runwayMonths, runwayInfo, healthScore, healthLabel, generateInsights, applyWhatIf } from '../../utils/cashflowHelpers';
+import ForecastChartPanel from './ForecastChartPanel';
 import { WhatIfControls } from './WhatIfControls';
 import { ProjectionTable } from './ProjectionTable';
 import { BalanceInputBar } from './BalanceInputBar';
 import { HealthCard, AnomalyCard } from './HealthCard';
+import API_BASE from '../../config';
+import { getAuthHeaders } from '../../api.js';
 
-// ── Main component ────────────────────────────────────────────────────────────
 const TransactionBalanceForecast = () => {
-    const { activeTabId } = useBankTransactionContext();
+    const { activeTabId, tabs, setTabs } = useBankTransactionContext();
+
+    // Find the active tab's stored real balance (from DB, set on upload or manual entry)
+    const activeTab = tabs?.find(t => t.id === activeTabId);
+    const tabLastKnownBalance = activeTab?.last_known_balance ?? null;
+
     const {
         data, loading,
         startingBalance, setStartingBalance,
         fetchForecast,
-    } = useTransactionBalanceForecast(activeTabId);
+    } = useTransactionBalanceForecast(activeTabId, tabLastKnownBalance);
 
     const [open, setOpen]            = useState(false);
     const [editingBal, setEditingBal] = useState(false);
@@ -43,11 +44,29 @@ const TransactionBalanceForecast = () => {
         if (!open && !data) await fetchForecast(3);
         setOpen(v => !v);
     };
-    const saveBalance = () => {
+
+    // Save balance to localStorage + DB so budget forecast also picks it up
+    const saveBalance = useCallback(async () => {
         const v = parseFloat(balInput.replace(/[^0-9.-]/g, ''));
-        if (!isNaN(v)) { setStartingBalance(v); }
+        if (!isNaN(v)) {
+            setStartingBalance(v);
+            try {
+                const res = await fetch(`${API_BASE}/transaction-tabs/${activeTabId}/balance`, {
+                    method: 'PATCH',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ balance: v, balance_date: new Date().toISOString().slice(0, 10) }),
+                });
+                if (res.ok && setTabs) {
+                    setTabs(prev => prev.map(t =>
+                        t.id === activeTabId ? { ...t, last_known_balance: v } : t
+                    ));
+                }
+            } catch (e) {
+                console.warn('Could not persist balance to server:', e);
+            }
+        }
         setEditingBal(false);
-    };
+    }, [balInput, activeTabId, setStartingBalance, setTabs]);
 
     // ── Derived values ──────────────────────────────────────────────────────
     const runway   = useMemo(() =>
@@ -177,69 +196,7 @@ const TransactionBalanceForecast = () => {
                         )}
 
                         {/* ── Bar chart ─────────────────────────────────── */}
-                        <div style={{ padding: isDesktop ? '18px 24px 10px' : '14px 20px 6px' }}>
-                            <div style={{
-                                border: '1px solid #e5e7eb',
-                                borderRadius: 14,
-                                background: isDesktop ? '#f8fafc' : '#ffffff',
-                                padding: isDesktop ? '18px 18px 14px' : '12px 12px 10px',
-                                boxShadow: isDesktop ? '0 1px 3px rgba(15, 23, 42, 0.06)' : 'none',
-                            }}>
-                                <div style={{
-                                    display: 'flex',
-                                    flexDirection: isDesktop ? 'row' : 'column',
-                                    alignItems: isDesktop ? 'center' : 'flex-start',
-                                    justifyContent: 'space-between',
-                                    gap: 8,
-                                    marginBottom: 12,
-                                }}>
-                                    <div>
-                                        <div style={{
-                                            fontSize: '0.72rem',
-                                            fontWeight: 700,
-                                            color: '#9ca3af',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.4px',
-                                            marginBottom: 4,
-                                        }}>
-                                            Monthly spending — actual vs forecast
-                                        </div>
-                                        <div style={{
-                                            fontSize: isDesktop ? '0.95rem' : '0.84rem',
-                                            fontWeight: 600,
-                                            color: '#334155',
-                                            lineHeight: 1.45,
-                                            maxWidth: isDesktop ? '80%' : '100%',
-                                        }}>
-                                            Compare recent monthly spending with the forecast for the next months.
-                                        </div>
-                                    </div>
-                                    {adjust !== 0 && (
-                                        <span style={{
-                                            alignSelf: isDesktop ? 'center' : 'flex-start',
-                                            background: adjust < 0 ? '#dcfce7' : '#fee2e2',
-                                            color: adjust < 0 ? '#166534' : '#b91c1c',
-                                            borderRadius: 999,
-                                            padding: '6px 10px',
-                                            fontSize: '0.76rem',
-                                            fontWeight: 800,
-                                            whiteSpace: 'nowrap',
-                                        }}>
-                                            {adjust > 0 ? '+' : ''}{adjust}% scenario
-                                        </span>
-                                    )}
-                                </div>
-                                <div style={{
-                                    padding: isDesktop ? '8px 8px 0' : '0',
-                                }}>
-                                    <SpendingChart
-                                        monthly_history={data.monthly_history}
-                                        predicted_monthly={data.predicted_monthly}
-                                        adjust={adjust}
-                                    />
-                                </div>
-                            </div>
-                        </div>
+                        <ForecastChartPanel data={data} adjust={adjust} isDesktop={isDesktop} />
 
                         {/* ── What-if controls ──────────────────────────── */}
                         <WhatIfControls adjust={adjust} setAdjust={setAdjust} />

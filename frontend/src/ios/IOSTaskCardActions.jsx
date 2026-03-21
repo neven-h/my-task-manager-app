@@ -1,7 +1,41 @@
 import React from 'react';
 import { Edit2, Copy, Share2, CalendarPlus } from 'lucide-react';
 import { THEME } from './theme';
-import { downloadICS } from '../utils/generateICS';
+import { addTaskToCalendar, checkCalendarAccess, requestCalendarAccess } from '../../ios/App/calendarPlugin';
+
+const isNative = () => !!(window.Capacitor?.isNativePlatform?.());
+
+async function handleAddToCalendar(task) {
+    if (!isNative()) {
+        // Web / desktop: falls back to ICS download inside addTaskToCalendar
+        await addTaskToCalendar(task);
+        return;
+    }
+
+    const { status } = await checkCalendarAccess();
+
+    if (status === 'denied' || status === 'restricted') {
+        alert(
+            'Calendar access is blocked.\n\n' +
+            'To allow it: open Settings → Dr. Pitz Club → Calendars and set to "Full Access".'
+        );
+        return;
+    }
+
+    if (status === 'notDetermined') {
+        const { granted } = await requestCalendarAccess();
+        if (!granted) return; // user tapped "Don't Allow" — respect the decision silently
+    }
+
+    try {
+        await addTaskToCalendar(task);
+        // Brief visual feedback — a toast library would be ideal, but alert keeps it dependency-free
+        // Replace with your app's toast if available
+        console.log('Event added to Apple Calendar');
+    } catch (err) {
+        alert('Could not add event to calendar.\n' + (err?.message || err));
+    }
+}
 
 const IOSTaskCardActions = ({ task, openEditTaskForm, duplicateTask, openShareModal }) => (
     <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
@@ -14,7 +48,7 @@ const IOSTaskCardActions = ({ task, openEditTaskForm, duplicateTask, openShareMo
         <button onClick={() => openShareModal(task)} style={{ background: 'none', border: 'none', padding: '6px', cursor: 'pointer', borderRadius: 8 }} aria-label="Share task">
             <Share2 size={18} color="#8E8E93" />
         </button>
-        <button onClick={() => downloadICS(task)} style={{ background: 'none', border: 'none', padding: '6px', cursor: 'pointer', borderRadius: 8 }} aria-label="Add to Apple Calendar">
+        <button onClick={() => handleAddToCalendar(task)} style={{ background: 'none', border: 'none', padding: '6px', cursor: 'pointer', borderRadius: 8 }} aria-label="Add to Apple Calendar">
             <CalendarPlus size={18} color={THEME.accent} />
         </button>
     </div>

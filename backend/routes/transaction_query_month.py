@@ -24,6 +24,7 @@ def get_transactions_by_month(payload, month_year):
                        transaction_date,
                        description,
                        amount,
+                       amount_plain,
                        month_year,
                        transaction_type,
                        upload_date,
@@ -55,7 +56,10 @@ def get_transactions_by_month(payload, month_year):
                 # Decrypt sensitive fields
                 trans['account_number'] = decrypt_field(trans['account_number'])
                 trans['description'] = decrypt_field(trans['description'])
-                trans['amount'] = decrypt_field(trans['amount'])
+                if trans.get('amount_plain') is not None:
+                    trans['amount'] = float(trans['amount_plain'])
+                else:
+                    trans['amount'] = decrypt_field(trans['amount'])
 
                 # Convert types after decryption
                 if trans['transaction_date']:
