@@ -8,6 +8,7 @@ import DisplayPreferencesSection from './components/settings/DisplayPreferencesS
 import DangerZoneSection from './components/settings/DangerZoneSection';
 import DisableTwoFactorModal from './components/settings/DisableTwoFactorModal';
 import DeleteAccountModal from './components/settings/DeleteAccountModal';
+import DescriptionRulesSection from './components/settings/DescriptionRulesSection';
 
 
 const SettingsPage = () => {
@@ -122,6 +123,8 @@ const SettingsPage = () => {
                     <DangerZoneSection
                         onOpenDeleteModal={() => settings.setShowDeleteModal(true)}
                     />
+
+                    {settings.userRole === 'admin' && <DescriptionRulesSection />}
                 </div>
             </div>
 
