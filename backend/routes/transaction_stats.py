@@ -46,6 +46,7 @@ def get_transaction_stats(payload):
                 SELECT
                     transaction_type,
                     amount,
+                    amount_plain,
                     transaction_date,
                     month_year
                 FROM bank_transactions
@@ -54,9 +55,11 @@ def get_transaction_stats(payload):
 
             rows = cursor.fetchall()
 
-        # Decrypt each amount ONCE in parallel, then reuse for both aggregations
+        # Read amount — use plaintext column if available, fall back to decryption
         def _decrypt_amount(row):
             try:
+                if row.get('amount_plain') is not None:
+                    return float(row['amount_plain'])
                 decrypted = decrypt_field(row['amount'])
                 return float(decrypted) if decrypted else 0.0
             except (ValueError, TypeError):

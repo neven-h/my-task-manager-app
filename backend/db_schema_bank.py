@@ -11,6 +11,7 @@ def init_bank_tables(cursor, connection):
             transaction_date DATE NOT NULL,
             description VARCHAR(500) NOT NULL,
             amount DECIMAL(10, 2) NOT NULL,
+            amount_plain DECIMAL(14,4) DEFAULT NULL,
             month_year VARCHAR(7) NOT NULL,
             transaction_type VARCHAR(20) DEFAULT 'credit',
             upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -25,6 +26,7 @@ def init_bank_tables(cursor, connection):
         ("transaction_type", "VARCHAR(20) DEFAULT 'credit'", "transaction_type"),
         ("uploaded_by", "VARCHAR(255)", "uploaded_by"),
         ("tab_id", "INT", "tab_id"),
+        ("amount_plain", "DECIMAL(14,4) DEFAULT NULL", "amount_plain"),
     ]:
         try:
             cursor.execute(f"ALTER TABLE bank_transactions ADD COLUMN {col} {col_def}")

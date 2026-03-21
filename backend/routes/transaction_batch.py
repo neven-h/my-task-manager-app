@@ -85,7 +85,7 @@ def export_selected_csv(payload):
                 return jsonify({'error': 'Access denied'}), 403
 
             placeholders = ','.join(['%s'] * len(ids))
-            q = f"""SELECT transaction_date, description, amount, transaction_type
+            q = f"""SELECT transaction_date, description, amount, amount_plain, transaction_type
                     FROM bank_transactions WHERE id IN ({placeholders}) AND tab_id = %s
                     ORDER BY transaction_date DESC"""
             cursor.execute(q, [*ids, tab_id])
@@ -96,9 +96,8 @@ def export_selected_csv(payload):
 
         def _dec(row):
             row['description'] = decrypt_field(row['description']) or ''
-            raw = decrypt_field(row['amount'])
             try:
-                row['amount'] = float(raw) if raw else 0.0
+                row['amount'] = float(row['amount_plain']) if row.get('amount_plain') is not None else float(decrypt_field(row['amount']) or 0)
             except (ValueError, TypeError):
                 row['amount'] = 0.0
             return row

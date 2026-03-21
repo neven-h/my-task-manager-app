@@ -36,7 +36,7 @@ def export_transactions_csv(payload):
             cursor = connection.cursor(dictionary=True)
 
             query = """
-                SELECT id, transaction_date, description, amount,
+                SELECT id, transaction_date, description, amount, amount_plain,
                        transaction_type, month_year
                 FROM bank_transactions
                 WHERE tab_id = %s
@@ -63,9 +63,8 @@ def export_transactions_csv(payload):
         # Decrypt description and amount in parallel
         def _decrypt_row(row):
             row['description'] = decrypt_field(row['description']) or ''
-            raw_amount = decrypt_field(row['amount'])
             try:
-                row['amount'] = float(raw_amount) if raw_amount else 0.0
+                row['amount'] = float(row['amount_plain']) if row.get('amount_plain') is not None else float(decrypt_field(row['amount']) or 0)
             except (ValueError, TypeError):
                 row['amount'] = 0.0
             return row

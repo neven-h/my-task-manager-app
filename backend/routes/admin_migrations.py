@@ -81,6 +81,55 @@ def migrate_encrypt_transactions(payload):
         return jsonify({'error': 'Migration failed'}), 500
 
 
+@admin_migrations_bp.route('/api/migrate-backfill-amount-plain', methods=['POST'])
+@admin_required
+def backfill_amount_plain(payload):
+    """Backfill amount_plain for existing rows that have encrypted amount TEXT but no amount_plain value."""
+    try:
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT id, amount FROM bank_transactions WHERE amount_plain IS NULL LIMIT 10000"
+            )
+            rows = cursor.fetchall()
+            if not rows:
+                return jsonify({'success': True, 'message': 'No rows to backfill', 'updated': 0})
+
+            updated = 0
+            failed = 0
+            batch = []
+            for row in rows:
+                try:
+                    val = float(decrypt_field(row['amount']))
+                    batch.append((val, row['id']))
+                    if len(batch) >= 500:
+                        cursor.executemany(
+                            "UPDATE bank_transactions SET amount_plain = %s WHERE id = %s", batch
+                        )
+                        connection.commit()
+                        updated += len(batch)
+                        batch = []
+                except Exception:
+                    failed += 1
+                    continue
+            if batch:
+                cursor.executemany(
+                    "UPDATE bank_transactions SET amount_plain = %s WHERE id = %s", batch
+                )
+                connection.commit()
+                updated += len(batch)
+
+            return jsonify({
+                'success': True,
+                'message': 'Backfill complete',
+                'updated': updated,
+                'failed': failed,
+            })
+    except Exception as e:
+        current_app.logger.error('backfill_amount_plain error: %s', e, exc_info=True)
+        return jsonify({'error': 'Backfill failed'}), 500
+
+
 @admin_migrations_bp.route('/api/admin/migrate-db', methods=['POST'])
 @admin_required
 def migrate_database(payload):

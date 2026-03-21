@@ -39,7 +39,7 @@ def predict_transactions(payload):
 
         with get_db_connection() as conn:
             cursor = conn.cursor(dictionary=True)
-            q = ("SELECT description, amount, transaction_date, transaction_type "
+            q = ("SELECT description, amount, amount_plain, transaction_date, transaction_type "
                  "FROM bank_transactions "
                  "WHERE transaction_date >= DATE_SUB(NOW(), INTERVAL 24 MONTH)")
             p = []
@@ -58,7 +58,7 @@ def predict_transactions(payload):
         for row in rows:
             try:
                 desc   = decrypt_field(row['description'])
-                amount = float(decrypt_field(row['amount']))
+                amount = float(row['amount_plain']) if row.get('amount_plain') is not None else float(decrypt_field(row['amount']))
             except Exception:
                 continue
             norm_key = re.sub(r'\s+', ' ', desc.strip().lower())
