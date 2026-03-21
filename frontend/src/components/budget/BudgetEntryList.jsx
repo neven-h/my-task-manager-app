@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { EntryRow, EMPTY_HISTORY } from './BudgetEntryRow';
 
 const SYS = {
@@ -32,6 +33,8 @@ export const BudgetEntryList = ({
 }) => {
     // Balance keyed by entry id — use stored value from source file (יתרה column) only.
     // Never compute a running total; if no stored balance, the cell is hidden.
+    const [privacyMode, setPrivacyMode] = useState(false);
+
     const balanceMap = useMemo(() => {
         const map = {};
         (entries || []).forEach(e => { map[e.id] = e.balance != null ? Number(e.balance) : null; });
@@ -73,6 +76,11 @@ export const BudgetEntryList = ({
                 <span style={{ fontSize: '0.75rem', color: SYS.light, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                     {visibleEntries.length} entr{visibleEntries.length === 1 ? 'y' : 'ies'}
                 </span>
+                <button type="button" onClick={() => setPrivacyMode(m => !m)}
+                    title={privacyMode ? 'Show details' : 'Hide details'}
+                    style={{ ...filterBtn(privacyMode, '#555'), marginLeft: 4, fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    {privacyMode ? <><EyeOff size={13} /> Show</> : <><Eye size={13} /> Hide</>}
+                </button>
                 <button type="button" onClick={onToggleSelectMode}
                     style={{ ...filterBtn(selectMode, '#000'), marginLeft: 4, fontSize: '0.72rem' }}>
                     {selectMode ? '✕ Cancel' : '☐ Select'}
@@ -124,6 +132,7 @@ export const BudgetEntryList = ({
                         selectMode={selectMode}
                         isSelected={selectedIds?.has(e.id)}
                         onToggleSelect={toggleSelect}
+                        privacyMode={privacyMode}
                     />
                 ))
             )}

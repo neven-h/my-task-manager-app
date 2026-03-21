@@ -13,7 +13,7 @@ const fmt = (n) =>
 
 export const EMPTY_HISTORY = [];
 
-export const EntryRow = ({ entry, balance, cutoff, onEdit, onDuplicate, onDelete, loading, isExpanded, onToggleExpand, history, selectMode, isSelected, onToggleSelect }) => {
+export const EntryRow = ({ entry, balance, cutoff, onEdit, onDuplicate, onDelete, loading, isExpanded, onToggleExpand, history, selectMode, isSelected, onToggleSelect, privacyMode }) => {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const isPast = entry.entry_date <= cutoff;
     const isIncome = entry.type === 'income';
@@ -46,7 +46,7 @@ export const EntryRow = ({ entry, balance, cutoff, onEdit, onDuplicate, onDelete
                 </div>
 
                 {/* Description + category (clickable to expand) */}
-                <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => onToggleExpand(entry.id)}>
+                <div style={{ flex: 1, minWidth: 0, cursor: 'pointer', filter: privacyMode ? 'blur(5px)' : 'none', userSelect: privacyMode ? 'none' : 'auto' }} onClick={() => !privacyMode && onToggleExpand(entry.id)}>
                     <div style={{
                         fontWeight: 600, fontSize: '0.9rem',
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
@@ -63,7 +63,7 @@ export const EntryRow = ({ entry, balance, cutoff, onEdit, onDuplicate, onDelete
                 </div>
 
                 {/* Amount */}
-                <div style={{ fontWeight: 800, fontSize: '0.95rem', color: amountColor, flexShrink: 0 }}>
+                <div style={{ fontWeight: 800, fontSize: '0.95rem', color: amountColor, flexShrink: 0, filter: privacyMode ? 'blur(5px)' : 'none', userSelect: privacyMode ? 'none' : 'auto' }}>
                     {sign}{fmt(entry.amount)}
                 </div>
 
@@ -74,6 +74,7 @@ export const EntryRow = ({ entry, balance, cutoff, onEdit, onDuplicate, onDelete
                         width: 90, textAlign: 'right',
                         color: balance >= 0 ? SYS.success : SYS.accent,
                         borderLeft: `2px solid #eee`, paddingLeft: 10,
+                        filter: privacyMode ? 'blur(5px)' : 'none', userSelect: privacyMode ? 'none' : 'auto',
                     }}>
                         {fmt(balance)}
                     </div>
