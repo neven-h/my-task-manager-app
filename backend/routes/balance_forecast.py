@@ -44,17 +44,17 @@ def balance_forecast(payload):
 
             # 1. Current balance from budget entries
             cur.execute(
-                "SELECT type, amount FROM budget_entries "
+                "SELECT type, amount, entry_date FROM budget_entries "
                 "WHERE owner = %s AND tab_id = %s AND entry_date <= %s",
                 (username, tab_id, today.isoformat()),
             )
             budget_rows = cur.fetchall()
-            budget_income = sum(r['amount'] for r in budget_rows if r['type'] == 'income')
-            budget_expense = sum(r['amount'] for r in budget_rows if r['type'] == 'outcome')
+            budget_income = sum(float(r['amount']) for r in budget_rows if r['type'] == 'income')
+            budget_expense = sum(float(r['amount']) for r in budget_rows if r['type'] == 'outcome')
 
             # 2. Check for linked bank transaction tab
             cur.execute(
-                "SELECT l.transaction_tab_id, t.name AS transaction_tab_name "
+                "SELECT l.transaction_tab_id, l.link_type, t.name AS transaction_tab_name "
                 "FROM budget_bank_links l "
                 "JOIN transaction_tabs t ON t.id = l.transaction_tab_id "
                 "WHERE l.budget_tab_id = %s AND l.owner = %s LIMIT 1",
@@ -68,8 +68,11 @@ def balance_forecast(payload):
             real_balance_date = None
             monthly_actuals = []
             bank_predictions = []
+            bank_tx_rows = []
+            link_type = 'expense'
             if link:
                 tx_tab_id = link['transaction_tab_id']
+                link_type = link.get('link_type') or 'expense'
 
                 # Use the real bank balance stored from the יתרה column if available
                 try:
@@ -87,21 +90,24 @@ def balance_forecast(payload):
 
                 # Sum historical bank transactions (used for income/expense split in summary)
                 cur.execute(
-                    "SELECT amount, transaction_type FROM bank_transactions WHERE tab_id = %s"
+                    "SELECT amount, transaction_date FROM bank_transactions WHERE tab_id = %s"
                     + ("" if user_role == 'shared' else " AND (uploaded_by = %s OR uploaded_by IS NULL)"),
                     (tx_tab_id,) if user_role == 'shared' else (tx_tab_id, username),
                 )
-                for row in cur.fetchall():
+                bank_tx_rows = cur.fetchall()
+                for row in bank_tx_rows:
                     try:
                         amt = float(decrypt_field(row['amount']))
-                        tx_type = (row.get('transaction_type') or '').lower()
-                        if amt < 0:
-                            bank_expense += abs(amt)
-                        elif amt > 0 and tx_type == 'debit':
-                            bank_expense += amt
-                        elif amt > 0:
-                            bank_income += amt
-                        # amt == 0 is ignored
+                        abs_amt = abs(amt)
+                        if link_type == 'expense':
+                            bank_expense += abs_amt
+                        elif link_type == 'income':
+                            bank_income += abs_amt
+                        else:  # mixed
+                            if amt < 0:
+                                bank_expense += abs_amt
+                            else:
+                                bank_income += amt
                     except Exception:
                         continue
 
@@ -115,8 +121,8 @@ def balance_forecast(payload):
                     (tx_tab_id,) if user_role == 'shared' else (tx_tab_id, username),
                 )
                 bank_rows = cur.fetchall()
-                bank_predictions = _predict_bank(bank_rows, today, cutoff, months)
-                monthly_actuals = _build_monthly_actuals(bank_rows, today)
+                bank_predictions = _predict_bank(bank_rows, today, cutoff, months, link_type)
+                monthly_actuals = _build_monthly_actuals(bank_rows, today, link_type)
 
             # 3. Budget entries for last 12 months (history timeline)
             hist_start = today.replace(day=1)
@@ -143,7 +149,37 @@ def balance_forecast(payload):
 
         # 5. Build unified timeline with running balance
         # Prefer the real bank balance from the יתרה column; fall back to calculated sum
-        if real_balance is not None:
+        def _to_date(v):
+            if v is None:
+                return None
+            if isinstance(v, str):
+                return datetime.strptime(v[:10], '%Y-%m-%d').date()
+            return v.date() if hasattr(v, 'date') else v
+
+        if real_balance is not None and real_balance_date:
+            bal_date = _to_date(real_balance_date)
+            budget_income_after = sum(
+                float(r['amount']) for r in budget_rows
+                if r['type'] == 'income' and _to_date(r['entry_date']) > bal_date
+            )
+            budget_expense_after = sum(
+                float(r['amount']) for r in budget_rows
+                if r['type'] == 'outcome' and _to_date(r['entry_date']) > bal_date
+            )
+            bank_expense_after = 0.0
+            if link_type == 'expense':
+                for r in bank_tx_rows:
+                    try:
+                        if _to_date(r['transaction_date']) > bal_date:
+                            bank_expense_after += abs(float(decrypt_field(r['amount'])))
+                    except Exception:
+                        continue
+            elif link_type == 'income':
+                pass  # income doesn't reduce balance
+            current_balance = round(
+                real_balance + budget_income_after - budget_expense_after - bank_expense_after, 2
+            )
+        elif real_balance is not None:
             current_balance = round(real_balance + budget_income - budget_expense, 2)
         else:
             current_balance = round(budget_income - budget_expense - bank_expense + bank_income, 2)
