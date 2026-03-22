@@ -3,8 +3,8 @@ import { Search, X } from 'lucide-react';
 import { SYS } from './renovationConstants';
 
 const inputStyle = {
-    padding: '6px 10px', border: '2px solid #000', fontSize: '0.85rem',
-    fontFamily: 'inherit', outline: 'none', background: '#fff',
+    padding: '6px 10px', border: `2px solid ${SYS.border}`, fontSize: '0.85rem',
+    fontFamily: 'inherit', outline: 'none', background: SYS.bg,
 };
 
 const RenovationFilterBar = ({
@@ -13,7 +13,7 @@ const RenovationFilterBar = ({
     categoryFilter, setCategoryFilter, dateFrom, setDateFrom, dateTo, setDateTo,
     uniqueAreas, uniqueContractors, uniqueCategories, hasActiveFilters, clearFilters,
 }) => (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 12, padding: '10px 12px', border: '2px solid #000', background: '#fafafa' }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 12, padding: '10px 12px', border: `2px solid ${SYS.border}`, background: '#fafafa' }}>
         <div style={{ position: 'relative', flex: '1 1 180px', minWidth: 140 }}>
             <Search size={14} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: SYS.light }} />
             <input placeholder="Search..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
@@ -41,7 +41,7 @@ const RenovationFilterBar = ({
         <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={inputStyle} />
         {hasActiveFilters && (
             <button onClick={clearFilters} style={{
-                padding: '5px 10px', border: '2px solid #000', background: '#FF0000', color: '#fff',
+                padding: '5px 10px', border: `2px solid ${SYS.border}`, background: SYS.accent, color: '#fff',
                 cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.8rem',
             }}>
                 <X size={13} /> Clear

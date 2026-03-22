@@ -33,9 +33,10 @@ const RenovationAttachmentList = ({ itemId }) => {
             const res = await fetch(`${API_BASE}/renovation/items/${itemId}/attachments`, {
                 method: 'POST', headers: getAuthHeaders(false), body: formData,
             });
+            if (!res.ok) throw new Error('Upload failed');
             const data = await res.json();
-            if (res.ok) setAttachments(prev => [...(prev || []), data]);
-        } catch (_) {}
+            setAttachments(prev => [...(prev || []), data]);
+        } catch (e) { alert(e.message || 'Upload failed'); }
         finally { setUploading(false); e.target.value = ''; }
     };
 
@@ -46,7 +47,7 @@ const RenovationAttachmentList = ({ itemId }) => {
                 method: 'DELETE', headers: getAuthHeaders(),
             });
             if (res.ok) setAttachments(prev => prev.filter(a => a.id !== att.id));
-        } catch (_) {}
+        } catch (e) { alert(e.message || 'Delete failed'); }
     };
 
     if (attachments === null) return (
@@ -61,7 +62,7 @@ const RenovationAttachmentList = ({ itemId }) => {
             {attachments.map(att => (
                 <div key={att.id} style={{
                     display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '4px 0', borderBottom: '1px solid #eee', fontSize: '0.82rem',
+                    padding: '4px 0', borderBottom: `1px solid ${SYS.borderLight}`, fontSize: '0.82rem',
                 }}>
                     <span style={{ fontSize: '0.9rem' }}>📎</span>
                     <a href={att.url} target="_blank" rel="noopener noreferrer"
@@ -82,7 +83,7 @@ const RenovationAttachmentList = ({ itemId }) => {
             <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleUpload}
                 accept=".png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip" />
             <button onClick={() => fileInputRef.current?.click()} disabled={uploading} style={{
-                marginTop: 6, background: 'none', border: '1px dashed #000',
+                marginTop: 6, background: 'none', border: `1px dashed ${SYS.border}`,
                 padding: '4px 12px', cursor: uploading ? 'not-allowed' : 'pointer',
                 fontFamily: 'inherit', fontSize: '0.78rem', color: SYS.primary,
                 fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4,

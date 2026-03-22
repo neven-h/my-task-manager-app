@@ -145,4 +145,4 @@ const RenovationItem = ({ item, onUpdate, onDelete }) => {
     );
 };
 
-export default RenovationItem;
+export default React.memo(RenovationItem);
