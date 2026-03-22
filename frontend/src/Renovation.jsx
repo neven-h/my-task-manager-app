@@ -9,9 +9,10 @@ import RenovationItemForm from './components/renovation/RenovationItemForm';
 import RenovationAreaGroup from './components/renovation/RenovationAreaGroup';
 import RenovationFilterBar from './components/renovation/RenovationFilterBar';
 import RenovationGroupToggle from './components/renovation/RenovationGroupToggle';
+import RenovationChart from './components/renovation/RenovationChart';
 
 const Renovation = ({ onBackToTasks }) => {
-    const { items, loading, error, fetchItems, createItem, updateItem, deleteItem } = useRenovation();
+    const { items, loading, error, fetchItems, createItem, updateItem, deleteItem, exportCSV } = useRenovation();
     const [showAddForm, setShowAddForm] = useState(false);
     const [saving, setSaving] = useState(false);
 
@@ -47,6 +48,7 @@ const Renovation = ({ onBackToTasks }) => {
                 showAddForm={showAddForm}
                 setShowAddForm={setShowAddForm}
                 itemCount={items.length}
+                exportCSV={exportCSV}
             />
 
             <div style={{ maxWidth: 1000, margin: '0 auto', padding: '28px 20px' }}>
@@ -90,6 +92,8 @@ const Renovation = ({ onBackToTasks }) => {
                         </button>
                     </div>
                 )}
+
+                {filtered.length > 0 && <RenovationChart filtered={filtered} groupMode={groupMode} />}
 
                 {items.length > 0 && <RenovationFilterBar {...filters} />}
                 {items.length > 0 && (

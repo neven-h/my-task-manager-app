@@ -1,8 +1,8 @@
 import React from 'react';
-import { Wrench, Plus } from 'lucide-react';
+import { Wrench, Plus, FileDown } from 'lucide-react';
 import { SYS } from './renovationConstants';
 
-const RenovationHeader = ({ onBackToTasks, showAddForm, setShowAddForm, itemCount: _itemCount }) => (
+const RenovationHeader = ({ onBackToTasks, showAddForm, setShowAddForm, itemCount, exportCSV }) => (
     <div style={{
         background: SYS.bg, borderBottom: `4px solid ${SYS.border}`,
         padding: '14px 24px', display: 'flex', alignItems: 'center', gap: 16,
@@ -24,6 +24,17 @@ const RenovationHeader = ({ onBackToTasks, showAddForm, setShowAddForm, itemCoun
         }}>
             Renovation Tracker
         </h1>
+        <button onClick={exportCSV} disabled={itemCount === 0} style={{
+            padding: '8px 16px', border: `2px solid ${SYS.border}`,
+            background: itemCount === 0 ? '#ccc' : SYS.primary, color: '#fff',
+            cursor: itemCount === 0 ? 'not-allowed' : 'pointer',
+            fontWeight: 700, fontSize: '0.82rem', textTransform: 'uppercase',
+            letterSpacing: '0.4px', fontFamily: 'inherit',
+            display: 'flex', alignItems: 'center', gap: 6,
+            opacity: itemCount === 0 ? 0.5 : 1,
+        }}>
+            <FileDown size={15} /> CSV
+        </button>
         <button onClick={() => setShowAddForm(s => !s)} style={{
             padding: '8px 16px', border: `2px solid ${SYS.border}`,
             background: showAddForm ? SYS.border : SYS.primary, color: '#fff',
