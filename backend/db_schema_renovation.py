@@ -3,7 +3,7 @@ from mysql.connector import Error
 
 
 def init_renovation_tables(cursor, connection):
-    """Create renovation_items and renovation_payments tables."""
+    """Create renovation_items, renovation_payments, and renovation_attachments tables."""
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS renovation_items (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -37,8 +37,29 @@ def init_renovation_tables(cursor, connection):
     """)
     print("Created renovation_payments table")
 
-    # Idempotent migrations (future columns go here)
-    for col, col_def, label in []:
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS renovation_attachments (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            item_id INT NOT NULL,
+            owner VARCHAR(255) NOT NULL,
+            filename VARCHAR(255) NOT NULL,
+            stored_filename VARCHAR(255),
+            content_type VARCHAR(100),
+            file_size INT,
+            cloudinary_url VARCHAR(1024) DEFAULT NULL,
+            cloudinary_public_id VARCHAR(512) DEFAULT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (item_id) REFERENCES renovation_items(id) ON DELETE CASCADE,
+            INDEX idx_reno_att_item (item_id),
+            INDEX idx_reno_att_owner (owner)
+        )
+    """)
+    print("Created renovation_attachments table")
+
+    # Idempotent migrations
+    for col, col_def, label in [
+        ('category', 'VARCHAR(200)', 'category'),
+    ]:
         try:
             cursor.execute(f"ALTER TABLE renovation_items ADD COLUMN {col} {col_def}")
             print(f"Added {label} column to renovation_items")
