@@ -51,7 +51,7 @@ const RenovationPaymentList = ({ itemId, onPaymentAdded, onPaymentDeleted }) => 
             if (!res.ok) throw new Error('Failed');
             setPayments(prev => prev.filter(p => p.id !== payment.id));
             onPaymentDeleted(payment);
-        } catch (_) {}
+        } catch (e) { alert(e.message || 'Delete failed'); }
     };
 
     if (loadingPay) return <div style={{ padding: '8px 0', color: SYS.light, fontSize: '0.82rem' }}>Loading payments…</div>;

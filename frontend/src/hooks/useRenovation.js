@@ -71,21 +71,6 @@ const useRenovation = () => {
         return data;
     }, []);
 
-    const deletePayment = useCallback(async (paymentId, itemId, amount) => {
-        const res = await fetch(`${API_BASE}/renovation/payments/${paymentId}`, {
-            method: 'DELETE',
-            headers: getAuthHeaders(),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to delete payment');
-        if (itemId != null && amount != null) {
-            setItems(prev => prev.map(i => {
-                if (i.id !== itemId) return i;
-                return { ...i, total_paid: Math.max(0, (i.total_paid || 0) - amount) };
-            }));
-        }
-    }, []);
-
     // ── Attachments ──────────────────────────────────────────────────────────
 
     const fetchAttachments = useCallback(async (itemId) => {
@@ -151,7 +136,6 @@ const useRenovation = () => {
         updateItem,
         deleteItem,
         addPayment,
-        deletePayment,
         fetchAttachments,
         uploadAttachment,
         deleteAttachment,

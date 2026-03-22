@@ -49,7 +49,7 @@ const useRenovationFilters = (items) => {
             let key;
             if (groupMode === 'contractor') key = (item.contractor || '').trim() || fallback;
             else if (groupMode === 'category') key = (item.category || '').trim() || fallback;
-            else key = (item.area || '').trim() || 'Other';
+            else key = (item.area || '').trim() || fallback;
             if (!map[key]) map[key] = [];
             map[key].push(item);
         });
