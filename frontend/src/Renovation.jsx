@@ -1,11 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Wrench } from 'lucide-react';
 import useRenovation from './hooks/useRenovation';
+import useRenovationFilters from './hooks/useRenovationFilters';
 import { SYS } from './components/renovation/renovationConstants';
 import RenovationHeader from './components/renovation/RenovationHeader';
 import RenovationSummaryBar from './components/renovation/RenovationSummaryBar';
-import RenovationItemForm, { EMPTY_ITEM_FORM } from './components/renovation/RenovationItemForm';
+import RenovationItemForm from './components/renovation/RenovationItemForm';
 import RenovationAreaGroup from './components/renovation/RenovationAreaGroup';
+import RenovationFilterBar from './components/renovation/RenovationFilterBar';
+import RenovationGroupToggle from './components/renovation/RenovationGroupToggle';
 
 const Renovation = ({ onBackToTasks }) => {
     const { items, loading, error, fetchItems, createItem, updateItem, deleteItem } = useRenovation();
@@ -14,19 +17,8 @@ const Renovation = ({ onBackToTasks }) => {
 
     useEffect(() => { fetchItems(); }, [fetchItems]);
 
-    const grouped = useMemo(() => {
-        const map = {};
-        items.forEach(item => {
-            const key = (item.area || '').trim() || 'Other';
-            if (!map[key]) map[key] = [];
-            map[key].push(item);
-        });
-        return Object.entries(map).sort(([a], [b]) => {
-            if (a === 'Other') return 1;
-            if (b === 'Other') return -1;
-            return a.localeCompare(b);
-        });
-    }, [items]);
+    const filters = useRenovationFilters(items);
+    const { filtered, grouped, groupMode, setGroupMode } = filters;
 
     const handleCreate = async (form) => {
         setSaving(true);
@@ -71,7 +63,7 @@ const Renovation = ({ onBackToTasks }) => {
                     </div>
                 )}
 
-                {items.length > 0 && <RenovationSummaryBar items={items} />}
+                {filtered.length > 0 && <RenovationSummaryBar items={filtered} />}
 
                 {loading && (
                     <div style={{ textAlign: 'center', padding: '32px', color: SYS.light, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
@@ -99,11 +91,21 @@ const Renovation = ({ onBackToTasks }) => {
                     </div>
                 )}
 
-                {!loading && grouped.map(([area, areaItems]) => (
+                {items.length > 0 && <RenovationFilterBar {...filters} />}
+                {items.length > 0 && (
+                    <RenovationGroupToggle
+                        groupMode={groupMode}
+                        setGroupMode={setGroupMode}
+                        filteredCount={filtered.length}
+                        totalCount={items.length}
+                    />
+                )}
+
+                {!loading && grouped.map(([group, groupItems]) => (
                     <RenovationAreaGroup
-                        key={area}
-                        area={area}
-                        items={areaItems}
+                        key={group}
+                        area={group}
+                        items={groupItems}
                         onUpdate={updateItem}
                         onDelete={deleteItem}
                     />
