@@ -9,6 +9,7 @@ from routes.budget_parsers import parse_budget_file
 from routes.budget_file_normalizer import normalize_poalim_osh_file_to_utf8_csv, DEFAULT_HEADER_MAP
 from routes.budget_parsers_io import parse_normalized_poalim_csv_to_entries
 from routes.budget_helpers import ensure_budget_table, ensure_budget_daily_balances_table
+from routes.description_rules import load_rules_from_db
 
 logger = logging.getLogger(__name__)
 budget_upload_bp = Blueprint('budget_upload', __name__)
@@ -42,11 +43,14 @@ def upload_budget_file(payload):
                     f"budget_norm_{uuid.uuid4().hex}.csv",
                 )
                 try:
+                    with get_db_connection() as _conn:
+                        _rules = load_rules_from_db(_conn)
                     normalize_poalim_osh_file_to_utf8_csv(
                         file_path,
                         normalized_csv,
                         header_map=DEFAULT_HEADER_MAP,
                         apply_description_rules=True,
+                        description_rules=_rules,
                     )
                     entries, balances = parse_normalized_poalim_csv_to_entries(normalized_csv)
                 finally:

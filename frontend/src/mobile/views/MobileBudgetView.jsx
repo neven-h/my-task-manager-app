@@ -186,6 +186,13 @@ const MobileBudgetView = ({ onBack }) => {
             <MobileBudgetHealthCard health={health} />
             <MobileBudgetExpenseChart chartData={chartData} />
             <MobileBudgetMonthlyChart monthlyTotals={monthlyTotals} />
+
+            <ForecastSection predictions={predictions} onFetch={() => fetchPredictions(3, activeTabId)} loading={loading} />
+
+            <MobileBalanceForecast forecast={forecast} onFetch={() => fetchForecast(activeTabId, 3)}
+                onRefresh={() => refresh(activeTabId, 3)} loading={forecastLoading}
+                linkedTab={linkedTab} lastUpdated={lastUpdated} />
+
             <MobileBudgetFilters {...filters} allCategories={allCategories} />
 
             <BudgetEntryListCard
@@ -196,12 +203,6 @@ const MobileBudgetView = ({ onBack }) => {
                 setExpandedDescriptionId={setExpandedDescriptionId}
                 getDescriptionHistory={getDescriptionHistory}
                 selectMode={selectMode} selectedIds={selectedIds} toggleSelect={toggleSelect} />
-
-            <ForecastSection predictions={predictions} onFetch={() => fetchPredictions(3, activeTabId)} loading={loading} />
-
-            <MobileBalanceForecast forecast={forecast} onFetch={() => fetchForecast(activeTabId, 3)}
-                onRefresh={() => refresh(activeTabId, 3)} loading={forecastLoading}
-                linkedTab={linkedTab} lastUpdated={lastUpdated} />
 
             {showForm && <EntrySheet initial={formInitial} onSave={handleSave} onCancel={() => { setShowForm(false); setEditingEntry(null); }} loading={loading} />}
 

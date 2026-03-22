@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
 import { EntryRow, EMPTY_HISTORY } from './BudgetEntryRow';
 
 const SYS = {
@@ -29,9 +30,12 @@ export const BudgetEntryList = ({
     selectedIds,
     toggleSelect,
     onSelectAll,
+    renovationMode,
 }) => {
     // Balance keyed by entry id — use stored value from source file (יתרה column) only.
     // Never compute a running total; if no stored balance, the cell is hidden.
+    const [privacyMode, setPrivacyMode] = useState(false);
+
     const balanceMap = useMemo(() => {
         const map = {};
         (entries || []).forEach(e => { map[e.id] = e.balance != null ? Number(e.balance) : null; });
@@ -56,7 +60,7 @@ export const BudgetEntryList = ({
                 background: '#F5F5F5',
             }}>
                 <div style={{ display: 'flex', gap: 6 }}>
-                    {[['all', 'All'], ['income', 'Income'], ['outcome', 'Expenses']].map(([val, label]) => (
+                    {[['all', 'All'], ['income', renovationMode ? 'Future' : 'Income'], ['outcome', renovationMode ? 'Paid' : 'Expenses']].map(([val, label]) => (
                         <button key={val} type="button" onClick={() => setTypeFilter(val)}
                             style={filterBtn(typeFilter === val, val === 'income' ? SYS.success : val === 'outcome' ? SYS.accent : SYS.primary)}>
                             {label}
@@ -73,6 +77,11 @@ export const BudgetEntryList = ({
                 <span style={{ fontSize: '0.75rem', color: SYS.light, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                     {visibleEntries.length} entr{visibleEntries.length === 1 ? 'y' : 'ies'}
                 </span>
+                <button type="button" onClick={() => setPrivacyMode(m => !m)}
+                    title={privacyMode ? 'Show details' : 'Hide details'}
+                    style={{ ...filterBtn(privacyMode, '#555'), marginLeft: 4, fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    {privacyMode ? <><EyeOff size={13} /> Show</> : <><Eye size={13} /> Hide</>}
+                </button>
                 <button type="button" onClick={onToggleSelectMode}
                     style={{ ...filterBtn(selectMode, '#000'), marginLeft: 4, fontSize: '0.72rem' }}>
                     {selectMode ? '✕ Cancel' : '☐ Select'}
@@ -97,7 +106,7 @@ export const BudgetEntryList = ({
             </div>
 
             {/* Rows */}
-            {loading && entries.length === 0 ? (
+            {!privacyMode && (loading && entries.length === 0 ? (
                 <div style={{ padding: '32px', textAlign: 'center', color: SYS.light, fontSize: '0.9rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                     Loading…
                 </div>
@@ -126,7 +135,7 @@ export const BudgetEntryList = ({
                         onToggleSelect={toggleSelect}
                     />
                 ))
-            )}
+            ))}
         </div>
     );
 };

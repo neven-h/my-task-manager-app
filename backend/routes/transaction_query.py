@@ -126,7 +126,9 @@ def get_all_transactions(payload):
                        month_year,
                        transaction_type,
                        upload_date,
-                       uploaded_by
+                       uploaded_by,
+                       category,
+                       comments
                 FROM bank_transactions
                 WHERE 1=1
             """

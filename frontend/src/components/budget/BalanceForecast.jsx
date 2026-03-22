@@ -159,7 +159,7 @@ const BalanceForecast = ({ forecast, onFetch, onRefresh, loading, linkedTab, las
                                 <div style={{ width: '100%', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                                     {forecast.linked_tab && (
                                         <span style={{ fontSize: '0.7rem', color: SYS.light }}>
-                                            🔗 Synced with {linkedTab?.name || forecast.linked_tab}
+                                            🔗 Synced with {linkedTab?.transaction_tab_name || forecast.linked_tab?.transaction_tab_name}
                                         </span>
                                     )}
                                     {timeAgo && (

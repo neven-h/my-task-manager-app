@@ -9,7 +9,7 @@ const SYS = {
     border:  '#000',
 };
 
-export const BudgetHeader = ({ onBackToTasks, exportBudgetCSV, activeTabId, entriesCount, openAdd, onUpload }) => (
+export const BudgetHeader = ({ onBackToTasks, exportBudgetCSV, activeTabId, entriesCount, openAdd, onUpload, renovationMode }) => (
     <div style={{
         background: SYS.bg,
         borderBottom: `3px solid ${SYS.border}`,
@@ -29,7 +29,7 @@ export const BudgetHeader = ({ onBackToTasks, exportBudgetCSV, activeTabId, entr
             flex: 1, margin: 0, fontSize: '1.2rem', fontWeight: 800,
             textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.5px',
         }}>
-            Budget Planner
+            {renovationMode ? 'Renovation Budget' : 'Budget Planner'}
         </h1>
         <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => exportBudgetCSV(activeTabId)}
@@ -61,7 +61,7 @@ export const BudgetHeader = ({ onBackToTasks, exportBudgetCSV, activeTabId, entr
                     fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer',
                     textTransform: 'uppercase', letterSpacing: '0.4px',
                 }}>
-                + Income
+                {renovationMode ? '+ Future Payment' : '+ Income'}
             </button>
             <button onClick={() => openAdd('outcome')}
                 style={{
@@ -70,7 +70,7 @@ export const BudgetHeader = ({ onBackToTasks, exportBudgetCSV, activeTabId, entr
                     fontWeight: 700, fontSize: '0.78rem', cursor: 'pointer',
                     textTransform: 'uppercase', letterSpacing: '0.4px',
                 }}>
-                + Expense
+                {renovationMode ? '+ Paid' : '+ Expense'}
             </button>
         </div>
     </div>

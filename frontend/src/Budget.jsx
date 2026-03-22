@@ -37,7 +37,7 @@ const emptyForm = (type = 'income') => ({
     type, description: '', amount: '', entry_date: today(), category: '', notes: '',
 });
 
-const Budget = ({ onBackToTasks }) => {
+const Budget = ({ onBackToTasks, renovationMode = false }) => {
     const { entries, loading, error, fetchEntries, createEntry, updateEntry, deleteEntry,
         batchDelete, batchUpdate, getDescriptionHistory, predictions, fetchPredictions,
         monthBalances, fetchMonthlyBalances, exportBudgetCSV } = useBudget();
@@ -144,29 +144,42 @@ const Budget = ({ onBackToTasks }) => {
 
     return (
         <div style={{ minHeight: '100vh', background: SYS.bg, fontFamily: 'inherit' }}>
-            <BudgetHeader onBackToTasks={onBackToTasks} exportBudgetCSV={exportBudgetCSV} activeTabId={activeTabId} entriesCount={entries.length} openAdd={openAdd} onUpload={() => setShowUpload(true)} />
+            <BudgetHeader onBackToTasks={onBackToTasks} exportBudgetCSV={exportBudgetCSV} activeTabId={activeTabId} entriesCount={entries.length} openAdd={openAdd} onUpload={() => setShowUpload(true)} renovationMode={renovationMode} />
             <BudgetTabBar tabs={tabs} activeTabId={activeTabId} setActiveTabId={setActiveTabId} confirmDeleteTab={confirmDeleteTab} setConfirmDeleteTab={setConfirmDeleteTab} handleDeleteTab={handleDeleteTab} addingTab={addingTab} setAddingTab={setAddingTab} newTabName={newTabName} setNewTabName={setNewTabName} handleAddTab={handleAddTab} handleDuplicateTab={handleDuplicateTab} handleRenameTab={renameTab} />
 
             <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 20px' }}>
                 {error && <div style={{ background: '#fff0f0', border: `2px solid ${SYS.accent}`, padding: '10px 14px', marginBottom: 16, color: SYS.accent, fontSize: '0.85rem', fontWeight: 600 }}>{error}</div>}
-                {showForm && <div id="budget-form"><EntryForm initial={formInitial} onSave={handleSave} onCancel={handleCancel} loading={loading} /></div>}
+                {showForm && <div id="budget-form"><EntryForm initial={formInitial} onSave={handleSave} onCancel={handleCancel} loading={loading} renovationMode={renovationMode} /></div>}
                 {activeTabId && <BudgetLinkBanner budgetTabId={activeTabId} linkedTab={linkedTab} linkError={linkError} onSetLink={(txTabId, linkType) => setLink(activeTabId, txTabId, linkType)} onRemoveLink={() => removeLink(activeTabId)} />}
 
                 <BudgetRangePanel rangeOpen={rangeOpen} rangeLoading={rangeLoading} rangeResult={rangeResult} cutoff={cutoff} setCutoff={setCutoff} activeTabId={activeTabId} customStart={customStart} setCustomStart={setCustomStart} customEnd={customEnd} setCustomEnd={setCustomEnd} fetchRange={fetchRange} endMinusDays={endMinusDays} setRangeResult={setRangeResult} setRangeOpen={setRangeOpen} />
 
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 24 }}>
-                    <SummaryCard icon={TrendingUp} label="Total Income" amount={incomeForSummary} color={SYS.success} sub="+" />
-                    <SummaryCard icon={TrendingDown} label="Total Expenses" amount={expenseForSummary} color={SYS.accent} sub="−" />
-                    <SummaryCard icon={Scale} label="Balance"
-                        amount={balanceForSummary}
-                        color={balanceForSummary >= 0 ? SYS.primary : SYS.accent}
-                        sub={balanceForSummary >= 0 ? '+' : '−'}
-                        badge={balanceBadgeForSummary} />
+                    {renovationMode ? (
+                        <>
+                            <SummaryCard icon={TrendingDown} label="Paid" amount={outcome} color={SYS.accent} sub="−" />
+                            <SummaryCard icon={TrendingUp} label="Future Payments" amount={income} color={SYS.primary} sub="+" />
+                            <SummaryCard icon={Scale} label="Total Project Cost" amount={income + outcome} color={SYS.text} sub="" />
+                        </>
+                    ) : (
+                        <>
+                            <SummaryCard icon={TrendingUp} label="Total Income" amount={incomeForSummary} color={SYS.success} sub="+" />
+                            <SummaryCard icon={TrendingDown} label="Total Expenses" amount={expenseForSummary} color={SYS.accent} sub="−" />
+                            <SummaryCard icon={Scale} label="Balance"
+                                amount={balanceForSummary}
+                                color={balanceForSummary >= 0 ? SYS.primary : SYS.accent}
+                                sub={balanceForSummary >= 0 ? '+' : '−'}
+                                badge={balanceBadgeForSummary} />
+                        </>
+                    )}
                 </div>
 
                 <BudgetHealthCard health={health} />
                 <BudgetExpenseChart chartData={chartData} />
                 <BudgetMonthlyChart monthlyTotals={monthlyTotals} />
+
+                {!renovationMode && <ForecastSection predictions={predictions} onFetch={() => fetchPredictions(3, activeTabId)} loading={loading} />}
+                {!renovationMode && <BalanceForecast forecast={forecast} onFetch={() => fetchForecast(activeTabId, 3)} onRefresh={() => refresh(activeTabId, 3)} loading={forecastLoading} linkedTab={linkedTab} lastUpdated={lastUpdated} />}
 
                 <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '1.5rem', alignItems: 'start' }}>
                     <BudgetMonthSidebar
@@ -187,12 +200,11 @@ const Budget = ({ onBackToTasks }) => {
                             expandedDescriptionId={expandedDescriptionId} setExpandedDescriptionId={setExpandedDescriptionId}
                             getDescriptionHistory={getDescriptionHistory}
                             selectMode={selectMode} onToggleSelectMode={() => setSelectMode(m => !m)}
-                            selectedIds={selectedIds} toggleSelect={toggleSelect} onSelectAll={selectAll} />
+                            selectedIds={selectedIds} toggleSelect={toggleSelect} onSelectAll={selectAll}
+                            renovationMode={renovationMode} />
                     </div>
                 </div>
 
-                <ForecastSection predictions={predictions} onFetch={() => fetchPredictions(3, activeTabId)} loading={loading} />
-                <BalanceForecast forecast={forecast} onFetch={() => fetchForecast(activeTabId, 3)} onRefresh={() => refresh(activeTabId, 3)} loading={forecastLoading} linkedTab={linkedTab} lastUpdated={lastUpdated} />
             </div>
             <BudgetUploadModal show={showUpload} onClose={() => setShowUpload(false)} activeTabId={activeTabId} onComplete={() => { fetchEntries(); fetchMonthlyBalances(activeTabId); }} />
         </div>

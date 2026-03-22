@@ -1,0 +1,31 @@
+---
+description: Never use the indigo→violet gradient (#6366f1 / #8b5cf6) anywhere in the project
+alwaysApply: true
+---
+
+# Forbidden gradient and colors
+
+**Do not use** this gradient (or visually equivalent variants) anywhere: headers, buttons, cards, backgrounds, CSS, inline styles, SVG fills, or Tailwind arbitrary values.
+
+**Banned literals (exact and common variants):**
+
+- `linear-gradient(135deg, #6366f1, #8b5cf6)`
+- The same stops with different whitespace, `#6366f1` / `#8b5cf6` order swapped, or a different angle (e.g. `90deg`, `to bottom right`) **when both hexes appear in one gradient**
+
+**Banned hex codes in combination:**
+
+- Do not pair **`#6366f1`** and **`#8b5cf6`** in the same `linear-gradient` / `radial-gradient` / `background` value.
+
+**Allowed:** using only one of these hexes alone is discouraged unless necessary; prefer the app palette (e.g. primary blue `#0000FF`, neutrals, semantic green/red) from existing design tokens.
+
+**When editing or adding UI:** if you find this gradient in legacy code, replace it with a neutral solid, the standard primary accent, or another approved palette — never reintroduce this pair.
+
+```jsx
+// BAD
+background: 'linear-gradient(135deg, #6366f1, #8b5cf6)'
+
+// GOOD (example — use project tokens)
+background: '#f9fafb'
+// or
+background: '#0000FF'
+```

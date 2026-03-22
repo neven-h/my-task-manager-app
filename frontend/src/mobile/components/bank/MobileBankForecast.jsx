@@ -135,7 +135,7 @@ const MobileBankForecast = ({ predictions, onFetch, loading, tabId }) => {
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 width: '100%', padding: '13px 16px',
                 border: 'none', borderRadius: IOS.radius,
-                background: open ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : IOS.card,
+                background: open ? '#0000FF' : IOS.card,
                 color: open ? '#fff' : '#000',
                 boxShadow: '0 1px 3px rgba(0,0,0,0.07)',
                 cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem', fontFamily: FONT_STACK,
@@ -145,7 +145,7 @@ const MobileBankForecast = ({ predictions, onFetch, loading, tabId }) => {
                 {predictions.length > 0 && (
                     <span style={{
                         background: open ? 'rgba(255,255,255,0.25)' : 'rgba(99,102,241,0.12)',
-                        color: open ? '#fff' : '#6366f1',
+                        color: open ? '#fff' : '#0000FF',
                         borderRadius: 20, padding: '1px 8px', fontSize: '0.75rem', fontWeight: 700,
                     }}>
                         {active.length}{dismissed.size > 0 ? `/${predictions.length}` : ''}

@@ -1,3 +1,4 @@
+import json
 from flask import Blueprint, request, jsonify, current_app
 from config import get_db_connection, handle_error, DEBUG, init_db, admin_required
 from mysql.connector import Error
@@ -112,6 +113,105 @@ def get_client_tasks(payload, client_name):
     except Error as e:
         current_app.logger.error('admin db error: %s', e, exc_info=True)
         return jsonify({'error': 'A database error occurred'}), 500
+
+
+# ============ DESCRIPTION RULES ENDPOINTS ============
+
+@admin_bp.route('/api/admin/description-rules', methods=['GET'])
+@admin_required
+def get_description_rules(payload):
+    """List all description normalization rules."""
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor(dictionary=True)
+            cur.execute("SELECT id, needles, replacement, sort_order FROM description_rules ORDER BY sort_order ASC, id ASC")
+            rows = cur.fetchall()
+        for r in rows:
+            try:
+                r['needles'] = json.loads(r['needles'])
+            except Exception:
+                r['needles'] = []
+        return jsonify(rows)
+    except Error as e:
+        current_app.logger.error('description_rules GET error: %s', e, exc_info=True)
+        return jsonify({'error': 'Database error'}), 500
+
+
+@admin_bp.route('/api/admin/description-rules', methods=['POST'])
+@admin_required
+def create_description_rule(payload):
+    """Create a new description normalization rule."""
+    data = request.get_json() or {}
+    needles = data.get('needles', [])
+    replacement = (data.get('replacement') or '').strip()
+    sort_order = int(data.get('sort_order', 0))
+    if not needles or not replacement:
+        return jsonify({'error': 'needles and replacement are required'}), 400
+    if isinstance(needles, str):
+        needles = [s.strip() for s in needles.split(',') if s.strip()]
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor(dictionary=True)
+            cur.execute(
+                "INSERT INTO description_rules (needles, replacement, sort_order) VALUES (%s, %s, %s)",
+                (json.dumps(needles), replacement, sort_order),
+            )
+            conn.commit()
+            cur.execute("SELECT id, needles, replacement, sort_order FROM description_rules WHERE id = LAST_INSERT_ID()")
+            row = cur.fetchone()
+        row['needles'] = json.loads(row['needles'])
+        return jsonify(row), 201
+    except Error as e:
+        current_app.logger.error('description_rules POST error: %s', e, exc_info=True)
+        return jsonify({'error': 'Database error'}), 500
+
+
+@admin_bp.route('/api/admin/description-rules/<int:rule_id>', methods=['PUT'])
+@admin_required
+def update_description_rule(payload, rule_id):
+    """Update a description normalization rule."""
+    data = request.get_json() or {}
+    needles = data.get('needles', [])
+    replacement = (data.get('replacement') or '').strip()
+    sort_order = int(data.get('sort_order', 0))
+    if not needles or not replacement:
+        return jsonify({'error': 'needles and replacement are required'}), 400
+    if isinstance(needles, str):
+        needles = [s.strip() for s in needles.split(',') if s.strip()]
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor(dictionary=True)
+            cur.execute(
+                "UPDATE description_rules SET needles = %s, replacement = %s, sort_order = %s WHERE id = %s",
+                (json.dumps(needles), replacement, sort_order, rule_id),
+            )
+            conn.commit()
+            if cur.rowcount == 0:
+                return jsonify({'error': 'Rule not found'}), 404
+            cur.execute("SELECT id, needles, replacement, sort_order FROM description_rules WHERE id = %s", (rule_id,))
+            row = cur.fetchone()
+        row['needles'] = json.loads(row['needles'])
+        return jsonify(row)
+    except Error as e:
+        current_app.logger.error('description_rules PUT error: %s', e, exc_info=True)
+        return jsonify({'error': 'Database error'}), 500
+
+
+@admin_bp.route('/api/admin/description-rules/<int:rule_id>', methods=['DELETE'])
+@admin_required
+def delete_description_rule(payload, rule_id):
+    """Delete a description normalization rule."""
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM description_rules WHERE id = %s", (rule_id,))
+            conn.commit()
+            if cur.rowcount == 0:
+                return jsonify({'error': 'Rule not found'}), 404
+        return jsonify({'success': True})
+    except Error as e:
+        current_app.logger.error('description_rules DELETE error: %s', e, exc_info=True)
+        return jsonify({'error': 'Database error'}), 500
 
 
 # Initialize database on import (works with gunicorn)
