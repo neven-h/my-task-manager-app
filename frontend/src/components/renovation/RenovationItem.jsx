@@ -4,6 +4,7 @@ import { SYS, fmt } from './renovationConstants';
 import RenovationStatusBadge from './RenovationStatusBadge';
 import RenovationItemForm from './RenovationItemForm';
 import RenovationPaymentList from './RenovationPaymentList';
+import RenovationAttachmentList from './RenovationAttachmentList';
 
 const RenovationItem = ({ item, onUpdate, onDelete }) => {
     const [expanded, setExpanded] = useState(false);
@@ -135,6 +136,9 @@ const RenovationItem = ({ item, onUpdate, onDelete }) => {
                             setLocalItem(prev => ({ ...prev, total_paid: Math.max(0, (prev.total_paid || 0) - payment.amount) }));
                         }}
                     />
+                    <div style={{ borderTop: '1px dashed #ddd', marginTop: 10, paddingTop: 8 }}>
+                        <RenovationAttachmentList itemId={item.id} />
+                    </div>
                 </div>
             )}
         </div>
