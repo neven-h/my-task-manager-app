@@ -64,7 +64,6 @@ const useRenovation = () => {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to add payment');
-        // Update the item's total_paid in local state
         setItems(prev => prev.map(i => {
             if (i.id !== itemId) return i;
             return { ...i, total_paid: (i.total_paid || 0) + data.amount };
@@ -79,12 +78,67 @@ const useRenovation = () => {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to delete payment');
-        // Update the item's total_paid in local state
         if (itemId != null && amount != null) {
             setItems(prev => prev.map(i => {
                 if (i.id !== itemId) return i;
                 return { ...i, total_paid: Math.max(0, (i.total_paid || 0) - amount) };
             }));
+        }
+    }, []);
+
+    // ── Attachments ──────────────────────────────────────────────────────────
+
+    const fetchAttachments = useCallback(async (itemId) => {
+        const res = await fetch(`${API_BASE}/renovation/items/${itemId}/attachments`, {
+            headers: getAuthHeaders(),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to fetch attachments');
+        return Array.isArray(data) ? data : [];
+    }, []);
+
+    const uploadAttachment = useCallback(async (itemId, file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch(`${API_BASE}/renovation/items/${itemId}/attachments`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: formData,
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to upload attachment');
+        return data;
+    }, []);
+
+    const deleteAttachment = useCallback(async (attachmentId) => {
+        const res = await fetch(`${API_BASE}/renovation/attachments/${attachmentId}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders(),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to delete attachment');
+    }, []);
+
+    // ── CSV Export ───────────────────────────────────────────────────────────
+
+    const exportCSV = useCallback(async () => {
+        try {
+            const res = await fetch(`${API_BASE}/renovation/export/csv`, { headers: getAuthHeaders() });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || 'Export failed');
+            }
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `renovation_export_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            setError(err.message);
         }
     }, []);
 
@@ -98,6 +152,10 @@ const useRenovation = () => {
         deleteItem,
         addPayment,
         deletePayment,
+        fetchAttachments,
+        uploadAttachment,
+        deleteAttachment,
+        exportCSV,
     };
 };
 
