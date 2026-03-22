@@ -42,7 +42,9 @@ def update_transaction(payload, transaction_id):
                         amount           = %s,
                         month_year       = %s,
                         account_number   = %s,
-                        transaction_type = %s
+                        transaction_type = %s,
+                        category         = %s,
+                        comments         = %s
                     WHERE id = %s
                     """
 
@@ -53,6 +55,8 @@ def update_transaction(payload, transaction_id):
                 data['month_year'],
                 encrypted_account,
                 data.get('transaction_type', 'credit'),
+                data.get('category', ''),
+                data.get('comments', ''),
                 transaction_id
             ))
             connection.commit()
@@ -102,8 +106,8 @@ def add_manual_transaction(payload):
 
             query = """
                 INSERT INTO bank_transactions
-                (account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by, tab_id)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                (account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by, tab_id, category, comments)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
             cursor.execute(query, (
                 encrypted_account,
@@ -113,7 +117,9 @@ def add_manual_transaction(payload):
                 data['month_year'],
                 data.get('transaction_type', 'credit'),
                 username,
-                tab_id
+                tab_id,
+                data.get('category', ''),
+                data.get('comments', ''),
             ))
             connection.commit()
 

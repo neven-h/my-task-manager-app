@@ -57,6 +57,7 @@ const TransactionTable = () => {
                             </th>
                             <th style={{ ...TH, textAlign: 'left' }}>Date</th>
                             <th style={{ ...TH, textAlign: 'left' }}>Description</th>
+                            <th style={{ ...TH, textAlign: 'left', width: '110px' }}>Category</th>
                             <th style={{ ...TH, textAlign: 'center' }}>Type</th>
                             <th style={{ ...TH, textAlign: 'right' }}>Amount</th>
                             <th style={{ ...TH, textAlign: 'center', width: '110px' }}>Actions</th>

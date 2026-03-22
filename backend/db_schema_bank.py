@@ -27,6 +27,8 @@ def init_bank_tables(cursor, connection):
         ("uploaded_by", "VARCHAR(255)", "uploaded_by"),
         ("tab_id", "INT", "tab_id"),
         ("amount_plain", "DECIMAL(14,4) DEFAULT NULL", "amount_plain"),
+        ("category", "VARCHAR(100)", "category"),
+        ("comments", "TEXT", "comments"),
     ]:
         try:
             cursor.execute(f"ALTER TABLE bank_transactions ADD COLUMN {col} {col_def}")

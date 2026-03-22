@@ -5,6 +5,7 @@ import ClientsManagement from './ClientsManagement';
 import StockPortfolio from './StockPortfolio';
 import Budget from './Budget';
 import DesktopNotebook from './components/notebook/DesktopNotebook';
+import Renovation from './Renovation';
 import './TaskTracker.css';
 
 import { TaskProvider, useTaskContext } from './context/TaskContext';
@@ -27,6 +28,9 @@ const TaskTrackerInner = () => {
     const [showSidebar, setShowSidebar] = useState(true);
 
     // Route to other app views
+    if (appView === 'renovation') {
+        return <Renovation onBackToTasks={() => setAppView('tasks')} />;
+    }
     if (appView === 'transactions') {
         return <BankTransactions onBackToTasks={() => setAppView('tasks')} authUser={authUser} authRole={authRole} />;
     }
