@@ -45,9 +45,25 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
         storage.set(STORAGE_KEYS.TASK_RTL_ENABLED, String(val));
     }, []);
 
+    // Nav visibility — persisted in localStorage so each user controls their own menu
+    const [navVisibility, setNavVisibilityState] = useState(() => {
+        try {
+            const saved = localStorage.getItem('nav_visible_tabs');
+            if (saved) return JSON.parse(saved);
+        } catch (_) {}
+        return { transactions: true, clients: true, portfolio: true, budget: true, notebook: true, renovation: false };
+    });
+    const setNavVisibility = useCallback((key, value) => {
+        setNavVisibilityState(prev => {
+            const next = { ...prev, [key]: value };
+            localStorage.setItem('nav_visible_tabs', JSON.stringify(next));
+            return next;
+        });
+    }, []);
+
     useEffect(() => {
         const savedView = storage.get(STORAGE_KEYS.LAST_ACTIVE_VIEW);
-        if (savedView && ['tasks', 'transactions', 'clients', 'portfolio', 'stats', 'notebook', 'budget'].includes(savedView)) {
+        if (savedView && ['tasks', 'transactions', 'clients', 'portfolio', 'stats', 'notebook', 'budget', 'renovation'].includes(savedView)) {
             setAppView(savedView);
         }
     }, []);
@@ -109,6 +125,7 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
 
     const value = useMemo(() => ({
         authToken, authRole, authUser, isAdmin, isSharedUser, isLimitedUser, onLogout,
+        navVisibility, setNavVisibility,
         tasks, allCategories, allTags, clients, stats, loading, error, setError,
         completedTasks, uncompletedTasks,
         filters, setFilters, taskViewMode, setTaskViewMode, buildFilterParams,
@@ -123,6 +140,7 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
         showBulkInput, setShowBulkInput,
         shareModal: shareModalState, openShareModal, closeShareModal,
         rtlEnabled, setRtlEnabled,
+        navVisibility, setNavVisibility,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }), [
         authToken, authRole, authUser, onLogout,
@@ -140,6 +158,7 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
         showBulkInput,
         shareModalState, openShareModal, closeShareModal,
         rtlEnabled, setRtlEnabled,
+        navVisibility, setNavVisibility,
     ]);
 
     return <TaskContext.Provider value={value}>{children}</TaskContext.Provider>;

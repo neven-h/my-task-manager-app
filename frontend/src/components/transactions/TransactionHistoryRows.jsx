@@ -12,6 +12,7 @@ const TransactionHistoryRows = ({ history, colors }) => (
                 <td style={{ padding: '0.65rem 0.75rem', fontSize: '0.9rem', color: colors.textLight }}>
                     {h.description}
                 </td>
+                <td />
                 <td style={{ padding: '0.65rem 0.75rem', textAlign: 'center' }}>
                     <span style={{ padding: '0.3rem 0.6rem', background: h.transaction_type === 'cash' ? colors.success : colors.accent, color: '#fff', fontSize: '0.8rem', fontWeight: '600', border: `2px solid ${colors.border}`, fontFamily: '"Inter", sans-serif', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                         {h.transaction_type === 'cash' ? 'Cash' : 'Credit'}
