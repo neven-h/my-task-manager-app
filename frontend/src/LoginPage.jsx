@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { Lock, AlertCircle, Loader, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Lock, AlertCircle, Loader, ArrowLeft, Scan } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import API_BASE from './config';
 import storage, { STORAGE_KEYS } from './utils/storage';
 import LoginForm from './components/auth/LoginForm';
 import TwoFactorForm from './components/auth/TwoFactorForm';
+import useBiometricAuth from './hooks/useBiometricAuth';
 
 const LoginPage = ({ onLogin, onBack }) => {
     const [username, setUsername] = useState('');
@@ -13,6 +14,11 @@ const LoginPage = ({ onLogin, onBack }) => {
     const [loading, setLoading] = useState(false);
     const [requires2FA, setRequires2FA] = useState(false);
     const [twoFactorCode, setTwoFactorCode] = useState('');
+    const [showBiometricOffer, setShowBiometricOffer] = useState(false);
+    const pendingSession = useRef(null);
+
+    const biometric = useBiometricAuth();
+    const biometricTriedRef = useRef(false);
 
     const saveSession = (data) => {
         storage.set(STORAGE_KEYS.AUTH_TOKEN, data.token);
@@ -21,6 +27,67 @@ const LoginPage = ({ onLogin, onBack }) => {
         storage.set(STORAGE_KEYS.USERNAME, data.username);
         storage.set(STORAGE_KEYS.ROLE, data.role);
         onLogin(data.token, data.username, data.role);
+    };
+
+    // Auto-trigger biometric login on mount if available + enabled
+    useEffect(() => {
+        if (biometricTriedRef.current || !biometric.available || !biometric.enabled) return;
+        biometricTriedRef.current = true;
+
+        (async () => {
+            setLoading(true);
+            const result = await biometric.login();
+            if (!result?.token) {
+                setLoading(false);
+                return; // Face ID dismissed or failed — fall through to password form
+            }
+            // Validate the stored token is still valid
+            try {
+                const resp = await fetch(`${API_BASE}/tasks?limit=1`, {
+                    headers: { Authorization: `Bearer ${result.token}` }
+                });
+                if (resp.ok) {
+                    // Token still valid — reconstruct session
+                    const role = storage.get(STORAGE_KEYS.AUTH_ROLE) || storage.get(STORAGE_KEYS.ROLE) || 'user';
+                    saveSession({ token: result.token, username: result.username, role });
+                } else {
+                    // Token expired — clear biometric & show password form
+                    await biometric.disable();
+                    setError('Session expired. Please log in with your password.');
+                    setLoading(false);
+                }
+            } catch {
+                setError('Unable to connect to server. Please try again.');
+                setLoading(false);
+            }
+        })();
+    }, [biometric.available, biometric.enabled]);
+
+    const handleBiometricLogin = async () => {
+        setError('');
+        setLoading(true);
+        const result = await biometric.login();
+        if (!result?.token) {
+            setLoading(false);
+            setError('Face ID authentication failed. Please try again or use your password.');
+            return;
+        }
+        try {
+            const resp = await fetch(`${API_BASE}/tasks?limit=1`, {
+                headers: { Authorization: `Bearer ${result.token}` }
+            });
+            if (resp.ok) {
+                const role = storage.get(STORAGE_KEYS.AUTH_ROLE) || storage.get(STORAGE_KEYS.ROLE) || 'user';
+                saveSession({ token: result.token, username: result.username, role });
+            } else {
+                await biometric.disable();
+                setError('Session expired. Please log in with your password.');
+                setLoading(false);
+            }
+        } catch {
+            setError('Unable to connect to server. Please try again.');
+            setLoading(false);
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -32,6 +99,17 @@ const LoginPage = ({ onLogin, onBack }) => {
             const data = await response.json();
             if (response.ok && data.success) {
                 if (data.requires_2fa) { setRequires2FA(true); setLoading(false); return; }
+                // Offer to enable biometric if available but not yet enabled
+                if (biometric.available && !biometric.enabled) {
+                    pendingSession.current = data;
+                    setShowBiometricOffer(true);
+                    setLoading(false);
+                    return;
+                }
+                // Update biometric credentials if already enabled (refreshes token)
+                if (biometric.available && biometric.enabled) {
+                    await biometric.enable(data.token, data.username);
+                }
                 saveSession(data);
             } else {
                 setError(data.error || 'Invalid username or password');
@@ -55,6 +133,25 @@ const LoginPage = ({ onLogin, onBack }) => {
         } catch {
             setError('Unable to connect to server. Please try again.');
             setLoading(false);
+        }
+    };
+
+    const handleEnableBiometric = async () => {
+        const data = pendingSession.current;
+        if (data) {
+            await biometric.enable(data.token, data.username);
+            saveSession(data);
+            pendingSession.current = null;
+            setShowBiometricOffer(false);
+        }
+    };
+
+    const handleSkipBiometric = () => {
+        const data = pendingSession.current;
+        if (data) {
+            saveSession(data);
+            pendingSession.current = null;
+            setShowBiometricOffer(false);
         }
     };
 
@@ -105,6 +202,25 @@ const LoginPage = ({ onLogin, onBack }) => {
                         {loading ? <><Loader size={20} style={{ animation: 'spin 1s linear infinite' }} />{requires2FA ? 'Verifying...' : 'Logging in...'}</> : (requires2FA ? 'Verify Code' : 'Login')}
                     </button>
 
+                    {/* Face ID button — shown when biometric is available and enabled */}
+                    {biometric.available && biometric.enabled && !requires2FA && (
+                        <button
+                            type="button"
+                            onClick={handleBiometricLogin}
+                            disabled={loading}
+                            style={{
+                                width: '100%', padding: '14px', marginTop: '12px',
+                                background: 'transparent', border: '2px solid rgba(220,53,69,0.4)',
+                                borderRadius: '12px', color: '#dc3545', fontSize: '1rem', fontWeight: '700',
+                                cursor: loading ? 'not-allowed' : 'pointer', transition: 'all 0.3s ease',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                                textTransform: 'uppercase', letterSpacing: '1px'
+                            }}
+                        >
+                            <Scan size={20} /> Sign in with Face ID
+                        </button>
+                    )}
+
                     <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'center' }}>
                         <Link to="/forgot-password" style={{ color: '#0066cc', textDecoration: 'none', fontSize: '0.9rem', fontWeight: 600 }}
                             onMouseEnter={(e) => { e.target.style.color = '#004499'; }} onMouseLeave={(e) => { e.target.style.color = '#0066cc'; }}>
@@ -119,6 +235,40 @@ const LoginPage = ({ onLogin, onBack }) => {
                         </div>
                     </div>
                 </form>
+
+                {/* Biometric enable offer — shown after successful password login */}
+                {showBiometricOffer && (
+                    <div style={{
+                        marginTop: '24px', padding: '20px',
+                        background: 'linear-gradient(135deg, rgba(220,53,69,0.08) 0%, rgba(255,193,7,0.08) 100%)',
+                        border: '1px solid rgba(220,53,69,0.3)', borderRadius: '12px',
+                        textAlign: 'center'
+                    }}>
+                        <Scan size={32} style={{ color: '#dc3545', marginBottom: '8px' }} />
+                        <p style={{ fontWeight: 700, fontSize: '1rem', color: '#1a1a1a', margin: '0 0 4px 0' }}>
+                            Enable Face ID?
+                        </p>
+                        <p style={{ fontSize: '0.85rem', color: '#666', margin: '0 0 16px 0' }}>
+                            Sign in faster next time with Face ID
+                        </p>
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                            <button onClick={handleEnableBiometric} style={{
+                                padding: '10px 24px', background: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
+                                border: 'none', borderRadius: '8px', color: 'white', fontWeight: 700, fontSize: '0.9rem',
+                                cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.5px'
+                            }}>
+                                Enable
+                            </button>
+                            <button onClick={handleSkipBiometric} style={{
+                                padding: '10px 24px', background: 'transparent',
+                                border: '1px solid #ccc', borderRadius: '8px', color: '#666', fontWeight: 600, fontSize: '0.9rem',
+                                cursor: 'pointer'
+                            }}>
+                                Not Now
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '30px' }}>
                     {['#dc3545', '#ffc107', '#0d6efd'].map(color => (

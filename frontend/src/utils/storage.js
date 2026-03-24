@@ -17,6 +17,7 @@ export const STORAGE_KEYS = {
     USERNAME:        'username',          // legacy duplicate of AUTH_USER
     ROLE:            'role',              // legacy duplicate of AUTH_ROLE
     USER_ROLE:       'userRole',          // legacy duplicate of AUTH_ROLE
+    BIOMETRIC_ENABLED: 'biometricEnabled', // Face ID / biometric login enabled flag
 
     // View state
     LAST_ACTIVE_VIEW:     'lastActiveView',

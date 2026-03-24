@@ -19,6 +19,7 @@ import TaskStatsView from './components/tasks/TaskStatsView';
 import TaskFormModal from './components/tasks/TaskFormModal';
 import BulkTaskModal from './components/tasks/BulkTaskModal';
 import ShareTaskModal from './components/tasks/ShareTaskModal';
+import CalendarChoiceModal from './components/tasks/CalendarChoiceModal';
 
 const TaskTrackerInner = () => {
     const { appView, setAppView, view, error, setError, authUser, authRole } = useTaskContext();
@@ -121,6 +122,7 @@ const TaskTrackerInner = () => {
             <TaskFormModal />
             <BulkTaskModal />
             <ShareTaskModal />
+            <CalendarChoiceModal />
         </div>
     );
 };
