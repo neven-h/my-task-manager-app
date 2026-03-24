@@ -1,6 +1,7 @@
 import React from 'react';
-import { Shield, CheckCircle } from 'lucide-react';
+import { Shield, CheckCircle, Scan } from 'lucide-react';
 import useSecuritySettings from './hooks/useSecuritySettings';
+import useBiometricAuth from './hooks/useBiometricAuth';
 import SettingsHeader from './components/settings/SettingsHeader';
 import TwoFactorCard from './components/settings/TwoFactorCard';
 import ChangePasswordForm from './components/settings/ChangePasswordForm';
@@ -13,6 +14,7 @@ import DescriptionRulesSection from './components/settings/DescriptionRulesSecti
 
 const SettingsPage = () => {
     const settings = useSecuritySettings();
+    const biometric = useBiometricAuth();
 
     if (settings.loading) {
         return (
@@ -91,6 +93,53 @@ const SettingsPage = () => {
                         handleEnableTwoFactor={settings.handleEnableTwoFactor}
                         onOpenDisableModal={() => settings.setShowDisableModal(true)}
                     />
+
+                    {/* Face ID toggle — only visible on iOS devices with biometric support */}
+                    {biometric.available && (
+                        <div style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '20px', background: '#fff', border: '2px solid #e5e7eb',
+                            marginTop: '16px'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                                <Scan size={24} color="#667eea" />
+                                <div>
+                                    <div style={{ fontWeight: 700, fontSize: '1rem', color: '#111' }}>
+                                        Face ID Login
+                                    </div>
+                                    <div style={{ fontSize: '0.82rem', color: '#666', marginTop: '2px' }}>
+                                        Sign in quickly using Face ID
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                onClick={async () => {
+                                    if (biometric.enabled) {
+                                        await biometric.disable();
+                                    } else {
+                                        const token = localStorage.getItem('authToken');
+                                        const user = settings.username;
+                                        if (token && user) await biometric.enable(token, user);
+                                    }
+                                }}
+                                disabled={biometric.loading}
+                                style={{
+                                    width: '52px', height: '28px', borderRadius: '14px',
+                                    background: biometric.enabled ? '#667eea' : '#d1d5db',
+                                    border: 'none', cursor: biometric.loading ? 'not-allowed' : 'pointer',
+                                    position: 'relative', transition: 'background 0.2s',
+                                    opacity: biometric.loading ? 0.5 : 1, flexShrink: 0
+                                }}
+                            >
+                                <div style={{
+                                    width: '22px', height: '22px', borderRadius: '50%',
+                                    background: '#fff', position: 'absolute', top: '3px',
+                                    left: biometric.enabled ? '27px' : '3px',
+                                    transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                                }} />
+                            </button>
+                        </div>
+                    )}
 
                     <ChangePasswordForm
                         username={settings.username}
