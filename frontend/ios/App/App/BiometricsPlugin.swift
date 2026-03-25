@@ -5,63 +5,77 @@ import Capacitor
 @objc(BiometricsPlugin)
 public class BiometricsPlugin: CAPPlugin {
 
-    @objc func checkAvailability(_ call: CAPPluginCall) {
+    @objc
+    public func checkAvailability(_ call: CAPPluginCall) {
         let context = LAContext()
         var error: NSError?
         let canEvaluate = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &error)
-        let typeString = biometryTypeString(context.biometryType)
-        var result: [String: Any] = [
-            "available": canEvaluate,
-            "biometryType": typeString
-        ]
-        if let error = error {
-            result["error"] = error.localizedDescription
+        let biometryType = Self.string(from: context.biometryType)
+        var errorMessage: String? = nil
+        if !canEvaluate, let err = error {
+            errorMessage = err.localizedDescription
         }
-        call.resolve(result)
+        call.resolve([
+            "available": canEvaluate,
+            "biometryType": biometryType,
+            "error": errorMessage as Any
+        ])
     }
 
-    @objc func authenticate(_ call: CAPPluginCall) {
+    @objc
+    public func authenticate(_ call: CAPPluginCall) {
         let reason = call.getString("reason") ?? "Authenticate to continue"
         let context = LAContext()
-        var authError: NSError?
 
-        // First try biometrics
-        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &authError) {
-            context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, evaluateError in
-                DispatchQueue.main.async {
-                    if success {
-                        let typeString = self.biometryTypeString(context.biometryType)
-                        call.resolve(["success": true, "biometryType": typeString])
-                    } else {
-                        let message = evaluateError?.localizedDescription ?? "Authentication failed"
-                        call.reject(message)
-                    }
-                }
-            }
-            return
+        if context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil) {
+            evaluateBiometrics(context: context, reason: reason, call: call)
+        } else if context.canEvaluatePolicy(.deviceOwnerAuthentication, error: nil) {
+            evaluateDeviceOwnerAuthentication(context: context, reason: reason, call: call)
+        } else {
+            call.reject("Biometric authentication is not available on this device.")
         }
-
-        // Fallback to device passcode if available
-        if context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &authError) {
-            context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { success, evaluateError in
-                DispatchQueue.main.async {
-                    if success {
-                        call.resolve(["success": true, "biometryType": "none"]) // authenticated via passcode
-                    } else {
-                        let message = evaluateError?.localizedDescription ?? "Authentication failed"
-                        call.reject(message)
-                    }
-                }
-            }
-            return
-        }
-
-        let message = authError?.localizedDescription ?? "Biometric authentication is not available on this device"
-        call.reject(message)
     }
 
-    private func biometryTypeString(_ type: LABiometryType) -> String {
-        switch type {
+    private func evaluateBiometrics(context: LAContext, reason: String, call: CAPPluginCall) {
+        context.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, error in
+            DispatchQueue.main.async {
+                if success {
+                    call.resolve([
+                        "success": true,
+                        "biometryType": Self.string(from: context.biometryType)
+                    ])
+                } else {
+                    if let error = error {
+                        call.reject(error.localizedDescription)
+                    } else {
+                        call.reject("Authentication failed.")
+                    }
+                }
+            }
+        }
+    }
+
+    private func evaluateDeviceOwnerAuthentication(context: LAContext, reason: String, call: CAPPluginCall) {
+        context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { success, error in
+            DispatchQueue.main.async {
+                if success {
+                    call.resolve([
+                        "success": true,
+                        "biometryType": Self.string(from: context.biometryType)
+                    ])
+                } else {
+                    if let error = error {
+                        call.reject(error.localizedDescription)
+                    } else {
+                        call.reject("Authentication failed.")
+                    }
+                }
+            }
+        }
+    }
+
+    private static func string(from biometryType: LABiometryType) -> String {
+        switch biometryType {
         case .faceID: return "faceID"
         case .touchID: return "touchID"
         default: return "none"
