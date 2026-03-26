@@ -92,15 +92,16 @@ const TransactionBalanceForecast = () => {
     return (
         <div style={{
             marginBottom: '1.5rem',
-            border: `2px solid ${hlLabel.bg === '#fef2f2' ? '#fecaca' : '#d1fae5'}`,
-            borderRadius: 12, overflow: 'hidden',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+            border: '3px solid #000',
+            borderRadius: 0,
+            boxShadow: '4px 4px 0px #000',
+            overflow: 'hidden',
         }}>
             {/* ── Header ───────────────────────────────────────────────────── */}
             <div onClick={toggle} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: isDesktop ? '16px 24px' : '14px 20px',
-                background: 'linear-gradient(135deg, #0f766e 0%, #0891b2 100%)',
+                background: '#000',
                 color: '#fff', cursor: 'pointer', userSelect: 'none',
             }}>
                 <div style={{
@@ -109,7 +110,8 @@ const TransactionBalanceForecast = () => {
                     gap: 10,
                     fontWeight: 800,
                     fontSize: isDesktop ? '1.08rem' : '0.95rem',
-                    letterSpacing: '0.2px',
+                    letterSpacing: '0.4px',
+                    textTransform: 'uppercase',
                 }}>
                     <TrendingUp size={18} />
                     Expenses Forecast
@@ -117,19 +119,22 @@ const TransactionBalanceForecast = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     {runway != null && (
                         <span style={{
-                            background: 'rgba(255,255,255,0.18)',
-                            padding: '3px 10px', borderRadius: 20,
+                            background: 'rgba(255,255,255,0.15)',
+                            border: '1px solid rgba(255,255,255,0.4)',
+                            padding: '3px 10px', borderRadius: 0,
                             fontSize: '0.77rem', fontWeight: 800,
+                            letterSpacing: '0.3px',
                         }}>
                             {rwInfo.emoji} {rwInfo.label} runway
                         </span>
                     )}
                     {adjust !== 0 && (
                         <span style={{
-                            background: 'rgba(255,255,255,0.18)',
-                            padding: '3px 10px', borderRadius: 20,
+                            background: adjust < 0 ? '#00AA00' : '#FF0000',
+                            border: '1px solid rgba(255,255,255,0.4)',
+                            padding: '3px 10px', borderRadius: 0,
                             fontSize: '0.74rem', fontWeight: 700,
-                            color: adjust < 0 ? '#bbf7d0' : '#fca5a5',
+                            color: '#fff',
                         }}>
                             {adjust > 0 ? '+' : ''}{adjust}% scenario
                         </span>
