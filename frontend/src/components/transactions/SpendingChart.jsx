@@ -23,7 +23,6 @@ export const SpendingChart = ({ monthly_history, predicted_monthly, adjust }) =>
     const maxVal = Math.max(...allMonths.map(m => m.total), 1);
     const total  = allMonths.length;
 
-    // Use pixel-based sizing for readable text
     const LEFT = 52, BOTTOM = 28, TOP = 8, RIGHT = 8;
     const barW = 36, barGap = 8;
     const chartW = total * (barW + barGap) + barGap;
@@ -32,6 +31,11 @@ export const SpendingChart = ({ monthly_history, predicted_monthly, adjust }) =>
     const plotH = H - BOTTOM - TOP;
 
     const scrollable = allMonths.length > 10;
+
+    // Forecast divider x position
+    const divX = monthly_history.length > 0 && predicted_monthly.length > 0
+        ? LEFT + barGap + monthly_history.length * (barW + barGap) - barGap / 2
+        : null;
 
     return (
         <div style={{ overflowX: scrollable ? 'auto' : 'visible', margin: '0 -4px', padding: '0 4px' }}>
@@ -47,8 +51,8 @@ export const SpendingChart = ({ monthly_history, predicted_monthly, adjust }) =>
                     const y = TOP + plotH * (1 - pct);
                     return (
                         <g key={pct}>
-                            <line x1={LEFT} y1={y} x2={W - RIGHT} y2={y} stroke="#e5e7eb" strokeWidth="1" strokeDasharray="3,3" />
-                            <text x={LEFT - 6} y={y + 4} textAnchor="end" fontSize="11" fill="#9ca3af" fontFamily="inherit"
+                            <line x1={LEFT} y1={y} x2={W - RIGHT} y2={y} stroke="#ddd" strokeWidth="1" strokeDasharray="3,3" />
+                            <text x={LEFT - 6} y={y + 4} textAnchor="end" fontSize="11" fill="#000" fontFamily="inherit"
                                 style={{ direction: 'ltr', unicodeBidi: 'plaintext' }}>
                                 {fmtAxis(maxVal * pct)}
                             </text>
@@ -56,7 +60,7 @@ export const SpendingChart = ({ monthly_history, predicted_monthly, adjust }) =>
                     );
                 })}
                 {/* Baseline */}
-                <line x1={LEFT} y1={TOP + plotH} x2={W - RIGHT} y2={TOP + plotH} stroke="#e5e7eb" strokeWidth="1" />
+                <line x1={LEFT} y1={TOP + plotH} x2={W - RIGHT} y2={TOP + plotH} stroke="#000" strokeWidth="1.5" />
 
                 {/* Bars + month labels */}
                 {allMonths.map((m, i) => {
@@ -65,33 +69,46 @@ export const SpendingChart = ({ monthly_history, predicted_monthly, adjust }) =>
                     const y    = TOP + plotH - barH;
                     const isPred = m.type === 'predicted';
                     const fill = isPred
-                        ? (adjust < 0 ? '#22c55e' : adjust > 0 ? '#ef4444' : 'rgba(13,148,136,0.4)')
-                        : '#0d9488';
+                        ? (adjust < 0 ? '#00AA00' : adjust > 0 ? '#FF0000' : 'rgba(0,0,255,0.3)')
+                        : '#0000FF';
                     return (
                         <g key={`${m.month}-${i}`}>
                             {isPred && (
                                 <rect x={x} y={TOP} width={barW} height={plotH} fill="rgba(0,0,0,0.02)" />
                             )}
-                            <rect x={x} y={y} width={barW} height={barH} fill={fill} rx="3"
-                                stroke={isPred ? fill : 'none'} strokeWidth="1"
-                                strokeDasharray={isPred ? '4,3' : 'none'}
-                                opacity={isPred ? 0.85 : 1} />
-                            <text x={x + barW / 2} y={H - 6} textAnchor="middle" fontSize="11" fill="#6b7280" fontFamily="inherit">
+                            <rect
+                                x={x} y={y} width={barW} height={barH}
+                                fill={fill} rx="0"
+                                opacity={isPred ? 0.85 : 1}
+                            />
+                            <text x={x + barW / 2} y={H - 6} textAnchor="middle" fontSize="11" fill="#000" fontFamily="inherit">
                                 {fmtM(m.month)}
                             </text>
                         </g>
                     );
                 })}
 
-                {/* Forecast divider line */}
-                {predicted_monthly.length > 0 && monthly_history.length > 0 && (() => {
-                    const divX = LEFT + barGap + monthly_history.length * (barW + barGap) - barGap / 2;
+                {/* Forecast divider — black dashed line + badge label */}
+                {divX != null && (() => {
+                    const labelText = 'Forecast';
+                    const labelW = 58;
+                    const labelH = 16;
+                    const labelX = divX + 4;
+                    const labelY = TOP + 4;
                     return (
                         <>
-                            <line x1={divX} y1={TOP} x2={divX} y2={TOP + plotH}
-                                stroke="#0d9488" strokeWidth="1.5" strokeDasharray="5,3" />
-                            <text x={divX + 4} y={TOP + 12} fontSize="11" fill="#0d9488" fontWeight="700" fontFamily="inherit">
-                                Forecast →
+                            <line
+                                x1={divX} y1={TOP} x2={divX} y2={TOP + plotH}
+                                stroke="#000" strokeWidth="1.5" strokeDasharray="5,3"
+                            />
+                            <rect x={labelX} y={labelY} width={labelW} height={labelH} fill="#000" />
+                            <text
+                                x={labelX + labelW / 2} y={labelY + 11}
+                                textAnchor="middle"
+                                fontSize="10" fill="#fff" fontWeight="700" fontFamily="inherit"
+                                style={{ textTransform: 'uppercase', letterSpacing: '0.3px' }}
+                            >
+                                {labelText} →
                             </text>
                         </>
                     );
