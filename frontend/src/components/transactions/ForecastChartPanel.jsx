@@ -1,7 +1,7 @@
 import React from 'react';
-import { SpendingChart } from './SpendingChart';
+import { BalanceRunwayChart } from './BalanceRunwayChart';
 
-const ForecastChartPanel = ({ data, adjust, isDesktop }) => (
+const ForecastChartPanel = ({ data, adjust, isDesktop, startingBalance }) => (
     <div style={{ padding: isDesktop ? '18px 20px 10px' : '14px 16px 6px' }}>
         <div style={{
             border: '2px solid #000',
@@ -26,7 +26,7 @@ const ForecastChartPanel = ({ data, adjust, isDesktop }) => (
                         letterSpacing: '0.5px',
                         marginBottom: 4,
                     }}>
-                        Monthly spending — actual vs forecast
+                        Projected account balance
                     </div>
                     <div style={{
                         fontSize: isDesktop ? '0.88rem' : '0.82rem',
@@ -35,7 +35,7 @@ const ForecastChartPanel = ({ data, adjust, isDesktop }) => (
                         lineHeight: 1.45,
                         maxWidth: isDesktop ? '80%' : '100%',
                     }}>
-                        Compare recent monthly spending with the forecast for the next months.
+                        How your balance is projected to change based on your spending forecast.
                     </div>
                 </div>
                 {adjust !== 0 && (
@@ -56,8 +56,8 @@ const ForecastChartPanel = ({ data, adjust, isDesktop }) => (
                     </span>
                 )}
             </div>
-            <SpendingChart
-                monthly_history={data.monthly_history}
+            <BalanceRunwayChart
+                startingBalance={startingBalance}
                 predicted_monthly={data.predicted_monthly}
                 adjust={adjust}
             />

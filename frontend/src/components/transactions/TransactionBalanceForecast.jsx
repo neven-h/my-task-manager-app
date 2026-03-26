@@ -200,8 +200,8 @@ const TransactionBalanceForecast = () => {
                             </div>
                         )}
 
-                        {/* ── Bar chart ─────────────────────────────────── */}
-                        <ForecastChartPanel data={data} adjust={adjust} isDesktop={isDesktop} />
+                        {/* ── Balance Runway chart ──────────────────────── */}
+                        <ForecastChartPanel data={data} adjust={adjust} isDesktop={isDesktop} startingBalance={startingBalance} />
 
                         {/* ── What-if controls ──────────────────────────── */}
                         <WhatIfControls adjust={adjust} setAdjust={setAdjust} />
