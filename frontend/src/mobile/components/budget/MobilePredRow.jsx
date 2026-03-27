@@ -29,7 +29,7 @@ const PredRow = memo(({ p, isLast }) => {
                     {p.description}
                 </div>
                 <div style={{ fontSize: '0.7rem', color: IOS.muted, marginTop: 1 }}>
-                    {new Date(p.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    {p.date ? new Date(p.date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—'}
                     {' · '}
                     <span style={{ color: p.source === 'bank' ? IOS.muted : IOS.blue }}>{p.source}</span>
                 </div>

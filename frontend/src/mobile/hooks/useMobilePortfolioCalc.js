@@ -6,18 +6,18 @@ const useMobilePortfolioCalc = (entries) => {
         const currency = entry.currency || 'ILS';
         const valueNum = Number(entry.value_ils);
         const safeValue = Number.isFinite(valueNum) ? valueNum : 0;
-        const currentPricePerUnit = livePrice?.currentPrice ?? (safeValue / units);
-        const totalValue = units * (Number.isFinite(currentPricePerUnit) ? currentPricePerUnit : safeValue);
+        const valuePerUnit = safeValue / units;
+        const totalValue = safeValue;
         const basePrice = entry.base_price != null && entry.base_price !== ''
             ? parseFloat(entry.base_price)
             : null;
         const growthAmount = basePrice != null && basePrice !== 0
-            ? currentPricePerUnit - basePrice
+            ? valuePerUnit - basePrice
             : null;
         const growthPercent = basePrice != null && basePrice !== 0
-            ? ((currentPricePerUnit - basePrice) / basePrice) * 100
+            ? ((valuePerUnit - basePrice) / basePrice) * 100
             : null;
-        return { units, currency, currentPricePerUnit, totalValue, growthAmount, growthPercent };
+        return { units, currency, valuePerUnit, totalValue, growthAmount, growthPercent };
     };
 
     const groupedEntries = entries.reduce((acc, entry) => {

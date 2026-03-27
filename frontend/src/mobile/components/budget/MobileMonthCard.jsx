@@ -10,6 +10,7 @@ const fmt = (n) =>
     new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(n));
 
 const fmtMonth = (ym) => {
+    if (!ym || !ym.includes('-')) return ym || '—';
     const [y, m] = ym.split('-');
     return new Date(+y, +m - 1).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
 };
