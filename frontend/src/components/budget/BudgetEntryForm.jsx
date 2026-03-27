@@ -9,7 +9,7 @@ const SYS = {
     border:    '#000',
 };
 
-export const EntryForm = ({ initial, onSave, onCancel, loading }) => {
+export const EntryForm = ({ initial, onSave, onCancel, loading, renovationMode }) => {
     const [form, setForm] = useState(initial);
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -36,7 +36,7 @@ export const EntryForm = ({ initial, onSave, onCancel, loading }) => {
         }}>
             {/* Type toggle */}
             <div style={{ display: 'flex', gap: 8 }}>
-                {[['income', '↑ INCOME'], ['outcome', '↓ EXPENSE']].map(([t, label]) => (
+                {[['income', renovationMode ? '↑ FUTURE PAYMENT' : '↑ INCOME'], ['outcome', renovationMode ? '↓ PAID' : '↓ EXPENSE']].map(([t, label]) => (
                     <button key={t} type="button"
                         onClick={() => set('type', t)}
                         style={{

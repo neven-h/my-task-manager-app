@@ -16,6 +16,12 @@ const TransactionEditRow = ({ editingTransaction, setEditingTransaction, isSelec
                 onChange={(e) => setEditingTransaction({ ...editingTransaction, description: e.target.value })}
                 style={{ padding: '0.4rem', border: `2px solid ${colors.border}`, width: '100%', fontSize: '0.9rem', fontFamily: '"Inter", sans-serif' }} />
         </td>
+        <td style={{ padding: '0.5rem' }}>
+            <input type="text" value={editingTransaction.category || ''}
+                onChange={(e) => setEditingTransaction({ ...editingTransaction, category: e.target.value })}
+                placeholder="Category"
+                style={{ padding: '0.4rem', border: `2px solid ${colors.border}`, width: '100%', fontSize: '0.9rem', fontFamily: '"Inter", sans-serif' }} />
+        </td>
         <td style={{ padding: '0.5rem', textAlign: 'center' }}>
             <select value={editingTransaction.transaction_type}
                 onChange={(e) => setEditingTransaction({ ...editingTransaction, transaction_type: e.target.value })}

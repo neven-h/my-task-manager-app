@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
+		4258357A2F72E9BA00C7E6B1 /* BiometricsPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 425835792F72E9BA00C7E6B1 /* BiometricsPlugin.swift */; };
 		4288275F2F6C34C000CF07EE /* CalendarPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4288275E2F6C34C000CF07EE /* CalendarPlugin.swift */; };
 		428827602F6C34C000CF07EE /* CalendarPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = 4288275D2F6C34C000CF07EE /* CalendarPlugin.m */; };
 		42FFC1222F630A2800AB487D /* BiometricAuthPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42FFC1212F630A2800AB487D /* BiometricAuthPlugin.swift */; };
@@ -24,6 +25,7 @@
 
 /* Begin PBXFileReference section */
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
+		425835792F72E9BA00C7E6B1 /* BiometricsPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricsPlugin.swift; sourceTree = "<group>"; };
 		4288275D2F6C34C000CF07EE /* CalendarPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CalendarPlugin.m; sourceTree = "<group>"; };
 		4288275E2F6C34C000CF07EE /* CalendarPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarPlugin.swift; sourceTree = "<group>"; };
 		42948CD52F68589C00D4CE8C /* biometricAuth.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = biometricAuth.js; sourceTree = "<group>"; };
@@ -93,6 +95,7 @@
 				42FFC1212F630A2800AB487D /* BiometricAuthPlugin.swift */,
 				42FFC1232F630A4700AB487D /* BiometricAuthPlugin.m */,
 				42FFC1252F630DD100AB487D /* Info 2.plist */,
+				425835792F72E9BA00C7E6B1 /* BiometricsPlugin.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -183,6 +186,7 @@
 				4288275F2F6C34C000CF07EE /* CalendarPlugin.swift in Sources */,
 				428827602F6C34C000CF07EE /* CalendarPlugin.m in Sources */,
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
+				4258357A2F72E9BA00C7E6B1 /* BiometricsPlugin.swift in Sources */,
 				42FFC1242F630A4700AB487D /* BiometricAuthPlugin.m in Sources */,
 				42FFC1222F630A2800AB487D /* BiometricAuthPlugin.swift in Sources */,
 			);

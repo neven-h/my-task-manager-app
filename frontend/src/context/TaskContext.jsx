@@ -35,6 +35,7 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
     const [formModalState, setFormModalState] = useState({ isOpen: false, editingTask: null });
     const [showBulkInput, setShowBulkInput] = useState(false);
     const [shareModalState, setShareModalState] = useState({ isOpen: false, sharingTask: null });
+    const [calendarModalState, setCalendarModalState] = useState({ isOpen: false, task: null });
 
     const [rtlEnabled, setRtlEnabledState] = useState(() => {
         if (authRole === 'shared') return false;
@@ -45,9 +46,25 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
         storage.set(STORAGE_KEYS.TASK_RTL_ENABLED, String(val));
     }, []);
 
+    // Nav visibility — persisted in localStorage so each user controls their own menu
+    const [navVisibility, setNavVisibilityState] = useState(() => {
+        try {
+            const saved = localStorage.getItem('nav_visible_tabs');
+            if (saved) return JSON.parse(saved);
+        } catch (_) {}
+        return { transactions: true, clients: true, portfolio: true, budget: true, notebook: true, renovation: false };
+    });
+    const setNavVisibility = useCallback((key, value) => {
+        setNavVisibilityState(prev => {
+            const next = { ...prev, [key]: value };
+            localStorage.setItem('nav_visible_tabs', JSON.stringify(next));
+            return next;
+        });
+    }, []);
+
     useEffect(() => {
         const savedView = storage.get(STORAGE_KEYS.LAST_ACTIVE_VIEW);
-        if (savedView && ['tasks', 'transactions', 'clients', 'portfolio', 'stats', 'notebook', 'budget'].includes(savedView)) {
+        if (savedView && ['tasks', 'transactions', 'clients', 'portfolio', 'stats', 'notebook', 'budget', 'renovation'].includes(savedView)) {
             setAppView(savedView);
         }
     }, []);
@@ -106,9 +123,12 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
     const closeFormModal = useCallback(() => setFormModalState({ isOpen: false, editingTask: null }), []);
     const openShareModal = useCallback((task) => setShareModalState({ isOpen: true, sharingTask: task }), []);
     const closeShareModal = useCallback(() => setShareModalState({ isOpen: false, sharingTask: null }), []);
+    const openCalendarModal = useCallback((task) => setCalendarModalState({ isOpen: true, task }), []);
+    const closeCalendarModal = useCallback(() => setCalendarModalState({ isOpen: false, task: null }), []);
 
     const value = useMemo(() => ({
         authToken, authRole, authUser, isAdmin, isSharedUser, isLimitedUser, onLogout,
+        navVisibility, setNavVisibility,
         tasks, allCategories, allTags, clients, stats, loading, error, setError,
         completedTasks, uncompletedTasks,
         filters, setFilters, taskViewMode, setTaskViewMode, buildFilterParams,
@@ -122,7 +142,9 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
         formModal: formModalState, openNewTaskForm, openEditTaskForm, closeFormModal,
         showBulkInput, setShowBulkInput,
         shareModal: shareModalState, openShareModal, closeShareModal,
+        calendarModal: calendarModalState, openCalendarModal, closeCalendarModal,
         rtlEnabled, setRtlEnabled,
+        navVisibility, setNavVisibility,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }), [
         authToken, authRole, authUser, onLogout,
@@ -139,7 +161,9 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
         formModalState, openNewTaskForm, openEditTaskForm, closeFormModal,
         showBulkInput,
         shareModalState, openShareModal, closeShareModal,
+        calendarModalState, openCalendarModal, closeCalendarModal,
         rtlEnabled, setRtlEnabled,
+        navVisibility, setNavVisibility,
     ]);
 
     return <TaskContext.Provider value={value}>{children}</TaskContext.Provider>;

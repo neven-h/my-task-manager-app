@@ -55,5 +55,7 @@
     <string>Dr. Pitz Club needs calendar access to add your tasks as events.</string>
     <key>NSCalendarsWriteOnlyAccessUsageDescription</key>
     <string>Dr. Pitz Club needs write access to add tasks to your calendar.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>Dr. Pitz Club needs full calendar access to add your tasks as calendar events.</string>
 </dict>
 </plist>

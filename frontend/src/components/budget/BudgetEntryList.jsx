@@ -30,6 +30,7 @@ export const BudgetEntryList = ({
     selectedIds,
     toggleSelect,
     onSelectAll,
+    renovationMode,
 }) => {
     // Balance keyed by entry id — use stored value from source file (יתרה column) only.
     // Never compute a running total; if no stored balance, the cell is hidden.
@@ -59,7 +60,7 @@ export const BudgetEntryList = ({
                 background: '#F5F5F5',
             }}>
                 <div style={{ display: 'flex', gap: 6 }}>
-                    {[['all', 'All'], ['income', 'Income'], ['outcome', 'Expenses']].map(([val, label]) => (
+                    {[['all', 'All'], ['income', renovationMode ? 'Future' : 'Income'], ['outcome', renovationMode ? 'Paid' : 'Expenses']].map(([val, label]) => (
                         <button key={val} type="button" onClick={() => setTypeFilter(val)}
                             style={filterBtn(typeFilter === val, val === 'income' ? SYS.success : val === 'outcome' ? SYS.accent : SYS.primary)}>
                             {label}

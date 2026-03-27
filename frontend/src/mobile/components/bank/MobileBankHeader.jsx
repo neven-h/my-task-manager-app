@@ -2,6 +2,20 @@ import React from 'react';
 import { ArrowLeft, FileDown } from 'lucide-react';
 import { THEME } from '../../theme';
 
+const SHIMMER = {
+    background: 'linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%)',
+    backgroundSize: '800px 100%',
+    animation: 'shimmer 1.4s ease infinite',
+};
+
+const TabSkeleton = () => (
+    <div style={{ display: 'flex', gap: 8, paddingBottom: 2, minHeight: 40, alignItems: 'center' }}>
+        {[72, 88, 64].map((w, i) => (
+            <div key={i} style={{ ...SHIMMER, width: w, height: 34, borderRadius: 20, flexShrink: 0 }} />
+        ))}
+    </div>
+);
+
 const SPRING = 'cubic-bezier(0.22,1,0.36,1)';
 
 const MobileBankHeader = ({
@@ -76,9 +90,7 @@ const MobileBankHeader = ({
             )}
 
             {tabsLoading ? (
-                <div style={{padding: '8px 0', color: THEME.muted, fontSize: '0.85rem'}}>
-                    Loading tabs...
-                </div>
+                <TabSkeleton />
             ) : tabs.length > 0 ? (
                 <div style={{
                     display: 'flex', gap: '8px',

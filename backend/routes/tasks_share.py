@@ -43,8 +43,38 @@ def share_task(payload, task_id):
             if user_role != 'admin' and task.get('created_by') != username:
                 return jsonify({'error': 'Access denied'}), 403
 
+            # Fetch attachments for this task
+            cursor.execute(
+                "SELECT id, filename, cloudinary_url FROM task_attachments WHERE task_id = %s",
+                (task_id,)
+            )
+            attachments = cursor.fetchall()
+
             task_date = task['task_date'].strftime('%B %d, %Y') if task.get('task_date') else 'Not set'
             notes = task.get('notes', '')
+
+            # Build attachment text/html sections
+            attachments_text = ''
+            attachments_html = ''
+            if attachments:
+                att_lines = []
+                att_html_items = []
+                for att in attachments:
+                    fname = att['filename']
+                    url = att['cloudinary_url'] if att.get('cloudinary_url') else f"{FRONTEND_URL}/api/tasks/attachments/{att['id']}/file"
+                    att_lines.append(f"  - {fname}: {url}")
+                    att_html_items.append(
+                        f'<li style="margin:4px 0;"><a href="{url}" '
+                        f'style="color:#0d6efd;text-decoration:none;font-weight:bold;">{fname}</a></li>'
+                    )
+                attachments_text = '\nAttachments:\n' + '\n'.join(att_lines) + '\n'
+                attachments_html = (
+                    '<div style="margin:12px 0 0;">'
+                    '<p style="margin:0 0 6px;font-size:0.9em;"><strong>Attachments:</strong></p>'
+                    '<ul style="margin:0;padding-left:20px;">'
+                    + ''.join(att_html_items)
+                    + '</ul></div>'
+                )
 
             email_body = f"""A task has been shared with you from Dr. Pitz club.
 
@@ -56,8 +86,7 @@ Date: {task_date}
 Description:
 {task.get('description', 'No description')}
 
-{('Notes: ' + notes) if notes else ''}
-
+{('Notes: ' + notes) if notes else ''}{attachments_text}
 View your tasks at {FRONTEND_URL}
 
 Best regards,
@@ -76,6 +105,7 @@ Dr. Pitz club Team"""
     <p style="margin:12px 0 4px;font-size:0.9em;"><strong>Description:</strong></p>
     <p style="margin:0;font-size:0.9em;color:#555;">{task.get('description', 'No description')}</p>
     {f'<p style="margin:12px 0 0;font-size:0.85em;color:#666;"><strong>Notes:</strong> {notes}</p>' if notes else ''}
+    {attachments_html}
   </div>
   <p style="margin:24px 0;">
     <a href="{FRONTEND_URL}"

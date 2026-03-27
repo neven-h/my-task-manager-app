@@ -6,7 +6,8 @@ const getDefaultTransaction = () => ({
     transaction_date: new Date().toISOString().split('T')[0],
     description: '', amount: '', account_number: '',
     month_year: new Date().toISOString().slice(0, 7),
-    transaction_type: 'credit'
+    transaction_type: 'credit',
+    category: '', comments: '',
 });
 
 const AddTransactionModal = () => {

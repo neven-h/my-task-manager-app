@@ -45,6 +45,10 @@ const TransactionRow = ({ transaction }) => {
                         <td onClick={() => setExpandedDescriptionId(isExpanded ? null : t.id)}
                             style={{ padding: '0.65rem 0.75rem', fontSize: '0.9rem', color: colors.text, cursor: 'pointer', position: 'relative' }}>
                             <span style={{ borderBottom: `1px dashed ${colors.textLight}`, paddingBottom: '1px' }}>{t.description}</span>
+                            {t.comments && <span title={t.comments} style={{ marginLeft: 6, fontSize: '0.75rem', color: colors.textLight }}>💬</span>}
+                        </td>
+                        <td style={{ padding: '0.65rem 0.75rem', fontSize: '0.85rem', color: colors.textLight }}>
+                            {t.category || ''}
                         </td>
                         <td style={{ padding: '0.65rem 0.75rem', textAlign: 'center' }}>
                             <span style={{ padding: '0.3rem 0.6rem', background: t.transaction_type === 'cash' ? colors.success : colors.accent, color: '#fff', fontSize: '0.8rem', fontWeight: '600', border: `2px solid ${colors.border}`, fontFamily: '"Inter", sans-serif', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
@@ -77,10 +81,37 @@ const TransactionRow = ({ transaction }) => {
                     </>
                 )}
             </tr>
-            {isExpanded && (() => {
+            {isEditing && (
+                <tr style={{ background: '#fafafa', borderBottom: `1px solid ${colors.border}` }}>
+                    <td colSpan={7} style={{ padding: '0.5rem 0.75rem' }}>
+                        <textarea
+                            placeholder="Comments (optional)"
+                            value={editingTransaction.comments || ''}
+                            onChange={(e) => setEditingTransaction({ ...editingTransaction, comments: e.target.value })}
+                            rows={2}
+                            style={{ width: '100%', padding: '0.4rem', border: `2px solid ${colors.border}`, fontSize: '0.88rem', fontFamily: '"Inter", sans-serif', resize: 'vertical', boxSizing: 'border-box' }}
+                        />
+                    </td>
+                </tr>
+            )}
+            {isExpanded && !isEditing && (() => {
                 const history = getDescriptionHistory(t);
-                if (history.length === 0) return null;
-                return <TransactionHistoryRows history={history} colors={colors} />;
+                const hasComments = !!t.comments;
+                const hasHistory = history.length > 0;
+                if (!hasComments && !hasHistory) return null;
+                return (
+                    <>
+                        {hasComments && (
+                            <tr style={{ background: '#f9f9f9', borderBottom: `1px solid ${colors.border}` }}>
+                                <td />
+                                <td colSpan={6} style={{ padding: '0.55rem 0.75rem', fontSize: '0.88rem', color: colors.text, fontStyle: 'italic' }}>
+                                    💬 {t.comments}
+                                </td>
+                            </tr>
+                        )}
+                        {hasHistory && <TransactionHistoryRows history={history} colors={colors} />}
+                    </>
+                );
             })()}
         </React.Fragment>
     );

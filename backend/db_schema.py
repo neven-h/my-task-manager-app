@@ -8,6 +8,7 @@ from db_schema_bank import init_bank_tables
 from db_schema_users import init_users_tables
 from db_schema_portfolio import init_portfolio_tables
 from db_schema_misc import init_misc_tables
+from db_schema_renovation import init_renovation_tables
 
 
 def init_db():
@@ -29,6 +30,7 @@ def init_db():
         init_users_tables(cursor, connection)
         init_portfolio_tables(cursor, connection)
         init_misc_tables(cursor, connection)
+        init_renovation_tables(cursor, connection)
 
         connection.commit()
         print("Database initialized successfully")

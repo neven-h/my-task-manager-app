@@ -111,6 +111,102 @@ export function generateInsights(data, startingBalance) {
     return insights.slice(0, 3);
 }
 
+// ── Budget-level insights ────────────────────────────────────────────────────
+
+/**
+ * Generate structured insights from monthly budget data.
+ * Returns array of { type: 'positive'|'warning'|'info', icon, text }.
+ */
+export function generateBudgetInsights(monthlyTotals, tabEntries) {
+    if (!monthlyTotals || monthlyTotals.length < 2) return [];
+    const result = [];
+    const months = monthlyTotals.map(([m, d]) => ({ month: m, ...d }));
+    const fmt = (n) => Math.abs(n).toLocaleString('he-IL', { maximumFractionDigits: 0 });
+
+    const avgIncome  = months.reduce((s, m) => s + m.income, 0) / months.length;
+    const avgExpense = months.reduce((s, m) => s + m.expense, 0) / months.length;
+
+    // 1. Savings rate
+    if (avgIncome > 0 && avgExpense > 0) {
+        const rate = Math.round(((avgIncome - avgExpense) / avgIncome) * 100);
+        if (rate > 20) {
+            result.push({ type: 'positive', icon: '\u2713',
+                text: `Average savings rate: ${rate}% of income — above the recommended 20%.` });
+        } else if (rate > 10) {
+            result.push({ type: 'info', icon: '\u2139',
+                text: `Average savings rate: ${rate}% of income. Aim for 20%+ as a safety buffer.` });
+        } else if (rate > 0) {
+            result.push({ type: 'warning', icon: '\u26A0',
+                text: `Average savings rate: only ${rate}% of income. Try to build a bigger margin.` });
+        } else {
+            result.push({ type: 'warning', icon: '\u26A0',
+                text: `You're spending more than you earn on average. Monthly deficit: ₪${fmt(avgExpense - avgIncome)}.` });
+        }
+    }
+
+    // 2. Break-even
+    if (avgExpense > 0) {
+        result.push({ type: 'info', icon: '\u2139',
+            text: `Break-even: you need at least ₪${fmt(avgExpense)}/month to cover average expenses.` });
+    }
+
+    // 3. Expense volatility
+    if (months.length >= 3) {
+        const expenses = months.map(m => m.expense);
+        const mean = expenses.reduce((s, v) => s + v, 0) / expenses.length;
+        if (mean > 0) {
+            const stdDev = Math.sqrt(expenses.reduce((s, v) => s + Math.pow(v - mean, 2), 0) / expenses.length);
+            const cv = (stdDev / mean) * 100;
+            if (cv > 30) {
+                result.push({ type: 'warning', icon: '\u26A0',
+                    text: `Monthly expenses vary a lot (±₪${fmt(stdDev)} from average). Keep a buffer of at least ₪${fmt(stdDev * 2)} for unexpected spikes.` });
+            } else if (cv > 15) {
+                result.push({ type: 'info', icon: '\u2139',
+                    text: `Monthly expenses are moderately variable (±₪${fmt(stdDev)} from average).` });
+            }
+        }
+    }
+
+    // 4. Seasonal spikes
+    if (months.length >= 6) {
+        const avgExp = months.reduce((s, m) => s + m.expense, 0) / months.length;
+        const spikes = months.filter(m => m.expense > avgExp * 1.4);
+        if (spikes.length > 0) {
+            const names = spikes.map(m => {
+                const [y, mo] = m.month.split('-');
+                return new Date(+y, +mo - 1).toLocaleDateString(undefined, { month: 'long' });
+            }).join(', ');
+            result.push({ type: 'warning', icon: '\u26A0',
+                text: `Spending spikes detected in: ${names}. Plan ahead for these high-spending periods.` });
+        }
+    }
+
+    // 5. Category concentration
+    if (tabEntries && tabEntries.length > 0) {
+        const catMap = {};
+        tabEntries.filter(e => e.type === 'outcome').forEach(e => {
+            const cat = e.category || e.description || 'Other';
+            catMap[cat] = (catMap[cat] || 0) + e.amount;
+        });
+        const sorted = Object.entries(catMap).sort((a, b) => b[1] - a[1]);
+        const totalExp = sorted.reduce((s, [, v]) => s + v, 0);
+        if (sorted.length >= 3 && totalExp > 0) {
+            const top3Total = sorted.slice(0, 3).reduce((s, [, v]) => s + v, 0);
+            const top3Pct = Math.round((top3Total / totalExp) * 100);
+            const top3Names = sorted.slice(0, 3).map(([name]) => name).join(', ');
+            if (top3Pct > 70) {
+                result.push({ type: 'warning', icon: '\u26A0',
+                    text: `Top 3 categories (${top3Names}) account for ${top3Pct}% of spending. A change in any of these would significantly impact your budget.` });
+            } else {
+                result.push({ type: 'info', icon: '\u2139',
+                    text: `Top 3 categories (${top3Names}) account for ${top3Pct}% of spending.` });
+            }
+        }
+    }
+
+    return result.slice(0, 5);
+}
+
 // ── What-if ───────────────────────────────────────────────────────────────────
 
 /**

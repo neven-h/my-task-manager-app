@@ -14,7 +14,8 @@ export async function checkCalendarAccess() {
     if (!isNative()) return { status: 'notDetermined' };
     try {
         return await Calendar.checkAccess();
-    } catch {
+    } catch (err) {
+        console.error('Calendar.checkAccess failed (plugin bridge issue?):', err);
         return { status: 'notDetermined' };
     }
 }
@@ -25,7 +26,8 @@ export async function requestCalendarAccess() {
     if (!isNative()) return { granted: false, status: 'notDetermined' };
     try {
         return await Calendar.requestAccess();
-    } catch {
+    } catch (err) {
+        console.error('Calendar.requestAccess failed (plugin bridge issue?):', err);
         return { granted: false, status: 'denied' };
     }
 }

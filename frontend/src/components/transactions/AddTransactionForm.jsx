@@ -68,11 +68,24 @@ const AddTransactionForm = ({ newTransaction, setNewTransaction, allDescriptions
                         title="Toggle sign">±</button>
                 </div>
             </div>
-            <div style={{ marginBottom: '2rem' }}>
+            <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '1.05rem', color: colors.text }}>🏦 Account Number (optional)</label>
                 <input type="text" value={newTransaction.account_number}
                     onChange={(e) => setNewTransaction({ ...newTransaction, account_number: e.target.value })}
                     placeholder="Account number" style={{ width: '100%', padding: '1rem', border: `3px solid ${colors.border}`, fontSize: '1.05rem', fontFamily: '"Inter", sans-serif' }} />
+            </div>
+            <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '1.05rem', color: colors.text }}>🏷️ Category (optional)</label>
+                <input type="text" value={newTransaction.category || ''}
+                    onChange={(e) => setNewTransaction({ ...newTransaction, category: e.target.value })}
+                    placeholder="e.g. Flooring, Plumbing, Materials" style={{ width: '100%', padding: '1rem', border: `3px solid ${colors.border}`, fontSize: '1.05rem', fontFamily: '"Inter", sans-serif' }} />
+            </div>
+            <div style={{ marginBottom: '2rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', fontSize: '1.05rem', color: colors.text }}>💬 Comments (optional)</label>
+                <textarea value={newTransaction.comments || ''}
+                    onChange={(e) => setNewTransaction({ ...newTransaction, comments: e.target.value })}
+                    placeholder="Additional notes or details about this transaction"
+                    rows={3} style={{ width: '100%', padding: '1rem', border: `3px solid ${colors.border}`, fontSize: '1.05rem', fontFamily: '"Inter", sans-serif', resize: 'vertical' }} />
             </div>
         </>
     );

@@ -5,6 +5,7 @@ import ClientsManagement from './ClientsManagement';
 import StockPortfolio from './StockPortfolio';
 import Budget from './Budget';
 import DesktopNotebook from './components/notebook/DesktopNotebook';
+import Renovation from './Renovation';
 import './TaskTracker.css';
 
 import { TaskProvider, useTaskContext } from './context/TaskContext';
@@ -18,6 +19,7 @@ import TaskStatsView from './components/tasks/TaskStatsView';
 import TaskFormModal from './components/tasks/TaskFormModal';
 import BulkTaskModal from './components/tasks/BulkTaskModal';
 import ShareTaskModal from './components/tasks/ShareTaskModal';
+import CalendarChoiceModal from './components/tasks/CalendarChoiceModal';
 
 const TaskTrackerInner = () => {
     const { appView, setAppView, view, error, setError, authUser, authRole } = useTaskContext();
@@ -27,6 +29,9 @@ const TaskTrackerInner = () => {
     const [showSidebar, setShowSidebar] = useState(true);
 
     // Route to other app views
+    if (appView === 'renovation') {
+        return <Renovation onBackToTasks={() => setAppView('tasks')} />;
+    }
     if (appView === 'transactions') {
         return <BankTransactions onBackToTasks={() => setAppView('tasks')} authUser={authUser} authRole={authRole} />;
     }
@@ -117,6 +122,7 @@ const TaskTrackerInner = () => {
             <TaskFormModal />
             <BulkTaskModal />
             <ShareTaskModal />
+            <CalendarChoiceModal />
         </div>
     );
 };
