@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TaskProvider, useTaskContext } from '../context/TaskContext';
 
 // Mobile views
@@ -27,6 +27,7 @@ import useSwipeBack from './hooks/useSwipeBack';
 import { THEME, FONT_STACK } from './theme';
 
 const SPRING = 'cubic-bezier(0.22,1,0.36,1)';
+const IOS_APP_VIEW_STORAGE_KEY = 'ios_app_view';
 
 /**
  * Wraps any full-page view with an iOS-style edge-swipe-back gesture.
@@ -68,6 +69,19 @@ const IOSTaskTrackerInner = () => {
     const [filterMode, setFilterMode] = useState('all');
     const [showSearchDrawer, setShowSearchDrawer] = useState(false);
     const [showUploadFlow, setShowUploadFlow] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const savedAppView = window.sessionStorage.getItem(IOS_APP_VIEW_STORAGE_KEY);
+        if (savedAppView && savedAppView !== appView) {
+            setAppView(savedAppView);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        window.sessionStorage.setItem(IOS_APP_VIEW_STORAGE_KEY, appView);
+    }, [appView]);
 
     const goBack = () => setAppView('tasks');
 

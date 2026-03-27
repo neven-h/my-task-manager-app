@@ -19,24 +19,8 @@ const App = () => {
   const [authToken, setAuthToken] = useState(null);
   const [authUser, setAuthUser] = useState(null);
   const [authRole, setAuthRole] = useState(null);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [isMobile] = useState(() => window.innerWidth < 768);
   const [isAuthenticating, setIsAuthenticating] = useState(true);
-
-  // Detect mobile/desktop on resize (debounced to avoid excessive re-renders)
-  useEffect(() => {
-    let resizeTimer;
-    const handleResize = () => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => {
-        setIsMobile(window.innerWidth < 768);
-      }, 150);
-    };
-    window.addEventListener('resize', handleResize);
-    return () => {
-      clearTimeout(resizeTimer);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
 
   // Check if user is already logged in on mount
   useEffect(() => {
