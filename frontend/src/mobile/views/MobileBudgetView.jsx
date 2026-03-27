@@ -46,6 +46,18 @@ const MobileBudgetView = ({ onBack }) => {
     const { forecast, loading: forecastLoading, fetchForecast, clearForecast, lastUpdated, refresh } = useBalanceForecast();
 
     const [cutoff, setCutoff]             = useState(today());
+    const defaultFrom = () => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().split('T')[0]; };
+    const [dateFrom, setDateFrom]         = useState(defaultFrom());
+    const [datePreset, setDatePreset]     = useState('30d');
+    const applyPreset = useCallback((preset) => {
+        const now = new Date();
+        const fmt = (d) => d.toISOString().split('T')[0];
+        setDatePreset(preset);
+        if (preset === '30d')   { const f = new Date(); f.setDate(f.getDate() - 30); setDateFrom(fmt(f)); setCutoff(fmt(now)); }
+        if (preset === '90d')   { const f = new Date(); f.setDate(f.getDate() - 90); setDateFrom(fmt(f)); setCutoff(fmt(now)); }
+        if (preset === 'month') { setDateFrom(fmt(new Date(now.getFullYear(), now.getMonth(), 1))); setCutoff(fmt(now)); }
+        if (preset === 'all')   { setDateFrom(''); setCutoff(fmt(now)); }
+    }, []);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showForm, setShowForm]         = useState(false);
     const [editingEntry, setEditingEntry] = useState(null);
@@ -58,15 +70,21 @@ const MobileBudgetView = ({ onBack }) => {
     const [confirmClearTab, setConfirmClearTab]   = useState(false);
     const { activeTabId, setActiveTabId } = useBudgetActiveTab(tabs);
 
-    const { tabEntries, monthlyTotals, chartData, allCategories, health } = useBudgetStats(entries, cutoff, activeTabId, forecast, linkedTab);
+    const { tabEntries, monthlyTotals, chartData, allCategories, health } = useBudgetStats(entries, cutoff, activeTabId, forecast, linkedTab, dateFrom);
     const filters = useBudgetFilters(tabEntries);
 
     useEffect(() => { fetchEntries(); fetchTabs(); }, [fetchEntries, fetchTabs]);
-    useEffect(() => { fetchLink(activeTabId); clearForecast(); }, [activeTabId, fetchLink, clearForecast]);
+    useEffect(() => {
+        fetchLink(activeTabId); clearForecast();
+        const d = new Date(); d.setDate(d.getDate() - 30);
+        setDateFrom(d.toISOString().split('T')[0]);
+        setCutoff(new Date().toISOString().split('T')[0]);
+        setDatePreset('30d');
+    }, [activeTabId, fetchLink, clearForecast]);
     useEffect(() => { if (linkedTab && activeTabId) fetchForecast(activeTabId, 3); }, [linkedTab, activeTabId, fetchForecast]);
 
-    const income  = useMemo(() => tabEntries.filter(e => e.type === 'income'  && e.entry_date <= cutoff).reduce((s, e) => s + parseFloat(e.amount), 0), [tabEntries, cutoff]);
-    const outcome = useMemo(() => tabEntries.filter(e => e.type === 'outcome' && e.entry_date <= cutoff).reduce((s, e) => s + parseFloat(e.amount), 0), [tabEntries, cutoff]);
+    const income  = useMemo(() => tabEntries.filter(e => e.type === 'income'  && e.entry_date <= cutoff && (!dateFrom || e.entry_date >= dateFrom)).reduce((s, e) => s + parseFloat(e.amount), 0), [tabEntries, cutoff, dateFrom]);
+    const outcome = useMemo(() => tabEntries.filter(e => e.type === 'outcome' && e.entry_date <= cutoff && (!dateFrom || e.entry_date >= dateFrom)).reduce((s, e) => s + parseFloat(e.amount), 0), [tabEntries, cutoff, dateFrom]);
     const displayBal = forecast ? forecast.current_balance : (income - outcome);
     const refreshForecast = useCallback(() => {
         if (linkedTab && activeTabId) fetchForecast(activeTabId, 3);
@@ -158,7 +176,7 @@ const MobileBudgetView = ({ onBack }) => {
                         {error}
                     </div>
                 )}
-                <BudgetDatePicker cutoff={cutoff} setCutoff={setCutoff} showDatePicker={showDatePicker} setShowDatePicker={setShowDatePicker} />
+                <BudgetDatePicker cutoff={cutoff} setCutoff={setCutoff} showDatePicker={showDatePicker} setShowDatePicker={setShowDatePicker} dateFrom={dateFrom} setDateFrom={setDateFrom} datePreset={datePreset} setDatePreset={setDatePreset} applyPreset={applyPreset} />
                 <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
                     <SummaryCard icon={TrendingUp}   label="Income"   amount={income}  color={IOS.green} sign="+" />
                     <SummaryCard icon={TrendingDown} label="Expenses" amount={outcome} color={IOS.red}   sign="−" />
