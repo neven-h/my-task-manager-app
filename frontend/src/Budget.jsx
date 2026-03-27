@@ -46,6 +46,18 @@ const Budget = ({ onBackToTasks, renovationMode = false }) => {
     const { forecast, loading: forecastLoading, fetchForecast, clearForecast, lastUpdated, refresh } = useBalanceForecast();
 
     const [cutoff, setCutoff]                         = useState(today());
+    const defaultFrom = () => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().split('T')[0]; };
+    const [dateFrom, setDateFrom]     = useState(defaultFrom());
+    const [datePreset, setDatePreset] = useState('30d');
+    const applyPreset = useCallback((preset) => {
+        const now = new Date();
+        const fmt = (d) => d.toISOString().split('T')[0];
+        setDatePreset(preset);
+        if (preset === '30d')   { const f = new Date(); f.setDate(f.getDate() - 30); setDateFrom(fmt(f)); setCutoff(fmt(now)); }
+        if (preset === '90d')   { const f = new Date(); f.setDate(f.getDate() - 90); setDateFrom(fmt(f)); setCutoff(fmt(now)); }
+        if (preset === 'month') { setDateFrom(fmt(new Date(now.getFullYear(), now.getMonth(), 1))); setCutoff(fmt(now)); }
+        if (preset === 'all')   { setDateFrom(''); setCutoff(fmt(now)); }
+    }, []);
     const [selectedMonth, setSelectedMonth]           = useState(null); // null = all
     const [showForm, setShowForm]                     = useState(false);
     const [editingEntry, setEditingEntry]             = useState(null);
@@ -59,7 +71,7 @@ const Budget = ({ onBackToTasks, renovationMode = false }) => {
     const [selectedIds, setSelectedIds]               = useState(new Set());
 
     const { activeTabId, setActiveTabId } = useBudgetActiveTab(tabs);
-    const { tabEntries, monthlyTotals, chartData, allCategories, health } = useBudgetStats(entries, cutoff, activeTabId, forecast, linkedTab);
+    const { tabEntries, monthlyTotals, chartData, allCategories, health } = useBudgetStats(entries, cutoff, activeTabId, forecast, linkedTab, dateFrom);
 
     // Month sidebar data: derived from all tab entries (not filtered)
     const monthsData = useMemo(() => {
@@ -81,10 +93,16 @@ const Budget = ({ onBackToTasks, renovationMode = false }) => {
 
     const filters = useBudgetFilters(monthFilteredEntries);
     useEffect(() => { fetchEntries(); fetchTabs(); }, [fetchEntries, fetchTabs]);
-    useEffect(() => { fetchLink(activeTabId); clearForecast(); setSelectedMonth(null); fetchMonthlyBalances(activeTabId); }, [activeTabId, fetchLink, clearForecast, fetchMonthlyBalances]);
+    useEffect(() => {
+        fetchLink(activeTabId); clearForecast(); setSelectedMonth(null); fetchMonthlyBalances(activeTabId);
+        const d = new Date(); d.setDate(d.getDate() - 30);
+        setDateFrom(d.toISOString().split('T')[0]);
+        setCutoff(new Date().toISOString().split('T')[0]);
+        setDatePreset('30d');
+    }, [activeTabId, fetchLink, clearForecast, fetchMonthlyBalances]);
     useEffect(() => { if (linkedTab && activeTabId) fetchForecast(activeTabId, 3); }, [linkedTab, activeTabId, fetchForecast]);
-    const income  = useMemo(() => tabEntries.filter(e => e.type === 'income'  && e.entry_date <= cutoff).reduce((s, e) => s + e.amount, 0), [tabEntries, cutoff]);
-    const outcome = useMemo(() => tabEntries.filter(e => e.type === 'outcome' && e.entry_date <= cutoff).reduce((s, e) => s + e.amount, 0), [tabEntries, cutoff]);
+    const income  = useMemo(() => tabEntries.filter(e => e.type === 'income'  && e.entry_date <= cutoff && (!dateFrom || e.entry_date >= dateFrom)).reduce((s, e) => s + e.amount, 0), [tabEntries, cutoff, dateFrom]);
+    const outcome = useMemo(() => tabEntries.filter(e => e.type === 'outcome' && e.entry_date <= cutoff && (!dateFrom || e.entry_date >= dateFrom)).reduce((s, e) => s + e.amount, 0), [tabEntries, cutoff, dateFrom]);
     const { rangeOpen, setRangeOpen, rangeLoading, rangeResult, setRangeResult, customStart, setCustomStart, customEnd, setCustomEnd, endMinusDays, fetchRange, incomeForSummary, expenseForSummary, balanceForSummary, balanceBadgeForSummary } = useBudgetRange(activeTabId, cutoff, income, outcome, forecast, linkedTab);
     const refreshForecast = useCallback(() => { if (linkedTab && activeTabId) fetchForecast(activeTabId, 3); }, [linkedTab, activeTabId, fetchForecast]);
 
@@ -152,7 +170,7 @@ const Budget = ({ onBackToTasks, renovationMode = false }) => {
                 {showForm && <div id="budget-form"><EntryForm initial={formInitial} onSave={handleSave} onCancel={handleCancel} loading={loading} renovationMode={renovationMode} /></div>}
                 {activeTabId && <BudgetLinkBanner budgetTabId={activeTabId} linkedTab={linkedTab} linkError={linkError} onSetLink={(txTabId, linkType) => setLink(activeTabId, txTabId, linkType)} onRemoveLink={() => removeLink(activeTabId)} />}
 
-                <BudgetRangePanel rangeOpen={rangeOpen} rangeLoading={rangeLoading} rangeResult={rangeResult} cutoff={cutoff} setCutoff={setCutoff} activeTabId={activeTabId} customStart={customStart} setCustomStart={setCustomStart} customEnd={customEnd} setCustomEnd={setCustomEnd} fetchRange={fetchRange} endMinusDays={endMinusDays} setRangeResult={setRangeResult} setRangeOpen={setRangeOpen} />
+                <BudgetRangePanel rangeOpen={rangeOpen} rangeLoading={rangeLoading} rangeResult={rangeResult} cutoff={cutoff} setCutoff={setCutoff} activeTabId={activeTabId} customStart={customStart} setCustomStart={setCustomStart} customEnd={customEnd} setCustomEnd={setCustomEnd} fetchRange={fetchRange} endMinusDays={endMinusDays} setRangeResult={setRangeResult} setRangeOpen={setRangeOpen} dateFrom={dateFrom} setDateFrom={setDateFrom} datePreset={datePreset} setDatePreset={setDatePreset} applyPreset={applyPreset} />
 
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 24 }}>
                     {renovationMode ? (

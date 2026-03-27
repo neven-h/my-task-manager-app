@@ -5,15 +5,15 @@ import { healthScore, healthLabel, runwayMonths, runwayInfo, generateInsights, g
  * useBudgetStats — derives monthly aggregations, health score, runway,
  * and chart data from budget entries.
  */
-const useBudgetStats = (entries, cutoff, activeTabId, forecast = null, linkedTab = null) => {
+const useBudgetStats = (entries, cutoff, activeTabId, forecast = null, linkedTab = null, dateFrom = '') => {
     // Only show entries that belong to the active tab; if no tab is selected, show nothing
     const tabEntries = useMemo(() =>
         activeTabId === null ? [] : entries.filter(e => e.tab_id === activeTabId),
         [entries, activeTabId]);
 
     const filtered = useMemo(() =>
-        tabEntries.filter(e => e.entry_date <= cutoff),
-        [tabEntries, cutoff]);
+        tabEntries.filter(e => e.entry_date <= cutoff && (!dateFrom || e.entry_date >= dateFrom)),
+        [tabEntries, cutoff, dateFrom]);
 
     // Monthly totals: { 'YYYY-MM': { income, expense } }
     const monthlyTotals = useMemo(() => {
