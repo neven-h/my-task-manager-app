@@ -39,7 +39,7 @@ const SwipeBackView = ({ onBack, children }) => {
     const releasing = dragX === 0; // transition only during snap-back (not while dragging)
 
     return (
-        <div style={{ position: 'relative', overflow: 'hidden', minHeight: '100vh' }} {...handlers}>
+        <div style={{ position: 'relative', overflow: 'hidden', minHeight: '100dvh' }} {...handlers}>
             {/* Depth gradient that appears on the left as the view slides away */}
             <div style={{
                 position: 'fixed',
@@ -104,7 +104,7 @@ const IOSTaskTrackerInner = () => {
     }
 
     return (
-        <div style={{ minHeight: '100vh', background: THEME.bg, paddingBottom: '20px', fontFamily: FONT_STACK }}>
+        <div style={{ minHeight: '100dvh', background: THEME.bg, paddingBottom: '20px', fontFamily: FONT_STACK }}>
             <IOSStyles />
             <IOSHeader onMenuOpen={() => setShowSidebar(true)} />
 

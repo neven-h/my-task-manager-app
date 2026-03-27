@@ -95,9 +95,9 @@ const IOSBulkTaskModal = () => {
             onClick={(e) => { if (e.target === e.currentTarget) setShowBulkInput(false); }}
         >
             <div style={{
-                width: '100%', maxHeight: '94vh', height: '94vh', background: '#fff',
-                borderRadius: '16px 16px 0 0', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-                display: 'flex', flexDirection: 'column', boxShadow: '0 -4px 20px rgba(0,0,0,0.3)',
+                width: '100%', maxHeight: '94dvh', height: '94dvh', background: '#fff',
+                borderRadius: 0, borderTop: '3px solid #000', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
+                display: 'flex', flexDirection: 'column',
                 paddingBottom: 'env(safe-area-inset-bottom, 0)'
             }}>
                 {/* Header */}

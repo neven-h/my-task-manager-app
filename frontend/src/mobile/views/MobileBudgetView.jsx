@@ -130,7 +130,7 @@ const MobileBudgetView = ({ onBack }) => {
 
     if (!tabsLoading && tabs.length === 0) {
         return (
-            <div style={{ minHeight: '100vh', background: IOS.bg, fontFamily: FONT_STACK }}>
+            <div style={{ minHeight: '100dvh', background: IOS.bg, fontFamily: FONT_STACK }}>
                 <MobileBudgetHeader onBack={onBack} selectMode={false}
                     onToggleSelectMode={() => {}} entriesEmpty onExport={() => {}} />
                 <BudgetCreateFirstTab onCreateTab={handleCreateFirstTab} />
@@ -139,7 +139,7 @@ const MobileBudgetView = ({ onBack }) => {
     }
 
     return (
-        <div style={{ minHeight: '100vh', background: IOS.bg, fontFamily: FONT_STACK, paddingBottom: selectMode ? 'calc(env(safe-area-inset-bottom, 0px) + 140px)' : 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}>
+        <div style={{ minHeight: '100dvh', background: IOS.bg, fontFamily: FONT_STACK, paddingBottom: selectMode ? 'calc(env(safe-area-inset-bottom, 0px) + 140px)' : 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}>
 
             <MobileBudgetHeader onBack={onBack} selectMode={selectMode}
                 onToggleSelectMode={() => setSelectMode(m => !m)}

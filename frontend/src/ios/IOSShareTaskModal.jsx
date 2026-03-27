@@ -43,11 +43,11 @@ const IOSShareTaskModal = () => {
         >
             <div
                 style={{
-                    width: '100%', maxHeight: '65vh', background: '#fff',
-                    borderRadius: '16px 16px 0 0',
+                    width: '100%', maxHeight: '65dvh', background: '#fff',
+                    borderRadius: 0, borderTop: '3px solid #000',
                     padding: '20px',
                     paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)',
-                    fontFamily: FONT_STACK, boxShadow: '0 -4px 20px rgba(0,0,0,0.3)'
+                    fontFamily: FONT_STACK
                 }}
                 onClick={e => e.stopPropagation()}
             >
@@ -66,10 +66,10 @@ const IOSShareTaskModal = () => {
                 {feedback && (
                     <div style={{
                         display: 'flex', alignItems: 'center', gap: 8,
-                        padding: '10px 14px', borderRadius: 12, marginBottom: 16,
-                        background: feedback.type === 'success' ? '#E8F5E9' : '#FFEBEE',
-                        color: feedback.type === 'success' ? '#2E7D32' : '#C62828',
-                        fontSize: '0.88rem', fontWeight: 600,
+                        padding: '10px 14px', border: '2px solid #000', marginBottom: 16,
+                        background: feedback.type === 'success' ? '#00AA00' : '#FF0000',
+                        color: '#fff',
+                        fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px',
                     }}>
                         {feedback.type === 'success'
                             ? <CheckCircle size={18} />
@@ -92,11 +92,11 @@ const IOSShareTaskModal = () => {
                         onKeyDown={e => { if (e.key === 'Enter' && email.trim()) handleShare(); }}
                         style={{
                             width: '100%', padding: '13px 14px',
-                            borderRadius: 12,
-                            border: '1px solid rgba(0,0,0,0.08)',
+                            borderRadius: 0,
+                            border: '2px solid #000',
                             fontSize: '1rem',
                             fontFamily: FONT_STACK,
-                            background: '#F2F2F7',
+                            background: '#fff',
                             boxSizing: 'border-box',
                             outline: 'none',
                         }}

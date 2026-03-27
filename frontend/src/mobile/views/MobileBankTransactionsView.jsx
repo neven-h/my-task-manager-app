@@ -105,7 +105,7 @@ const MobileBankTransactionsView = ({ authUser, authRole, onBack }) => {
     }, [activeTabId, fetchTransactions, fetchStats, setActiveTabId]);
 
     return (
-        <div style={{ minHeight: '100vh', background: '#fff', fontFamily: FONT_STACK }}>
+        <div style={{ minHeight: '100dvh', background: '#fff', fontFamily: FONT_STACK }}>
             <MobileBankHeader onBack={onBack} tabs={tabs} activeTabId={activeTabId} setActiveTabId={setActiveTabId}
                 tabsLoading={tabsLoading} handleCreateTab={handleCreateTab}
                 exportTransactionsCSV={exportTransactionsCSV} hasTransactions={filteredTransactions.length > 0}

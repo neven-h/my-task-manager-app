@@ -82,7 +82,7 @@ const MobileStockPortfolioBauhaus = ({ authUser, authRole, onBack }) => {
     };
 
     return (
-        <div style={{ minHeight: '100vh', background: THEME.bg, fontFamily: FONT_STACK, paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}>
+        <div style={{ minHeight: '100dvh', background: THEME.bg, fontFamily: FONT_STACK, paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}>
             <MobileStockPortfolioHeader onBack={onBack} tabs={tabs} activeTabId={activeTabId} setActiveTabId={setActiveTabId} handleCreateTab={handleCreateTab} theme={THEME} headerStyle={headerStyle} backButtonStyle={backButtonStyle} />
             <MobileStockSummaryCards summary={summary} summaryDisplayCurrency={summaryDisplayCurrency} setSummaryDisplayCurrency={setSummaryDisplayCurrency} theme={THEME} fontStack={FONT_STACK} />
             <div style={{ padding: '0 16px 16px' }}>

@@ -35,7 +35,7 @@ const IOSTaskFormModal = () => {
                 style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'flex-end', padding: 0 }}
                 onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
             >
-                <div style={{ width: '100%', height: '94vh', maxHeight: '94vh', background: '#fff', borderRadius: '16px 16px 0 0', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 -4px 20px rgba(0,0,0,0.3)', paddingBottom: 'env(safe-area-inset-bottom, 0)' }}>
+                <div style={{ width: '100%', height: '94dvh', maxHeight: '94dvh', background: '#fff', borderRadius: 0, borderTop: '3px solid #000', overflow: 'hidden', display: 'flex', flexDirection: 'column', paddingBottom: 'env(safe-area-inset-bottom, 0)' }}>
                     {/* Header */}
                     <div style={{ flexShrink: 0, padding: '16px 20px', paddingTop: 'max(16px, env(safe-area-inset-top, 0))', borderBottom: '1px solid rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', zIndex: 1 }}>
                         <h2 style={{ fontSize: '1.3rem', fontWeight: 900, margin: 0, textTransform: 'uppercase', fontFamily: FONT_STACK }}>

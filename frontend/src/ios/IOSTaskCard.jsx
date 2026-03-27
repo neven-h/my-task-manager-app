@@ -22,20 +22,20 @@ const DeleteConfirmModal = ({ onConfirm, onCancel }) => (
     >
         <div
             onClick={e => e.stopPropagation()}
-            style={{ background: '#2C2C2E', borderRadius: 14, padding: '20px 16px', width: '100%', maxWidth: 280 }}
+            style={{ background: '#fff', borderRadius: 0, border: '3px solid #000', boxShadow: '4px 4px 0 #000', padding: '20px 16px', width: '100%', maxWidth: 280 }}
         >
-            <p style={{ color: '#fff', fontSize: '0.9rem', textAlign: 'center', margin: '0 0 20px', lineHeight: 1.5, fontFamily: FONT_STACK }}>
+            <p style={{ color: '#000', fontSize: '0.9rem', textAlign: 'center', margin: '0 0 20px', lineHeight: 1.5, fontFamily: FONT_STACK, fontWeight: 600 }}>
                 This task will be deleted. This action cannot be undone.
             </p>
             <button
                 onClick={onConfirm}
-                style={{ width: '100%', background: '#3A3A3C', border: 'none', borderRadius: 10, padding: '13px', color: '#FF3B30', fontSize: '1rem', fontWeight: 600, cursor: 'pointer', marginBottom: 8, fontFamily: FONT_STACK }}
+                style={{ width: '100%', background: '#FF0000', border: '2px solid #000', borderRadius: 0, padding: '13px', color: '#fff', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', cursor: 'pointer', marginBottom: 8, fontFamily: FONT_STACK }}
             >
                 Delete
             </button>
             <button
                 onClick={onCancel}
-                style={{ width: '100%', background: '#3A3A3C', border: 'none', borderRadius: 10, padding: '13px', color: '#fff', fontSize: '1rem', cursor: 'pointer', fontFamily: FONT_STACK }}
+                style={{ width: '100%', background: '#fff', border: '2px solid #000', borderRadius: 0, padding: '13px', color: '#000', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', cursor: 'pointer', fontFamily: FONT_STACK }}
             >
                 Cancel
             </button>
@@ -74,7 +74,7 @@ const IOSTaskCard = ({ task }) => {
         <>
             {showConfirm && <DeleteConfirmModal onConfirm={handleConfirmDelete} onCancel={handleCancelDelete} />}
             {showDetail && <IOSTaskDetailModal task={task} onClose={() => setShowDetail(false)} getCategoryLabel={getCategoryLabel} />}
-            <div style={{ position: 'relative', marginBottom: 10, overflow: 'hidden', borderRadius: 16 }}>
+            <div style={{ position: 'relative', marginBottom: 10, overflow: 'hidden', borderRadius: 0 }}>
                 {/* Delete button — always behind the card, revealed on swipe */}
                 <div
                     onClick={handleDeletePress}
@@ -99,10 +99,10 @@ const IOSTaskCard = ({ task }) => {
                 >
                     {/* Invisible overlay: tapping the card while open closes it */}
                     {isOpen && (
-                        <div onClick={reset} style={{ position: 'absolute', inset: 0, zIndex: 10, borderRadius: 16 }} />
+                        <div onClick={reset} style={{ position: 'absolute', inset: 0, zIndex: 10 }} />
                     )}
 
-                    <div style={{ background: '#fff', borderRadius: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.07)', padding: '14px 16px', fontFamily: FONT_STACK, position: 'relative', overflow: 'hidden' }}>
+                    <div style={{ background: '#fff', borderRadius: 0, border: '3px solid #000', boxShadow: '4px 4px 0 #000', padding: '14px 16px', fontFamily: FONT_STACK, position: 'relative', overflow: 'hidden' }}>
                         <div style={{ position: 'absolute', left: 0, top: 12, bottom: 12, width: 4, borderRadius: '0 4px 4px 0', background: statusColor }} />
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', paddingLeft: 8 }}>
                             <button

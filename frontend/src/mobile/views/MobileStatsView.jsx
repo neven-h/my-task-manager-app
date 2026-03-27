@@ -12,7 +12,7 @@ const MobileStatsView = ({ authUser, authRole, onBack }) => {
     const { stats, tasks, loading, categoryChartData, monthlyMax, PIE_COLORS } = useMobileStats(authUser, authRole);
 
     return (
-        <div style={{ minHeight: '100vh', background: '#fff', fontFamily: FONT_STACK }}>
+        <div style={{ minHeight: '100dvh', background: '#fff', fontFamily: FONT_STACK }}>
             <div style={{
                 background: '#fff',
                 borderBottom: '1px solid rgba(0,0,0,0.08)',
