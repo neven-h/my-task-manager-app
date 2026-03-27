@@ -6,7 +6,8 @@ const SYS = { border: '#000', light: '#666' };
 const GREEN = '#00AA00';
 const RED = '#FF0000';
 const BAR_HEIGHT = 140;
-const TOP_PAD = 20; // space above bars for value labels
+const TOP_PAD = 34; // space above bars for value labels + trend arrows
+const GRAY = '#999';
 
 const abbr = (n) => n >= 1000 ? Math.round(n / 1000) + 'K' : Math.round(n);
 
@@ -41,7 +42,6 @@ const BudgetMonthlyChart = ({ monthlyTotals }) => {
                         const x = i * (gapW * 2 + barW * 2 + 4) + 8;
                         const incH = (data.income / maxVal) * BAR_HEIGHT;
                         const expH = (data.expense / maxVal) * BAR_HEIGHT;
-                        // Bar top-y positions (shifted down by TOP_PAD)
                         const incY = TOP_PAD + BAR_HEIGHT - incH;
                         const expY = TOP_PAD + BAR_HEIGHT - expH;
                         const axisY = TOP_PAD + BAR_HEIGHT;
@@ -49,13 +49,24 @@ const BudgetMonthlyChart = ({ monthlyTotals }) => {
                         const expX = x + barW + 2 + barW / 2;
                         const [y, m] = month.split('-');
                         const label = new Date(+y, +m - 1).toLocaleDateString(undefined, { month: 'short' });
+                        // Trend arrow: compare net vs previous month
+                        let arrow = null;
+                        if (i > 0) {
+                            const prevData = recent[i - 1][1];
+                            const curNet = data.income - data.expense;
+                            const prevNet = prevData.income - prevData.expense;
+                            const threshold = Math.max(Math.abs(prevNet) * 0.05, 1);
+                            const diff = curNet - prevNet;
+                            const arrowX = x + barW;
+                            if (diff > threshold) arrow = { char: '\u25B2', color: GREEN, x: arrowX };
+                            else if (diff < -threshold) arrow = { char: '\u25BC', color: RED, x: arrowX };
+                            else arrow = { char: '\u2014', color: GRAY, x: arrowX };
+                        }
                         return (
                             <g key={month}>
                                 <rect x={x} y={incY} width={barW} height={incH} fill={GREEN} stroke="#000" strokeWidth="1.5" />
                                 <rect x={x + barW + 2} y={expY} width={barW} height={expH} fill={RED} stroke="#000" strokeWidth="1.5" />
-                                {/* Month label below axis */}
                                 <text x={x + barW} y={axisY + 15} textAnchor="middle" fontSize="11" fontWeight="700" fill={SYS.light}>{label}</text>
-                                {/* Abbreviated value labels above bars */}
                                 {incH > 12 && (
                                     <text x={incX} y={incY - 4} textAnchor="middle" fontSize="9" fontWeight="800" fill={GREEN}>
                                         {abbr(data.income)}
@@ -64,6 +75,11 @@ const BudgetMonthlyChart = ({ monthlyTotals }) => {
                                 {expH > 12 && (
                                     <text x={expX} y={expY - 4} textAnchor="middle" fontSize="9" fontWeight="800" fill={RED}>
                                         {abbr(data.expense)}
+                                    </text>
+                                )}
+                                {arrow && (
+                                    <text x={arrow.x} y={8} textAnchor="middle" fontSize="10" fontWeight="800" fill={arrow.color}>
+                                        {arrow.char}
                                     </text>
                                 )}
                             </g>

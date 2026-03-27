@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { healthScore, healthLabel, runwayMonths, runwayInfo, generateInsights } from '../utils/cashflowHelpers';
+import { healthScore, healthLabel, runwayMonths, runwayInfo, generateInsights, generateBudgetInsights } from '../utils/cashflowHelpers';
 
 /**
  * useBudgetStats — derives monthly aggregations, health score, runway,
@@ -81,9 +81,10 @@ const useBudgetStats = (entries, cutoff, activeTabId, forecast = null, linkedTab
             { avg_monthly_spend: avgMonthly, momentum, anomalies: [] },
             balance > 0 ? balance : null,
         );
+        const budgetInsights = generateBudgetInsights(monthlyTotals, tabEntries);
 
-        return { score, label, runway, rwInfo, momentum, avgMonthly, avgMonthlyIncome, monthlyNet, insights, balance };
-    }, [monthlyTotals, forecast, linkedTab]);
+        return { score, label, runway, rwInfo, momentum, avgMonthly, avgMonthlyIncome, monthlyNet, insights, budgetInsights, balance };
+    }, [monthlyTotals, tabEntries, forecast, linkedTab]);
 
     return { tabEntries, monthlyTotals, chartData, allCategories, health };
 };

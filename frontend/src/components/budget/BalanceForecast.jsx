@@ -185,6 +185,7 @@ const BalanceForecast = ({ forecast, onFetch, onRefresh, loading, linkedTab, las
                                 setShowAllHist={setShowAllHist}
                                 forecast={forecast}
                                 endBal={endBal}
+                                monthlyProj={monthlyProj}
                             />
                         </>
                     )}
