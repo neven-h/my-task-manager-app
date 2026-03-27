@@ -144,7 +144,6 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
         shareModal: shareModalState, openShareModal, closeShareModal,
         calendarModal: calendarModalState, openCalendarModal, closeCalendarModal,
         rtlEnabled, setRtlEnabled,
-        navVisibility, setNavVisibility,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }), [
         authToken, authRole, authUser, onLogout,
