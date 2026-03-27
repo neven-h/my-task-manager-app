@@ -41,6 +41,7 @@ const MobileBalanceForecast = ({ forecast, onFetch, onRefresh, loading, linkedTa
         if (!tl.length) return [];
         const byMonth = {};
         for (const item of tl) {
+            if (!item.date) continue;
             const mk = item.date.slice(0, 7);
             if (!byMonth[mk]) byMonth[mk] = { income: 0, expense: 0, endBalance: item.running_balance };
             if (item.type === 'income') byMonth[mk].income += item.amount; else byMonth[mk].expense += item.amount;
@@ -126,8 +127,8 @@ const MobileBalanceForecast = ({ forecast, onFetch, onRefresh, loading, linkedTa
                             <div style={{ fontSize: '0.68rem', fontWeight: 600, color: IOS.muted, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
                                 Balance today
                             </div>
-                            <div style={{ fontSize: '1.8rem', fontWeight: 700, color: forecast.current_balance >= 0 ? IOS.blue : IOS.red }}>
-                                {forecast.current_balance >= 0 ? '+' : '−'}₪{fmt(forecast.current_balance)}
+                            <div style={{ fontSize: '1.8rem', fontWeight: 700, color: (forecast.current_balance ?? 0) >= 0 ? IOS.blue : IOS.red }}>
+                                {(forecast.current_balance ?? 0) >= 0 ? '+' : '−'}₪{fmt(forecast.current_balance ?? 0)}
                             </div>
                             <div style={{ fontSize: '0.72rem', color: IOS.muted, marginTop: 4, display: 'flex', justifyContent: 'center', gap: 12 }}>
                                 <span>In: <b style={{ color: IOS.green }}>+₪{fmt((forecast.budget_income || 0) + (forecast.bank_income || 0))}</b></span>

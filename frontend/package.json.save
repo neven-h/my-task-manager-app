@@ -1,4 +1,4 @@
-{
+x{
   "name": "my-task-manager-app",
   "version": "1.0.0",
   "description": "Personal Assistant Task Management System",
@@ -18,11 +18,10 @@
     "vite": "7.1.11"
   },
   "overrides": {
-  "tar": "7.5.11",
-  "minimatch": "^3.1.4",
-  "yauzl": ">=3.2.1",
-  "picomatch": "^4.0.4"
-},
+    "tar": "7.5.11",
+    "minimatch": "^3.1.4",
+    "yauzl": ">=3.2.1"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",

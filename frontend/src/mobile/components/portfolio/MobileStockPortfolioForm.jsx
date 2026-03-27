@@ -35,8 +35,8 @@ const MobileStockPortfolioForm = ({ showForm, editingEntry, formData, setFormDat
                     width: '100%', maxHeight: '92vh', background: IOS.bg,
                     borderRadius: '20px 20px 0 0',
                     paddingBottom: 'max(20px, env(safe-area-inset-bottom))',
-                    overflowY: 'auto', overflowX: 'hidden',
-                    WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain',
+                    overflowY: 'hidden', overflowX: 'hidden',
+                    overscrollBehavior: 'contain',
                     touchAction: 'pan-y', display: 'flex', flexDirection: 'column',
                     transform: mounted ? 'translateY(0)' : 'translateY(100%)',
                     transition: `transform 380ms ${IOS.spring}`,
@@ -58,7 +58,9 @@ const MobileStockPortfolioForm = ({ showForm, editingEntry, formData, setFormDat
                         {loading ? 'Saving…' : 'Save'}
                     </button>
                 </div>
-                <MobileStockPortfolioFormFields formData={formData} setFormData={setFormData} stockNames={stockNames} />
+                <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                    <MobileStockPortfolioFormFields formData={formData} setFormData={setFormData} stockNames={stockNames} />
+                </div>
             </div>
         </div>
     );

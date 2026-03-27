@@ -35,6 +35,7 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
     const [formModalState, setFormModalState] = useState({ isOpen: false, editingTask: null });
     const [showBulkInput, setShowBulkInput] = useState(false);
     const [shareModalState, setShareModalState] = useState({ isOpen: false, sharingTask: null });
+    const [calendarModalState, setCalendarModalState] = useState({ isOpen: false, task: null });
 
     const [rtlEnabled, setRtlEnabledState] = useState(() => {
         if (authRole === 'shared') return false;
@@ -122,6 +123,8 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
     const closeFormModal = useCallback(() => setFormModalState({ isOpen: false, editingTask: null }), []);
     const openShareModal = useCallback((task) => setShareModalState({ isOpen: true, sharingTask: task }), []);
     const closeShareModal = useCallback(() => setShareModalState({ isOpen: false, sharingTask: null }), []);
+    const openCalendarModal = useCallback((task) => setCalendarModalState({ isOpen: true, task }), []);
+    const closeCalendarModal = useCallback(() => setCalendarModalState({ isOpen: false, task: null }), []);
 
     const value = useMemo(() => ({
         authToken, authRole, authUser, isAdmin, isSharedUser, isLimitedUser, onLogout,
@@ -139,8 +142,8 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
         formModal: formModalState, openNewTaskForm, openEditTaskForm, closeFormModal,
         showBulkInput, setShowBulkInput,
         shareModal: shareModalState, openShareModal, closeShareModal,
+        calendarModal: calendarModalState, openCalendarModal, closeCalendarModal,
         rtlEnabled, setRtlEnabled,
-        navVisibility, setNavVisibility,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }), [
         authToken, authRole, authUser, onLogout,
@@ -157,6 +160,7 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
         formModalState, openNewTaskForm, openEditTaskForm, closeFormModal,
         showBulkInput,
         shareModalState, openShareModal, closeShareModal,
+        calendarModalState, openCalendarModal, closeCalendarModal,
         rtlEnabled, setRtlEnabled,
         navVisibility, setNavVisibility,
     ]);

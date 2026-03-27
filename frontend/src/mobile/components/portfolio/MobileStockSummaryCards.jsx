@@ -108,7 +108,7 @@ const MobileStockSummaryCards = ({
                         borderRadius: '8px'
                     }}
                 >
-                    {summaryDisplayCurrency === 'ILS' ? '₪ ILS' : '$ USD'}
+                    {summaryDisplayCurrency === 'ILS' ? 'ILS' : 'USD'}
                 </button>
             </div>
 

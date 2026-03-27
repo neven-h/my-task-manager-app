@@ -11,6 +11,9 @@ const defaultFormData = () => ({
     shared: false, attachments: [], newAttachments: [], removedAttachmentIds: []
 });
 
+const getNewTaskDraftKey = () => STORAGE_KEYS.MOBILE_TASK_DRAFT;
+const getEditTaskDraftKey = (taskId) => `mobile_task_edit_draft_${taskId}`;
+
 const useIOSTaskForm = () => {
     const {
         formModal, closeFormModal, submitTask,
@@ -26,18 +29,36 @@ const useIOSTaskForm = () => {
 
     useEffect(() => {
         if (!isOpen) return;
+
         if (editingTask) {
-            setFormData({
-                title: editingTask.title || '', description: editingTask.description || '',
-                categories: editingTask.categories || [], client: editingTask.client || '',
-                task_date: editingTask.task_date || new Date().toISOString().split('T')[0],
-                task_time: editingTask.task_time || '', duration: editingTask.duration || '',
-                status: editingTask.status || 'uncompleted', tags: editingTask.tags || [],
-                notes: editingTask.notes || '', shared: editingTask.shared || false,
-                attachments: editingTask.attachments || [], newAttachments: [], removedAttachmentIds: []
-            });
+            const editDraft = storage.get(getEditTaskDraftKey(editingTask.id));
+            if (editDraft && typeof editDraft === 'object') {
+                setFormData({
+                    title: editingTask.title || '', description: editingTask.description || '',
+                    categories: editingTask.categories || [], client: editingTask.client || '',
+                    task_date: editingTask.task_date || new Date().toISOString().split('T')[0],
+                    task_time: editingTask.task_time || '', duration: editingTask.duration || '',
+                    status: editingTask.status || 'uncompleted', tags: editingTask.tags || [],
+                    notes: editingTask.notes || '', shared: editingTask.shared || false,
+                    attachments: editingTask.attachments || [], newAttachments: [], removedAttachmentIds: [],
+                    ...editDraft,
+                    attachments: editingTask.attachments || [],
+                    newAttachments: [],
+                    removedAttachmentIds: editDraft.removedAttachmentIds || []
+                });
+            } else {
+                setFormData({
+                    title: editingTask.title || '', description: editingTask.description || '',
+                    categories: editingTask.categories || [], client: editingTask.client || '',
+                    task_date: editingTask.task_date || new Date().toISOString().split('T')[0],
+                    task_time: editingTask.task_time || '', duration: editingTask.duration || '',
+                    status: editingTask.status || 'uncompleted', tags: editingTask.tags || [],
+                    notes: editingTask.notes || '', shared: editingTask.shared || false,
+                    attachments: editingTask.attachments || [], newAttachments: [], removedAttachmentIds: []
+                });
+            }
         } else {
-            const draft = storage.get(STORAGE_KEYS.MOBILE_TASK_DRAFT);
+            const draft = storage.get(getNewTaskDraftKey());
             if (draft && typeof draft === 'object') {
                 setFormData({ ...defaultFormData(), ...draft, newAttachments: [], removedAttachmentIds: draft.removedAttachmentIds || [] });
             } else {
@@ -48,14 +69,24 @@ const useIOSTaskForm = () => {
     }, [isOpen, editingTask]);
 
     useEffect(() => {
-        if (!isOpen || editingTask) return;
-        if (formData.title || formData.description) {
+        if (!isOpen) return;
+        if (!formData.title && !formData.description && !(formData.newAttachments?.length) && !(formData.removedAttachmentIds?.length)) return;
+
+        if (formChangeTimeoutRef.current) clearTimeout(formChangeTimeoutRef.current);
+        formChangeTimeoutRef.current = setTimeout(() => {
+            if (editingTask?.id) {
+                storage.set(getEditTaskDraftKey(editingTask.id), {
+                    ...formData,
+                    newAttachments: [],
+                });
+            } else {
+                storage.set(getNewTaskDraftKey(), formData);
+            }
+        }, 1000);
+
+        return () => {
             if (formChangeTimeoutRef.current) clearTimeout(formChangeTimeoutRef.current);
-            formChangeTimeoutRef.current = setTimeout(() => {
-                storage.set(STORAGE_KEYS.MOBILE_TASK_DRAFT, formData);
-            }, 1000);
-        }
-        return () => { if (formChangeTimeoutRef.current) clearTimeout(formChangeTimeoutRef.current); };
+        };
     }, [formData, isOpen, editingTask]);
 
     const hasUnsavedChanges = useCallback(() => {
@@ -83,7 +114,8 @@ const useIOSTaskForm = () => {
     };
 
     const confirmDiscard = () => {
-        if (!editingTask) storage.remove(STORAGE_KEYS.MOBILE_TASK_DRAFT);
+        if (editingTask?.id) storage.remove(getEditTaskDraftKey(editingTask.id));
+        else storage.remove(getNewTaskDraftKey());
         setShowDiscardConfirm(false);
         closeFormModal();
     };
@@ -91,7 +123,8 @@ const useIOSTaskForm = () => {
     const handleSave = async () => {
         const success = await submitTask(formData, editingTask);
         if (success) {
-            storage.remove(STORAGE_KEYS.MOBILE_TASK_DRAFT);
+            if (editingTask?.id) storage.remove(getEditTaskDraftKey(editingTask.id));
+            else storage.remove(getNewTaskDraftKey());
             closeFormModal();
         }
     };

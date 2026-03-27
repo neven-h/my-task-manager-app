@@ -87,9 +87,9 @@ const StockPortfolioFormFields = ({
             <div style={{ marginBottom: '1.5rem' }}>
                 <label style={labelStyle}>💱 Currency *</label>
                 <select name="currency" value={formData.currency} onChange={onInputChange} required style={{ ...inputStyle, background: '#fff', cursor: 'pointer' }}>
-                    <option value="USD">$ USD (US Dollar)</option>
-                    <option value="ILS">₪ ILS (Israeli Shekel)</option>
-                    <option value="EUR">€ EUR (Euro)</option>
+                    <option value="USD">USD (US Dollar)</option>
+                    <option value="ILS">ILS (Israeli Shekel)</option>
+                    <option value="EUR">EUR (Euro)</option>
                 </select>
                 <small style={smallStyle}>Select the currency for this stock entry</small>
             </div>

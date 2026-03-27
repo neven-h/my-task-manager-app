@@ -24,15 +24,17 @@ async function handleAddToCalendar(task) {
 
     if (status === 'notDetermined') {
         const { granted } = await requestCalendarAccess();
-        if (!granted) return; // user tapped "Don't Allow" — respect the decision silently
+        if (!granted) {
+            alert('Calendar permission was not granted.\n\nTo allow it: open Settings → Dr. Pitz Club → Calendars.');
+            return;
+        }
     }
 
     try {
         await addTaskToCalendar(task);
-        // Brief visual feedback — a toast library would be ideal, but alert keeps it dependency-free
-        // Replace with your app's toast if available
-        console.log('Event added to Apple Calendar');
+        alert('Task added to your calendar!');
     } catch (err) {
+        console.error('Calendar addEvent failed:', err);
         alert('Could not add event to calendar.\n' + (err?.message || err));
     }
 }

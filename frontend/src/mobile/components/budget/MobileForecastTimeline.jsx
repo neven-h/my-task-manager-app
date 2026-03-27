@@ -34,7 +34,7 @@ const MobileForecastTimeline = ({ hist, tl, visHist, hiddenHistCount, showAllHis
         {(hist.length > 0 || tl.length > 0) && (
             <div style={{ padding: '8px 16px', background: '#fef9c3', borderTop: '0.5px solid #fde68a', borderBottom: '0.5px solid #fde68a', fontSize: '0.72rem', fontWeight: 800, color: '#92400e', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span>&#9654; Today</span>
-                <span style={{ fontWeight: 500 }}>{'\u20AA'}{fmt(forecast.current_balance)}</span>
+                <span style={{ fontWeight: 500 }}>{'\u20AA'}{forecast?.current_balance != null ? fmt(forecast.current_balance) : '—'}</span>
             </div>
         )}
 

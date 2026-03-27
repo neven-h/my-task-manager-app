@@ -1,19 +1,19 @@
 import { useMemo } from 'react';
-import { healthScore, healthLabel, runwayMonths, runwayInfo, generateInsights } from '../utils/cashflowHelpers';
+import { healthScore, healthLabel, runwayMonths, runwayInfo, generateInsights, generateBudgetInsights } from '../utils/cashflowHelpers';
 
 /**
  * useBudgetStats — derives monthly aggregations, health score, runway,
  * and chart data from budget entries.
  */
-const useBudgetStats = (entries, cutoff, activeTabId, forecast = null, linkedTab = null) => {
+const useBudgetStats = (entries, cutoff, activeTabId, forecast = null, linkedTab = null, dateFrom = '') => {
     // Only show entries that belong to the active tab; if no tab is selected, show nothing
     const tabEntries = useMemo(() =>
         activeTabId === null ? [] : entries.filter(e => e.tab_id === activeTabId),
         [entries, activeTabId]);
 
     const filtered = useMemo(() =>
-        tabEntries.filter(e => e.entry_date <= cutoff),
-        [tabEntries, cutoff]);
+        tabEntries.filter(e => e.entry_date <= cutoff && (!dateFrom || e.entry_date >= dateFrom)),
+        [tabEntries, cutoff, dateFrom]);
 
     // Monthly totals: { 'YYYY-MM': { income, expense } }
     const monthlyTotals = useMemo(() => {
@@ -81,9 +81,10 @@ const useBudgetStats = (entries, cutoff, activeTabId, forecast = null, linkedTab
             { avg_monthly_spend: avgMonthly, momentum, anomalies: [] },
             balance > 0 ? balance : null,
         );
+        const budgetInsights = generateBudgetInsights(monthlyTotals, tabEntries);
 
-        return { score, label, runway, rwInfo, momentum, avgMonthly, avgMonthlyIncome, monthlyNet, insights, balance };
-    }, [monthlyTotals, forecast, linkedTab]);
+        return { score, label, runway, rwInfo, momentum, avgMonthly, avgMonthlyIncome, monthlyNet, insights, budgetInsights, balance };
+    }, [monthlyTotals, tabEntries, forecast, linkedTab]);
 
     return { tabEntries, monthlyTotals, chartData, allCategories, health };
 };

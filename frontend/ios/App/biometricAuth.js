@@ -9,9 +9,11 @@ export const BiometricAuth = registerPlugin('BiometricAuth');
 export async function isBiometricAvailable() {
   try {
     const res = await BiometricAuth.isAvailable();
+    console.log('Biometric availability result:', res);
     return !!res?.available;
-  } catch {
-    return false;
+  } catch (err) {
+    console.error('Biometric availability failed:', err);
+    throw err;
   }
 }
 

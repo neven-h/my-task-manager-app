@@ -92,14 +92,20 @@ const ScoreInfoTooltip = () => {
     );
 };
 
+const INSIGHT_COLORS = {
+    positive: { border: '#00AA00', bg: '#f0fff4' },
+    warning:  { border: '#FF0000', bg: '#fff5f5' },
+    info:     { border: '#0000FF', bg: '#f0f4ff' },
+};
+
 const BudgetHealthCard = ({ health }) => {
     if (!health) return null;
-    const { score, label, momentum, avgMonthly, avgMonthlyIncome = 0, monthlyNet = 0, insights } = health;
+    const { score, label, momentum, avgMonthly, avgMonthlyIncome = 0, monthlyNet = 0, insights, budgetInsights = [] } = health;
     const fmt = n => Math.abs(n).toLocaleString('he-IL', { maximumFractionDigits: 0 });
     const netColor = monthlyNet >= 0 ? '#059669' : '#dc2626';
     const netSign  = monthlyNet >= 0 ? '+' : '−';
 
-    // Skip runway/months insights — they require an external starting balance we don't have
+    // Legacy text insights (filtered) — shown above structured cards
     const cleanInsights = insights.filter(t => !t.includes('runway') && !t.includes('months of') && !t.includes('month of'));
 
     return (
@@ -141,6 +147,24 @@ const BudgetHealthCard = ({ health }) => {
                             {cleanInsights.map((text, i) => (
                                 <div key={i} style={{ fontSize: '0.82rem', color: SYS.text, lineHeight: 1.45 }}>{text}</div>
                             ))}
+                        </div>
+                    )}
+                    {budgetInsights.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: cleanInsights.length > 0 ? 4 : 0 }}>
+                            {budgetInsights.map((ins, i) => {
+                                const c = INSIGHT_COLORS[ins.type] || INSIGHT_COLORS.info;
+                                return (
+                                    <div key={i} style={{
+                                        padding: '7px 10px', border: `2px solid ${SYS.border}`,
+                                        borderLeft: `4px solid ${c.border}`, background: c.bg,
+                                        fontSize: '0.8rem', fontWeight: 600, lineHeight: 1.45,
+                                        display: 'flex', alignItems: 'flex-start', gap: 7,
+                                    }}>
+                                        <span style={{ flexShrink: 0, fontSize: '0.85rem' }}>{ins.icon}</span>
+                                        <span>{ins.text}</span>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
