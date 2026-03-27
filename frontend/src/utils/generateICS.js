@@ -1,3 +1,7 @@
+import { Capacitor, registerPlugin } from '@capacitor/core';
+
+const Calendar = registerPlugin('Calendar');
+
 const pad = (n) => String(n).padStart(2, '0');
 
 function nowStamp() {
@@ -9,14 +13,19 @@ function formatDate(dateStr) {
     return dateStr.replace(/-/g, '');
 }
 
+function normalizeTime(timeStr) {
+    const parts = String(timeStr || '').split(':');
+    return `${pad(parts[0] || '00')}:${pad(parts[1] || '00')}:${pad(parts[2] || '00')}`;
+}
+
 function formatDateTime(dateStr, timeStr) {
     const date = formatDate(dateStr);
-    const parts = timeStr.split(':');
-    return `${date}T${pad(parts[0])}${pad(parts[1])}${pad(parts[2] || '00')}`;
+    const parts = normalizeTime(timeStr).split(':');
+    return `${date}T${pad(parts[0])}${pad(parts[1])}${pad(parts[2])}`;
 }
 
 function addHoursToDateTime(dateStr, timeStr, hours) {
-    const [h, m] = timeStr.split(':').map(Number);
+    const [h, m] = normalizeTime(timeStr).split(':').map(Number);
     const totalMinutes = h * 60 + m + Math.round(parseFloat(hours) * 60);
     const overflowDays = Math.floor(totalMinutes / (24 * 60));
     const newH = Math.floor(totalMinutes / 60) % 24;
@@ -32,12 +41,64 @@ function nextDay(dateStr) {
     return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
 }
 
+function nextDayISO(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    d.setDate(d.getDate() + 1);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function addHoursToISO(dateStr, timeStr, hours) {
+    const start = new Date(`${dateStr}T${normalizeTime(timeStr)}`);
+    const end = new Date(start.getTime() + Math.round(parseFloat(hours || 1) * 60 * 60 * 1000));
+    return `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}:${pad(end.getSeconds())}`;
+}
+
 function escapeICS(str) {
     return String(str || '')
         .replace(/\\/g, '\\\\')
         .replace(/;/g, '\\;')
         .replace(/,/g, '\\,')
         .replace(/\n/g, '\\n');
+}
+
+function buildDescription(task) {
+    let desc = task.description || '';
+    if (task.notes) desc += (desc ? '\n\nNotes: ' : 'Notes: ') + task.notes;
+    return desc;
+}
+
+function isNativeIOS() {
+    return Capacitor?.isNativePlatform?.() && Capacitor?.getPlatform?.() === 'ios';
+}
+
+async function addEventToNativeCalendar(task) {
+    const allDay = !task.task_time;
+    const startDate = allDay
+        ? task.task_date
+        : `${task.task_date}T${normalizeTime(task.task_time)}`;
+    const endDate = allDay
+        ? nextDayISO(task.task_date)
+        : addHoursToISO(task.task_date, task.task_time, task.duration || 1);
+
+    const current = await Calendar.checkAccess();
+    let status = current?.status;
+
+    if (!['authorized', 'fullAccess', 'writeOnly'].includes(status)) {
+        const requested = await Calendar.requestAccess();
+        status = requested?.status;
+        if (!requested?.granted && !['authorized', 'fullAccess', 'writeOnly'].includes(status)) {
+            throw new Error('Calendar access was not granted');
+        }
+    }
+
+    return Calendar.addEvent({
+        title: task.title || 'Task',
+        startDate,
+        endDate,
+        allDay,
+        notes: buildDescription(task),
+        location: task.client || '',
+    });
 }
 
 export function generateICS(task) {
@@ -55,8 +116,7 @@ export function generateICS(task) {
         dtend = nextDay(task.task_date);
     }
 
-    let desc = task.description || '';
-    if (task.notes) desc += (desc ? '\n\nNotes: ' : 'Notes: ') + task.notes;
+    const desc = buildDescription(task);
 
     const lines = [
         'BEGIN:VCALENDAR',
@@ -88,10 +148,6 @@ export async function downloadICS(task) {
         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
     if (isCapacitor || isIOS) {
-        // Web Share API with a File triggers the native iOS share sheet,
-        // from which the user can pick "Add to Calendar".
-        // This is the only reliable path inside a Capacitor WKWebView —
-        // window.location.href = blobUrl navigates the WebView away from the app.
         try {
             const file = new File([ics], filename, { type: 'text/calendar' });
             if (navigator.share && navigator.canShare?.({ files: [file] })) {
@@ -99,10 +155,10 @@ export async function downloadICS(task) {
                 return;
             }
         } catch (err) {
-            if (err.name === 'AbortError') return; // user dismissed share sheet
+            if (err.name === 'AbortError') return;
             console.warn('Share failed:', err);
         }
-        // Fallback for very old iOS Safari (pre-14): blob URL navigation
+
         const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         window.location.href = url;
@@ -110,7 +166,6 @@ export async function downloadICS(task) {
         return;
     }
 
-    // Desktop: programmatic anchor download
     const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -123,27 +178,36 @@ export async function downloadICS(task) {
 }
 
 /**
- * Open a pre-filled Google Calendar "new event" page in a new tab.
- * Works on desktop (browser → GCal web) and mobile (opens GCal app
- * or GCal mobile web). No file is downloaded.
+ * iOS native app: save directly into the device calendar via the Capacitor plugin.
+ * Web/desktop: keep the Google Calendar flow.
  */
-export function openInCalendar(task) {
+export async function openInCalendar(task) {
+    if (isNativeIOS()) {
+        try {
+            await addEventToNativeCalendar(task);
+            return;
+        } catch (err) {
+            console.warn('Native calendar add failed, falling back to ICS share/download:', err);
+            await downloadICS(task);
+            return;
+        }
+    }
+
     let dates;
     if (task.task_time) {
         const start = formatDateTime(task.task_date, task.task_time);
-        const end   = addHoursToDateTime(task.task_date, task.task_time, task.duration || 1);
+        const end = addHoursToDateTime(task.task_date, task.task_time, task.duration || 1);
         dates = `${start}/${end}`;
     } else {
         const start = formatDate(task.task_date);
-        const end   = nextDay(task.task_date);
+        const end = nextDay(task.task_date);
         dates = `${start}/${end}`;
     }
 
-    let desc = task.description || '';
-    if (task.notes) desc += (desc ? '\n\nNotes: ' : 'Notes: ') + task.notes;
+    const desc = buildDescription(task);
 
     const params = new URLSearchParams({ action: 'TEMPLATE', text: task.title || '', dates });
-    if (desc)        params.set('details',  desc);
+    if (desc) params.set('details', desc);
     if (task.client) params.set('location', task.client);
 
     window.open(`https://calendar.google.com/calendar/render?${params}`, '_blank');
