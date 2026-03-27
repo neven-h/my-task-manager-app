@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import storage, { STORAGE_KEYS } from '../utils/storage';
 import API_BASE from '../config';
 import { getAuthHeaders } from '../api.js';
+import { clearDescCache } from './useBankTransactionData';
 
 /**
  * Wraps raw CRUD + rename handlers for BankTransactionContext.
@@ -56,6 +57,7 @@ export const useBankTransactionCRUDHandlers = ({
         const ok = await handleAddRaw(newTransaction, activeTabId);
         if (ok) {
             setShowAddForm(false);
+            clearDescCache();
             await fetchSavedMonths(activeTabId);
             await fetchAllDescriptions(activeTabId);
             await fetchTransactionStats(activeTabId);
@@ -70,6 +72,7 @@ export const useBankTransactionCRUDHandlers = ({
         const ok = await handleUpdateRaw(transactionId, editingTransaction);
         if (ok) {
             setEditingTransaction(null);
+            clearDescCache();
             if (selectedMonth === 'all') await fetchAllTransactions(activeTabId);
             else await fetchMonthTransactions(selectedMonth, activeTabId);
             await fetchAllDescriptions(activeTabId);
@@ -111,6 +114,7 @@ export const useBankTransactionCRUDHandlers = ({
             if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Rename failed');
             const result = await res.json();
             setDescriptionFilter('');
+            clearDescCache();
             if (selectedMonth === 'all') await fetchAllTransactions(activeTabId);
             else await fetchMonthTransactions(selectedMonth, activeTabId);
             await fetchAllDescriptions(activeTabId);

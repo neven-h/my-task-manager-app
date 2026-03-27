@@ -5,6 +5,11 @@ import storage, { STORAGE_KEYS } from '../utils/storage';
 import useBankTabData from './useBankTabData';
 import useBankCRUD from './useBankCRUD';
 
+// Module-level cache for descriptions — shared across remounts, invalidated on mutations
+const _descCache = { data: null, tabId: null, at: 0 };
+const DESC_TTL_MS = 60_000; // 1 minute
+export const clearDescCache = () => { _descCache.at = 0; };
+
 const useBankTransactionData = () => {
     // Core transaction state
     const [uploadedData, setUploadedData] = useState(null);
@@ -27,12 +32,21 @@ const useBankTransactionData = () => {
 
     // ==================== DATA FETCHERS ====================
 
-    const fetchAllDescriptions = useCallback(async (tabId = null) => {
+    const fetchAllDescriptions = useCallback(async (tabId = null, { force = false } = {}) => {
+        const now = Date.now();
+        if (!force && _descCache.tabId === tabId && now - _descCache.at < DESC_TTL_MS) {
+            setAllDescriptions(_descCache.data);
+            return;
+        }
         try {
             const params = tabId ? `?tab_id=${tabId}` : '';
             const response = await fetch(`${API_BASE}/transactions/descriptions${params}`, { headers: getAuthHeaders() });
             const data = await response.json();
-            setAllDescriptions(Array.isArray(data) ? data : []);
+            const list = Array.isArray(data) ? data : [];
+            _descCache.data = list;
+            _descCache.tabId = tabId;
+            _descCache.at = Date.now();
+            setAllDescriptions(list);
         } catch (err) {
             console.error('Error fetching descriptions:', err);
         }
