@@ -7,8 +7,11 @@ const IOS = {
     radius: 16, spring: 'cubic-bezier(0.22,1,0.36,1)',
 };
 
-const fmt = (n) =>
-    new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(n));
+const fmt = (n) => {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return '0.00';
+    return new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(v));
+};
 
 const fmtMonth = (ym) => {
     const [y, m] = ym.split('-');
