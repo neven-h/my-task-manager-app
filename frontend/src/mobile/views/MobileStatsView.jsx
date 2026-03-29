@@ -9,7 +9,7 @@ import StatsMonthlySection from '../components/stats/StatsMonthlySection';
 import ExpandableTaskBreakdown from '../../components/tasks/ExpandableTaskBreakdown';
 
 const MobileStatsView = ({ authUser, authRole, onBack }) => {
-    const { stats, tasks, loading, categoryChartData, monthlyMax, PIE_COLORS } = useMobileStats(authUser, authRole);
+    const { stats, tasks, loading, categoryChartData, monthlyMax, PIE_COLORS } = useMobileStats();
 
     return (
         <div style={{ minHeight: '100dvh', background: '#fff', fontFamily: FONT_STACK }}>
