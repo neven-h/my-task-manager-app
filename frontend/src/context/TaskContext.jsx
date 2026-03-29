@@ -109,7 +109,23 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
 
     const deleteTask = useCallback(async (id) => { if (await deleteTaskRaw(id)) { await loadTasks(); await fetchStats(); } }, [deleteTaskRaw, loadTasks, fetchStats]);
     const duplicateTask = useCallback(async (id) => { if (await duplicateTaskRaw(id)) { await loadTasks(); await fetchStats(); } }, [duplicateTaskRaw, loadTasks, fetchStats]);
-    const toggleTaskStatus = useCallback(async (id) => { if (await toggleTaskStatusRaw(id)) { await loadTasks(); await fetchStats(); } }, [toggleTaskStatusRaw, loadTasks, fetchStats]);
+    const toggleTaskStatus = useCallback(async (id) => {
+        // Optimistic update — flip the task locally so the UI responds instantly
+        let prevStatus;
+        setTasks(prev => prev.map(t => {
+            if (t.id !== id) return t;
+            prevStatus = t.status;
+            return { ...t, status: t.status === 'completed' ? 'uncompleted' : 'completed' };
+        }));
+        const ok = await toggleTaskStatusRaw(id);
+        if (!ok) {
+            // Revert on server error
+            setTasks(prev => prev.map(t => t.id === id ? { ...t, status: prevStatus } : t));
+        } else {
+            // Refresh stats silently in background — no loading spinner
+            fetchStats();
+        }
+    }, [toggleTaskStatusRaw, setTasks, fetchStats]);
     const createCategory = useCallback((name, color, icon) => createCategoryRaw(name, color, icon, authUser), [createCategoryRaw, authUser]);
     const deleteCategory = useCallback((categoryId) => deleteCategoryRaw(categoryId), [deleteCategoryRaw]);
     const createTag = useCallback((tagName) => createTagRaw(tagName, authUser), [createTagRaw, authUser]);
