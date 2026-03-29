@@ -68,7 +68,7 @@ const MobileStockPortfolioView = ({ authUser, authRole, onBack }) => {
     };
 
     return (
-        <div style={{ minHeight: '100vh', background: '#fff', fontFamily: FONT_STACK }}>
+        <div style={{ minHeight: '100dvh', background: '#fff', fontFamily: FONT_STACK }}>
             <MobileStockPortfolioHeader onBack={onBack} tabs={tabs} activeTabId={activeTabId} setActiveTabId={setActiveTabId} handleCreateTab={handleCreateTab} theme={THEME} headerStyle={headerStyle} backButtonStyle={backButtonStyle} />
             <MobileStockSummaryCards summary={summary} summaryDisplayCurrency={summaryDisplayCurrency} setSummaryDisplayCurrency={setSummaryDisplayCurrency} theme={THEME} fontStack={FONT_STACK} />
             <div style={{ padding: '0 16px 16px' }}>

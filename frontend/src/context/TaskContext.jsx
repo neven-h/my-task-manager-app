@@ -85,9 +85,12 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
     useEffect(() => {
         if (authUser && authRole) {
             setLoading(true);
-            Promise.all([fetchCategories(), fetchTags(), fetchClients(), loadTasks(), fetchStats()])
-                .catch(err => { console.error('Error loading initial data:', err); setError('Failed to load initial data. Please refresh the page.'); })
+            // Load tasks first so the UI unblocks immediately, then fetch the rest in background
+            loadTasks()
+                .catch(err => { console.error('Error loading tasks:', err); setError('Failed to load initial data. Please refresh the page.'); })
                 .finally(() => setLoading(false));
+            Promise.all([fetchCategories(), fetchTags(), fetchClients(), fetchStats()])
+                .catch(err => console.error('Error loading background data:', err));
         }
     }, [authUser, authRole]);
 

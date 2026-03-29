@@ -47,7 +47,7 @@ const MobileNotebookView = ({ onBack }) => {
     };
 
     return (
-        <div style={{ minHeight: '100vh', background: '#fafafa', fontFamily: FONT_STACK, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ minHeight: '100dvh', background: '#fafafa', fontFamily: FONT_STACK, display: 'flex', flexDirection: 'column' }}>
             <div style={{
                 background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.1)',
                 paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)', paddingBottom: 12,

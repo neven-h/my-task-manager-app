@@ -16,43 +16,47 @@ const IOSStyles = () => (
         }
 
         .mobile-btn {
-          border: 1px solid rgba(0,0,0,0.2);
-          border-radius: 10px;
+          border: 2px solid #000;
+          border-radius: 0;
           background: #fff;
+          color: #000;
           font-family: ${FONT_STACK};
-          font-weight: 600;
-          text-transform: none;
-          font-size: 1rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+          font-size: 0.85rem;
           padding: 14px 20px;
           cursor: pointer;
-          transition: all 0.2s ease;
         }
 
         .mobile-btn:active {
-          opacity: 0.7;
+          background: #000;
+          color: #fff;
         }
 
         .mobile-btn-primary {
           background: ${THEME.primary};
           color: #fff;
-          border-color: ${THEME.primary};
+          border-color: #000;
         }
 
         .mobile-btn-accent {
           background: ${THEME.accent};
           color: #fff;
-          border-color: ${THEME.accent};
+          border-color: #000;
         }
 
         .filter-pill {
           border: 3px solid #000;
+          border-radius: 0;
           padding: 10px 20px;
           font-weight: 700;
-          font-size: 0.9rem;
+          font-size: 0.85rem;
           background: #fff;
           cursor: pointer;
           font-family: ${FONT_STACK};
-          text-transform: none;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
         }
 
         .filter-pill.active {
@@ -62,34 +66,34 @@ const IOSStyles = () => (
 
         .task-card {
           border: 3px solid #000;
+          border-radius: 0;
           background: #fff;
           margin-bottom: 12px;
           position: relative;
-          transition: transform 0.2s ease;
         }
 
         .category-pill {
-          border: 1px solid rgba(0,0,0,0.2);
-          border-radius: 16px;
+          border: 2px solid #000;
+          border-radius: 0;
           padding: 8px 16px;
-          font-size: 0.9rem;
-          font-weight: 600;
+          font-size: 0.8rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
           cursor: pointer;
-          background: #f5f5f5;
+          background: #fff;
           font-family: ${FONT_STACK};
-          transition: all 0.2s ease;
         }
 
         .category-pill.selected {
           background: ${THEME.primary};
           color: #fff;
-          border-color: ${THEME.primary};
         }
 
         input, textarea, select {
           width: 100%;
-          border: 1px solid rgba(0,0,0,0.2);
-          border-radius: 8px;
+          border: 2px solid #000;
+          border-radius: 0;
           padding: 12px;
           font-size: 1rem;
           font-family: ${FONT_STACK};
@@ -99,13 +103,13 @@ const IOSStyles = () => (
         input:focus, textarea:focus, select:focus {
           outline: none;
           border-color: ${THEME.primary};
-          box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+          box-shadow: none;
         }
 
         .color-bar {
           height: 12px;
           width: 100%;
-          background: #F8B4D9;
+          background: ${THEME.primary};
         }
     `}</style>
 );

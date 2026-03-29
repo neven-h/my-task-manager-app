@@ -24,49 +24,26 @@ const App = () => {
 
   // Check if user is already logged in on mount
   useEffect(() => {
-    const validateAndRestoreSession = async () => {
-      const token = storage.get(STORAGE_KEYS.AUTH_TOKEN);
-      const user = storage.get(STORAGE_KEYS.AUTH_USER);
-      const role = storage.get(STORAGE_KEYS.AUTH_ROLE);
+    const token = storage.get(STORAGE_KEYS.AUTH_TOKEN);
+    const user = storage.get(STORAGE_KEYS.AUTH_USER);
+    const role = storage.get(STORAGE_KEYS.AUTH_ROLE);
 
-      if (token && user) {
-        try {
-          // Add timeout to prevent hanging
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-
-          const response = await fetch(`${API_BASE}/tasks?limit=1`, {
-            headers: { 'Authorization': `Bearer ${token}` },
-            signal: controller.signal
-          });
-
-          clearTimeout(timeoutId);
-
-          if (response.ok) {
-            setAuthToken(token);
-            setAuthUser(user);
-            setAuthRole(role || 'limited');
-          } else {
-            storage.clearAuth();
-          }
-        } catch (error) {
-          // Handle timeout gracefully - this is expected when backend is unresponsive
-          if (error.name === 'AbortError') {
-            // Timeout occurred - backend is likely down or slow
-            // Silently clear session and let user login again
-            storage.clearAuth();
-            return; // Exit early, don't log as error
-          }
-
-          // Log other errors (network errors, etc.)
-          console.error('Token validation failed:', error);
+    if (token && user) {
+      try {
+        // Decode JWT expiry from payload — no network call needed
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.exp && payload.exp * 1000 > Date.now()) {
+          setAuthToken(token);
+          setAuthUser(user);
+          setAuthRole(role || 'limited');
+        } else {
           storage.clearAuth();
         }
+      } catch {
+        storage.clearAuth();
       }
-      setIsAuthenticating(false);
-    };
-
-    validateAndRestoreSession();
+    }
+    setIsAuthenticating(false);
   }, []);
 
   const handleLogin = (token, username, role) => {

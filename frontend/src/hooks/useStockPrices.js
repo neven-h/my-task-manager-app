@@ -47,7 +47,9 @@ const useStockPrices = ({ activeTabId, entries }) => {
         if (!activeTabId) return;
 
         fetchStockPrices();
-        const interval = setInterval(fetchStockPrices, 30000);
+        const interval = setInterval(() => {
+            if (!document.hidden) fetchStockPrices();
+        }, 30000);
 
         return () => clearInterval(interval);
     }, [activeTabId, fetchStockPrices]);

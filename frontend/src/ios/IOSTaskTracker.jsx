@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
 import { TaskProvider, useTaskContext } from '../context/TaskContext';
 
-// Mobile views
-import MobileStatsView from '../mobile/views/MobileStatsView';
-import MobileBankTransactionsView from '../mobile/views/MobileBankTransactionsView';
-import MobileStockPortfolioBauhaus from '../mobile/views/MobileStockPortfolioBauhaus';
-import MobileClientsView from '../mobile/views/MobileClientsView';
-import MobileNotebookView from '../mobile/views/MobileNotebookView';
-import MobileBudgetView from '../mobile/views/MobileBudgetView';
+// Mobile views — lazy-loaded so they don't inflate the initial chunk
+const MobileStatsView = lazy(() => import('../mobile/views/MobileStatsView'));
+const MobileBankTransactionsView = lazy(() => import('../mobile/views/MobileBankTransactionsView'));
+const MobileStockPortfolioBauhaus = lazy(() => import('../mobile/views/MobileStockPortfolioBauhaus'));
+const MobileClientsView = lazy(() => import('../mobile/views/MobileClientsView'));
+const MobileNotebookView = lazy(() => import('../mobile/views/MobileNotebookView'));
+const MobileBudgetView = lazy(() => import('../mobile/views/MobileBudgetView'));
 
 // iOS components
 import IOSStyles from './IOSStyles';
@@ -39,7 +39,7 @@ const SwipeBackView = ({ onBack, children }) => {
     const releasing = dragX === 0; // transition only during snap-back (not while dragging)
 
     return (
-        <div style={{ position: 'relative', overflow: 'hidden', minHeight: '100vh' }} {...handlers}>
+        <div style={{ position: 'relative', overflow: 'hidden', minHeight: '100dvh' }} {...handlers}>
             {/* Depth gradient that appears on the left as the view slides away */}
             <div style={{
                 position: 'fixed',
@@ -83,28 +83,34 @@ const IOSTaskTrackerInner = () => {
         window.sessionStorage.setItem(IOS_APP_VIEW_STORAGE_KEY, appView);
     }, [appView]);
 
-    const goBack = () => setAppView('tasks');
+    const goBack = useCallback(() => setAppView('tasks'), [setAppView]);
 
-    // Alternate full-page views — all get swipe-back navigation
-    const altViews = {
+    // Alternate full-page views — lazy-loaded, only created when in a non-tasks view
+    const altViews = useMemo(() => ({
         stats:        <MobileStatsView authUser={authUser} authRole={authRole} onBack={goBack} />,
         transactions: <MobileBankTransactionsView authUser={authUser} authRole={authRole} onBack={goBack} />,
         portfolio:    <MobileStockPortfolioBauhaus authUser={authUser} authRole={authRole} onBack={goBack} />,
         clients:      <MobileClientsView authUser={authUser} authRole={authRole} onBack={goBack} />,
         notebook:     <MobileNotebookView onBack={goBack} />,
         budget:       <MobileBudgetView onBack={goBack} />,
-    };
+    }), [authUser, authRole, goBack]);
 
     if (altViews[appView]) {
         return (
             <SwipeBackView onBack={goBack}>
-                {altViews[appView]}
+                <Suspense fallback={
+                    <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', fontFamily: FONT_STACK }}>
+                        <div style={{ fontWeight: 700, fontSize: '1.1rem', color: '#888' }}>Loading…</div>
+                    </div>
+                }>
+                    {altViews[appView]}
+                </Suspense>
             </SwipeBackView>
         );
     }
 
     return (
-        <div style={{ minHeight: '100vh', background: THEME.bg, paddingBottom: '20px', fontFamily: FONT_STACK }}>
+        <div style={{ minHeight: '100dvh', background: THEME.bg, paddingBottom: '20px', fontFamily: FONT_STACK }}>
             <IOSStyles />
             <IOSHeader onMenuOpen={() => setShowSidebar(true)} />
 

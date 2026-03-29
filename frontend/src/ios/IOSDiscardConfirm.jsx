@@ -15,9 +15,9 @@ const IOSDiscardConfirm = ({ isOpen, isEditing, onKeepEditing, onDiscard }) => {
         >
             <div
                 style={{
-                    width: '100%', background: THEME.bg, borderRadius: '16px 16px 0 0',
+                    width: '100%', background: THEME.bg, borderRadius: 0,
                     padding: '24px', borderTop: `3px solid ${THEME.border}`,
-                    boxShadow: '0 -4px 20px rgba(0,0,0,0.3)', fontFamily: FONT_STACK
+                    fontFamily: FONT_STACK
                 }}
                 onClick={e => e.stopPropagation()}
             >

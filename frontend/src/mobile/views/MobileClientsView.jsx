@@ -15,7 +15,7 @@ const MobileClientsView = ({ authUser, onBack }) => {
     } = useMobileClients(authUser);
 
     return (
-        <div style={{ minHeight: '100vh', background: '#fff', fontFamily: FONT_STACK }}>
+        <div style={{ minHeight: '100dvh', background: '#fff', fontFamily: FONT_STACK }}>
             {/* Header */}
             <div style={{ background: '#fff', borderBottom: '3px solid #000', padding: '16px', paddingTop: 'calc(env(safe-area-inset-top, 0px) + 16px)', position: 'sticky', top: 0, zIndex: 100 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
