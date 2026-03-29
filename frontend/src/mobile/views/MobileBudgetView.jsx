@@ -11,6 +11,7 @@ import MobileBudgetHeader from '../components/budget/MobileBudgetHeader';
 import MobileBudgetClearStrip from '../components/budget/MobileBudgetClearStrip';
 import MobileBudgetLinkBanner from '../components/budget/MobileBudgetLinkBanner';
 import MobileBalanceForecast from '../components/budget/MobileBalanceForecast';
+import ErrorBoundary from '../../components/ErrorBoundary';
 import { FONT_STACK } from '../../ios/theme';
 import { SummaryCard } from '../components/budget/BudgetSummaryCard';
 import { EntrySheet } from '../components/budget/BudgetEntrySheet';
@@ -215,9 +216,11 @@ const MobileBudgetView = ({ onBack }) => {
 
             <ForecastSection predictions={predictions} onFetch={() => fetchPredictions(3, activeTabId)} loading={loading} />
 
-            <MobileBalanceForecast forecast={forecast} onFetch={() => fetchForecast(activeTabId, 3)}
-                onRefresh={() => refresh(activeTabId, 3)} loading={forecastLoading}
-                linkedTab={linkedTab} lastUpdated={lastUpdated} />
+            <ErrorBoundary>
+                <MobileBalanceForecast forecast={forecast} onFetch={() => fetchForecast(activeTabId, 3)}
+                    onRefresh={() => refresh(activeTabId, 3)} loading={forecastLoading}
+                    linkedTab={linkedTab} lastUpdated={lastUpdated} />
+            </ErrorBoundary>
 
             <MobileBudgetFilters {...filters} allCategories={allCategories} />
 

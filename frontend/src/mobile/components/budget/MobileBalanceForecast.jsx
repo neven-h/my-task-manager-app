@@ -159,7 +159,7 @@ const MobileBalanceForecast = ({ forecast, onFetch, onRefresh, loading, linkedTa
                                 </div>
                             )}
                             <div style={{ marginTop: 6, fontSize: '0.68rem', color: IOS.muted, display: 'flex', justifyContent: 'center', gap: 10 }}>
-                                {forecast.linked_tab && <span>🔗 {linkedTab?.name || forecast.linked_tab}</span>}
+                                {forecast.linked_tab && <span>🔗 {linkedTab?.transaction_tab_name || forecast.linked_tab?.transaction_tab_name || ''}</span>}
                                 {timeAgo && <span>Updated {timeAgo}</span>}
                             </div>
                         </div>
