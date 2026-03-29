@@ -11,6 +11,7 @@ import MobileBudgetHeader from '../components/budget/MobileBudgetHeader';
 import MobileBudgetClearStrip from '../components/budget/MobileBudgetClearStrip';
 import MobileBudgetLinkBanner from '../components/budget/MobileBudgetLinkBanner';
 import MobileBalanceForecast from '../components/budget/MobileBalanceForecast';
+import ErrorBoundary from '../../components/ErrorBoundary';
 import { FONT_STACK } from '../../ios/theme';
 import { SummaryCard } from '../components/budget/BudgetSummaryCard';
 import { EntrySheet } from '../components/budget/BudgetEntrySheet';
@@ -32,6 +33,7 @@ const IOS = {
 };
 
 const today = () => new Date().toISOString().split('T')[0];
+const daysAgo = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split('T')[0]; };
 const emptyForm = (type = 'income') => ({
     type, description: '', amount: '', entry_date: today(), category: '', notes: '',
 });
@@ -46,8 +48,7 @@ const MobileBudgetView = ({ onBack }) => {
     const { forecast, loading: forecastLoading, fetchForecast, clearForecast, lastUpdated, refresh } = useBalanceForecast();
 
     const [cutoff, setCutoff]             = useState(today());
-    const defaultFrom = () => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().split('T')[0]; };
-    const [dateFrom, setDateFrom]         = useState(defaultFrom());
+    const [dateFrom, setDateFrom]         = useState(daysAgo(30));
     const [datePreset, setDatePreset]     = useState('30d');
     const applyPreset = useCallback((preset) => {
         const now = new Date();
@@ -70,8 +71,16 @@ const MobileBudgetView = ({ onBack }) => {
     const [confirmClearTab, setConfirmClearTab]   = useState(false);
     const { activeTabId, setActiveTabId } = useBudgetActiveTab(tabs);
 
-    const { tabEntries, monthlyTotals, chartData, allCategories, health } = useBudgetStats(entries, cutoff, activeTabId, forecast, linkedTab, dateFrom);
-    const filters = useBudgetFilters(tabEntries);
+    const { tabEntries, monthlyTotals, chartData, allCategories, health } = useBudgetStats(entries, cutoff, activeTabId, forecast, linkedTab);
+
+    // Entries within the selected date range — used for the list and summaries
+    const rangeEntries = useMemo(() =>
+        dateFrom
+            ? tabEntries.filter(e => e.entry_date >= dateFrom && e.entry_date <= cutoff)
+            : tabEntries.filter(e => e.entry_date <= cutoff),
+        [tabEntries, dateFrom, cutoff]);
+
+    const filters = useBudgetFilters(rangeEntries);
 
     useEffect(() => { fetchEntries(); fetchTabs(); }, [fetchEntries, fetchTabs]);
     useEffect(() => {
@@ -83,8 +92,8 @@ const MobileBudgetView = ({ onBack }) => {
     }, [activeTabId, fetchLink, clearForecast]);
     useEffect(() => { if (linkedTab && activeTabId) fetchForecast(activeTabId, 3); }, [linkedTab, activeTabId, fetchForecast]);
 
-    const income  = useMemo(() => tabEntries.filter(e => e.type === 'income'  && e.entry_date <= cutoff && (!dateFrom || e.entry_date >= dateFrom)).reduce((s, e) => s + parseFloat(e.amount), 0), [tabEntries, cutoff, dateFrom]);
-    const outcome = useMemo(() => tabEntries.filter(e => e.type === 'outcome' && e.entry_date <= cutoff && (!dateFrom || e.entry_date >= dateFrom)).reduce((s, e) => s + parseFloat(e.amount), 0), [tabEntries, cutoff, dateFrom]);
+    const income  = useMemo(() => rangeEntries.filter(e => e.type === 'income' ).reduce((s, e) => s + parseFloat(e.amount), 0), [rangeEntries]);
+    const outcome = useMemo(() => rangeEntries.filter(e => e.type === 'outcome').reduce((s, e) => s + parseFloat(e.amount), 0), [rangeEntries]);
     const displayBal = forecast ? forecast.current_balance : (income - outcome);
     const refreshForecast = useCallback(() => {
         if (linkedTab && activeTabId) fetchForecast(activeTabId, 3);
@@ -207,15 +216,17 @@ const MobileBudgetView = ({ onBack }) => {
 
             <ForecastSection predictions={predictions} onFetch={() => fetchPredictions(3, activeTabId)} loading={loading} />
 
-            <MobileBalanceForecast forecast={forecast} onFetch={() => fetchForecast(activeTabId, 3)}
-                onRefresh={() => refresh(activeTabId, 3)} loading={forecastLoading}
-                linkedTab={linkedTab} lastUpdated={lastUpdated} />
+            <ErrorBoundary>
+                <MobileBalanceForecast forecast={forecast} onFetch={() => fetchForecast(activeTabId, 3)}
+                    onRefresh={() => refresh(activeTabId, 3)} loading={forecastLoading}
+                    linkedTab={linkedTab} lastUpdated={lastUpdated} />
+            </ErrorBoundary>
 
             <MobileBudgetFilters {...filters} allCategories={allCategories} />
 
             <BudgetEntryListCard
-                visibleEntries={filters.filtered} loading={loading} entries={tabEntries}
-                typeFilter={filters.typeFilter} setTypeFilter={filters.setTypeFilter} cutoff={cutoff}
+                visibleEntries={filters.filtered} loading={loading} entries={rangeEntries}
+                typeFilter={filters.typeFilter} setTypeFilter={filters.setTypeFilter}
                 openEdit={openEdit} deleteEntry={handleDelete}
                 expandedDescriptionId={expandedDescriptionId}
                 setExpandedDescriptionId={setExpandedDescriptionId}

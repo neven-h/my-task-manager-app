@@ -57,7 +57,6 @@ const useTaskMutations = (setError, setLoading, fetchCategories, fetchTags) => {
     const deleteTask = useCallback(async (id) => {
         if (!window.confirm('Are you sure you want to delete this task?')) return;
         try {
-            setLoading(true);
             const response = await fetch(`${API_BASE}/tasks/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
             if (!response.ok) throw new Error('Failed to delete task');
             setError(null);
@@ -65,14 +64,11 @@ const useTaskMutations = (setError, setLoading, fetchCategories, fetchTags) => {
         } catch (err) {
             setError(err.message);
             return false;
-        } finally {
-            setLoading(false);
         }
-    }, [setError, setLoading]);
+    }, [setError]);
 
     const duplicateTask = useCallback(async (id) => {
         try {
-            setLoading(true);
             const response = await fetch(`${API_BASE}/tasks/${id}/duplicate`, { method: 'POST', headers: getAuthHeaders() });
             if (!response.ok) throw new Error('Failed to duplicate task');
             setError(null);
@@ -80,10 +76,8 @@ const useTaskMutations = (setError, setLoading, fetchCategories, fetchTags) => {
         } catch (err) {
             setError(err.message);
             return false;
-        } finally {
-            setLoading(false);
         }
-    }, [setError, setLoading]);
+    }, [setError]);
 
     const toggleTaskStatus = useCallback(async (id) => {
         try {

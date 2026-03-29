@@ -16,10 +16,9 @@ const fmt = (n) =>
 // Stable empty array to avoid creating new [] reference on every render
 export const EMPTY_HISTORY = [];
 
-export const EntryRow = memo(({ entry, balance, cutoff, onEdit, onDelete, isLast, isExpanded, onToggleExpand, history, selectMode, isSelected, onToggleSelect }) => {
+export const EntryRow = memo(({ entry, balance, onEdit, onDelete, isLast, isExpanded, onToggleExpand, history, selectMode, isSelected, onToggleSelect }) => {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [pressed, setPressed] = useState(false);
-    const isPast = entry.entry_date <= cutoff;
     const isIncome = entry.type === 'income';
     const dotColor = isIncome ? IOS.green : IOS.red;
     const sign = isIncome ? '+' : '−';
@@ -32,7 +31,7 @@ export const EntryRow = memo(({ entry, balance, cutoff, onEdit, onDelete, isLast
                     flexDirection: 'column',
                     padding: '10px 12px',
                     borderBottom: (isLast && !isExpanded) ? 'none' : `0.5px solid ${IOS.separator}`,
-                    opacity: isPast ? 1 : 0.42,
+                    opacity: 1,
                     background: pressed ? '#F2F2F7' : IOS.card,
                     transition: 'opacity 200ms, background 120ms',
                 }}

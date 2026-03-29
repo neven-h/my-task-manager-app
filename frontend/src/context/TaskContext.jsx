@@ -3,6 +3,8 @@ import useTaskData from '../hooks/useTaskData';
 import useTaskFilters from '../hooks/useTaskFilters';
 import useTaskSubmit from '../hooks/useTaskSubmit';
 import storage, { STORAGE_KEYS } from '../utils/storage';
+import API_BASE from '../config';
+import { getAuthHeaders } from '../api';
 
 const TaskContext = createContext(null);
 
@@ -107,8 +109,39 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
     const getStatusColor = useCallback((status) => ({ completed: { bg: '#FFD500', border: '#000', color: '#000' }, uncompleted: { bg: '#FF0000', border: '#000', color: '#fff' } })[status] || { bg: '#FF0000', border: '#000', color: '#fff' }, []);
     const getStatusLabel = useCallback((status) => ({ completed: 'Completed', uncompleted: 'Uncompleted' })[status] || status, []);
 
-    const deleteTask = useCallback(async (id) => { if (await deleteTaskRaw(id)) { await loadTasks(); await fetchStats(); } }, [deleteTaskRaw, loadTasks, fetchStats]);
-    const duplicateTask = useCallback(async (id) => { if (await duplicateTaskRaw(id)) { await loadTasks(); await fetchStats(); } }, [duplicateTaskRaw, loadTasks, fetchStats]);
+    const deleteTask = useCallback(async (id) => {
+        // Optimistic remove — task disappears instantly, no loading spinner
+        let removedTask;
+        setTasks(prev => {
+            removedTask = prev.find(t => t.id === id);
+            return prev.filter(t => t.id !== id);
+        });
+        const ok = await deleteTaskRaw(id);
+        if (!ok) {
+            // Revert on server error
+            setTasks(prev => removedTask ? [...prev, removedTask] : prev);
+        } else {
+            fetchStats();
+        }
+    }, [deleteTaskRaw, setTasks, fetchStats]);
+
+    const duplicateTask = useCallback(async (id) => {
+        const ok = await duplicateTaskRaw(id);
+        if (ok) {
+            // Quietly refresh the task list without showing a loading spinner
+            try {
+                const params = buildFilterParams(filters);
+                const res = await fetch(`${API_BASE}/tasks?${params}`, { headers: getAuthHeaders() });
+                if (res.ok) {
+                    let data = await res.json();
+                    setTasks(Array.isArray(data) ? data : []);
+                }
+            } catch (err) {
+                console.error('Error refreshing tasks after duplicate:', err);
+            }
+            fetchStats();
+        }
+    }, [duplicateTaskRaw, buildFilterParams, filters, setTasks, fetchStats]);
     const toggleTaskStatus = useCallback(async (id) => {
         // Optimistic update — flip the task locally so the UI responds instantly
         let prevStatus;
@@ -122,7 +155,6 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
             // Revert on server error
             setTasks(prev => prev.map(t => t.id === id ? { ...t, status: prevStatus } : t));
         } else {
-            // Refresh stats silently in background — no loading spinner
             fetchStats();
         }
     }, [toggleTaskStatusRaw, setTasks, fetchStats]);

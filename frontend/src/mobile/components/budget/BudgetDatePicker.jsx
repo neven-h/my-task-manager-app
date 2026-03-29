@@ -25,7 +25,7 @@ const PRESET_LABELS = {
 };
 
 /**
- * "Balance as of" date range picker card (mobile/iOS).
+ * Date range picker card (mobile/iOS).
  * Props: { cutoff, setCutoff, showDatePicker, setShowDatePicker,
  *          dateFrom, setDateFrom, datePreset, setDatePreset, applyPreset }
  */
@@ -41,7 +41,7 @@ const BudgetDatePicker = ({ cutoff, setCutoff, showDatePicker, setShowDatePicker
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '14px 16px', fontFamily: FONT_STACK,
             }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: IOS.label }}>Balance as of</span>
+            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: IOS.label }}>Date range</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: IOS.blue, fontWeight: 600, fontSize: '0.9rem' }}>
                 {PRESET_LABELS[datePreset] ?? 'Custom Range'}
                 {showDatePicker ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
