@@ -32,6 +32,7 @@ const IOS = {
 };
 
 const today = () => new Date().toISOString().split('T')[0];
+const daysAgo = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return d.toISOString().split('T')[0]; };
 const emptyForm = (type = 'income') => ({
     type, description: '', amount: '', entry_date: today(), category: '', notes: '',
 });
@@ -45,7 +46,8 @@ const MobileBudgetView = ({ onBack }) => {
     const { linkedTab, linkError, fetchLink, setLink, removeLink } = useBudgetLinks();
     const { forecast, loading: forecastLoading, fetchForecast, clearForecast, lastUpdated, refresh } = useBalanceForecast();
 
-    const [cutoff, setCutoff]             = useState(today());
+    const [dateTo, setDateTo]             = useState(today());
+    const [dateFrom, setDateFrom]         = useState(daysAgo(30));
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [showForm, setShowForm]         = useState(false);
     const [editingEntry, setEditingEntry] = useState(null);
@@ -58,15 +60,21 @@ const MobileBudgetView = ({ onBack }) => {
     const [confirmClearTab, setConfirmClearTab]   = useState(false);
     const { activeTabId, setActiveTabId } = useBudgetActiveTab(tabs);
 
-    const { tabEntries, monthlyTotals, chartData, allCategories, health } = useBudgetStats(entries, cutoff, activeTabId, forecast, linkedTab);
-    const filters = useBudgetFilters(tabEntries);
+    const { tabEntries, monthlyTotals, chartData, allCategories, health } = useBudgetStats(entries, dateTo, activeTabId, forecast, linkedTab);
+
+    // Entries within the selected date range — used for the list and summaries
+    const rangeEntries = useMemo(() =>
+        tabEntries.filter(e => e.entry_date >= dateFrom && e.entry_date <= dateTo),
+        [tabEntries, dateFrom, dateTo]);
+
+    const filters = useBudgetFilters(rangeEntries);
 
     useEffect(() => { fetchEntries(); fetchTabs(); }, [fetchEntries, fetchTabs]);
     useEffect(() => { fetchLink(activeTabId); clearForecast(); }, [activeTabId, fetchLink, clearForecast]);
     useEffect(() => { if (linkedTab && activeTabId) fetchForecast(activeTabId, 3); }, [linkedTab, activeTabId, fetchForecast]);
 
-    const income  = useMemo(() => tabEntries.filter(e => e.type === 'income'  && e.entry_date <= cutoff).reduce((s, e) => s + parseFloat(e.amount), 0), [tabEntries, cutoff]);
-    const outcome = useMemo(() => tabEntries.filter(e => e.type === 'outcome' && e.entry_date <= cutoff).reduce((s, e) => s + parseFloat(e.amount), 0), [tabEntries, cutoff]);
+    const income  = useMemo(() => rangeEntries.filter(e => e.type === 'income' ).reduce((s, e) => s + parseFloat(e.amount), 0), [rangeEntries]);
+    const outcome = useMemo(() => rangeEntries.filter(e => e.type === 'outcome').reduce((s, e) => s + parseFloat(e.amount), 0), [rangeEntries]);
     const displayBal = forecast ? forecast.current_balance : (income - outcome);
     const refreshForecast = useCallback(() => {
         if (linkedTab && activeTabId) fetchForecast(activeTabId, 3);
@@ -158,7 +166,7 @@ const MobileBudgetView = ({ onBack }) => {
                         {error}
                     </div>
                 )}
-                <BudgetDatePicker cutoff={cutoff} setCutoff={setCutoff} showDatePicker={showDatePicker} setShowDatePicker={setShowDatePicker} />
+                <BudgetDatePicker dateFrom={dateFrom} setDateFrom={setDateFrom} dateTo={dateTo} setDateTo={setDateTo} showDatePicker={showDatePicker} setShowDatePicker={setShowDatePicker} />
                 <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
                     <SummaryCard icon={TrendingUp}   label="Income"   amount={income}  color={IOS.green} sign="+" />
                     <SummaryCard icon={TrendingDown} label="Expenses" amount={outcome} color={IOS.red}   sign="−" />
@@ -196,8 +204,8 @@ const MobileBudgetView = ({ onBack }) => {
             <MobileBudgetFilters {...filters} allCategories={allCategories} />
 
             <BudgetEntryListCard
-                visibleEntries={filters.filtered} loading={loading} entries={tabEntries}
-                typeFilter={filters.typeFilter} setTypeFilter={filters.setTypeFilter} cutoff={cutoff}
+                visibleEntries={filters.filtered} loading={loading} entries={rangeEntries}
+                typeFilter={filters.typeFilter} setTypeFilter={filters.setTypeFilter}
                 openEdit={openEdit} deleteEntry={handleDelete}
                 expandedDescriptionId={expandedDescriptionId}
                 setExpandedDescriptionId={setExpandedDescriptionId}
