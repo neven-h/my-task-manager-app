@@ -5,6 +5,8 @@ import { addTaskToCalendar, checkCalendarAccess, requestCalendarAccess } from '.
 
 const isNative = () => !!(window.Capacitor?.isNativePlatform?.());
 
+const calendarAllowed = (s) => ['authorized', 'fullAccess', 'writeOnly'].includes(s);
+
 async function handleAddToCalendar(task) {
     if (!isNative()) {
         // Web / desktop: falls back to ICS download inside addTaskToCalendar
@@ -12,7 +14,7 @@ async function handleAddToCalendar(task) {
         return;
     }
 
-    const { status } = await checkCalendarAccess();
+    let { status } = await checkCalendarAccess();
 
     if (status === 'denied' || status === 'restricted') {
         alert(
@@ -22,13 +24,14 @@ async function handleAddToCalendar(task) {
         return;
     }
 
-    if (status === 'notDetermined') {
-        const { granted } = await requestCalendarAccess();
-        if (!granted) {
+    if (!calendarAllowed(status)) {
+        const result = await requestCalendarAccess();
+        status = result.status;
+        if (!result.granted && !calendarAllowed(status)) {
             alert(
                 'Calendar permission was not granted.\n\n' +
-                'You can enable it under Settings → Dr. Pitz Club → Calendars, or Privacy & Security → Calendars. ' +
-                'If Calendars does not appear, reinstall the app after this update so iOS registers calendar access.'
+                'Enable it under Settings → Privacy & Security → Calendars → Dr. Pitz Club. ' +
+                'If the app is not listed, delete and reinstall the app, then try again.'
             );
             return;
         }

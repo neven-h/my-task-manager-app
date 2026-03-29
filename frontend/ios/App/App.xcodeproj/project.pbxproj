@@ -341,6 +341,9 @@
 				DEVELOPMENT_TEAM = 8GL3A2RK66;
 				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Dr. Pitz Club needs full calendar access to add your tasks as calendar events.";
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "Dr. Pitz Club needs calendar access to add your tasks as events.";
+				INFOPLIST_KEY_NSCalendarsWriteOnlyAccessUsageDescription = "Dr. Pitz Club needs write access to add tasks to your calendar.";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -368,6 +371,9 @@
 				DEVELOPMENT_TEAM = 8GL3A2RK66;
 				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Dr. Pitz Club needs full calendar access to add your tasks as calendar events.";
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "Dr. Pitz Club needs calendar access to add your tasks as events.";
+				INFOPLIST_KEY_NSCalendarsWriteOnlyAccessUsageDescription = "Dr. Pitz Club needs write access to add tasks to your calendar.";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

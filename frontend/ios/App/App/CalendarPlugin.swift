@@ -13,26 +13,30 @@ public class CalendarPlugin: CAPPlugin {
 
     @objc func requestAccess(_ call: CAPPluginCall) {
         if #available(iOS 17.0, *) {
-            // Write-only matches add-only events; full access is unnecessary for this app.
-            store.requestWriteOnlyAccessToEvents { granted, error in
-                DispatchQueue.main.async {
-                    if let error = error {
-                        call.reject("Calendar access request failed: \(error.localizedDescription)")
-                        return
+            // EventKit permission prompts must be requested from the main thread.
+            DispatchQueue.main.async {
+                self.store.requestWriteOnlyAccessToEvents { granted, error in
+                    DispatchQueue.main.async {
+                        if let error = error {
+                            call.reject("Calendar access request failed: \(error.localizedDescription)")
+                            return
+                        }
+                        let status = EKEventStore.authorizationStatus(for: .event)
+                        call.resolve(["granted": granted, "status": self.statusString(status)])
                     }
-                    let status = EKEventStore.authorizationStatus(for: .event)
-                    call.resolve(["granted": granted, "status": self.statusString(status)])
                 }
             }
         } else {
-            store.requestAccess(to: .event) { granted, error in
-                DispatchQueue.main.async {
-                    if let error = error {
-                        call.reject("Calendar access request failed: \(error.localizedDescription)")
-                        return
+            DispatchQueue.main.async {
+                self.store.requestAccess(to: .event) { granted, error in
+                    DispatchQueue.main.async {
+                        if let error = error {
+                            call.reject("Calendar access request failed: \(error.localizedDescription)")
+                            return
+                        }
+                        let status = EKEventStore.authorizationStatus(for: .event)
+                        call.resolve(["granted": granted, "status": self.statusString(status)])
                     }
-                    let status = EKEventStore.authorizationStatus(for: .event)
-                    call.resolve(["granted": granted, "status": self.statusString(status)])
                 }
             }
         }
@@ -41,7 +45,7 @@ public class CalendarPlugin: CAPPlugin {
     @objc func addEvent(_ call: CAPPluginCall) {
         let status = EKEventStore.authorizationStatus(for: .event)
         if #available(iOS 17.0, *) {
-            guard status == .fullAccess || status == .writeOnly else {
+            guard status == .fullAccess || status == .writeOnly || status == .authorized else {
                 call.reject("Calendar access not granted")
                 return
             }
