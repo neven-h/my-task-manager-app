@@ -4,7 +4,11 @@ import PredRow from './MobilePredRow';
 
 const IOS = { separator: 'rgba(0,0,0,0.08)', muted: '#8E8E93' };
 
-const fmt = (n) => new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(n));
+const fmt = (n) => {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return '0.00';
+    return new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(v));
+};
 
 const MobileForecastTimeline = ({ hist, tl, visHist, hiddenHistCount, showAllHist, setShowAllHist, forecast }) => (
     <>
@@ -26,7 +30,7 @@ const MobileForecastTimeline = ({ hist, tl, visHist, hiddenHistCount, showAllHis
                 )}
             </div>
             {visHist.map((m, i) => (
-                <HistoryRow key={m.month} m={m} isLast={i === visHist.length - 1} />
+                <HistoryRow key={m.month || i} m={m} isLast={i === visHist.length - 1} />
             ))}
         </>)}
 

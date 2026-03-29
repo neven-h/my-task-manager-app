@@ -18,13 +18,13 @@ const FILTER_TABS = [['all', 'All'], ['income', 'Income'], ['outcome', 'Expenses
 /**
  * Entry list card: filter tabs + entry rows.
  * Props: {
- *   visibleEntries, loading, entries, typeFilter, setTypeFilter, cutoff,
+ *   visibleEntries, loading, entries, typeFilter, setTypeFilter,
  *   openEdit, deleteEntry, expandedDescriptionId, setExpandedDescriptionId,
  *   getDescriptionHistory
  * }
  */
 const BudgetEntryListCard = ({
-    visibleEntries, loading, entries, typeFilter, setTypeFilter, cutoff,
+    visibleEntries, loading, entries, typeFilter, setTypeFilter,
     openEdit, deleteEntry, expandedDescriptionId, setExpandedDescriptionId,
     getDescriptionHistory, selectMode, selectedIds, toggleSelect,
 }) => {
@@ -88,7 +88,7 @@ const BudgetEntryListCard = ({
                     key={e.id}
                     entry={e}
                     balance={balanceMap[e.id]}
-                    cutoff={cutoff}
+
                     onEdit={openEdit}
                     onDelete={deleteEntry}
                     isLast={idx === visibleEntries.length - 1}

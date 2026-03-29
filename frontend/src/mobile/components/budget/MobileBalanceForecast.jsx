@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { TrendingUp, RefreshCw } from 'lucide-react';
+import ErrorBoundary from '../../../components/ErrorBoundary';
 import MonthCard from './MobileMonthCard';
 import MobileForecastTimeline from './MobileForecastTimeline';
 import relativeTime from '../../../utils/relativeTime';
@@ -18,7 +19,11 @@ const IOS = {
     radius: 16, spring: 'cubic-bezier(0.22,1,0.36,1)',
 };
 
-const fmt = (n) => new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(n));
+const fmt = (n) => {
+    const v = Number(n);
+    if (!Number.isFinite(v)) return '0.00';
+    return new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(v));
+};
 const round2 = (n) => Math.round(n * 100) / 100;
 const HIST_SHOW = 3;
 
@@ -34,8 +39,8 @@ const MobileBalanceForecast = ({ forecast, onFetch, onRefresh, loading, linkedTa
         return () => clearInterval(id);
     }, [lastUpdated]);
 
-    const tl   = useMemo(() => forecast?.timeline || [], [forecast]);
-    const hist = useMemo(() => forecast?.history_timeline || [], [forecast]);
+    const tl   = useMemo(() => Array.isArray(forecast?.timeline) ? forecast.timeline : [], [forecast]);
+    const hist = useMemo(() => Array.isArray(forecast?.history_timeline) ? forecast.history_timeline : [], [forecast]);
 
     const monthlyProj = useMemo(() => {
         if (!tl.length) return [];
@@ -107,6 +112,7 @@ const MobileBalanceForecast = ({ forecast, onFetch, onRefresh, loading, linkedTa
             </button>
 
             {open && (
+                <ErrorBoundary>
                 <div style={{
                     background: IOS.card,
                     borderRadius: `0 0 ${IOS.radius}px ${IOS.radius}px`,
@@ -144,7 +150,7 @@ const MobileBalanceForecast = ({ forecast, onFetch, onRefresh, loading, linkedTa
                                     ⚠ At this pace, covers ~{runway} more month{runway !== 1 ? 's' : ''}
                                 </div>
                             )}
-                            {endBal !== undefined && (
+                            {endBal != null && (
                                 <div style={{ marginTop: runway ? 4 : 8, fontSize: '0.72rem', color: IOS.muted }}>
                                     Projected end:{' '}
                                     <b style={{ color: endBal >= 0 ? IOS.blue : IOS.red }}>
@@ -178,6 +184,7 @@ const MobileBalanceForecast = ({ forecast, onFetch, onRefresh, loading, linkedTa
                         />
                     </>)}
                 </div>
+                </ErrorBoundary>
             )}
         </div>
     );
