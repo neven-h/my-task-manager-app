@@ -17,7 +17,7 @@ async function handleAddToCalendar(task) {
     if (status === 'denied' || status === 'restricted') {
         alert(
             'Calendar access is blocked.\n\n' +
-            'To allow it: open Settings → Dr. Pitz Club → Calendars and set to "Full Access".'
+            'To allow it: Settings → Dr. Pitz Club → Calendars (or Settings → Privacy & Security → Calendars).'
         );
         return;
     }
@@ -25,7 +25,11 @@ async function handleAddToCalendar(task) {
     if (status === 'notDetermined') {
         const { granted } = await requestCalendarAccess();
         if (!granted) {
-            alert('Calendar permission was not granted.\n\nTo allow it: open Settings → Dr. Pitz Club → Calendars.');
+            alert(
+                'Calendar permission was not granted.\n\n' +
+                'You can enable it under Settings → Dr. Pitz Club → Calendars, or Privacy & Security → Calendars. ' +
+                'If Calendars does not appear, reinstall the app after this update so iOS registers calendar access.'
+            );
             return;
         }
     }

@@ -13,22 +13,27 @@ public class CalendarPlugin: CAPPlugin {
 
     @objc func requestAccess(_ call: CAPPluginCall) {
         if #available(iOS 17.0, *) {
-            store.requestFullAccessToEvents { granted, error in
-                if let error = error {
-                    call.reject("Calendar access request failed: \(error.localizedDescription)")
-                    return
+            // Write-only matches add-only events; full access is unnecessary for this app.
+            store.requestWriteOnlyAccessToEvents { granted, error in
+                DispatchQueue.main.async {
+                    if let error = error {
+                        call.reject("Calendar access request failed: \(error.localizedDescription)")
+                        return
+                    }
+                    let status = EKEventStore.authorizationStatus(for: .event)
+                    call.resolve(["granted": granted, "status": self.statusString(status)])
                 }
-                let status = EKEventStore.authorizationStatus(for: .event)
-                call.resolve(["granted": granted, "status": self.statusString(status)])
             }
         } else {
             store.requestAccess(to: .event) { granted, error in
-                if let error = error {
-                    call.reject("Calendar access request failed: \(error.localizedDescription)")
-                    return
+                DispatchQueue.main.async {
+                    if let error = error {
+                        call.reject("Calendar access request failed: \(error.localizedDescription)")
+                        return
+                    }
+                    let status = EKEventStore.authorizationStatus(for: .event)
+                    call.resolve(["granted": granted, "status": self.statusString(status)])
                 }
-                let status = EKEventStore.authorizationStatus(for: .event)
-                call.resolve(["granted": granted, "status": self.statusString(status)])
             }
         }
     }
@@ -81,9 +86,13 @@ public class CalendarPlugin: CAPPlugin {
 
         do {
             try store.save(event, span: .thisEvent)
-            call.resolve(["success": true, "eventId": event.eventIdentifier ?? ""])
+            DispatchQueue.main.async {
+                call.resolve(["success": true, "eventId": event.eventIdentifier ?? ""])
+            }
         } catch {
-            call.reject("Failed to save event: \(error.localizedDescription)")
+            DispatchQueue.main.async {
+                call.reject("Failed to save event: \(error.localizedDescription)")
+            }
         }
     }
 
