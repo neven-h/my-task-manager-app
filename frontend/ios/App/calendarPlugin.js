@@ -9,14 +9,14 @@ const Calendar = registerPlugin('Calendar');
 const isNative = () => !!(window.Capacitor?.isNativePlatform?.());
 
 // Check current authorisation status without prompting.
-// Returns { status: "authorized"|"writeOnly"|"denied"|"restricted"|"notDetermined" }
+// Returns { status: "authorized"|"writeOnly"|"denied"|"restricted"|"notDetermined"|"bridgeFailed" }
 export async function checkCalendarAccess() {
     if (!isNative()) return { status: 'notDetermined' };
     try {
         return await Calendar.checkAccess();
     } catch (err) {
         console.error('Calendar.checkAccess failed (plugin bridge issue?):', err);
-        return { status: 'notDetermined' };
+        return { status: 'bridgeFailed' };
     }
 }
 
@@ -28,7 +28,7 @@ export async function requestCalendarAccess() {
         return await Calendar.requestAccess();
     } catch (err) {
         console.error('Calendar.requestAccess failed (plugin bridge issue?):', err);
-        return { granted: false, status: 'denied' };
+        return { granted: false, status: 'bridgeFailed' };
     }
 }
 
