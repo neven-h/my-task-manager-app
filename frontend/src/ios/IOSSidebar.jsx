@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Plus, RefreshCw, Search, BookOpen, DollarSign, Upload,
@@ -7,6 +7,7 @@ import {
 import { useTaskContext } from '../context/TaskContext';
 import { FONT_STACK } from './theme';
 import { SectionLabel, SectionCard, Row } from './IOSSidebarRow';
+import useSwipeDown from './hooks/useSwipeDown';
 
 const SPRING = 'cubic-bezier(0.22,1,0.36,1)';
 
@@ -14,11 +15,14 @@ const IOSSidebar = ({ isOpen, onClose, onOpenSearch, onOpenUpload }) => {
     const navigate = useNavigate();
     const { authUser, isAdmin, isSharedUser, isLimitedUser, openNewTaskForm, setAppView, fetchTasks, exportToCSV, onLogout, hasActiveFilters } = useTaskContext();
     const [closing, setClosing] = useState(false);
+    const scrollRef = useRef(null);
 
     const handleClose = () => {
         setClosing(true);
         setTimeout(() => { setClosing(false); onClose(); }, 260);
     };
+
+    const { dragY, handlers: swipeHandlers } = useSwipeDown({ onClose: handleClose, scrollRef });
 
     if (!isOpen && !closing) return null;
 
@@ -26,23 +30,33 @@ const IOSSidebar = ({ isOpen, onClose, onOpenSearch, onOpenUpload }) => {
     const showFinance = isAdmin || isSharedUser || isLimitedUser;
     const visible = isOpen && !closing;
 
+    // Fade backdrop as user swipes down (max 300px travel = fully transparent)
+    const backdropOpacity = visible ? Math.max(0, 1 - dragY / 300) : 0;
+
     return (
         <>
             <div onClick={handleClose} style={{
                 position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
                 backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
-                opacity: visible ? 1 : 0, transition: `opacity 260ms ${SPRING}`, zIndex: 300
+                opacity: backdropOpacity, transition: dragY > 0 ? 'none' : `opacity 260ms ${SPRING}`, zIndex: 300
             }} />
             <div style={{
                 position: 'fixed', left: 0, right: 0, bottom: 0,
                 background: '#F2F2F7', borderTopLeftRadius: 24, borderTopRightRadius: 24,
                 boxShadow: '0 -2px 20px rgba(0,0,0,0.10)',
-                transform: visible ? 'translateY(0)' : 'translateY(100%)',
-                transition: `transform 260ms ${SPRING}`,
+                transform: visible ? `translateY(${dragY}px)` : 'translateY(100%)',
+                transition: dragY > 0 ? 'none' : `transform 260ms ${SPRING}`,
                 zIndex: 301, maxHeight: '85dvh', overflowY: 'auto',
                 paddingBottom: 'env(safe-area-inset-bottom, 16px)'
-            }}>
-                <div style={{ width: 36, height: 5, background: 'rgba(0,0,0,0.18)', borderRadius: 3, margin: '10px auto 0' }} />
+            }} ref={scrollRef}>
+
+                {/* Drag handle — also the swipe-down-to-close touch target */}
+                <div
+                    {...swipeHandlers}
+                    style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '10px 0 4px', touchAction: 'none', cursor: 'grab' }}
+                >
+                    <div style={{ width: 36, height: 5, background: 'rgba(0,0,0,0.18)', borderRadius: 3 }} />
+                </div>
 
                 {authUser && (
                     <div style={{

@@ -6,7 +6,8 @@ const MobileStockSummaryCards = ({
     summaryDisplayCurrency,
     setSummaryDisplayCurrency,
     theme,
-    fontStack
+    fontStack,
+    portfolioGrowth
 }) => {
     if (!summary) return null;
 
@@ -123,18 +124,39 @@ const MobileStockSummaryCards = ({
                 </div>
             )}
 
-            {summary.growth_percent != null && (
-                <div style={{
-                    marginTop: '8px',
-                    fontSize: '0.85rem',
-                    fontWeight: 600,
-                    color: summary.growth_percent >= 0 ? theme.success : theme.accent,
-                    transition: 'transform 200ms ease',
-                    transform: currencyTransition ? 'scale(1.05)' : 'scale(1)'
-                }}>
-                    {summary.growth_percent >= 0 ? '▲' : '▼'} {summary.growth_percent >= 0 ? '+' : ''}{summary.growth_percent.toFixed(2)}%
-                </div>
-            )}
+            {portfolioGrowth != null && (() => {
+                const positive = portfolioGrowth.growthPercent >= 0;
+                const color    = positive ? theme.success : theme.accent;
+                const arrow    = positive ? '▲' : '▼';
+                const sign     = positive ? '+' : '−';
+
+                // Pick the right currency amount
+                const useUSD   = summaryDisplayCurrency === 'USD' && portfolioGrowth.growthAmountUSD != null;
+                const growthAmt = useUSD
+                    ? Math.abs(portfolioGrowth.growthAmountUSD)
+                    : Math.abs(portfolioGrowth.growthAmountILS);
+                const displayCurrency = useUSD ? 'USD' : 'ILS';
+
+                return (
+                    <div style={{
+                        marginTop: '12px',
+                        transition: 'transform 200ms ease',
+                        transform: currencyTransition ? 'scale(1.02)' : 'scale(1)'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '1.05rem', fontWeight: 700, color, letterSpacing: '-0.3px' }}>
+                                {arrow} {sign}{formatCurrencyWithCode(growthAmt, displayCurrency)}
+                            </span>
+                            <span style={{ fontSize: '0.88rem', fontWeight: 600, color }}>
+                                {sign}{Math.abs(portfolioGrowth.growthPercent).toFixed(2)}%
+                            </span>
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: theme.muted, marginTop: '3px' }}>
+                            Total growth{portfolioGrowth.hasLive ? ' · live' : ' · last entry'}
+                        </div>
+                    </div>
+                );
+            })()}
         </div>
     );
 };

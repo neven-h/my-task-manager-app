@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Plus } from 'lucide-react';
 import YahooPortfolioSection from '../../components/portfolio/YahooPortfolioSection';
 import useMobilePortfolioTabs from '../hooks/useMobilePortfolioTabs';
@@ -32,6 +32,53 @@ const MobileStockPortfolioBauhaus = ({ authUser, authRole, onBack }) => {
     const { entries, summary, stockNames, loading, setLoading, fetchEntries, fetchSummary } = useMobilePortfolioData(activeTabId);
     const { stockPrices, priceLoading } = useMobileStockPrices(activeTabId, entries);
     const { getEntryValues, groupedEntries } = useMobilePortfolioCalc(entries);
+
+    // Compute portfolio-level total growth.
+    // Uses live prices (from stockPrices) when available; falls back to the most
+    // recent stored value_ils per entry otherwise.
+    const portfolioGrowth = useMemo(() => {
+        const allEntries = summary?.entries ?? [];
+        const exchangeRates = summary?.exchange_rates ?? {};
+
+        let totalCurrentILS = 0;
+        let totalCostILS = 0;
+        let hasBase = false;
+        let hasLive = false;
+
+        for (const entry of allEntries) {
+            const basePricePerUnit = entry.base_price != null ? parseFloat(entry.base_price) : null;
+            if (basePricePerUnit == null || basePricePerUnit === 0) continue;
+
+            const units = parseFloat(entry.units) || 1;
+            const currency = (entry.currency || 'ILS').toUpperCase();
+            const rate = exchangeRates[currency] ?? 1;
+
+            // Live price takes priority; otherwise derive per-unit price from stored total
+            const ticker = entry.ticker_symbol;
+            const livePrice = ticker ? stockPrices[ticker] : null;
+            let currentPricePerUnit;
+            if (livePrice?.currentPrice) {
+                currentPricePerUnit = livePrice.currentPrice;
+                hasLive = true;
+            } else {
+                // value_ils / units matches the pattern in useMobilePortfolioCalc
+                currentPricePerUnit = (parseFloat(entry.value_ils) || 0) / units;
+            }
+
+            totalCurrentILS += currentPricePerUnit * units * rate;
+            totalCostILS   += basePricePerUnit    * units * rate;
+            hasBase = true;
+        }
+
+        if (!hasBase || totalCostILS === 0) return null;
+
+        const growthAmountILS = totalCurrentILS - totalCostILS;
+        const growthPercent   = (growthAmountILS / totalCostILS) * 100;
+        const usdRate         = exchangeRates['USD'];
+        const growthAmountUSD = usdRate ? growthAmountILS / usdRate : null;
+
+        return { growthPercent, growthAmountILS, growthAmountUSD, hasLive };
+    }, [summary?.entries, summary?.exchange_rates, stockPrices]);
 
     const form = useMobilePortfolioForm(activeTabId);
     const { handleSaveEntry, handleDeleteEntry } = useMobilePortfolioCRUD({
@@ -84,7 +131,7 @@ const MobileStockPortfolioBauhaus = ({ authUser, authRole, onBack }) => {
     return (
         <div style={{ minHeight: '100dvh', background: THEME.bg, fontFamily: FONT_STACK, paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 80px)' }}>
             <MobileStockPortfolioHeader onBack={onBack} tabs={tabs} activeTabId={activeTabId} setActiveTabId={setActiveTabId} handleCreateTab={handleCreateTab} theme={THEME} headerStyle={headerStyle} backButtonStyle={backButtonStyle} />
-            <MobileStockSummaryCards summary={summary} summaryDisplayCurrency={summaryDisplayCurrency} setSummaryDisplayCurrency={setSummaryDisplayCurrency} theme={THEME} fontStack={FONT_STACK} />
+            <MobileStockSummaryCards summary={summary} summaryDisplayCurrency={summaryDisplayCurrency} setSummaryDisplayCurrency={setSummaryDisplayCurrency} theme={THEME} fontStack={FONT_STACK} portfolioGrowth={portfolioGrowth} />
             <div style={{ padding: '0 16px 16px' }}>
                 <YahooPortfolioSection colors={{ ...THEME, textLight: THEME.muted }} authUser={authUser} authRole={authRole} defaultExpanded={true} />
             </div>
