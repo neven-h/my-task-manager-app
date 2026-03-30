@@ -44,7 +44,7 @@ const DesktopNotebook = ({ onBackToTasks }) => {
 
             {/* Header */}
             <div style={{ padding: '20px 48px 0', display: 'flex', alignItems: 'center', gap: 16 }}>
-                <button className="btn btn-white" onClick={onBackToTasks} style={{ padding: '8px 16px' }}>← Back</button>
+                <button type="button" className="btn btn-white" onClick={onBackToTasks} style={{ padding: '8px 16px' }}>← Back</button>
                 <h2 style={{ fontWeight: 900, fontSize: '1.5rem', textTransform: 'uppercase', margin: 0 }}>Notebook</h2>
             </div>
 

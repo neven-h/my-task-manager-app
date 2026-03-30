@@ -45,7 +45,7 @@ public class CalendarPlugin: CAPPlugin {
     @objc func addEvent(_ call: CAPPluginCall) {
         let status = EKEventStore.authorizationStatus(for: .event)
         if #available(iOS 17.0, *) {
-            guard status == .fullAccess || status == .writeOnly || status == .authorized else {
+            guard status == .fullAccess || status == .writeOnly else {
                 call.reject("Calendar access not granted")
                 return
             }
@@ -101,21 +101,38 @@ public class CalendarPlugin: CAPPlugin {
     }
 
     private func statusString(_ status: EKAuthorizationStatus) -> String {
-        switch status {
-        case .fullAccess:
-            return "fullAccess"
-        case .writeOnly:
-            return "writeOnly"
-        case .authorized:
-            return "authorized"
-        case .denied:
-            return "denied"
-        case .restricted:
-            return "restricted"
-        case .notDetermined:
-            return "notDetermined"
-        @unknown default:
-            return "notDetermined"
+        if #available(iOS 17.0, *) {
+            switch status {
+            case .fullAccess:
+                return "fullAccess"
+            case .writeOnly:
+                return "writeOnly"
+            case .denied:
+                return "denied"
+            case .restricted:
+                return "restricted"
+            case .notDetermined:
+                return "notDetermined"
+            @unknown default:
+                return "notDetermined"
+            }
+        } else {
+            switch status {
+            case .authorized:
+                return "authorized"
+            case .fullAccess:
+                return "authorized"
+            case .writeOnly:
+                return "writeOnly"
+            case .denied:
+                return "denied"
+            case .restricted:
+                return "restricted"
+            case .notDetermined:
+                return "notDetermined"
+            @unknown default:
+                return "notDetermined"
+            }
         }
     }
 

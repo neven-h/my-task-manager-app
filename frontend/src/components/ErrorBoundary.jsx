@@ -25,6 +25,7 @@ class ErrorBoundary extends React.Component {
                         {this.state.error?.message || 'Unknown error'}
                     </div>
                     <button
+                        type="button"
                         onClick={() => this.setState({ hasError: false, error: null })}
                         style={{
                             marginTop: 12, padding: '8px 16px', border: 'none', borderRadius: 8,

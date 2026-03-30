@@ -41,7 +41,7 @@ const IOSTaskFormModal = () => {
                         <h2 style={{ fontSize: '1.3rem', fontWeight: 900, margin: 0, textTransform: 'uppercase', fontFamily: FONT_STACK }}>
                             {editingTask ? 'Edit Task' : 'New Task'}
                         </h2>
-                        <button onClick={handleClose} style={{ background: 'none', border: 'none', padding: '8px', cursor: 'pointer' }}>
+                        <button type="button" onClick={handleClose} style={{ background: 'none', border: 'none', padding: '8px', cursor: 'pointer' }}>
                             <X size={28} color={THEME.text} />
                         </button>
                     </div>
@@ -157,13 +157,13 @@ const IOSTaskFormModal = () => {
                             </div>
                         )}
                         <div style={{ display: 'flex', gap: '12px' }}>
-                            <button onClick={handleClose} className="mobile-btn" style={{ flex: 1 }} disabled={loading}>Cancel</button>
-                            <button onClick={handleSave} className="mobile-btn mobile-btn-primary" style={{ flex: 1 }} disabled={loading || !formData.title.trim()}>
+                            <button type="button" onClick={handleClose} className="mobile-btn" style={{ flex: 1 }} disabled={loading}>Cancel</button>
+                            <button type="button" onClick={handleSave} className="mobile-btn mobile-btn-primary" style={{ flex: 1 }} disabled={loading || !formData.title.trim()}>
                                 {loading ? 'Saving...' : (editingTask ? 'Update' : 'Create')}
                             </button>
                         </div>
                         {editingTask && (
-                            <button onClick={() => { deleteTask(editingTask.id); closeFormModal(); }} className="mobile-btn mobile-btn-accent" style={{ width: '100%', marginTop: '12px' }} disabled={loading}>
+                            <button type="button" onClick={() => { deleteTask(editingTask.id); closeFormModal(); }} className="mobile-btn mobile-btn-accent" style={{ width: '100%', marginTop: '12px' }} disabled={loading}>
                                 <Trash2 size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: '8px' }} />Delete Task
                             </button>
                         )}

@@ -48,13 +48,13 @@ const MobileStockPortfolioForm = ({ showForm, editingEntry, formData, setFormDat
                     <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: 'rgba(60,60,67,0.18)' }} />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr 80px', alignItems: 'center', padding: '6px 16px 12px', flexShrink: 0, borderBottom: `0.5px solid ${IOS.separator}` }}>
-                    <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: IOS.blue, fontSize: '1rem', textAlign: 'left', padding: '6px 0', fontFamily: 'inherit' }}>
+                    <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: IOS.blue, fontSize: '1rem', textAlign: 'left', padding: '6px 0', fontFamily: 'inherit' }}>
                         Cancel
                     </button>
                     <span style={{ textAlign: 'center', fontWeight: 600, fontSize: '1rem', letterSpacing: '-0.2px' }}>
                         {editingEntry ? 'Edit Entry' : 'New Entry'}
                     </span>
-                    <button onClick={onSave} disabled={!canSave} style={{ background: 'none', border: 'none', cursor: canSave ? 'pointer' : 'default', color: canSave ? IOS.blue : IOS.muted, fontSize: '1rem', fontWeight: 600, textAlign: 'right', padding: '6px 0', fontFamily: 'inherit' }}>
+                    <button type="button" onClick={onSave} disabled={!canSave} style={{ background: 'none', border: 'none', cursor: canSave ? 'pointer' : 'default', color: canSave ? IOS.blue : IOS.muted, fontSize: '1rem', fontWeight: 600, textAlign: 'right', padding: '6px 0', fontFamily: 'inherit' }}>
                         {loading ? 'Saving…' : 'Save'}
                     </button>
                 </div>

@@ -43,11 +43,11 @@ const TransactionEditRow = ({ editingTransaction, setEditingTransaction, isSelec
             </div>
         </td>
         <td style={{ padding: '0.5rem', textAlign: 'center' }}>
-            <button onClick={() => handleUpdateTransaction(transactionId)}
+            <button type="button" onClick={() => handleUpdateTransaction(transactionId)}
                 style={{ padding: '0.4rem 0.6rem', background: colors.success, color: '#fff', border: `2px solid ${colors.border}`, cursor: 'pointer', marginRight: '0.4rem', fontFamily: '"Inter", sans-serif' }}>
                 <Save size={14} />
             </button>
-            <button onClick={() => setEditingTransaction(null)}
+            <button type="button" onClick={() => setEditingTransaction(null)}
                 style={{ padding: '0.4rem 0.6rem', background: colors.card, color: colors.text, border: `2px solid ${colors.border}`, cursor: 'pointer', fontFamily: '"Inter", sans-serif' }}>
                 <X size={14} />
             </button>

@@ -73,12 +73,12 @@ const TaskCard = React.memo(({ task }) => {
 
                 {!isSharedUser && (
                     <div style={{ display: 'flex', gap: '8px', ...(rtlEnabled ? { marginRight: '24px' } : { marginLeft: '24px' }) }}>
-                        <button onClick={() => toggleTaskStatus(task.id)} className="btn" style={{ padding: '10px', minWidth: 'auto' }} title="Toggle status"><Check size={18} /></button>
-                        <button onClick={() => openEditTaskForm(task)} className="btn" style={{ padding: '10px', minWidth: 'auto' }} title="Edit"><Edit2 size={18} /></button>
-                        <button onClick={() => duplicateTask(task.id)} className="btn" style={{ padding: '10px', minWidth: 'auto' }} title="Duplicate"><Copy size={18} /></button>
-                        <button onClick={() => openShareModal(task)} className="btn" style={{ padding: '10px', minWidth: 'auto' }} title="Share via Email"><Share2 size={18} /></button>
-                        <button onClick={() => openCalendarModal(task)} className="btn" style={{ padding: '10px', minWidth: 'auto' }} title="Add to Calendar"><CalendarPlus size={18} /></button>
-                        <button onClick={() => deleteTask(task.id)} className="btn" style={{ padding: '10px', minWidth: 'auto' }} title="Delete"><Trash2 size={18} /></button>
+                        <button type="button" onClick={() => toggleTaskStatus(task.id)} className="btn" style={{ padding: '10px', minWidth: 'auto' }} title="Toggle status"><Check size={18} /></button>
+                        <button type="button" onClick={() => openEditTaskForm(task)} className="btn" style={{ padding: '10px', minWidth: 'auto' }} title="Edit"><Edit2 size={18} /></button>
+                        <button type="button" onClick={() => duplicateTask(task.id)} className="btn" style={{ padding: '10px', minWidth: 'auto' }} title="Duplicate"><Copy size={18} /></button>
+                        <button type="button" onClick={() => openShareModal(task)} className="btn" style={{ padding: '10px', minWidth: 'auto' }} title="Share via Email"><Share2 size={18} /></button>
+                        <button type="button" onClick={() => openCalendarModal(task)} className="btn" style={{ padding: '10px', minWidth: 'auto' }} title="Add to Calendar"><CalendarPlus size={18} /></button>
+                        <button type="button" onClick={() => deleteTask(task.id)} className="btn" style={{ padding: '10px', minWidth: 'auto' }} title="Delete"><Trash2 size={18} /></button>
                     </div>
                 )}
             </div>
