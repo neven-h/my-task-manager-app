@@ -17,6 +17,7 @@ qrcode==7.4.2
 Pillow==12.1.1
 yfinance==1.1.0
 cloudinary==1.44.1
+anthropic>=0.40.0
 bank-csv-normalizer @ https://github.com/neven-h/csv_parsing/archive/refs/heads/master.zip
 # Deep learning forecast engine disabled — Chronos T5 OOM-killed gunicorn workers on Railway
 # Statistical IQR fallback (in forecast_engine.py) is used instead

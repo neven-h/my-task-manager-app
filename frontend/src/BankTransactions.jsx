@@ -14,6 +14,7 @@ import AddTransactionModal from './components/transactions/AddTransactionModal';
 import CreateFirstTab from './components/transactions/CreateFirstTab';
 import TransactionInsights from './components/transactions/TransactionInsights';
 import TransactionBalanceForecast from './components/transactions/TransactionBalanceForecast';
+import AIAdvisorPanel from './components/transactions/AIAdvisorPanel';
 
 const BankTransactionsInner = () => {
     const {
@@ -93,6 +94,7 @@ const BankTransactionsInner = () => {
             {activeTabId && (
                 <div className="bank-main" style={{ maxWidth: '1500px', margin: '0 auto', padding: '2rem' }}>
                     <TransactionBalanceForecast />
+                    <AIAdvisorPanel />
                     <TransactionInsights />
                     <TransactionStatsCards />
                     <ExpenseDistributionChart />
