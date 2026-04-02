@@ -15,7 +15,7 @@ const VerdictBadge = ({ verdict }) => {
         <span style={{
             background: style.bg, color: '#fff',
             padding: '2px 10px', fontSize: '0.75rem',
-            fontWeight: 800, borderRadius: 20,
+            fontWeight: 800, borderRadius: 0,
         }}>
             {style.label}
         </span>
@@ -72,15 +72,15 @@ const AIAdvisorPanel = () => {
     return (
         <div style={{
             marginBottom: '1.5rem',
-            border: '2px solid #e0e0e0',
-            borderRadius: 12,
+            border: '3px solid #000',
+            borderRadius: 0,
             overflow: 'hidden',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+            boxShadow: '4px 4px 0px #000',
         }}>
             {/* Header */}
             <div onClick={toggle} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '14px 20px', background: '#1e293b', color: '#fff',
+                padding: '14px 20px', background: '#000', color: '#fff',
                 cursor: 'pointer', userSelect: 'none',
             }}>
                 <div style={{
@@ -92,7 +92,8 @@ const AIAdvisorPanel = () => {
                     <span style={{
                         background: 'rgba(255,255,255,0.15)',
                         padding: '2px 8px', fontSize: '0.65rem',
-                        fontWeight: 700, borderRadius: 4, letterSpacing: '0.05em',
+                        fontWeight: 700, borderRadius: 0, letterSpacing: '0.05em',
+                        border: '1px solid rgba(255,255,255,0.3)',
                     }}>
                         Claude AI
                     </span>

@@ -1,10 +1,11 @@
 """AI Financial Advisor — real Claude AI analysis of user spending patterns.
 
 Gathers structured spending data from the DB (monthly totals, top categories,
-anomalies) and sends it to Claude claude-opus-4-6 via tool_use to produce a
-typed financial analysis: summary, recommendations, risk alerts, savings tips.
+anomalies) and sends it to Claude via tool_use to produce a typed financial
+analysis: summary, recommendations, risk alerts, savings tips.
 
-Cached for 10 minutes per user+tab to avoid hammering the Anthropic API.
+Cache TTL follows forecast_engine.CACHE_TTL (5 minutes).
+Model is configurable via CLAUDE_MODEL env var (default: claude-opus-4-6).
 """
 import logging
 import os
@@ -15,6 +16,7 @@ from config import get_db_connection, token_required, decrypt_field
 from mysql.connector import Error
 from concurrent.futures import ThreadPoolExecutor
 from .forecast_engine import cache_get, cache_set
+from .transaction_insights_helpers import _normalize
 
 try:
     import anthropic
@@ -27,6 +29,7 @@ logger = logging.getLogger(__name__)
 ai_advisor_bp = Blueprint('ai_advisor', __name__)
 
 _TOP_N = 5
+_DEFAULT_MODEL = "claude-opus-4-6"
 
 # ── Claude tool definition for structured output ──────────────────────────────
 
@@ -85,11 +88,6 @@ _ANALYSIS_TOOL = {
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
-
-def _normalize(desc: str) -> str:
-    """Collapse whitespace and lowercase for grouping."""
-    return " ".join(desc.lower().split())
-
 
 def _build_prompt(monthly_totals: list, top_cats: list, avg: float,
                   anomalies: list, month_count: int) -> str:
@@ -243,7 +241,8 @@ def _fetch_spending_data(username: str, user_role: str, tab_id: str) -> dict:
 
 
 def _call_claude(prompt_text: str) -> dict:
-    """Call Claude claude-opus-4-6 with tool_use and return the structured analysis."""
+    """Call Claude with tool_use and return the validated structured analysis."""
+    model = os.environ.get('CLAUDE_MODEL', _DEFAULT_MODEL)
     client = anthropic.Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
 
     today = date.today().strftime('%B %d, %Y')
@@ -255,7 +254,7 @@ def _call_claude(prompt_text: str) -> dict:
     )
 
     response = client.messages.create(
-        model="claude-opus-4-6",
+        model=model,
         max_tokens=1024,
         system=system,
         tools=[_ANALYSIS_TOOL],
@@ -266,8 +265,15 @@ def _call_claude(prompt_text: str) -> dict:
     # Extract the tool_use block input
     for block in response.content:
         if block.type == "tool_use" and block.name == "provide_financial_analysis":
-            return block.input
+            result = block.input
+            # Validate required fields are present and non-empty
+            required = ['summary', 'recommendations', 'savings_opportunities', 'spending_verdict']
+            missing = [f for f in required if not result.get(f)]
+            if missing:
+                logger.warning('[ai_advisor] Claude response missing fields: %s', missing)
+            return result
 
+    logger.error('[ai_advisor] Claude did not return tool_use block. content: %s', response.content)
     raise ValueError("Claude did not return the expected tool_use block")
 
 

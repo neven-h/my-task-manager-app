@@ -49,6 +49,11 @@ export const useBankTransactionAI = (activeTabId, setError) => {
             const params = new URLSearchParams({ tab_id: activeTabId });
             if (forceRefresh) params.set('refresh', '1');
             const res = await fetch(`${API_BASE}/ai/financial-advisor?${params}`, { headers: getAuthHeaders() });
+            if (res.status === 503) {
+                // AI unavailable — surface gracefully without a global error toast
+                setAiAdvisor(await res.json());
+                return;
+            }
             if (!res.ok) throw new Error('AI advisor request failed');
             setAiAdvisor(await res.json());
         } catch (err) {
@@ -58,9 +63,11 @@ export const useBankTransactionAI = (activeTabId, setError) => {
         }
     }, [activeTabId, setError]);
 
+    const clearAIAdvisor = useCallback(() => setAiAdvisor(null), []);
+
     return {
         txPredictions, spendingInsights, insightsLoading, fetchTransactionPredictions, fetchSpendingInsights,
-        aiAdvisor, aiAdvisorLoading, fetchAIAdvisor,
+        aiAdvisor, aiAdvisorLoading, fetchAIAdvisor, clearAIAdvisor,
     };
 };
 

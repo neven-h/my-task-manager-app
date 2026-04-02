@@ -31,7 +31,8 @@ def cache_set(key: str, value):
 def invalidate_prediction_cache(username: str, tab_id: str = None):
     """Remove cached predictions for a user (optionally scoped to a tab)."""
     prefixes = [f"txpredict:{username}:", f"budgetpredict:{username}:",
-                f"balancefc:{username}:", f"txinsights:{username}:"]
+                f"balancefc:{username}:", f"txinsights:{username}:",
+                f"aiadvisor:{username}:"]
     to_delete = []
     for key in _cache:
         for pfx in prefixes:
