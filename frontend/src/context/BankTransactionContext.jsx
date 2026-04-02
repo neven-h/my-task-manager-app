@@ -70,7 +70,8 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
     const [uploadTargetTabId, setUploadTargetTabId] = useState(null);
     const [expandedDescriptionId, setExpandedDescriptionId] = useState(null);
 
-    const { txPredictions, spendingInsights, insightsLoading, fetchTransactionPredictions, fetchSpendingInsights } =
+    const { txPredictions, spendingInsights, insightsLoading, fetchTransactionPredictions, fetchSpendingInsights,
+            aiAdvisor, aiAdvisorLoading, fetchAIAdvisor } =
         useBankTransactionAI(activeTabId, setError);
     const { exportToPDF, exportTransactionsCSV } =
         useBankTransactionExport(activeTabId, selectedMonth, filteredTransactions, setError);
@@ -173,6 +174,7 @@ export const BankTransactionProvider = ({ onBackToTasks, authUser, authRole, chi
         exportToPDF, exportTransactionsCSV,
         txPredictions, fetchTransactionPredictions,
         spendingInsights, insightsLoading, fetchSpendingInsights,
+        aiAdvisor, aiAdvisorLoading, fetchAIAdvisor,
         ...crud,
     };
 

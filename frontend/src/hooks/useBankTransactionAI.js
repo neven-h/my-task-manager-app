@@ -12,6 +12,8 @@ export const useBankTransactionAI = (activeTabId, setError) => {
     const [txPredictions,   setTxPredictions]   = useState([]);
     const [spendingInsights, setSpendingInsights] = useState(null);
     const [insightsLoading, setInsightsLoading] = useState(false);
+    const [aiAdvisor,       setAiAdvisor]       = useState(null);
+    const [aiAdvisorLoading, setAiAdvisorLoading] = useState(false);
 
     const fetchTransactionPredictions = useCallback(async (months = 3) => {
         if (!activeTabId) return;
@@ -40,7 +42,26 @@ export const useBankTransactionAI = (activeTabId, setError) => {
         }
     }, [activeTabId, setError]);
 
-    return { txPredictions, spendingInsights, insightsLoading, fetchTransactionPredictions, fetchSpendingInsights };
+    const fetchAIAdvisor = useCallback(async (forceRefresh = false) => {
+        if (!activeTabId) return;
+        setAiAdvisorLoading(true);
+        try {
+            const params = new URLSearchParams({ tab_id: activeTabId });
+            if (forceRefresh) params.set('refresh', '1');
+            const res = await fetch(`${API_BASE}/ai/financial-advisor?${params}`, { headers: getAuthHeaders() });
+            if (!res.ok) throw new Error('AI advisor request failed');
+            setAiAdvisor(await res.json());
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setAiAdvisorLoading(false);
+        }
+    }, [activeTabId, setError]);
+
+    return {
+        txPredictions, spendingInsights, insightsLoading, fetchTransactionPredictions, fetchSpendingInsights,
+        aiAdvisor, aiAdvisorLoading, fetchAIAdvisor,
+    };
 };
 
 export default useBankTransactionAI;
