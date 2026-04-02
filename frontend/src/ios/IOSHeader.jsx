@@ -1,8 +1,18 @@
 import React from 'react';
-import { Menu } from 'lucide-react';
+import { Menu, Search } from 'lucide-react';
 import { THEME, FONT_STACK } from './theme';
 
-const IOSHeader = ({ onMenuOpen }) => (
+const btnStyle = {
+    background: '#fff',
+    border: '3px solid #000',
+    padding: '10px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+};
+
+const IOSHeader = ({ onMenuOpen, onSearchOpen }) => (
     <div style={{
         position: 'sticky',
         top: 0,
@@ -11,7 +21,6 @@ const IOSHeader = ({ onMenuOpen }) => (
         borderBottom: '4px solid #000',
         paddingTop: 'env(safe-area-inset-top, 0px)'
     }}>
-        {/* Top bar: solid pink — also covers the safe-area gap on notched phones */}
         <div style={{ height: '12px', width: '100%', background: '#F8B4D9' }} />
         <div style={{
             padding: '16px',
@@ -31,21 +40,16 @@ const IOSHeader = ({ onMenuOpen }) => (
             }}>
                 TASK TRACKER
             </h1>
-            <button
-                onClick={onMenuOpen}
-                style={{
-                    background: '#fff',
-                    border: '3px solid #000',
-                    padding: '10px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                }}
-                aria-label="Menu"
-            >
-                <Menu size={24} color={THEME.text} />
-            </button>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                {onSearchOpen && (
+                    <button onClick={onSearchOpen} style={btnStyle} aria-label="Search">
+                        <Search size={22} color={THEME.text} />
+                    </button>
+                )}
+                <button onClick={onMenuOpen} style={btnStyle} aria-label="Menu">
+                    <Menu size={24} color={THEME.text} />
+                </button>
+            </div>
         </div>
     </div>
 );

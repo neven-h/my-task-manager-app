@@ -114,7 +114,7 @@ const IOSTaskCard = ({ task }) => {
                                     : <Circle size={26} color={THEME.accent} strokeWidth={2.5} />}
                             </button>
                             <div onClick={handleCardTap} style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}>
-                                <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: 0, lineHeight: 1.4, textDecoration: isCompleted ? 'line-through' : 'none', color: isCompleted ? '#8E8E93' : '#000', fontFamily: FONT_STACK, wordBreak: 'break-word' }}>
+                                <h3 dir="auto" style={{ fontSize: '1rem', fontWeight: 600, margin: 0, lineHeight: 1.4, textDecoration: isCompleted ? 'line-through' : 'none', color: isCompleted ? '#8E8E93' : '#000', fontFamily: FONT_STACK, wordBreak: 'break-word', unicodeBidi: 'plaintext' }}>
                                     {task.title}
                                 </h3>
                             </div>
@@ -122,7 +122,7 @@ const IOSTaskCard = ({ task }) => {
                         </div>
                         <div onClick={handleCardTap} style={{ cursor: 'pointer' }}>
                             {task.description && (
-                                <p style={{ fontSize: '0.875rem', color: '#8E8E93', margin: '8px 0 0 46px', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                <p dir="auto" style={{ fontSize: '0.875rem', color: '#8E8E93', margin: '8px 0 0 46px', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word', unicodeBidi: 'plaintext' }}>
                                     {task.description}
                                 </p>
                             )}

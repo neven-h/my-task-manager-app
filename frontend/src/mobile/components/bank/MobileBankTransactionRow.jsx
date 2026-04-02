@@ -40,8 +40,8 @@ const MobileBankTransactionRow = ({ transaction, onEdit, onDelete, isLast, selec
                     {isTransferIn ? <ArrowDownLeft size={17} color="#34C759" /> : isTransferOut ? <ArrowUpRight size={17} color="#FF3B30" /> : isCash ? <DollarSign size={17} color="#B8860B" /> : <CreditCard size={17} color="#0000CC" />}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    <div onClick={(e) => { if (!selectMode && onBatchRename && transaction.description) { e.stopPropagation(); const newName = window.prompt(`Rename all "${transaction.description}" to:`, transaction.description); if (newName && newName.trim() && newName.trim() !== transaction.description) onBatchRename(transaction.description, newName.trim()); } }}
-                        style={{ fontWeight: 600, fontSize: '0.88rem', color: '#000', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: !selectMode ? 'underline dashed rgba(0,0,0,0.15)' : 'none', textUnderlineOffset: '3px' }}>
+                    <div dir="auto" onClick={(e) => { if (!selectMode && onBatchRename && transaction.description) { e.stopPropagation(); const newName = window.prompt(`Rename all "${transaction.description}" to:`, transaction.description); if (newName && newName.trim() && newName.trim() !== transaction.description) onBatchRename(transaction.description, newName.trim()); } }}
+                        style={{ fontWeight: 600, fontSize: '0.88rem', color: '#000', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textDecoration: !selectMode ? 'underline dashed rgba(0,0,0,0.15)' : 'none', textUnderlineOffset: '3px', unicodeBidi: 'plaintext' }}>
                         {transaction.description ?? '—'}
                     </div>
                     <div style={{ fontSize: '0.74rem', color: '#888', marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>

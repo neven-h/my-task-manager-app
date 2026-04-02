@@ -9,7 +9,7 @@ import { useRef, useState, useCallback } from 'react';
  *  - dragX       — current horizontal drag offset (px), 0 when idle
  *  - handlers    — { onTouchStart, onTouchMove, onTouchEnd } to spread on the root element
  */
-const useSwipeBack = ({ onBack, edgeWidth = 30, threshold = 80 } = {}) => {
+const useSwipeBack = ({ onBack, edgeWidth = Math.max(30, Math.min(60, typeof window !== 'undefined' ? window.innerWidth * 0.08 : 30)), threshold = 80 } = {}) => {
     const [dragX, setDragX] = useState(0);
 
     const startX = useRef(null);

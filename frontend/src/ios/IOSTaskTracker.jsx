@@ -16,6 +16,8 @@ import IOSTaskActions from './IOSTaskActions';
 import IOSFilterBar from './IOSFilterBar';
 import IOSActiveFilterBanner from './IOSActiveFilterBanner';
 import IOSTaskList from './IOSTaskList';
+import IOSQuickAdd from './IOSQuickAdd';
+import IOSPullToRefresh from './IOSPullToRefresh';
 import IOSSidebar from './IOSSidebar';
 import IOSSearchDrawer from './IOSSearchDrawer';
 import IOSTaskFormModal from './IOSTaskFormModal';
@@ -64,7 +66,7 @@ const SwipeBackView = ({ onBack, children }) => {
 };
 
 const IOSTaskTrackerInner = () => {
-    const { appView, setAppView, authUser, authRole, error, setError } = useTaskContext();
+    const { appView, setAppView, authUser, authRole, error, setError, fetchTasks } = useTaskContext();
     const [showSidebar, setShowSidebar] = useState(false);
     const [filterMode, setFilterMode] = useState('all');
     const [showSearchDrawer, setShowSearchDrawer] = useState(false);
@@ -112,12 +114,15 @@ const IOSTaskTrackerInner = () => {
     return (
         <div style={{ minHeight: '100dvh', background: THEME.bg, paddingBottom: '20px', fontFamily: FONT_STACK }}>
             <IOSStyles />
-            <IOSHeader onMenuOpen={() => setShowSidebar(true)} />
+            <IOSHeader onMenuOpen={() => setShowSidebar(true)} onSearchOpen={() => setShowSearchDrawer(true)} />
 
-            <IOSTaskActions />
-            <IOSFilterBar filterMode={filterMode} setFilterMode={setFilterMode} />
-            <IOSActiveFilterBanner />
-            <IOSTaskList filterMode={filterMode} />
+            <IOSPullToRefresh onRefresh={fetchTasks}>
+                <IOSTaskActions />
+                <IOSFilterBar filterMode={filterMode} setFilterMode={setFilterMode} />
+                <IOSActiveFilterBanner />
+                <IOSTaskList filterMode={filterMode} />
+            </IOSPullToRefresh>
+            <IOSQuickAdd />
 
             <IOSSidebar isOpen={showSidebar} onClose={() => setShowSidebar(false)} onOpenSearch={() => setShowSearchDrawer(true)} onOpenUpload={() => setShowUploadFlow(true)} />
             <IOSSearchDrawer isOpen={showSearchDrawer} onClose={() => setShowSearchDrawer(false)} />

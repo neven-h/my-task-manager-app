@@ -7,7 +7,7 @@ const PieChartSVG = ({ data, colors }) => {
 
     let currentAngle = 0;
     return (
-        <svg viewBox="0 0 200 200" style={{ width: '160px', height: '160px', flexShrink: 0 }}>
+        <svg viewBox="0 0 200 200" style={{ width: '100%', maxWidth: '160px', height: 'auto', aspectRatio: '1', flexShrink: 0 }}>
             {data.map((item, idx) => {
                 const percentage = (item.value / total) * 100;
                 const angle = (percentage / 100) * 360;

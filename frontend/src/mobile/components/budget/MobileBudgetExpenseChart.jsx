@@ -21,7 +21,7 @@ const MobileBudgetExpenseChart = ({ chartData }) => {
 
             {/* Pie */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
-                <svg viewBox="0 0 200 200" style={{ width: 160, height: 160 }}>
+                <svg viewBox="0 0 200 200" style={{ width: '100%', maxWidth: 160, height: 'auto', aspectRatio: '1' }}>
                     {(() => {
                         let angle = 0;
                         return sortedCategories.map(([cat, data], i) => {

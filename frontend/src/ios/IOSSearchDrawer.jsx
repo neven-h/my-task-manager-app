@@ -1,7 +1,8 @@
 import React from 'react';
-import { Search, X } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { THEME, FONT_STACK } from './theme';
+import IOSBottomSheet from './IOSBottomSheet';
 
 const labelStyle = {
     display: 'block', fontWeight: 700, fontSize: '0.75rem',
@@ -16,8 +17,6 @@ const fieldStyle = {
 const IOSSearchDrawer = ({ isOpen, onClose }) => {
     const { filters, setFilters, allCategories, allTags, clients, fetchTasks, clearFilters } = useTaskContext();
 
-    if (!isOpen) return null;
-
     const updateFilter = (key, value) => setFilters(f => ({ ...f, [key]: value }));
 
     const handleApply = () => {
@@ -31,25 +30,14 @@ const IOSSearchDrawer = ({ isOpen, onClose }) => {
     };
 
     return (
-        <>
-            <div
-                style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300 }}
-                onClick={onClose}
-            />
-            <div style={{
-                position: 'fixed', left: 0, right: 0, bottom: 0, background: '#fff',
-                borderTop: '3px solid #000', zIndex: 301, padding: '24px',
-                fontFamily: FONT_STACK, maxHeight: '85vh', overflowY: 'auto'
-            }}>
+        <IOSBottomSheet isOpen={isOpen} onClose={onClose}>
+            <div style={{ padding: '0 24px 24px', fontFamily: FONT_STACK }}>
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, textTransform: 'uppercase', fontFamily: FONT_STACK }}>
                         <Search size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
                         Search & Filter
                     </h2>
-                    <button onClick={onClose} style={{ background: 'none', border: 'none', padding: '8px', cursor: 'pointer' }}>
-                        <X size={24} />
-                    </button>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -57,7 +45,7 @@ const IOSSearchDrawer = ({ isOpen, onClose }) => {
                     <div>
                         <label style={labelStyle}>Keywords</label>
                         <input
-                            type="text" placeholder="Search tasks..."
+                            type="text" placeholder="Search tasks..." autoFocus
                             value={filters.search || ''}
                             onChange={e => updateFilter('search', e.target.value)}
                             style={fieldStyle}
@@ -165,7 +153,7 @@ const IOSSearchDrawer = ({ isOpen, onClose }) => {
                     </button>
                 </div>
             </div>
-        </>
+        </IOSBottomSheet>
     );
 };
 

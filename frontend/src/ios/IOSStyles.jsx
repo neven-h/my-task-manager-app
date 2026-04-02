@@ -13,6 +13,17 @@ const IOSStyles = () => (
         html, body {
           background: #fff;
           font-family: ${FONT_STACK};
+          overflow-x: hidden;
+          -webkit-text-size-adjust: 100%;
+        }
+
+        *, *::before, *::after {
+          box-sizing: border-box;
+        }
+
+        input[type="text"], input[type="search"], input:not([type]), textarea {
+          direction: auto;
+          unicode-bidi: plaintext;
         }
 
         .mobile-btn {
