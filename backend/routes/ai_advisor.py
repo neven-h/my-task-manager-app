@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 ai_advisor_bp = Blueprint('ai_advisor', __name__)
 
 _TOP_N = 5
-_DEFAULT_MODEL = "claude-opus-4-6"
+_DEFAULT_MODEL = "claude-haiku-4-5"
 
 # ── Claude tool definition for structured output ──────────────────────────────
 
