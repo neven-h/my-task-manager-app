@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X } from 'lucide-react';
 import CustomAutocomplete from '../components/CustomAutocomplete';
 import { useTaskContext } from '../context/TaskContext';
 import storage, { STORAGE_KEYS } from '../utils/storage';
 import { THEME, FONT_STACK } from './theme';
+import IOSBottomSheet from './IOSBottomSheet';
 
 const labelStyle = {
     display: 'block', marginBottom: '8px', fontWeight: 700,
@@ -39,7 +39,6 @@ const IOSBulkTaskModal = () => {
     const [bulkCategory, setBulkCategory] = useState([]);
     const [bulkClient, setBulkClient] = useState('');
 
-    // Load draft when modal opens
     useEffect(() => {
         if (showBulkInput) {
             const draft = storage.get(STORAGE_KEYS.MOBILE_BULK_DRAFT) || '';
@@ -47,7 +46,6 @@ const IOSBulkTaskModal = () => {
         }
     }, [showBulkInput]);
 
-    // Auto-save draft (1s debounce)
     useEffect(() => {
         if (!showBulkInput || !bulkText) return;
         const timer = setTimeout(() => {
@@ -81,38 +79,20 @@ const IOSBulkTaskModal = () => {
         setShowBulkInput(false);
     };
 
-    if (!showBulkInput) return null;
-
     const parsedCount = parseBulkTasks(bulkText).length;
 
     return (
-        <div
-            style={{
-                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                background: 'rgba(0,0,0,0.5)', zIndex: 200,
-                display: 'flex', alignItems: 'flex-end', padding: 0
-            }}
-            onClick={(e) => { if (e.target === e.currentTarget) setShowBulkInput(false); }}
-        >
-            <div style={{
-                width: '100%', maxHeight: '94dvh', height: '94dvh', background: '#fff',
-                borderRadius: 0, borderTop: '3px solid #000', overflowY: 'auto', WebkitOverflowScrolling: 'touch',
-                display: 'flex', flexDirection: 'column',
-                paddingBottom: 'env(safe-area-inset-bottom, 0)'
-            }}>
+        <IOSBottomSheet isOpen={showBulkInput} onClose={() => setShowBulkInput(false)} height="94dvh">
+            <div style={{ fontFamily: FONT_STACK }}>
                 {/* Header */}
                 <div style={{
-                    padding: '16px 20px', paddingTop: 'max(16px, env(safe-area-inset-top, 0))',
-                    borderBottom: '1px solid rgba(0,0,0,0.1)', display: 'flex',
-                    justifyContent: 'space-between', alignItems: 'center',
-                    position: 'sticky', top: 0, background: THEME.accent, zIndex: 1
+                    padding: '8px 20px 12px', borderBottom: '1px solid rgba(0,0,0,0.1)',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    background: THEME.accent,
                 }}>
                     <h2 style={{ fontSize: '1.3rem', fontWeight: 900, margin: 0, textTransform: 'uppercase', fontFamily: FONT_STACK, color: '#000' }}>
                         Bulk Add Tasks
                     </h2>
-                    <button onClick={() => setShowBulkInput(false)} style={{ background: 'none', border: 'none', padding: '8px', cursor: 'pointer' }}>
-                        <X size={28} color="#000" />
-                    </button>
                 </div>
 
                 {/* Body */}
@@ -121,7 +101,6 @@ const IOSBulkTaskModal = () => {
                         Enter each task on a new line. You can use numbered lists (1., 2.) or just plain text.
                     </p>
 
-                    {/* Textarea */}
                     <div style={{ marginBottom: '16px' }}>
                         <label style={labelStyle}>Tasks ({parsedCount})</label>
                         <textarea
@@ -136,7 +115,6 @@ const IOSBulkTaskModal = () => {
                         />
                     </div>
 
-                    {/* Categories */}
                     <div style={{ marginBottom: '16px' }}>
                         <label style={labelStyle}>Category (Optional)</label>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -152,7 +130,6 @@ const IOSBulkTaskModal = () => {
                         </div>
                     </div>
 
-                    {/* Client */}
                     <div style={{ marginBottom: '24px' }}>
                         <label style={labelStyle}>Client (Optional)</label>
                         <CustomAutocomplete
@@ -163,7 +140,6 @@ const IOSBulkTaskModal = () => {
                         />
                     </div>
 
-                    {/* Action buttons */}
                     <div style={{ display: 'flex', gap: '12px' }}>
                         <button onClick={handleCancel} className="mobile-btn" style={{ flex: 1 }} disabled={loading}>Cancel</button>
                         <button onClick={handleSubmit} className="mobile-btn mobile-btn-accent" style={{ flex: 1 }} disabled={loading || !bulkText.trim()}>
@@ -172,7 +148,7 @@ const IOSBulkTaskModal = () => {
                     </div>
                 </div>
             </div>
-        </div>
+        </IOSBottomSheet>
     );
 };
 

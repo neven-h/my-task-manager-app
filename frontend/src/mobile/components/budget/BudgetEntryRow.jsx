@@ -74,7 +74,9 @@ export const EntryRow = memo(({ entry, balance, onEdit, onDelete, isLast, isExpa
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
+                            unicodeBidi: 'plaintext',
                         }}
+                        dir="auto"
                         onClick={() => onToggleExpand(entry.id)}
                     >
                         {entry.description}

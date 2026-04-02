@@ -66,7 +66,7 @@ const MobileBankTransactionForm = ({
                             Description
                         </label>
                         <input
-                            type="text"
+                            type="text" dir="auto"
                             value={newTransaction.description}
                             onChange={(e) => {
                                 const desc = e.target.value;

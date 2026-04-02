@@ -1,8 +1,9 @@
 import React, { useCallback } from 'react';
-import { X, Plus, Trash2, Paperclip } from 'lucide-react';
+import { Plus, Trash2, Paperclip, X } from 'lucide-react';
 import CustomAutocomplete from '../components/CustomAutocomplete';
 import useIOSTaskForm from './hooks/useIOSTaskForm';
 import IOSDiscardConfirm from './IOSDiscardConfirm';
+import IOSBottomSheet from './IOSBottomSheet';
 import { THEME, FONT_STACK } from './theme';
 import sanitizeUrl from '../utils/sanitizeUrl';
 import storage, { STORAGE_KEYS } from '../utils/storage';
@@ -27,17 +28,12 @@ const IOSTaskFormModal = () => {
         el.style.height = el.scrollHeight + 'px';
     }, []);
 
-    if (!isOpen) return null;
-
     return (
         <>
-            <div
-                style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'flex-end', padding: 0 }}
-                onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
-            >
-                <div style={{ width: '100%', height: '94dvh', maxHeight: '94dvh', background: '#fff', borderRadius: 0, borderTop: '3px solid #000', overflow: 'hidden', display: 'flex', flexDirection: 'column', paddingBottom: 'env(safe-area-inset-bottom, 0)' }}>
+            <IOSBottomSheet isOpen={isOpen} onClose={handleClose} height="94dvh">
+                <div style={{ fontFamily: FONT_STACK }}>
                     {/* Header */}
-                    <div style={{ flexShrink: 0, padding: '16px 20px', paddingTop: 'max(16px, env(safe-area-inset-top, 0))', borderBottom: '1px solid rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', zIndex: 1 }}>
+                    <div style={{ flexShrink: 0, padding: '8px 20px 12px', borderBottom: '1px solid rgba(0,0,0,0.1)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', zIndex: 1 }}>
                         <h2 style={{ fontSize: '1.3rem', fontWeight: 900, margin: 0, textTransform: 'uppercase', fontFamily: FONT_STACK }}>
                             {editingTask ? 'Edit Task' : 'New Task'}
                         </h2>
@@ -47,14 +43,14 @@ const IOSTaskFormModal = () => {
                     </div>
 
                     {/* Body */}
-                    <div style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '16px', paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 24px))', scrollPaddingBottom: '120px' }}>
+                    <div style={{ padding: '16px', paddingBottom: 'max(32px, calc(env(safe-area-inset-bottom, 0px) + 24px))', scrollPaddingBottom: '120px' }}>
                         <div style={{ marginBottom: '16px' }}>
                             <label style={labelStyle}>Title *</label>
-                            <input type="text" value={formData.title} onChange={e => update('title', e.target.value)} placeholder="Task title..." />
+                            <input type="text" dir="auto" value={formData.title} onChange={e => update('title', e.target.value)} placeholder="Task title..." />
                         </div>
                         <div style={{ marginBottom: '16px' }}>
                             <label style={labelStyle}>Description</label>
-                            <textarea rows={1} value={formData.description} ref={autoSize}
+                            <textarea rows={1} dir="auto" value={formData.description} ref={autoSize}
                                 onChange={e => { update('description', e.target.value); autoSize(e.target); }}
                                 placeholder="Task description..." style={{ minHeight: '44px', maxHeight: '300px', overflow: 'auto' }} />
                         </div>
@@ -108,7 +104,7 @@ const IOSTaskFormModal = () => {
                         </div>
                         <div style={{ marginBottom: '16px' }}>
                             <label style={labelStyle}>Notes</label>
-                            <textarea rows={1} value={formData.notes} ref={autoSize}
+                            <textarea rows={1} dir="auto" value={formData.notes} ref={autoSize}
                                 onChange={e => { update('notes', e.target.value); autoSize(e.target); }}
                                 placeholder="Additional notes..." style={{ minHeight: '44px', maxHeight: '300px', overflow: 'auto' }} />
                         </div>
@@ -169,7 +165,7 @@ const IOSTaskFormModal = () => {
                         )}
                     </div>
                 </div>
-            </div>
+            </IOSBottomSheet>
             <IOSDiscardConfirm isOpen={showDiscardConfirm} isEditing={!!editingTask} onKeepEditing={() => setShowDiscardConfirm(false)} onDiscard={confirmDiscard} />
         </>
     );

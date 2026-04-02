@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
-import { X, Share2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Share2, CheckCircle, AlertCircle } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { THEME, FONT_STACK } from './theme';
+import IOSBottomSheet from './IOSBottomSheet';
 
 const IOSShareTaskModal = () => {
     const { shareModal, closeShareModal, shareTask, loading } = useTaskContext();
     const { isOpen, sharingTask } = shareModal;
     const [email, setEmail] = useState('');
-    const [feedback, setFeedback] = useState(null); // { type: 'success'|'error', message }
-
-    if (!isOpen || !sharingTask) return null;
+    const [feedback, setFeedback] = useState(null);
 
     const handleShare = async () => {
         setFeedback(null);
@@ -33,36 +32,16 @@ const IOSShareTaskModal = () => {
     };
 
     return (
-        <div
-            style={{
-                position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                background: 'rgba(0,0,0,0.5)', zIndex: 300,
-                display: 'flex', alignItems: 'flex-end'
-            }}
-            onClick={handleClose}
-        >
-            <div
-                style={{
-                    width: '100%', maxHeight: '65dvh', background: '#fff',
-                    borderRadius: 0, borderTop: '3px solid #000',
-                    padding: '20px',
-                    paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)',
-                    fontFamily: FONT_STACK
-                }}
-                onClick={e => e.stopPropagation()}
-            >
+        <IOSBottomSheet isOpen={isOpen && !!sharingTask} onClose={handleClose} maxHeight="65dvh">
+            <div style={{ padding: '0 20px 20px', fontFamily: FONT_STACK }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <h2 style={{ fontSize: '1.5rem', fontWeight: 900, margin: 0, textTransform: 'uppercase' }}>Share Task</h2>
-                    <button onClick={handleClose} style={{ background: 'none', border: 'none', padding: '8px' }}>
-                        <X size={28} />
-                    </button>
                 </div>
 
                 <p style={{ color: THEME.muted, marginBottom: '24px', fontSize: '0.95rem' }}>
-                    Share "{sharingTask.title}" via email
+                    Share "{sharingTask?.title}" via email
                 </p>
 
-                {/* Inline feedback */}
                 {feedback && (
                     <div style={{
                         display: 'flex', alignItems: 'center', gap: 8,
@@ -71,9 +50,7 @@ const IOSShareTaskModal = () => {
                         color: '#fff',
                         fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.3px',
                     }}>
-                        {feedback.type === 'success'
-                            ? <CheckCircle size={18} />
-                            : <AlertCircle size={18} />}
+                        {feedback.type === 'success' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
                         {feedback.message}
                     </div>
                 )}
@@ -83,22 +60,14 @@ const IOSShareTaskModal = () => {
                         Email Address *
                     </label>
                     <input
-                        type="email"
-                        inputMode="email"
-                        autoComplete="email"
-                        autoFocus
+                        type="email" inputMode="email" autoComplete="email" autoFocus
                         placeholder="recipient@example.com"
                         value={email} onChange={e => setEmail(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter' && email.trim()) handleShare(); }}
                         style={{
-                            width: '100%', padding: '13px 14px',
-                            borderRadius: 0,
-                            border: '2px solid #000',
-                            fontSize: '1rem',
-                            fontFamily: FONT_STACK,
-                            background: '#fff',
-                            boxSizing: 'border-box',
-                            outline: 'none',
+                            width: '100%', padding: '13px 14px', borderRadius: 0,
+                            border: '2px solid #000', fontSize: '1rem',
+                            fontFamily: FONT_STACK, background: '#fff', boxSizing: 'border-box', outline: 'none',
                         }}
                     />
                 </div>
@@ -111,7 +80,7 @@ const IOSShareTaskModal = () => {
                     </button>
                 </div>
             </div>
-        </div>
+        </IOSBottomSheet>
     );
 };
 
