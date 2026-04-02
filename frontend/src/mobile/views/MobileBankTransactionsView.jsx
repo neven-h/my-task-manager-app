@@ -19,6 +19,7 @@ import MobileBankSelectionBar from '../components/bank/MobileBankSelectionBar';
 import MobileBankInsights from '../components/bank/MobileBankInsights';
 import MobileBankUpload from '../components/bank/MobileBankUpload';
 import MobileTransactionBalanceForecast from '../components/bank/MobileTransactionBalanceForecast';
+import MobileAIAdvisorPanel from '../components/bank/MobileAIAdvisorPanel';
 
 const EMPTY_TX = {
     transaction_date: new Date().toISOString().split('T')[0],
@@ -33,7 +34,8 @@ const MobileBankTransactionsView = ({ authUser, authRole, onBack }) => {
         availableMonths, selectedMonth, setSelectedMonth,
         stats, predictions, predictionsLoading,
         fetchTransactionPredictions, formatMonthYear, fetchTransactions, fetchStats,
-        insights, insightsLoading, fetchInsights
+        insights, insightsLoading, fetchInsights,
+        aiAdvisor, aiAdvisorLoading, fetchAIAdvisor,
     } = useMobileBankData(activeTabId);
 
     const { budgetLink, fetchBudgetLink } = useTransactionBudgetLink();
@@ -141,6 +143,15 @@ const MobileBankTransactionsView = ({ authUser, authRole, onBack }) => {
 
             {activeTabId && !sel.selectMode && (
                 <MobileTransactionBalanceForecast activeTabId={activeTabId} />
+            )}
+
+            {activeTabId && !sel.selectMode && (
+                <MobileAIAdvisorPanel
+                    aiAdvisor={aiAdvisor}
+                    aiAdvisorLoading={aiAdvisorLoading}
+                    fetchAIAdvisor={fetchAIAdvisor}
+                    activeTabId={activeTabId}
+                />
             )}
 
             {activeTabId && !sel.selectMode && (

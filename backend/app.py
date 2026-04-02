@@ -71,6 +71,7 @@ from routes.admin_diagnose import admin_diagnose_bp
 from routes.admin_migrations import admin_migrations_bp
 from routes.trash import trash_bp
 from routes.renovation import renovation_bp
+from routes.ai_advisor import ai_advisor_bp
 
 # Register blueprints
 app.register_blueprint(auth_bp)
@@ -135,6 +136,7 @@ app.register_blueprint(admin_diagnose_bp)
 app.register_blueprint(admin_migrations_bp)
 app.register_blueprint(trash_bp)
 app.register_blueprint(renovation_bp)
+app.register_blueprint(ai_advisor_bp)
 
 # Initialize database on import (works with gunicorn)
 try:
