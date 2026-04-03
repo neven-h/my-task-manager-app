@@ -3,9 +3,9 @@ import { Brain, ChevronDown, ChevronUp, RefreshCw, TrendingUp, AlertTriangle, Pi
 import { useBankTransactionContext } from '../../context/BankTransactionContext';
 
 const VERDICT = {
-    healthy:    { bg: '#16a34a', label: 'Healthy' },
-    moderate:   { bg: '#d97706', label: 'Moderate' },
-    concerning: { bg: '#dc2626', label: 'Concerning' },
+    stable:   { bg: '#16a34a', label: '↔ Stable' },
+    rising:   { bg: '#d97706', label: '↑ Rising' },
+    volatile: { bg: '#6d28d9', label: '⚡ Volatile' },
 };
 
 const SECTIONS = [
