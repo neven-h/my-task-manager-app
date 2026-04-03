@@ -59,7 +59,7 @@ const AIAdvisorPanel = () => {
 
     const data = aiAdvisor;
     const isFallback = data?.fallback === true;
-    const verdict = VERDICT[data?.spending_verdict] || VERDICT.moderate;
+    const verdict = VERDICT[data?.spending_verdict] || VERDICT.stable;
 
     return (
         <div style={{ marginBottom: '1.5rem', border: '3px solid #000', boxShadow: '4px 4px 0 #000' }}>
