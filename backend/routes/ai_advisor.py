@@ -35,53 +35,38 @@ _DEFAULT_MODEL = "claude-haiku-4-5"
 
 _ANALYSIS_TOOL = {
     "name": "provide_financial_analysis",
-    "description": (
-        "Provide a structured financial analysis of the user's spending data. "
-        "Be specific — reference actual amounts and category names from the data."
-    ),
+    "description": "Structured financial analysis. Be terse — every string must be short.",
     "input_schema": {
         "type": "object",
         "properties": {
             "summary": {
                 "type": "string",
-                "description": (
-                    "2-3 sentence overview of the user's financial health and "
-                    "spending behaviour. Reference key numbers."
-                ),
+                "description": "One sentence, max 20 words. State the key financial reality.",
             },
             "recommendations": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Top 3 specific, actionable recommendations.",
+                "description": "Exactly 3 items. Max 10 words each. Start with a verb. No sub-clauses.",
             },
             "risk_alerts": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": (
-                    "Financial risks or warning signs to watch (1-3 items). "
-                    "Empty array if no significant risks."
-                ),
+                "description": "0-2 items. Max 10 words each. Only real risks.",
             },
             "savings_opportunities": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": (
-                    "Concrete opportunities to reduce spending (1-3 items). "
-                    "Empty array if none identified."
-                ),
+                "description": "0-2 items. Max 10 words each. Specific and actionable.",
             },
             "spending_verdict": {
                 "type": "string",
                 "enum": ["healthy", "moderate", "concerning"],
-                "description": "Overall spending health verdict.",
+                "description": "Overall verdict.",
             },
         },
         "required": [
-            "summary",
-            "recommendations",
-            "risk_alerts",
-            "savings_opportunities",
-            "spending_verdict",
+            "summary", "recommendations", "risk_alerts",
+            "savings_opportunities", "spending_verdict",
         ],
     },
 }
@@ -247,15 +232,14 @@ def _call_claude(prompt_text: str) -> dict:
 
     today = date.today().strftime('%B %d, %Y')
     system = (
-        "You are a personal financial advisor analyzing a user's bank transaction history. "
-        "Provide clear, specific, actionable insights. "
-        f"Currency is Israeli Shekel (₪). Today is {today}. "
-        "Use exact amounts from the data. Be direct and concise."
+        "You are a financial advisor. Respond with very short, punchy text only. "
+        "No sub-clauses, no 'which', no 'that'. Every bullet max 10 words. "
+        f"Currency ₪. Today {today}."
     )
 
     response = client.messages.create(
         model=model,
-        max_tokens=1024,
+        max_tokens=400,
         system=system,
         tools=[_ANALYSIS_TOOL],
         tool_choice={"type": "tool", "name": "provide_financial_analysis"},

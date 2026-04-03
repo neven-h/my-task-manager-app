@@ -1,55 +1,51 @@
 import React, { useState } from 'react';
-import { Brain, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
+import { Brain, ChevronDown, ChevronUp, RefreshCw, TrendingUp, AlertTriangle, PiggyBank } from 'lucide-react';
 import { useBankTransactionContext } from '../../context/BankTransactionContext';
 
-// ── Verdict badge ─────────────────────────────────────────────────────────────
-const VERDICT_STYLES = {
+const VERDICT = {
     healthy:    { bg: '#16a34a', label: 'Healthy' },
     moderate:   { bg: '#d97706', label: 'Moderate' },
     concerning: { bg: '#dc2626', label: 'Concerning' },
 };
 
-const VerdictBadge = ({ verdict }) => {
-    const style = VERDICT_STYLES[verdict] || VERDICT_STYLES.moderate;
-    return (
-        <span style={{
-            background: style.bg, color: '#fff',
-            padding: '2px 10px', fontSize: '0.75rem',
-            fontWeight: 800, borderRadius: 0,
-        }}>
-            {style.label}
-        </span>
-    );
-};
+const SECTIONS = [
+    { key: 'recommendations',      label: 'Recommendations', Icon: TrendingUp,    color: '#16a34a', bg: '#f0fdf4' },
+    { key: 'risk_alerts',          label: 'Risk Alerts',     Icon: AlertTriangle,  color: '#dc2626', bg: '#fef2f2' },
+    { key: 'savings_opportunities',label: 'Savings',         Icon: PiggyBank,      color: '#0000FF', bg: '#eff6ff' },
+];
 
-// ── Section block ─────────────────────────────────────────────────────────────
-const Section = ({ title, items, accentColor }) => {
-    if (!items || items.length === 0) return null;
+const Card = ({ label, Icon, color, bg, items }) => {
+    if (!items?.length) return null;
     return (
-        <div style={{ marginBottom: '1rem' }}>
+        <div style={{
+            flex: '1 1 0', minWidth: 0,
+            border: `2px solid ${color}`, background: bg,
+        }}>
             <div style={{
-                fontWeight: 800, fontSize: '0.78rem', letterSpacing: '0.06em',
-                textTransform: 'uppercase', color: accentColor,
-                borderLeft: `3px solid ${accentColor}`, paddingLeft: 8,
-                marginBottom: 6,
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 12px', background: color,
             }}>
-                {title}
+                <Icon size={13} color="#fff" />
+                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#fff', letterSpacing: '0.07em', textTransform: 'uppercase' }}>
+                    {label}
+                </span>
             </div>
-            <ol style={{ margin: 0, paddingLeft: 20 }}>
+            <ul style={{ margin: 0, padding: '8px 12px', listStyle: 'none' }}>
                 {items.map((item, i) => (
                     <li key={i} style={{
-                        fontSize: '0.875rem', fontWeight: 500,
-                        color: '#111', marginBottom: 4, lineHeight: 1.5,
+                        fontSize: '0.8rem', fontWeight: 600, color: '#111',
+                        padding: '4px 0',
+                        borderBottom: i < items.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none',
+                        lineHeight: 1.35,
                     }}>
                         {item}
                     </li>
                 ))}
-            </ol>
+            </ul>
         </div>
     );
 };
 
-// ── Main component ─────────────────────────────────────────────────────────────
 const AIAdvisorPanel = () => {
     const { aiAdvisor, aiAdvisorLoading, fetchAIAdvisor, activeTabId } = useBankTransactionContext();
     const [open, setOpen] = useState(false);
@@ -59,156 +55,98 @@ const AIAdvisorPanel = () => {
         setOpen(v => !v);
     };
 
-    const handleRefresh = async (e) => {
-        e.stopPropagation();
-        await fetchAIAdvisor(true);
-    };
-
     if (!activeTabId) return null;
 
     const data = aiAdvisor;
     const isFallback = data?.fallback === true;
+    const verdict = VERDICT[data?.spending_verdict] || VERDICT.moderate;
 
     return (
-        <div style={{
-            marginBottom: '1.5rem',
-            border: '3px solid #000',
-            borderRadius: 0,
-            overflow: 'hidden',
-            boxShadow: '4px 4px 0px #000',
-        }}>
+        <div style={{ marginBottom: '1.5rem', border: '3px solid #000', boxShadow: '4px 4px 0 #000' }}>
             {/* Header */}
             <div onClick={toggle} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '14px 20px', background: '#000', color: '#fff',
+                padding: '12px 20px', background: '#000', color: '#fff',
                 cursor: 'pointer', userSelect: 'none',
             }}>
-                <div style={{
-                    display: 'flex', alignItems: 'center', gap: 10,
-                    fontWeight: 800, fontSize: '0.95rem', letterSpacing: '0.3px',
-                }}>
-                    <Brain size={18} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 800, fontSize: '0.92rem' }}>
+                    <Brain size={16} />
                     AI Financial Advisor
                     <span style={{
-                        background: 'rgba(255,255,255,0.15)',
-                        padding: '2px 8px', fontSize: '0.65rem',
-                        fontWeight: 700, borderRadius: 0, letterSpacing: '0.05em',
-                        border: '1px solid rgba(255,255,255,0.3)',
-                    }}>
-                        Claude AI
-                    </span>
+                        padding: '1px 7px', fontSize: '0.62rem', fontWeight: 700,
+                        border: '1px solid rgba(255,255,255,0.35)', letterSpacing: '0.05em',
+                    }}>Claude AI</span>
                     {data && !isFallback && (
-                        <VerdictBadge verdict={data.spending_verdict} />
+                        <span style={{ background: verdict.bg, color: '#fff', padding: '1px 8px', fontSize: '0.72rem', fontWeight: 800 }}>
+                            {verdict.label}
+                        </span>
                     )}
                 </div>
-                {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {open && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); fetchAIAdvisor(true); }}
+                            disabled={aiAdvisorLoading}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: 4,
+                                padding: '3px 8px', border: '1px solid rgba(255,255,255,0.4)',
+                                background: 'transparent', color: '#fff', cursor: 'pointer',
+                                fontSize: '0.7rem', fontWeight: 700,
+                            }}
+                        >
+                            <RefreshCw size={11} /> Refresh
+                        </button>
+                    )}
+                    {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </div>
             </div>
 
-            {/* Body */}
             {open && (
                 <div style={{ background: '#fff' }}>
                     {/* Loading */}
                     {aiAdvisorLoading && (
-                        <div style={{
-                            padding: '24px 20px', textAlign: 'center',
-                            fontWeight: 700, color: '#0000FF',
-                        }}>
-                            <span style={{ marginRight: 8 }}>✦</span>
-                            Claude is analyzing your finances…
+                        <div style={{ padding: '18px', textAlign: 'center', fontWeight: 700, color: '#0000FF', fontSize: '0.85rem' }}>
+                            ✦ Analyzing…
                         </div>
                     )}
 
-                    {/* Fallback / error */}
+                    {/* Fallback */}
                     {!aiAdvisorLoading && isFallback && (
-                        <div style={{
-                            padding: '20px', textAlign: 'center',
-                            color: '#666', fontWeight: 600, fontSize: '0.875rem',
-                        }}>
+                        <div style={{ padding: '16px', textAlign: 'center', color: '#666', fontSize: '0.85rem' }}>
                             {data.reason || 'AI advisor temporarily unavailable.'}
                         </div>
                     )}
 
-                    {/* No data yet */}
+                    {/* Empty */}
                     {!aiAdvisorLoading && !data && (
-                        <div style={{
-                            padding: '20px', textAlign: 'center',
-                            color: '#666', fontWeight: 600, fontSize: '0.875rem',
-                        }}>
-                            Open this panel to get Claude AI financial insights.
+                        <div style={{ padding: '16px', textAlign: 'center', color: '#666', fontSize: '0.85rem' }}>
+                            Open to get AI insights on your spending.
                         </div>
                     )}
 
-                    {/* AI analysis */}
+                    {/* Analysis */}
                     {!aiAdvisorLoading && data && !isFallback && (
                         <>
-                            {/* Sub-header: meta + refresh */}
+                            {/* Summary bar */}
                             <div style={{
-                                padding: '10px 20px',
-                                background: '#f8fafc',
-                                borderBottom: '1px solid #e5e7eb',
-                                display: 'flex', alignItems: 'center',
-                                justifyContent: 'space-between', flexWrap: 'wrap', gap: 8,
+                                padding: '10px 16px',
+                                borderBottom: '2px solid #000',
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                                background: '#fafafa',
                             }}>
-                                <span style={{ fontSize: '0.78rem', color: '#64748b', fontWeight: 600 }}>
-                                    Based on {data.months_analyzed} month{data.months_analyzed !== 1 ? 's' : ''} of data
-                                    {data.avg_monthly_spend > 0 && (
-                                        <> · Avg ₪{data.avg_monthly_spend.toLocaleString('he-IL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}/mo</>
-                                    )}
+                                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#111', fontStyle: 'italic' }}>
+                                    "{data.summary}"
                                 </span>
-                                <button
-                                    onClick={handleRefresh}
-                                    disabled={aiAdvisorLoading}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: 4,
-                                        fontSize: '0.78rem', fontWeight: 700,
-                                        padding: '4px 10px',
-                                        border: '1px solid #d1d5db', borderRadius: 6,
-                                        background: '#fff', cursor: 'pointer', color: '#0000FF',
-                                    }}
-                                >
-                                    <RefreshCw size={12} />
-                                    Refresh
-                                </button>
+                                <span style={{ fontSize: '0.72rem', color: '#888', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                    {data.months_analyzed}mo · ₪{Math.round(data.avg_monthly_spend).toLocaleString()}/mo avg
+                                </span>
                             </div>
 
-                            {/* Content */}
-                            <div style={{ padding: '16px 20px' }}>
-                                {/* Summary */}
-                                {data.summary && (
-                                    <p style={{
-                                        fontSize: '0.9rem', fontWeight: 500,
-                                        color: '#111', lineHeight: 1.6,
-                                        marginBottom: '1.25rem',
-                                        paddingBottom: '1rem',
-                                        borderBottom: '1px solid #f0f0f0',
-                                    }}>
-                                        {data.summary}
-                                    </p>
-                                )}
-
-                                <Section
-                                    title="Recommendations"
-                                    items={data.recommendations}
-                                    accentColor="#16a34a"
-                                />
-                                <Section
-                                    title="Risk Alerts"
-                                    items={data.risk_alerts}
-                                    accentColor="#dc2626"
-                                />
-                                <Section
-                                    title="Savings Opportunities"
-                                    items={data.savings_opportunities}
-                                    accentColor="#0000FF"
-                                />
-
-                                <div style={{
-                                    marginTop: '0.75rem',
-                                    fontSize: '0.7rem', color: '#9ca3af',
-                                    fontWeight: 500,
-                                }}>
-                                    Powered by Claude AI · Results cached for 5 minutes
-                                </div>
+                            {/* 3-column cards */}
+                            <div style={{ display: 'flex', gap: 0, borderTop: 'none' }}>
+                                {SECTIONS.map(({ key, label, Icon, color, bg }) => (
+                                    <Card key={key} label={label} Icon={Icon} color={color} bg={bg} items={data[key]} />
+                                ))}
                             </div>
                         </>
                     )}
