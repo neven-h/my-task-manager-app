@@ -93,8 +93,8 @@ const BankTransactionsInner = () => {
 
             {activeTabId && (
                 <div className="bank-main" style={{ maxWidth: '1500px', margin: '0 auto', padding: '2rem' }}>
-                    <TransactionBalanceForecast />
                     <AIAdvisorPanel />
+                    <TransactionBalanceForecast />
                     <TransactionInsights />
                     <TransactionStatsCards />
                     <ExpenseDistributionChart />

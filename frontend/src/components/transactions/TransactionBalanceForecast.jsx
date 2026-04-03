@@ -109,9 +109,8 @@ const TransactionBalanceForecast = () => {
                     alignItems: 'center',
                     gap: 10,
                     fontWeight: 800,
-                    fontSize: isDesktop ? '1.08rem' : '0.95rem',
-                    letterSpacing: '0.4px',
-                    textTransform: 'uppercase',
+                    fontSize: '0.92rem',
+                    letterSpacing: '0.3px',
                 }}>
                     <TrendingUp size={18} />
                     Expenses Forecast
