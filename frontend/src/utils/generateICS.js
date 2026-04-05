@@ -98,8 +98,8 @@ export async function downloadICS(task) {
     if (isCapacitor) {
         // On native iOS: add directly to Apple Calendar
         try {
-            const { addTaskToCalendar } = await import('../../ios/App/calendarPlugin.js');
-            await addTaskToCalendar(task);
+            const { addTaskToNativeCalendar } = await import('./calendarPlugin.js');
+            await addTaskToNativeCalendar(task);
             return;
         } catch (err) {
             console.warn('Native calendar add failed in downloadICS:', err);
@@ -156,8 +156,8 @@ export async function openInCalendar(task) {
 
     if (isNative) {
         try {
-            const { addTaskToCalendar } = await import('../../ios/App/calendarPlugin.js');
-            await addTaskToCalendar(task);
+            const { addTaskToNativeCalendar } = await import('./calendarPlugin.js');
+            await addTaskToNativeCalendar(task);
             return;
         } catch (err) {
             console.warn('Native calendar add failed, falling back to Google Calendar:', err);
