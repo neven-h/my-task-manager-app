@@ -135,6 +135,7 @@ const useMobileBankData = (activeTabId) => {
         if (activeTabId === null) return;
         setSelectedMonth('all');
         setPredictions([]);
+        setInsights(null);
         setAiAdvisor(null);
         // Pre-populate from cache immediately so there's no blank/loading flash
         const cached = cacheRef.current[activeTabId];
