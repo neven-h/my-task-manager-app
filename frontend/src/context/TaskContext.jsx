@@ -167,7 +167,7 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
         if (await importHoursReportRaw(event)) { await loadTasks(); await fetchStats(); await fetchClients(); }
     }, [importHoursReportRaw, loadTasks, fetchStats, fetchClients]);
 
-    const { submitTask, submitBulkTasks, shareTask } = useTaskSubmit({ setLoading, setError, loadTasks, fetchStats, fetchClients });
+    const { submitTask, submitBulkTasks, shareTask } = useTaskSubmit({ setLoading, setError, loadTasks, fetchStats, fetchClients, setTasks });
 
     const openNewTaskForm = useCallback(() => setFormModalState({ isOpen: true, editingTask: null }), []);
     const openEditTaskForm = useCallback((task) => setFormModalState({ isOpen: true, editingTask: task }), []);

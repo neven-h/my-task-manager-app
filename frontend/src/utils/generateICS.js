@@ -90,9 +90,6 @@ export function generateICS(task) {
 }
 
 export async function downloadICS(task) {
-    const ics = generateICS(task);
-    const filename = `${(task.title || 'event').replace(/[^a-z0-9]/gi, '_')}.ics`;
-
     const isCapacitor = !!(window.Capacitor?.isNativePlatform?.());
 
     if (isCapacitor) {
@@ -100,46 +97,18 @@ export async function downloadICS(task) {
         try {
             const { addTaskToNativeCalendar } = await import('./calendarPlugin.js');
             await addTaskToNativeCalendar(task);
+            alert('Event added to Apple Calendar!');
             return;
         } catch (err) {
-            console.warn('Native calendar add failed in downloadICS:', err);
-            // Fall through to share sheet as last resort
-        }
-
-        try {
-            const file = new File([ics], filename, { type: 'text/calendar' });
-            if (navigator.share && navigator.canShare?.({ files: [file] })) {
-                await navigator.share({ files: [file] });
-                return;
-            }
-        } catch (err) {
-            if (err.name === 'AbortError') return;
-            console.warn('Share failed:', err);
+            console.error('Native calendar add failed:', err);
+            alert('Calendar error: ' + (err?.message || String(err)));
         }
         return;
     }
 
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-    if (isIOS) {
-        try {
-            const file = new File([ics], filename, { type: 'text/calendar' });
-            if (navigator.share && navigator.canShare?.({ files: [file] })) {
-                await navigator.share({ files: [file] });
-                return;
-            }
-        } catch (err) {
-            if (err.name === 'AbortError') return;
-        }
-        const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        window.location.href = url;
-        setTimeout(() => URL.revokeObjectURL(url), 10000);
-        return;
-    }
-
-    // Desktop
+    // Web/desktop: download .ics file
+    const ics = generateICS(task);
+    const filename = `${(task.title || 'event').replace(/[^a-z0-9]/gi, '_')}.ics`;
     const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -158,10 +127,12 @@ export async function openInCalendar(task) {
         try {
             const { addTaskToNativeCalendar } = await import('./calendarPlugin.js');
             await addTaskToNativeCalendar(task);
+            alert('Event added to Apple Calendar!');
             return;
         } catch (err) {
-            console.warn('Native calendar add failed, falling back to Google Calendar:', err);
-            // Fall through to Google Calendar URL
+            console.error('Native calendar add failed:', err);
+            alert('Calendar error: ' + (err?.message || String(err)));
+            return;
         }
     }
 

@@ -2,12 +2,21 @@ import { useCallback } from 'react';
 import API_BASE from '../config';
 import { getAuthHeaders } from '../api.js';
 
-const useTaskSubmit = ({ setLoading, setError, loadTasks, fetchStats, fetchClients }) => {
+const useTaskSubmit = ({ setLoading, setError, loadTasks, fetchStats, fetchClients, setTasks }) => {
     const submitTask = useCallback(async (formData, editingTask) => {
+        const { attachments, newAttachments, removedAttachmentIds, ...payload } = formData;
+
+        // Optimistic insert for new tasks only
+        let tempId = null;
+        if (!editingTask) {
+            tempId = 'temp-' + Date.now();
+            const tempTask = { ...payload, id: tempId, _saving: true, attachments: [] };
+            setTasks(prev => [tempTask, ...prev]);
+        }
+
         try {
             setLoading(true);
             const url = editingTask ? `${API_BASE}/tasks/${editingTask.id}` : `${API_BASE}/tasks`;
-            const { attachments, newAttachments, removedAttachmentIds, ...payload } = formData;
 
             const response = await fetch(url, {
                 method: editingTask ? 'PUT' : 'POST',
@@ -22,6 +31,12 @@ const useTaskSubmit = ({ setLoading, setError, loadTasks, fetchStats, fetchClien
 
             const responseData = await response.json().catch(() => ({}));
             const taskId = editingTask ? editingTask.id : responseData.id;
+
+            // Replace temp task with server response immediately
+            if (tempId && responseData.id) {
+                setTasks(prev => prev.map(t => t.id === tempId ? { ...responseData, _saving: false } : t));
+                tempId = null;
+            }
 
             let attachmentError = null;
             if (taskId) {
@@ -50,12 +65,16 @@ const useTaskSubmit = ({ setLoading, setError, loadTasks, fetchStats, fetchClien
             }
             return true;
         } catch (err) {
+            // Roll back the optimistic insert on failure
+            if (tempId) {
+                setTasks(prev => prev.filter(t => t.id !== tempId));
+            }
             setError(err.message);
             return false;
         } finally {
             setLoading(false);
         }
-    }, [loadTasks, fetchStats, fetchClients, setLoading, setError]);
+    }, [loadTasks, fetchStats, fetchClients, setLoading, setError, setTasks]);
 
     const submitBulkTasks = useCallback(async (taskTitles, categories, client, taskDate, taskTime) => {
         const tasks = taskTitles.map(title => ({
