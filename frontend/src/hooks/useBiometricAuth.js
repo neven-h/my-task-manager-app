@@ -1,21 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import storage, { STORAGE_KEYS } from '../utils/storage';
-
-/**
- * Check if the native Capacitor biometric plugin is available.
- * Returns the plugin wrapper functions only when running inside the native iOS shell.
- */
-async function loadBiometricPlugin() {
-    const isNative = !!window.Capacitor?.isNativePlatform?.();
-    if (!isNative) return null;
-    try {
-        // Dynamic import — only loads in native Capacitor context
-        const mod = await import('../../ios/App/biometricAuth.js');
-        return mod;
-    } catch {
-        return null;
-    }
-}
+import {
+    isBiometricAvailable,
+    enableBiometric,
+    authenticateBiometric,
+    disableBiometric,
+} from '../utils/biometricPlugin';
 
 /**
  * Hook that wraps the native BiometricAuth Capacitor plugin.
@@ -32,16 +22,12 @@ export default function useBiometricAuth() {
     const [available, setAvailable] = useState(false);
     const [enabled, setEnabled] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [plugin, setPlugin] = useState(null);
 
     useEffect(() => {
         let cancelled = false;
         (async () => {
-            const mod = await loadBiometricPlugin();
-            if (cancelled || !mod) return;
-            const isAvail = await mod.isBiometricAvailable();
+            const isAvail = await isBiometricAvailable();
             if (cancelled) return;
-            setPlugin(mod);
             setAvailable(isAvail);
             setEnabled(storage.get(STORAGE_KEYS.BIOMETRIC_ENABLED) === 'true');
         })();
@@ -49,24 +35,22 @@ export default function useBiometricAuth() {
     }, []);
 
     const login = useCallback(async () => {
-        if (!plugin || !available || !enabled) return null;
+        if (!available || !enabled) return null;
         setLoading(true);
         try {
-            const result = await plugin.authenticateBiometric('Sign in with Face ID');
-            // result contains { token, username } from Keychain
-            return result;
+            return await authenticateBiometric('Sign in with Face ID');
         } catch {
             return null;
         } finally {
             setLoading(false);
         }
-    }, [plugin, available, enabled]);
+    }, [available, enabled]);
 
     const enable = useCallback(async (token, username) => {
-        if (!plugin || !available) return;
+        if (!available) return;
         setLoading(true);
         try {
-            await plugin.enableBiometric({ token, username });
+            await enableBiometric({ token, username });
             storage.set(STORAGE_KEYS.BIOMETRIC_ENABLED, 'true');
             setEnabled(true);
         } catch (err) {
@@ -74,13 +58,12 @@ export default function useBiometricAuth() {
         } finally {
             setLoading(false);
         }
-    }, [plugin, available]);
+    }, [available]);
 
     const disable = useCallback(async () => {
-        if (!plugin) return;
         setLoading(true);
         try {
-            await plugin.disableBiometric();
+            await disableBiometric();
             storage.set(STORAGE_KEYS.BIOMETRIC_ENABLED, 'false');
             setEnabled(false);
         } catch (err) {
@@ -88,7 +71,7 @@ export default function useBiometricAuth() {
         } finally {
             setLoading(false);
         }
-    }, [plugin]);
+    }, []);
 
     return { available, enabled, loading, login, enable, disable };
 }
