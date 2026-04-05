@@ -9,6 +9,8 @@ const CalendarChoiceModal = () => {
 
     if (!isOpen || !task) return null;
 
+    const isNative = !!(window.Capacitor?.isNativePlatform?.());
+
     const handleGoogle = () => {
         openInCalendar(task);
         closeCalendarModal();
@@ -113,9 +115,9 @@ const CalendarChoiceModal = () => {
                         >
                             <Calendar size={20} style={{ color: '#0000FF', flexShrink: 0 }} />
                             <div>
-                                <div>Google Calendar</div>
+                                <div>{isNative ? 'Apple Calendar' : 'Google Calendar'}</div>
                                 <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', textTransform: 'none', marginTop: '2px' }}>
-                                    Opens in a new tab
+                                    {isNative ? 'Adds directly to your calendar' : 'Opens in a new tab'}
                                 </div>
                             </div>
                         </button>
@@ -145,7 +147,7 @@ const CalendarChoiceModal = () => {
                             <div>
                                 <div>System Calendar</div>
                                 <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', textTransform: 'none', marginTop: '2px' }}>
-                                    Downloads .ics file (Apple Calendar, Outlook)
+                                    {isNative ? 'Adds directly to Apple Calendar' : 'Downloads .ics file (Apple Calendar, Outlook)'}
                                 </div>
                             </div>
                         </button>

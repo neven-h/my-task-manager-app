@@ -1,7 +1,3 @@
-import { Capacitor, registerPlugin } from '@capacitor/core';
-
-const Calendar = registerPlugin('Calendar');
-
 const pad = (n) => String(n).padStart(2, '0');
 
 function nowStamp() {
@@ -41,18 +37,6 @@ function nextDay(dateStr) {
     return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}`;
 }
 
-function nextDayISO(dateStr) {
-    const d = new Date(dateStr + 'T00:00:00');
-    d.setDate(d.getDate() + 1);
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-function addHoursToISO(dateStr, timeStr, hours) {
-    const start = new Date(`${dateStr}T${normalizeTime(timeStr)}`);
-    const end = new Date(start.getTime() + Math.round(parseFloat(hours || 1) * 60 * 60 * 1000));
-    return `${end.getFullYear()}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}T${pad(end.getHours())}:${pad(end.getMinutes())}:${pad(end.getSeconds())}`;
-}
-
 function escapeICS(str) {
     return String(str || '')
         .replace(/\\/g, '\\\\')
@@ -65,40 +49,6 @@ function buildDescription(task) {
     let desc = task.description || '';
     if (task.notes) desc += (desc ? '\n\nNotes: ' : 'Notes: ') + task.notes;
     return desc;
-}
-
-function isNativeIOS() {
-    return Capacitor?.isNativePlatform?.() && Capacitor?.getPlatform?.() === 'ios';
-}
-
-async function addEventToNativeCalendar(task) {
-    const allDay = !task.task_time;
-    const startDate = allDay
-        ? task.task_date
-        : `${task.task_date}T${normalizeTime(task.task_time)}`;
-    const endDate = allDay
-        ? nextDayISO(task.task_date)
-        : addHoursToISO(task.task_date, task.task_time, task.duration || 1);
-
-    const current = await Calendar.checkAccess();
-    let status = current?.status;
-
-    if (!['authorized', 'fullAccess', 'writeOnly'].includes(status)) {
-        const requested = await Calendar.requestAccess();
-        status = requested?.status;
-        if (!requested?.granted && !['authorized', 'fullAccess', 'writeOnly'].includes(status)) {
-            throw new Error('Calendar access was not granted');
-        }
-    }
-
-    return Calendar.addEvent({
-        title: task.title || 'Task',
-        startDate,
-        endDate,
-        allDay,
-        notes: buildDescription(task),
-        location: task.client || '',
-    });
 }
 
 export function generateICS(task) {
@@ -144,10 +94,18 @@ export async function downloadICS(task) {
     const filename = `${(task.title || 'event').replace(/[^a-z0-9]/gi, '_')}.ics`;
 
     const isCapacitor = !!(window.Capacitor?.isNativePlatform?.());
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-    if (isCapacitor || isIOS) {
+    if (isCapacitor) {
+        // On native iOS: add directly to Apple Calendar
+        try {
+            const { addTaskToCalendar } = await import('../../ios/App/calendarPlugin.js');
+            await addTaskToCalendar(task);
+            return;
+        } catch (err) {
+            console.warn('Native calendar add failed in downloadICS:', err);
+            // Fall through to share sheet as last resort
+        }
+
         try {
             const file = new File([ics], filename, { type: 'text/calendar' });
             if (navigator.share && navigator.canShare?.({ files: [file] })) {
@@ -158,7 +116,22 @@ export async function downloadICS(task) {
             if (err.name === 'AbortError') return;
             console.warn('Share failed:', err);
         }
+        return;
+    }
 
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    if (isIOS) {
+        try {
+            const file = new File([ics], filename, { type: 'text/calendar' });
+            if (navigator.share && navigator.canShare?.({ files: [file] })) {
+                await navigator.share({ files: [file] });
+                return;
+            }
+        } catch (err) {
+            if (err.name === 'AbortError') return;
+        }
         const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         window.location.href = url;
@@ -166,6 +139,7 @@ export async function downloadICS(task) {
         return;
     }
 
+    // Desktop
     const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -177,22 +151,21 @@ export async function downloadICS(task) {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/**
- * iOS native app: save directly into the device calendar via the Capacitor plugin.
- * Web/desktop: keep the Google Calendar flow.
- */
 export async function openInCalendar(task) {
-    if (isNativeIOS()) {
+    const isNative = !!(window.Capacitor?.isNativePlatform?.());
+
+    if (isNative) {
         try {
-            await addEventToNativeCalendar(task);
+            const { addTaskToCalendar } = await import('../../ios/App/calendarPlugin.js');
+            await addTaskToCalendar(task);
             return;
         } catch (err) {
-            console.warn('Native calendar add failed, falling back to ICS share/download:', err);
-            await downloadICS(task);
-            return;
+            console.warn('Native calendar add failed, falling back to Google Calendar:', err);
+            // Fall through to Google Calendar URL
         }
     }
 
+    // Web / desktop: open Google Calendar
     let dates;
     if (task.task_time) {
         const start = formatDateTime(task.task_date, task.task_time);
@@ -205,7 +178,6 @@ export async function openInCalendar(task) {
     }
 
     const desc = buildDescription(task);
-
     const params = new URLSearchParams({ action: 'TEMPLATE', text: task.title || '', dates });
     if (desc) params.set('details', desc);
     if (task.client) params.set('location', task.client);
