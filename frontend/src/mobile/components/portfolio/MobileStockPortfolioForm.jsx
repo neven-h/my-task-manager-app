@@ -24,7 +24,7 @@ const MobileStockPortfolioForm = ({ showForm, editingEntry, formData, setFormDat
                 position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
                 background: `rgba(0,0,0,${mounted ? 0.4 : 0})`,
                 zIndex: 200, display: 'flex', alignItems: 'flex-end',
-                touchAction: 'none', overscrollBehavior: 'contain',
+                touchAction: 'auto', overscrollBehavior: 'contain',
                 transition: `background 300ms ${IOS.spring}`,
             }}
             onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
@@ -41,8 +41,6 @@ const MobileStockPortfolioForm = ({ showForm, editingEntry, formData, setFormDat
                     transform: mounted ? 'translateY(0)' : 'translateY(100%)',
                     transition: `transform 380ms ${IOS.spring}`,
                 }}
-                onTouchStart={(e) => e.stopPropagation()}
-                onTouchMove={(e) => e.stopPropagation()}
             >
                 <div style={{ display: 'flex', justifyContent: 'center', paddingTop: '10px', paddingBottom: '2px', flexShrink: 0 }}>
                     <div style={{ width: '36px', height: '4px', borderRadius: '2px', background: 'rgba(60,60,67,0.18)' }} />
