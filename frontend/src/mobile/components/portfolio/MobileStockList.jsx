@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatCurrency } from '../../../utils/formatCurrency';
+import { formatCurrency, formatCurrencyWithCode } from '../../../utils/formatCurrency';
 import StockEntryRow from './MobileStockEntryRow';
 
 const IOS = { card: '#FFFFFF', blue: '#007AFF', green: '#34C759', red: '#FF3B30', muted: '#8E8E93', separator: 'rgba(60,60,67,0.12)', radius: 16 };
@@ -29,7 +29,7 @@ const MobileStockList = ({ loading, groupedEntries, stockPrices, priceLoading, g
                             {livePrice?.currentPrice && (
                                 <div style={{ marginTop: '6px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                                     <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>
-                                        {formatCurrency(livePrice.currentPrice)} {livePrice.currency || 'USD'}
+                                        {formatCurrencyWithCode(livePrice.currentPrice, livePrice.currency || 'USD')}
                                     </span>
                                     {livePrice.change != null && (
                                         <span style={{ fontSize: '0.8rem', fontWeight: 600, color: livePrice.change >= 0 ? IOS.green : IOS.red }}>

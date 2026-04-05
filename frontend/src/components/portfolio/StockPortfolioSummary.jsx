@@ -1,10 +1,11 @@
 import React from 'react';
-import { TrendingUp, PieChart } from 'lucide-react';
+import { TrendingUp, TrendingDown, PieChart } from 'lucide-react';
 import { formatCurrencyWithCode } from '../../utils/formatCurrency';
 
 const colors = {
     primary: '#0000FF',
     secondary: '#FFD500',
+    accent: '#FF0000',
     success: '#00AA00',
     card: '#ffffff',
     text: '#000',
@@ -12,7 +13,7 @@ const colors = {
     border: '#000'
 };
 
-const StockPortfolioSummary = ({ summary, summaryDisplayCurrency, onToggleCurrency }) => {
+const StockPortfolioSummary = ({ summary, summaryDisplayCurrency, onToggleCurrency, portfolioGrowth }) => {
     if (!summary) return null;
 
     return (
@@ -98,6 +99,31 @@ const StockPortfolioSummary = ({ summary, summaryDisplayCurrency, onToggleCurren
                     📊 Total Stocks
                 </div>
             </div>
+
+            {portfolioGrowth != null && (() => {
+                const positive = portfolioGrowth.growthPercent >= 0;
+                const growthColor = positive ? colors.success : colors.accent;
+                const sign = positive ? '+' : '';
+                const useUSD = summaryDisplayCurrency === 'USD' && portfolioGrowth.growthAmountUSD != null;
+                const growthAmt = useUSD ? portfolioGrowth.growthAmountUSD : portfolioGrowth.growthAmountILS;
+                const displayCurrency = useUSD ? 'USD' : 'ILS';
+                return (
+                    <div className="stats-card" style={{ background: colors.card, border: `2px solid ${colors.border}`, padding: '1.25rem', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
+                            {positive ? <TrendingUp size={40} color={growthColor} /> : <TrendingDown size={40} color={growthColor} />}
+                        </div>
+                        <div style={{ fontSize: '2rem', fontWeight: '800', color: growthColor }}>
+                            {sign}{formatCurrencyWithCode(Math.abs(growthAmt), displayCurrency)}
+                        </div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: '700', color: growthColor, marginTop: '0.15rem' }}>
+                            {sign}{portfolioGrowth.growthPercent.toFixed(2)}%
+                        </div>
+                        <div style={{ color: colors.textLight, textTransform: 'uppercase', fontSize: '0.95rem', fontWeight: '700', marginTop: '0.25rem' }}>
+                            Total Growth{portfolioGrowth.hasLive ? ' · Live' : ''}
+                        </div>
+                    </div>
+                );
+            })()}
         </div>
     );
 };

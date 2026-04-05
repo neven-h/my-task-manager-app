@@ -74,6 +74,32 @@ const StockPortfolio = ({ onBackToTasks }) => {
         return Object.values(stockMap);
     }, [entries]);
 
+    const portfolioGrowth = useMemo(() => {
+        const allEntries = summary?.entries ?? [];
+        const exchangeRates = summary?.exchange_rates ?? {};
+        let totalCurrentILS = 0, totalCostILS = 0, hasBase = false, hasLive = false;
+        for (const entry of allEntries) {
+            const basePricePerUnit = entry.base_price != null ? parseFloat(entry.base_price) : null;
+            if (basePricePerUnit == null || basePricePerUnit === 0) continue;
+            const units = parseFloat(entry.units) || 1;
+            const currency = (entry.currency || 'ILS').toUpperCase();
+            const rate = exchangeRates[currency] ?? 1;
+            const livePrice = entry.ticker_symbol ? stockPrices[entry.ticker_symbol] : null;
+            let currentPricePerUnit;
+            if (livePrice?.currentPrice) { currentPricePerUnit = livePrice.currentPrice; hasLive = true; }
+            else { currentPricePerUnit = (parseFloat(entry.value_ils) || 0) / units; }
+            totalCurrentILS += currentPricePerUnit * units * rate;
+            totalCostILS += basePricePerUnit * units * rate;
+            hasBase = true;
+        }
+        if (!hasBase || totalCostILS === 0) return null;
+        const growthAmountILS = totalCurrentILS - totalCostILS;
+        const growthPercent = (growthAmountILS / totalCostILS) * 100;
+        const usdRate = exchangeRates['USD'];
+        const growthAmountUSD = usdRate ? growthAmountILS / usdRate : null;
+        return { growthPercent, growthAmountILS, growthAmountUSD, hasLive };
+    }, [summary?.entries, summary?.exchange_rates, stockPrices]);
+
     const groupedEntries = entries.reduce((acc, entry) => {
         if (!acc[entry.name]) acc[entry.name] = [];
         acc[entry.name].push(entry);
@@ -139,7 +165,8 @@ const StockPortfolio = ({ onBackToTasks }) => {
             {activeTabId && (
                 <div className="portfolio-main" style={{ maxWidth: '1500px', margin: '0 auto', padding: '2rem' }}>
                     <StockPortfolioSummary summary={summary} summaryDisplayCurrency={summaryDisplayCurrency}
-                        onToggleCurrency={() => setSummaryDisplayCurrency(prev => prev === 'ILS' ? 'USD' : 'ILS')} />
+                        onToggleCurrency={() => setSummaryDisplayCurrency(prev => prev === 'ILS' ? 'USD' : 'ILS')}
+                        portfolioGrowth={portfolioGrowth} />
                     <WatchlistSection colors={colors} authUser={authUser} authRole={authRole} />
                     <YahooPortfolioSection colors={colors} authUser={authUser} authRole={authRole} />
                     <StockEntryList groupedEntries={groupedEntries} getStockSummary={getStockSummary}
