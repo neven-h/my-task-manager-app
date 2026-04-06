@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import API_BASE from '../config';
 import { getAuthHeaders } from '../api.js';
 
-const useTaskSubmit = ({ setLoading, setError, loadTasks, fetchStats, fetchClients, setTasks }) => {
+const useTaskSubmit = ({ setLoading, setError, setTasks, loadTasks, fetchStats, fetchClients }) => {
     const submitTask = useCallback(async (formData, editingTask) => {
         const { attachments, newAttachments, removedAttachmentIds, ...payload } = formData;
 
@@ -10,8 +10,7 @@ const useTaskSubmit = ({ setLoading, setError, loadTasks, fetchStats, fetchClien
         let tempId = null;
         if (!editingTask) {
             tempId = 'temp-' + Date.now();
-            const tempTask = { ...payload, id: tempId, _saving: true, attachments: [] };
-            setTasks(prev => [tempTask, ...prev]);
+            setTasks(prev => [{ ...payload, id: tempId, _saving: true, attachments: [] }, ...prev]);
         }
 
         try {
@@ -25,6 +24,7 @@ const useTaskSubmit = ({ setLoading, setError, loadTasks, fetchStats, fetchClien
             });
 
             if (!response.ok) {
+                if (tempId) setTasks(prev => prev.filter(t => t.id !== tempId));
                 const errData = await response.json().catch(() => ({}));
                 throw new Error(errData.error || 'Failed to save task');
             }

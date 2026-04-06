@@ -74,7 +74,7 @@ const IOSTaskCard = ({ task }) => {
         <>
             {showConfirm && <DeleteConfirmModal onConfirm={handleConfirmDelete} onCancel={handleCancelDelete} />}
             {showDetail && <IOSTaskDetailModal task={task} onClose={() => setShowDetail(false)} getCategoryLabel={getCategoryLabel} />}
-            <div style={{ position: 'relative', marginBottom: 10, overflow: 'hidden', borderRadius: 0, opacity: task._saving ? 0.55 : 1, pointerEvents: task._saving ? 'none' : undefined }}>
+            <div style={{ position: 'relative', marginBottom: 10, overflow: 'hidden', borderRadius: 0, opacity: task._saving ? 0.5 : 1, transition: 'opacity 200ms', pointerEvents: task._saving ? 'none' : undefined }}>
                 {/* Delete button — always behind the card, revealed on swipe */}
                 <div
                     onClick={handleDeletePress}
@@ -106,7 +106,7 @@ const IOSTaskCard = ({ task }) => {
                         <div style={{ position: 'absolute', left: 0, top: 12, bottom: 12, width: 4, borderRadius: '0 4px 4px 0', background: statusColor }} />
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', paddingLeft: 8 }}>
                             <button
-                                onClick={() => { if (navigator.vibrate) navigator.vibrate(10); toggleTaskStatus(task.id); }}
+                                onClick={() => { if (!task._saving) { if (navigator.vibrate) navigator.vibrate(10); toggleTaskStatus(task.id); } }}
                                 style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', minWidth: 28, minHeight: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2 }}
                             >
                                 {isCompleted
