@@ -115,14 +115,14 @@ const CalendarChoiceModal = () => {
                         >
                             <Calendar size={20} style={{ color: '#0000FF', flexShrink: 0 }} />
                             <div>
-                                <div>{isNative ? 'Apple Calendar' : 'Google Calendar'}</div>
+                                <div>{isNative ? 'Add to Apple Calendar' : 'Google Calendar'}</div>
                                 <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', textTransform: 'none', marginTop: '2px' }}>
-                                    {isNative ? 'Adds directly to your calendar' : 'Opens in a new tab'}
+                                    {isNative ? 'Adds event directly to your calendar' : 'Opens in a new tab'}
                                 </div>
                             </div>
                         </button>
 
-                        <button
+                        {!isNative && <button
                             onClick={handleSystem}
                             style={{
                                 display: 'flex',
@@ -145,12 +145,12 @@ const CalendarChoiceModal = () => {
                         >
                             <Download size={20} style={{ color: '#000', flexShrink: 0 }} />
                             <div>
-                                <div>System Calendar</div>
+                                <div>Download .ics File</div>
                                 <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#666', textTransform: 'none', marginTop: '2px' }}>
-                                    {isNative ? 'Adds directly to Apple Calendar' : 'Downloads .ics file (Apple Calendar, Outlook)'}
+                                    For Apple Calendar, Outlook, etc.
                                 </div>
                             </div>
-                        </button>
+                        </button>}
                     </div>
                 </div>
             </div>

@@ -74,7 +74,7 @@ const IOSTaskCard = ({ task }) => {
         <>
             {showConfirm && <DeleteConfirmModal onConfirm={handleConfirmDelete} onCancel={handleCancelDelete} />}
             {showDetail && <IOSTaskDetailModal task={task} onClose={() => setShowDetail(false)} getCategoryLabel={getCategoryLabel} />}
-            <div style={{ position: 'relative', marginBottom: 10, overflow: 'hidden', borderRadius: 0, opacity: task._saving ? 0.5 : 1, transition: 'opacity 200ms' }}>
+            <div style={{ position: 'relative', marginBottom: 10, overflow: 'hidden', borderRadius: 0, opacity: task._saving ? 0.5 : 1, transition: 'opacity 200ms', pointerEvents: task._saving ? 'none' : undefined }}>
                 {/* Delete button — always behind the card, revealed on swipe */}
                 <div
                     onClick={handleDeletePress}

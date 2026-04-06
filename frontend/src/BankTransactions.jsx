@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BankTransactionProvider, useBankTransactionContext } from './context/BankTransactionContext';
 import { getAuthHeaders } from './api.js';
 import API_BASE from './config';
@@ -15,6 +15,7 @@ import CreateFirstTab from './components/transactions/CreateFirstTab';
 import TransactionInsights from './components/transactions/TransactionInsights';
 import TransactionBalanceForecast from './components/transactions/TransactionBalanceForecast';
 import AIAdvisorPanel from './components/transactions/AIAdvisorPanel';
+import { TrendingUp, X } from 'lucide-react';
 
 const BankTransactionsInner = () => {
     const {
@@ -24,6 +25,7 @@ const BankTransactionsInner = () => {
         onTabCreated, onTabDeleted,
         setError,
     } = useBankTransactionContext();
+    const [forecastOpen, setForecastOpen] = useState(false);
 
     return (
         <div style={{
@@ -93,8 +95,24 @@ const BankTransactionsInner = () => {
 
             {activeTabId && (
                 <div className="bank-main" style={{ maxWidth: '1500px', margin: '0 auto', padding: '2rem' }}>
+                    {/* Expense Forecast trigger button */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                        <button
+                            onClick={() => setForecastOpen(true)}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: 6,
+                                padding: '7px 14px', border: '2px solid #000',
+                                background: '#fff', cursor: 'pointer',
+                                fontWeight: 700, fontSize: '0.8rem',
+                                fontFamily: '"Inter", "Helvetica Neue", sans-serif',
+                            }}
+                        >
+                            <TrendingUp size={14} />
+                            Expense Forecast
+                        </button>
+                    </div>
+
                     <AIAdvisorPanel />
-                    <TransactionBalanceForecast />
                     <TransactionInsights />
                     <TransactionStatsCards />
                     <ExpenseDistributionChart />
@@ -107,6 +125,56 @@ const BankTransactionsInner = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Expense Forecast side drawer */}
+            {forecastOpen && (
+                <>
+                    {/* Overlay */}
+                    <div
+                        onClick={() => setForecastOpen(false)}
+                        style={{
+                            position: 'fixed', inset: 0,
+                            background: 'rgba(0,0,0,0.35)', zIndex: 900,
+                        }}
+                    />
+                    {/* Drawer */}
+                    <div style={{
+                        position: 'fixed', top: 0, right: 0, bottom: 0,
+                        width: 'min(520px, 92vw)',
+                        background: '#fff',
+                        borderLeft: '3px solid #000',
+                        boxShadow: '-4px 0 0 #000',
+                        zIndex: 901,
+                        overflowY: 'auto',
+                        display: 'flex', flexDirection: 'column',
+                    }}>
+                        {/* Drawer header */}
+                        <div style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '14px 20px', borderBottom: '2px solid #000',
+                            background: '#000', color: '#fff', flexShrink: 0,
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: '0.92rem' }}>
+                                <TrendingUp size={16} />
+                                Expense Forecast
+                            </div>
+                            <button
+                                onClick={() => setForecastOpen(false)}
+                                style={{
+                                    background: 'none', border: 'none', color: '#fff',
+                                    cursor: 'pointer', padding: 4, display: 'flex',
+                                }}
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                        {/* Drawer content */}
+                        <div style={{ padding: '1rem', flex: 1 }}>
+                            <TransactionBalanceForecast />
+                        </div>
+                    </div>
+                </>
             )}
 
             <AddTransactionModal />

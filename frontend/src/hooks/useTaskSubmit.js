@@ -4,17 +4,18 @@ import { getAuthHeaders } from '../api.js';
 
 const useTaskSubmit = ({ setLoading, setError, setTasks, loadTasks, fetchStats, fetchClients }) => {
     const submitTask = useCallback(async (formData, editingTask) => {
-        const tempId = editingTask ? null : `temp-${Date.now()}`;
+        const { attachments, newAttachments, removedAttachmentIds, ...payload } = formData;
 
-        if (tempId) {
-            const { attachments, newAttachments, removedAttachmentIds, ...tempPayload } = formData;
-            setTasks(prev => [{ ...tempPayload, id: tempId, _saving: true }, ...prev]);
+        // Optimistic insert for new tasks only
+        let tempId = null;
+        if (!editingTask) {
+            tempId = 'temp-' + Date.now();
+            setTasks(prev => [{ ...payload, id: tempId, _saving: true, attachments: [] }, ...prev]);
         }
 
         try {
             setLoading(true);
             const url = editingTask ? `${API_BASE}/tasks/${editingTask.id}` : `${API_BASE}/tasks`;
-            const { attachments, newAttachments, removedAttachmentIds, ...payload } = formData;
 
             const response = await fetch(url, {
                 method: editingTask ? 'PUT' : 'POST',
@@ -30,6 +31,12 @@ const useTaskSubmit = ({ setLoading, setError, setTasks, loadTasks, fetchStats, 
 
             const responseData = await response.json().catch(() => ({}));
             const taskId = editingTask ? editingTask.id : responseData.id;
+
+            // Replace temp task with server response immediately
+            if (tempId && responseData.id) {
+                setTasks(prev => prev.map(t => t.id === tempId ? { ...responseData, _saving: false } : t));
+                tempId = null;
+            }
 
             let attachmentError = null;
             if (taskId) {
@@ -58,6 +65,10 @@ const useTaskSubmit = ({ setLoading, setError, setTasks, loadTasks, fetchStats, 
             }
             return true;
         } catch (err) {
+            // Roll back the optimistic insert on failure
+            if (tempId) {
+                setTasks(prev => prev.filter(t => t.id !== tempId));
+            }
             setError(err.message);
             return false;
         } finally {

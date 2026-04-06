@@ -3,9 +3,9 @@ import { Brain, ChevronDown, ChevronUp, RefreshCw, TrendingUp, AlertTriangle, Pi
 import { useBankTransactionContext } from '../../context/BankTransactionContext';
 
 const VERDICT = {
-    healthy:    { bg: '#16a34a', label: 'Healthy' },
-    moderate:   { bg: '#d97706', label: 'Moderate' },
-    concerning: { bg: '#dc2626', label: 'Concerning' },
+    stable:   { bg: '#16a34a', label: '↔ Stable' },
+    rising:   { bg: '#d97706', label: '↑ Rising' },
+    volatile: { bg: '#6d28d9', label: '⚡ Volatile' },
 };
 
 const SECTIONS = [
@@ -59,7 +59,7 @@ const AIAdvisorPanel = () => {
 
     const data = aiAdvisor;
     const isFallback = data?.fallback === true;
-    const verdict = VERDICT[data?.spending_verdict] || VERDICT.moderate;
+    const verdict = VERDICT[data?.spending_verdict] || VERDICT.stable;
 
     return (
         <div style={{ marginBottom: '1.5rem', border: '3px solid #000', boxShadow: '4px 4px 0 #000' }}>

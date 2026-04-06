@@ -60,8 +60,8 @@ _ANALYSIS_TOOL = {
             },
             "spending_verdict": {
                 "type": "string",
-                "enum": ["healthy", "moderate", "concerning"],
-                "description": "Overall verdict.",
+                "enum": ["stable", "rising", "volatile"],
+                "description": "Expense pattern only: stable=consistent, rising=trending up, volatile=erratic.",
             },
         },
         "required": [
@@ -232,8 +232,10 @@ def _call_claude(prompt_text: str) -> dict:
 
     today = date.today().strftime('%B %d, %Y')
     system = (
-        "You are a financial advisor. Respond with very short, punchy text only. "
-        "No sub-clauses, no 'which', no 'that'. Every bullet max 10 words. "
+        "You are analyzing expense transactions only — there is NO income data. "
+        "Do not comment on financial health or savings rate. "
+        "Focus only on expense patterns, anomalies, and ways to reduce costs. "
+        "Respond with very short, punchy text. No sub-clauses. Every bullet max 10 words. "
         f"Currency ₪. Today {today}."
     )
 
