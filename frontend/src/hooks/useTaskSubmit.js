@@ -2,8 +2,15 @@ import { useCallback } from 'react';
 import API_BASE from '../config';
 import { getAuthHeaders } from '../api.js';
 
-const useTaskSubmit = ({ setLoading, setError, loadTasks, fetchStats, fetchClients }) => {
+const useTaskSubmit = ({ setLoading, setError, setTasks, loadTasks, fetchStats, fetchClients }) => {
     const submitTask = useCallback(async (formData, editingTask) => {
+        const tempId = editingTask ? null : `temp-${Date.now()}`;
+
+        if (tempId) {
+            const { attachments, newAttachments, removedAttachmentIds, ...tempPayload } = formData;
+            setTasks(prev => [{ ...tempPayload, id: tempId, _saving: true }, ...prev]);
+        }
+
         try {
             setLoading(true);
             const url = editingTask ? `${API_BASE}/tasks/${editingTask.id}` : `${API_BASE}/tasks`;
@@ -16,6 +23,7 @@ const useTaskSubmit = ({ setLoading, setError, loadTasks, fetchStats, fetchClien
             });
 
             if (!response.ok) {
+                if (tempId) setTasks(prev => prev.filter(t => t.id !== tempId));
                 const errData = await response.json().catch(() => ({}));
                 throw new Error(errData.error || 'Failed to save task');
             }
@@ -55,7 +63,7 @@ const useTaskSubmit = ({ setLoading, setError, loadTasks, fetchStats, fetchClien
         } finally {
             setLoading(false);
         }
-    }, [loadTasks, fetchStats, fetchClients, setLoading, setError]);
+    }, [loadTasks, fetchStats, fetchClients, setLoading, setError, setTasks]);
 
     const submitBulkTasks = useCallback(async (taskTitles, categories, client, taskDate, taskTime) => {
         const tasks = taskTitles.map(title => ({
