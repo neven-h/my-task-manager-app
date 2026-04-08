@@ -2,6 +2,7 @@
 Shared utility helpers: task serialization, error handling, file validation, CSV sanitization.
 """
 import os
+from datetime import timedelta
 from flask import jsonify
 
 
@@ -62,16 +63,36 @@ def serialize_task(task: dict) -> dict:
     Convert a task database record to a JSON-serializable dict.
     Modifies in-place and returns the dict for convenience.
     """
-    if task.get('task_date'):
+    if task.get('task_date') is not None:
         task['task_date'] = task['task_date'].isoformat()
-    if task.get('task_time'):
+    if task.get('task_time') is not None:
         task['task_time'] = str(task['task_time'])
-    if task.get('created_at'):
+    if task.get('created_at') is not None:
         task['created_at'] = task['created_at'].isoformat()
-    if task.get('updated_at'):
+    if task.get('updated_at') is not None:
         task['updated_at'] = task['updated_at'].isoformat()
-    if task.get('duration'):
-        task['duration'] = float(task['duration'])
+    duration = task.get('duration')
+    if duration is not None:
+        if isinstance(duration, timedelta):
+            # Normalize DB TIME/timedelta values to hours for API consumers.
+            task['duration'] = duration.total_seconds() / 3600.0
+        elif isinstance(duration, str) and ':' in duration:
+            try:
+                parts = duration.split(':')
+                if len(parts) == 3:
+                    hours = int(parts[0])
+                    minutes = int(parts[1])
+                    seconds = float(parts[2])
+                    task['duration'] = hours + (minutes / 60.0) + (seconds / 3600.0)
+                else:
+                    task['duration'] = float(duration)
+            except (TypeError, ValueError):
+                task['duration'] = 0.0
+        else:
+            try:
+                task['duration'] = float(duration)
+            except (TypeError, ValueError):
+                task['duration'] = 0.0
 
     tags_value = task.get('tags')
     task['tags'] = [t.strip() for t in tags_value.split(',') if t.strip()] if tags_value else []
