@@ -2,7 +2,5 @@ import UIKit
 import Capacitor
 
 class MyViewController: CAPBridgeViewController {
-    override open func capacitorDidLoad() {
-        bridge?.registerPluginInstance(CalendarPlugin())
-    }
+    // CalendarPlugin is auto-discovered via CAPBridgedPlugin — no manual registration needed.
 }
