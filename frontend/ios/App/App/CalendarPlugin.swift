@@ -3,15 +3,7 @@ import EventKit
 import Capacitor
 
 @objc(CalendarPlugin)
-public class CalendarPlugin: CAPPlugin, CAPBridgedPlugin {
-    public let identifier = "CalendarPlugin"
-    public let jsName = "Calendar"
-    public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "checkAccess", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "requestAccess", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "addEvent", returnType: CAPPluginReturnPromise)
-    ]
-
+public class CalendarPlugin: CAPPlugin {
     private let store = EKEventStore()
 
     @objc func checkAccess(_ call: CAPPluginCall) {
