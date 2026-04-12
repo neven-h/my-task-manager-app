@@ -58,7 +58,14 @@ const useBudgetStats = (entries, cutoff, activeTabId, forecast = null, linkedTab
         const totalExpense = budgetExpense + bankExpense;
         const totalIncome  = budgetIncome  + bankIncome;
 
-        const avgMonthly = totalExpense / monthlyTotals.length;
+        // When a specific date range is active, divide by the actual time span
+        // (in months) rather than the number of distinct calendar-month buckets.
+        // Example: "Last 30 days" spans 2 calendar months but is only ~1 month
+        // of data, so dividing by 2 would halve the correct figure.
+        const monthDivisor = dateFrom
+            ? Math.max(1, (new Date(cutoff) - new Date(dateFrom)) / (1000 * 60 * 60 * 24 * 30.44))
+            : monthlyTotals.length;
+        const avgMonthly = totalExpense / monthDivisor;
 
         // Momentum: compare last 3 months
         const recent = monthlyTotals.slice(-3).map(([, d]) => d.expense);
@@ -70,7 +77,7 @@ const useBudgetStats = (entries, cutoff, activeTabId, forecast = null, linkedTab
             else if (last < prev * 0.9) momentum = 'decreasing';
         }
 
-        const avgMonthlyIncome = totalIncome / monthlyTotals.length;
+        const avgMonthlyIncome = totalIncome / monthDivisor;
         const balance = totalIncome - totalExpense;
         const monthlyNet = avgMonthlyIncome - avgMonthly; // positive = monthly surplus
         const runway = runwayMonths(balance > 0 ? balance : null, avgMonthly);
