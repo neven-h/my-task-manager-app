@@ -1,10 +1,25 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Download, Upload, RefreshCw } from 'lucide-react';
 import { useTaskContext } from '../../context/TaskContext';
+import TaskExportPanel from './TaskExportPanel';
 
 const TaskExportButtons = ({ onActionComplete }) => {
-    const { tasks, loading, exportToCSV, exportHoursReport, importHoursReport, fetchTasks, fetchStats } = useTaskContext();
+    const { tasks, loading, exportToCSV, exportHoursReport, importHoursReport, fetchTasks, fetchStats, buildFilterParams, allCategories } = useTaskContext();
     const fileInputRef = useRef(null);
+    const [showPanel, setShowPanel] = useState(false);
+
+    const handlePanelExport = async (overrides) => {
+        const params = buildFilterParams({
+            search: '', client: '', tags: [], hasAttachment: false,
+            dateStart: overrides.dateStart || '',
+            dateEnd: overrides.dateEnd || '',
+            status: overrides.status || 'all',
+            category: overrides.category || 'all',
+        });
+        await exportToCSV(params);
+        setShowPanel(false);
+        if (onActionComplete) onActionComplete();
+    };
 
     const handleAction = (action) => async () => {
         await action();
@@ -44,11 +59,18 @@ const TaskExportButtons = ({ onActionComplete }) => {
                     onChange={handleImport}
                     style={{display: 'none'}}
                 />
-                <button className="btn btn-blue" onClick={handleAction(exportToCSV)}
+                <button className="btn btn-blue" onClick={() => setShowPanel(s => !s)}
                         disabled={tasks.length === 0} style={{width: '100%'}}>
                     <Download size={16} style={{display: 'inline', verticalAlign: 'middle', marginRight: '8px'}}/>
                     Export CSV
                 </button>
+                {showPanel && (
+                    <TaskExportPanel
+                        allCategories={allCategories}
+                        onExport={handlePanelExport}
+                        onCancel={() => setShowPanel(false)}
+                    />
+                )}
                 <button className="btn btn-white" onClick={handleAction(async () => {
                     await fetchTasks();
                     await fetchStats();

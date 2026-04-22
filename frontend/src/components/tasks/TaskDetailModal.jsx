@@ -2,6 +2,7 @@ import React from 'react';
 import { X, Calendar, Clock, Users, Tag, Folder, FileText, Paperclip } from 'lucide-react';
 import { useTaskContext } from '../../context/TaskContext';
 import TaskCardAttachments from './TaskCardAttachments';
+import renderDescription from '../../utils/renderDescription';
 
 const FONT_STACK = '"Inter", "Helvetica Neue", Calibri, sans-serif';
 
@@ -79,7 +80,7 @@ const TaskDetailModal = ({ task, onClose }) => {
                     {task.description && (
                         <Section icon={FileText} label="Description">
                             <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                                {task.description}
+                                {renderDescription(task.description)}
                             </p>
                         </Section>
                     )}

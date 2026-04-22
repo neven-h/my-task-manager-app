@@ -65,6 +65,9 @@ const TaskFormModal = () => {
                                     ref={autoSize}
                                     onChange={(e) => { update('description', e.target.value); autoSize(e.target); }}
                                     enterKeyHint="next" style={{ minHeight: '44px', maxHeight: '300px', overflow: 'auto', resize: 'vertical' }} />
+                                <div style={{ fontSize: '0.72rem', color: '#666', marginTop: 4 }}>
+                                    Formatting: <code>**bold**</code> · <code>~~strikethrough~~</code>
+                                </div>
                             </div>
                             <TaskCategorySection
                                 allCategories={allCategories}

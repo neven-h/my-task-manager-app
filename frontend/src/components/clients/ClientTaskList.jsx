@@ -1,5 +1,6 @@
 import React from 'react';
 import { Clock, CheckCircle } from 'lucide-react';
+import renderDescription from '../../utils/renderDescription';
 
 const ClientTaskList = ({ clientName, tasks, colors }) => (
     <div style={{ border: `3px solid ${colors.border}`, background: colors.surface, padding: '2rem', boxShadow: '4px 4px 0px #000' }}>
@@ -41,7 +42,7 @@ const ClientTaskList = ({ clientName, tasks, colors }) => (
                     </div>
                     {task.description && (
                         <div style={{ fontSize: '0.9rem', color: colors.muted, marginTop: '0.5rem', lineHeight: '1.5' }}>
-                            {task.description}
+                            {renderDescription(task.description)}
                         </div>
                     )}
                 </div>

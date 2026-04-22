@@ -4,21 +4,41 @@ import { useTaskContext } from '../../context/TaskContext';
 import TaskCardMeta from './TaskCardMeta';
 import TaskCardAttachments from './TaskCardAttachments';
 import TaskDetailModal from './TaskDetailModal';
+import renderDescription from '../../utils/renderDescription';
 
 const TaskCard = React.memo(({ task }) => {
     const {
         isSharedUser, rtlEnabled,
         filters, setFilters,
         getCategoryLabel, getStatusColor, getStatusLabel,
-        toggleTaskStatus, openEditTaskForm, duplicateTask, deleteTask, openShareModal, openCalendarModal
+        toggleTaskStatus, openEditTaskForm, duplicateTask, deleteTask, openShareModal, openCalendarModal,
+        selectionMode, selectedIds, toggleSelect,
     } = useTaskContext();
     const [showDetail, setShowDetail] = useState(false);
 
     const textDir = rtlEnabled ? 'rtl' : undefined;
     const statusStyle = getStatusColor(task.status);
+    const isSelected = selectionMode && selectedIds?.has(task.id);
+
+    const openDetail = () => {
+        if (selectionMode) toggleSelect(task.id);
+        else setShowDetail(true);
+    };
+    const handleCardClick = (e) => {
+        if (!selectionMode) return;
+        // Don't toggle when clicking action buttons (they have their own stopPropagation via buttons)
+        toggleSelect(task.id);
+    };
 
     return (
-        <div className="task-card" style={{ background: '#fff', padding: '28px' }}>
+        <div className="task-card"
+            onClick={selectionMode ? handleCardClick : undefined}
+            style={{
+                background: isSelected ? '#f0f4ff' : '#fff',
+                padding: '28px',
+                cursor: selectionMode ? 'pointer' : 'default',
+                border: isSelected ? '3px solid #0000FF' : undefined,
+            }}>
             {showDetail && <TaskDetailModal task={task} onClose={() => setShowDetail(false)} />}
             <div style={{
                 display: 'flex',
@@ -27,19 +47,28 @@ const TaskCard = React.memo(({ task }) => {
                 alignItems: 'flex-start',
                 marginBottom: '16px'
             }}>
+                {selectionMode && (
+                    <input
+                        type="checkbox"
+                        checked={!!isSelected}
+                        onChange={() => toggleSelect(task.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ width: 20, height: 20, cursor: 'pointer', flexShrink: 0, marginRight: 16, marginTop: 4 }}
+                    />
+                )}
                 <div style={{ flex: 1 }}>
                     <div style={{
                         display: 'flex', flexDirection: rtlEnabled ? 'row-reverse' : 'row',
                         alignItems: 'center', gap: '12px', marginBottom: '12px', flexWrap: 'wrap'
                     }}>
-                        <h3 onClick={() => setShowDetail(true)} style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, cursor: 'pointer' }} dir={textDir}>{task.title}</h3>
+                        <h3 onClick={openDetail} style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, cursor: 'pointer' }} dir={textDir}>{task.title}</h3>
                         <span className="status-badge" style={{ background: statusStyle.bg, borderColor: statusStyle.border, color: statusStyle.color }}>
                             {getStatusLabel(task.status)}
                         </span>
                     </div>
                     {task.description && (
-                        <p onClick={() => setShowDetail(true)} style={{ margin: '0 0 12px 0', color: '#666', fontSize: '1rem', lineHeight: '1.6', whiteSpace: 'pre-wrap', wordBreak: 'break-word', cursor: 'pointer' }} dir={textDir}>
-                            {task.description}
+                        <p onClick={openDetail} style={{ margin: '0 0 12px 0', color: '#666', fontSize: '1rem', lineHeight: '1.6', whiteSpace: 'pre-wrap', wordBreak: 'break-word', cursor: 'pointer' }} dir={textDir}>
+                            {renderDescription(task.description)}
                         </p>
                     )}
                     {task.categories && task.categories.length > 0 && (
@@ -59,7 +88,7 @@ const TaskCard = React.memo(({ task }) => {
                                 const isActive = filters.tags.includes(tag);
                                 return (
                                     <button key={idx} type="button"
-                                        onClick={() => setFilters(f => ({ ...f, tags: isActive ? f.tags.filter(t => t !== tag) : [...f.tags, tag] }))}
+                                        onClick={(e) => { e.stopPropagation(); setFilters(f => ({ ...f, tags: isActive ? f.tags.filter(t => t !== tag) : [...f.tags, tag] })); }}
                                         className="tag"
                                         style={{ cursor: 'pointer', background: isActive ? '#FFD500' : '', fontWeight: isActive ? 700 : '', border: isActive ? '2px solid #000' : '' }}
                                     >
@@ -71,7 +100,7 @@ const TaskCard = React.memo(({ task }) => {
                     )}
                 </div>
 
-                {!isSharedUser && (
+                {!isSharedUser && !selectionMode && (
                     <div style={{ display: 'flex', gap: '8px', ...(rtlEnabled ? { marginRight: '24px' } : { marginLeft: '24px' }) }}>
                         <button type="button" onClick={() => toggleTaskStatus(task.id)} className="btn" style={{ padding: '10px', minWidth: 'auto' }} title="Toggle status"><Check size={18} /></button>
                         <button type="button" onClick={() => openEditTaskForm(task)} className="btn" style={{ padding: '10px', minWidth: 'auto' }} title="Edit"><Edit2 size={18} /></button>
