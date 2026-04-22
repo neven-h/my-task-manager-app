@@ -13,6 +13,8 @@ task_import_bp = Blueprint('task_import', __name__)
 def import_hours_report(payload):
     """Import tasks from hours report CSV or Excel file"""
     try:
+        username = payload['username']
+
         if 'file' not in request.files:
             return jsonify({'error': 'No file provided'}), 400
 
@@ -69,13 +71,36 @@ def import_hours_report(payload):
                             continue
 
                         client = str(row.get('Client', '')).strip() if pd.notna(row.get('Client')) else ''
+                        description = str(row.get('Description', '')).strip() if pd.notna(row.get('Description')) else ''
+
+                        raw_time = str(row.get('Time', '')).strip() if pd.notna(row.get('Time')) else ''
+                        task_time_str = '00:00:00'
+                        if raw_time:
+                            try:
+                                parsed_time = pd.to_datetime(raw_time, errors='coerce')
+                                if pd.notna(parsed_time):
+                                    task_time_str = parsed_time.strftime('%H:%M:%S')
+                            except Exception:
+                                pass
 
                         import json as _json
                         raw_category = str(row.get('Category', '')).strip() if pd.notna(row.get('Category')) else ''
+                        categories_list = []
                         if raw_category:
-                            categories_list = [c.strip() for c in raw_category.split(',') if c.strip()]
-                        else:
-                            categories_list = []
+                            parsed = raw_category
+                            # Unwrap up to two layers of JSON in case the cell contains '["System"]' or '"[\\"System\\"]"'.
+                            for _ in range(2):
+                                if isinstance(parsed, str) and parsed.startswith('['):
+                                    try:
+                                        parsed = _json.loads(parsed)
+                                    except Exception:
+                                        break
+                                else:
+                                    break
+                            if isinstance(parsed, list):
+                                categories_list = [str(c).strip() for c in parsed if str(c).strip()]
+                            else:
+                                categories_list = [c.strip() for c in str(parsed).split(',') if c.strip()]
                         categories_json = _json.dumps(categories_list) if categories_list else _json.dumps([])
                         category_legacy = categories_list[0] if categories_list else ''
 
@@ -94,14 +119,15 @@ def import_hours_report(payload):
                         query = """
                                 INSERT INTO tasks
                                 (title, description, category, categories, client, task_date, task_time,
-                                 duration, status, tags, notes)
-                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                 duration, status, tags, notes, created_by, shared, is_draft)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                                 """
                         values = (
-                            title, '', category_legacy, categories_json, client,
-                            task_date.strftime('%Y-%m-%d'), '00:00:00', duration,
+                            title, description, category_legacy, categories_json, client,
+                            task_date.strftime('%Y-%m-%d'), task_time_str, duration,
                             status if status in ['completed', 'uncompleted'] else 'completed',
-                            '', notes
+                            '', notes,
+                            username, False, False,
                         )
                         cursor.execute(query, values)
                         imported_count += 1

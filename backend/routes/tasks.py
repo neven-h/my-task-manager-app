@@ -61,12 +61,6 @@ def get_tasks(payload):
             if include_drafts != 'true':
                 where_clause += " AND (is_draft = FALSE OR is_draft IS NULL)"
 
-            if user_role == 'shared':
-                where_clause += " AND shared = TRUE"
-            elif user_role == 'limited':
-                where_clause += " AND created_by = %s AND created_by IS NOT NULL"
-                params.append(username)
-
             if DEBUG:
                 print(f"User: {username}, Role: {user_role}, Where: {where_clause}, Params: {params}")
 

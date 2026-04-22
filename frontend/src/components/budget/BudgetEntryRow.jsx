@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Edit2, Trash2, Copy } from 'lucide-react';
+import { Edit2, Trash2, Copy, ChevronRight, ChevronDown } from 'lucide-react';
 
 const SYS = {
     success: '#00AA00',
@@ -20,14 +20,26 @@ export const EntryRow = ({ entry, balance, cutoff, onEdit, onDuplicate, onDelete
     const amountColor = isIncome ? SYS.success : SYS.accent;
     const sign = isIncome ? '+' : '−';
 
+    const handleRowClick = () => {
+        if (selectMode) {
+            onToggleSelect(entry.id);
+        } else {
+            onEdit(entry);
+        }
+    };
+
+    const stop = (e) => e.stopPropagation();
+
     return (
         <>
-            <div style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '10px 16px',
-                borderBottom: `1px solid ${SYS.border}`,
-                opacity: isPast ? 1 : 0.4,
-            }}>
+            <div onClick={handleRowClick}
+                style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '10px 16px',
+                    borderBottom: `1px solid ${SYS.border}`,
+                    opacity: isPast ? 1 : 0.4,
+                    cursor: 'pointer',
+                }}>
                 {/* Select checkbox */}
                 {selectMode && (
                     <div onClick={(e) => { e.stopPropagation(); onToggleSelect(entry.id); }}
@@ -45,13 +57,11 @@ export const EntryRow = ({ entry, balance, cutoff, onEdit, onDuplicate, onDelete
                     {new Date(entry.entry_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                 </div>
 
-                {/* Description + category (clickable to expand) */}
-                <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => onToggleExpand(entry.id)}>
+                {/* Description + category */}
+                <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
                         fontWeight: 600, fontSize: '0.9rem',
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                        borderBottom: '1px dashed #999', display: 'inline',
-                        paddingBottom: 1,
                     }}>
                         {entry.description}
                     </div>
@@ -80,31 +90,36 @@ export const EntryRow = ({ entry, balance, cutoff, onEdit, onDuplicate, onDelete
                 )}
 
                 {/* Actions */}
-                <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: 4, flexShrink: 0 }} onClick={stop}>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); onToggleExpand(entry.id); }}
+                        style={{ background: 'none', border: 'none', padding: '3px 6px', cursor: 'pointer', color: SYS.light }}
+                        title={isExpanded ? 'Hide history' : 'Show history'}>
+                        {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                    </button>
                     {confirmDelete ? (
                         <>
-                            <button type="button" onClick={() => { setConfirmDelete(false); onDelete(entry.id); }}
+                            <button type="button" onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); onDelete(entry.id); }}
                                 style={{ padding: '3px 10px', border: `2px solid ${SYS.border}`, background: SYS.accent, color: '#fff', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', textTransform: 'uppercase' }}>
                                 Delete?
                             </button>
-                            <button type="button" onClick={() => setConfirmDelete(false)}
+                            <button type="button" onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); }}
                                 style={{ padding: '3px 8px', border: `2px solid ${SYS.border}`, background: '#fff', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 700 }}>
                                 ✕
                             </button>
                         </>
                     ) : (
                         <>
-                            <button type="button" onClick={() => onEdit(entry)}
+                            <button type="button" onClick={(e) => { e.stopPropagation(); onEdit(entry); }}
                                 style={{ background: 'none', border: 'none', padding: '3px 6px', cursor: 'pointer', color: SYS.light }}
                                 title="Edit">
                                 <Edit2 size={14} />
                             </button>
-                            <button type="button" onClick={() => onDuplicate(entry)}
+                            <button type="button" onClick={(e) => { e.stopPropagation(); onDuplicate(entry); }}
                                 style={{ background: 'none', border: 'none', padding: '3px 6px', cursor: 'pointer', color: SYS.light }}
                                 title="Duplicate">
                                 <Copy size={14} />
                             </button>
-                            <button type="button" onClick={() => setConfirmDelete(true)}
+                            <button type="button" onClick={(e) => { e.stopPropagation(); setConfirmDelete(true); }}
                                 style={{ background: 'none', border: 'none', padding: '3px 6px', cursor: 'pointer', color: SYS.light }}
                                 title="Delete">
                                 <Trash2 size={14} />
