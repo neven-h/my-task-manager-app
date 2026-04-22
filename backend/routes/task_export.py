@@ -30,11 +30,6 @@ def export_csv(payload):
             query = "SELECT * FROM tasks WHERE 1=1"
             params = []
 
-            # Always scope to the requesting user's own tasks
-            if user_role != 'shared':
-                query += " AND created_by = %s"
-                params.append(username)
-
             if category and category != 'all':
                 query += " AND category = %s"
                 params.append(category)
@@ -107,11 +102,6 @@ def export_hours_report(payload):
             query = "SELECT * FROM tasks WHERE 1=1"
             params = []
 
-            # Always scope to the requesting user's own tasks
-            if user_role != 'shared':
-                query += " AND created_by = %s"
-                params.append(username)
-
             if category and category != 'all':
                 query += " AND category = %s"
                 params.append(category)
@@ -143,24 +133,42 @@ def export_hours_report(payload):
             tasks = cursor.fetchall()
 
             output = io.StringIO()
-            fieldnames = ['Date', 'Client', 'Task', 'Category', 'Hours', 'Status', 'Notes']
+            fieldnames = ['Date', 'Time', 'Client', 'Task', 'Description', 'Category', 'Hours', 'Status', 'Notes']
             writer = csv.DictWriter(output, fieldnames=fieldnames)
             writer.writeheader()
 
+            import json as _json
             for task in tasks:
                 categories_str = ''
-                if task.get('categories'):
-                    try:
-                        import json
-                        categories_list = json.loads(task['categories']) if isinstance(task['categories'], str) else task['categories']
-                        categories_str = ', '.join(categories_list) if isinstance(categories_list, list) else str(categories_list)
-                    except Exception:
-                        categories_str = str(task['categories'])
+                raw_cats = task.get('categories')
+                # Unwrap up to two layers of JSON encoding to recover from legacy double-encoded rows.
+                for _ in range(2):
+                    if isinstance(raw_cats, str):
+                        try:
+                            raw_cats = _json.loads(raw_cats)
+                        except Exception:
+                            break
+                    else:
+                        break
+                if isinstance(raw_cats, list):
+                    categories_str = ', '.join(str(c) for c in raw_cats)
+                elif raw_cats:
+                    categories_str = str(raw_cats)
+                elif task.get('category'):
+                    categories_str = task['category']
+
+                task_time_val = task.get('task_time')
+                if task_time_val is None or str(task_time_val) in ('', '00:00:00', '0:00:00'):
+                    time_str = ''
+                else:
+                    time_str = str(task_time_val)
 
                 writer.writerow({
                     'Date': task['task_date'].strftime('%Y-%m-%d') if hasattr(task['task_date'], 'strftime') else str(task['task_date']),
+                    'Time': time_str,
                     'Client': task.get('client', ''),
                     'Task': task.get('title', ''),
+                    'Description': task.get('description', '') or '',
                     'Category': categories_str,
                     'Hours': task.get('duration', ''),
                     'Status': task.get('status', ''),
