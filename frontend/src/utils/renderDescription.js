@@ -15,9 +15,9 @@ const renderDescription = (text) => {
             nodes.push(str.slice(last, match.index));
         }
         if (match[0].startsWith('**')) {
-            nodes.push(<strong key={`b-${i++}`}>{match[2]}</strong>);
+            nodes.push(React.createElement('strong', { key: `b-${i++}` }, match[2]));
         } else {
-            nodes.push(<s key={`s-${i++}`}>{match[3]}</s>);
+            nodes.push(React.createElement('s', { key: `s-${i++}` }, match[3]));
         }
         last = match.index + match[0].length;
     }
