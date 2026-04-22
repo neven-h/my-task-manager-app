@@ -2,11 +2,16 @@ import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { useTaskContext } from '../context/TaskContext';
 import IOSTaskCard from './IOSTaskCard';
 import { THEME } from './theme';
+import TaskMultiSelectBar from '../components/tasks/TaskMultiSelectBar';
 
 const PAGE_SIZE = 30;
 
 const IOSTaskList = ({ filterMode }) => {
-    const { tasks, loading } = useTaskContext();
+    const {
+        tasks, loading,
+        selectedIds, clearSelection,
+        exportSelectedTasks, shareSelectedTasks, deleteSelectedTasks,
+    } = useTaskContext();
     const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
     const sentinelRef = useRef(null);
 
@@ -42,6 +47,13 @@ const IOSTaskList = ({ filterMode }) => {
 
     return (
         <div style={{ padding: '0 16px 16px 16px' }}>
+            <TaskMultiSelectBar
+                count={selectedIds?.size || 0}
+                onExport={exportSelectedTasks}
+                onShare={shareSelectedTasks}
+                onDelete={deleteSelectedTasks}
+                onClear={clearSelection}
+            />
             {loading ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: THEME.muted }}>
                     Loading...

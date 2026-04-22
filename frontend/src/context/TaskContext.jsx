@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useMemo, useCall
 import useTaskData from '../hooks/useTaskData';
 import useTaskFilters from '../hooks/useTaskFilters';
 import useTaskSubmit from '../hooks/useTaskSubmit';
+import useTaskSelection from '../hooks/useTaskSelection';
 import storage, { STORAGE_KEYS } from '../utils/storage';
 import API_BASE from '../config';
 import { getAuthHeaders } from '../api';
@@ -169,6 +170,8 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
 
     const { submitTask, submitBulkTasks, shareTask } = useTaskSubmit({ setLoading, setError, setTasks, loadTasks, fetchStats, fetchClients });
 
+    const selection = useTaskSelection({ tasks, setTasks, getCategoryLabel, fetchStats });
+
     const openNewTaskForm = useCallback(() => setFormModalState({ isOpen: true, editingTask: null }), []);
     const openEditTaskForm = useCallback((task) => setFormModalState({ isOpen: true, editingTask: task }), []);
     const closeFormModal = useCallback(() => setFormModalState({ isOpen: false, editingTask: null }), []);
@@ -195,6 +198,15 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
         shareModal: shareModalState, openShareModal, closeShareModal,
         calendarModal: calendarModalState, openCalendarModal, closeCalendarModal,
         rtlEnabled, setRtlEnabled,
+        selectionMode: selection.selectionMode,
+        selectedIds: selection.selectedIds,
+        toggleSelect: selection.toggleSelect,
+        clearSelection: selection.clearSelection,
+        toggleSelectionMode: selection.toggleSelectionMode,
+        enterSelectionWith: selection.enterSelectionWith,
+        exportSelectedTasks: selection.exportSelected,
+        shareSelectedTasks: selection.shareSelected,
+        deleteSelectedTasks: selection.deleteSelected,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }), [
         authToken, authRole, authUser, onLogout,
@@ -214,6 +226,9 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
         calendarModalState, openCalendarModal, closeCalendarModal,
         rtlEnabled, setRtlEnabled,
         navVisibility, setNavVisibility,
+        selection.selectionMode, selection.selectedIds,
+        selection.toggleSelect, selection.clearSelection, selection.toggleSelectionMode, selection.enterSelectionWith,
+        selection.exportSelected, selection.shareSelected, selection.deleteSelected,
     ]);
 
     return <TaskContext.Provider value={value}>{children}</TaskContext.Provider>;

@@ -4,6 +4,7 @@ import { FONT_STACK } from './theme';
 import IOSBottomSheet from './IOSBottomSheet';
 import IOSTaskDetailHeader from './IOSTaskDetailHeader';
 import IOSTaskCardAttachments from './IOSTaskCardAttachments';
+import renderDescription from '../utils/renderDescription';
 
 const Section = ({ icon: Icon, label, children }) => (
     <div style={{ marginBottom: 20 }}>
@@ -28,7 +29,7 @@ const IOSTaskDetailModal = ({ task, onClose, getCategoryLabel }) => {
                 {task.description && (
                     <Section icon={FileText} label="Description">
                         <p dir="auto" style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', unicodeBidi: 'plaintext' }}>
-                            {task.description}
+                            {renderDescription(task.description)}
                         </p>
                     </Section>
                 )}

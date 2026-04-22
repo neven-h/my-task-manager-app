@@ -10,6 +10,7 @@ import DangerZoneSection from './components/settings/DangerZoneSection';
 import DisableTwoFactorModal from './components/settings/DisableTwoFactorModal';
 import DeleteAccountModal from './components/settings/DeleteAccountModal';
 import DescriptionRulesSection from './components/settings/DescriptionRulesSection';
+import CategoriesTagsSection from './components/settings/CategoriesTagsSection';
 
 
 const SettingsPage = () => {
@@ -174,6 +175,8 @@ const SettingsPage = () => {
                     />
 
                     {settings.userRole === 'admin' && <DescriptionRulesSection />}
+
+                    <CategoriesTagsSection />
                 </div>
             </div>
 

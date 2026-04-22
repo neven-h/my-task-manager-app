@@ -2,6 +2,7 @@ import React from 'react';
 import { Plus } from 'lucide-react';
 import { useTaskContext } from '../../context/TaskContext';
 import TaskCard from './TaskCard';
+import TaskMultiSelectBar from './TaskMultiSelectBar';
 
 const TaskList = () => {
     const {
@@ -11,6 +12,8 @@ const TaskList = () => {
         openNewTaskForm, setShowBulkInput,
         getStatusColor,
         rtlEnabled, setRtlEnabled,
+        selectionMode, selectedIds, toggleSelectionMode, clearSelection,
+        exportSelectedTasks, shareSelectedTasks, deleteSelectedTasks,
     } = useTaskContext();
 
     return (
@@ -94,16 +97,33 @@ const TaskList = () => {
                             Uncompleted Only
                         </button>
                     </div>
-                    {/* Right group: RTL toggle — always visible, never pushed off-screen */}
-                    <button
-                        className={`btn btn-narrow ${rtlEnabled ? 'btn-blue' : 'btn-white'}`}
-                        onClick={() => setRtlEnabled(!rtlEnabled)}
-                        title="Toggle right-to-left text direction (for Hebrew / Arabic)"
-                    >
-                        RTL
-                    </button>
+                    {/* Right group: Select + RTL toggles */}
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                        <button
+                            className={`btn btn-narrow ${selectionMode ? 'btn-blue' : 'btn-white'}`}
+                            onClick={toggleSelectionMode}
+                            title="Toggle multi-select mode"
+                        >
+                            {selectionMode ? '✕ Cancel Select' : '☐ Select'}
+                        </button>
+                        <button
+                            className={`btn btn-narrow ${rtlEnabled ? 'btn-blue' : 'btn-white'}`}
+                            onClick={() => setRtlEnabled(!rtlEnabled)}
+                            title="Toggle right-to-left text direction (for Hebrew / Arabic)"
+                        >
+                            RTL
+                        </button>
+                    </div>
                 </div>
             </div>
+
+            <TaskMultiSelectBar
+                count={selectedIds.size}
+                onExport={exportSelectedTasks}
+                onShare={shareSelectedTasks}
+                onDelete={deleteSelectedTasks}
+                onClear={clearSelection}
+            />
 
             {loading ? (
                 <div style={{textAlign: 'center', padding: '64px', fontSize: '1.1rem', color: '#666'}}>
