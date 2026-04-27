@@ -14,7 +14,7 @@ Flask-Limiter==3.5.0
 cryptography==46.0.7
 pyotp==2.9.0
 qrcode==7.4.2
-Pillow==12.1.1
+Pillow==12.2.0
 yfinance==1.1.0
 cloudinary==1.44.1
 anthropic>=0.40.0
