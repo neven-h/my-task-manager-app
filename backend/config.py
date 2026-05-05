@@ -112,7 +112,7 @@ CORS(
 limiter = Limiter(
     app=app,
     key_func=get_remote_address,
-    default_limits=["5000 per day", "500 per hour"],
+    default_limits=["500 per hour"],
     storage_uri="memory://"
 )
 
