@@ -12,6 +12,7 @@ from config import get_db_connection, token_required, decrypt_field
 from .forecast_engine import cache_get, cache_set
 from ._balance_forecast_helpers import (
     _predict_budget, _predict_bank, _merge_timeline, _build_monthly_actuals,
+    _split_fixed_variable_monthly,
 )
 
 logger = logging.getLogger(__name__)
@@ -31,8 +32,15 @@ def balance_forecast(payload):
         if not tab_id:
             return jsonify({'error': 'tab_id is required'}), 400
 
+        # Optional date-window filter for historical sums (root-cause fix:
+        # when the budget page filters entries by a date range we must apply
+        # the same range to the linked bank rows — otherwise bank totals leak
+        # in older/newer months and inflate the merged figures).
+        hist_start = request.args.get('start')
+        hist_end = request.args.get('end')
+
         force_refresh = request.args.get('refresh') == '1'
-        cache_key = f"balancefc:{username}:{tab_id}:{months}"
+        cache_key = f"balancefc:{username}:{tab_id}:{months}:{hist_start or ''}:{hist_end or ''}"
         if not force_refresh and (cached := cache_get(cache_key)) is not None:
             return jsonify(cached)
 
@@ -43,11 +51,18 @@ def balance_forecast(payload):
             cur = conn.cursor(dictionary=True)
 
             # 1. Current balance from budget entries
-            cur.execute(
+            #    Honor optional [start..end] filter so summary numbers match
+            #    what the frontend is showing for the same window.
+            budget_end = hist_end or today.isoformat()
+            budget_sql = (
                 "SELECT type, amount, entry_date FROM budget_entries "
-                "WHERE owner = %s AND tab_id = %s AND entry_date <= %s",
-                (username, tab_id, today.isoformat()),
+                "WHERE owner = %s AND tab_id = %s AND entry_date <= %s"
             )
+            budget_params = [username, tab_id, budget_end]
+            if hist_start:
+                budget_sql += " AND entry_date >= %s"
+                budget_params.append(hist_start)
+            cur.execute(budget_sql, tuple(budget_params))
             budget_rows = cur.fetchall()
             budget_income = sum(float(r['amount']) for r in budget_rows if r['type'] == 'income')
             budget_expense = sum(float(r['amount']) for r in budget_rows if r['type'] == 'outcome')
@@ -89,11 +104,24 @@ def balance_forecast(payload):
                     pass  # column may not exist yet; fall through to calculated balance
 
                 # Sum historical bank transactions (used for income/expense split in summary)
-                cur.execute(
-                    "SELECT amount, amount_plain, transaction_date FROM bank_transactions WHERE tab_id = %s"
-                    + ("" if user_role == 'shared' else " AND (uploaded_by = %s OR uploaded_by IS NULL)"),
-                    (tx_tab_id,) if user_role == 'shared' else (tx_tab_id, username),
+                # Apply the SAME [start..end] window the budget side used —
+                # root-cause fix for the "wrong totals when linked" bug.
+                bank_sum_sql = (
+                    "SELECT amount, amount_plain, transaction_date, is_fixed "
+                    "FROM bank_transactions "
+                    "WHERE tab_id = %s"
                 )
+                bank_sum_params = [tx_tab_id]
+                if hist_start:
+                    bank_sum_sql += " AND transaction_date >= %s"
+                    bank_sum_params.append(hist_start)
+                if hist_end:
+                    bank_sum_sql += " AND transaction_date <= %s"
+                    bank_sum_params.append(hist_end)
+                if user_role != 'shared':
+                    bank_sum_sql += " AND (uploaded_by = %s OR uploaded_by IS NULL)"
+                    bank_sum_params.append(username)
+                cur.execute(bank_sum_sql, tuple(bank_sum_params))
                 bank_tx_rows = cur.fetchall()
                 for row in bank_tx_rows:
                     try:
@@ -125,14 +153,14 @@ def balance_forecast(payload):
                 monthly_actuals = _build_monthly_actuals(bank_rows, today, link_type)
 
             # 3. Budget entries for last 12 months (history timeline)
-            hist_start = today.replace(day=1)
+            hist_window_start = today.replace(day=1)
             for _ in range(11):
-                hist_start = (hist_start - timedelta(days=1)).replace(day=1)
+                hist_window_start = (hist_window_start - timedelta(days=1)).replace(day=1)
             cur.execute(
-                "SELECT type, amount, entry_date FROM budget_entries "
+                "SELECT type, amount, entry_date, is_fixed FROM budget_entries "
                 "WHERE owner = %s AND tab_id = %s "
                 "AND entry_date >= %s AND entry_date <= %s",
-                (username, tab_id, hist_start.isoformat(), today.isoformat()),
+                (username, tab_id, hist_window_start.isoformat(), today.isoformat()),
             )
             budget_hist_rows = cur.fetchall()
 
@@ -219,10 +247,20 @@ def balance_forecast(payload):
             m['running_balance'] = round(running, 2)
             running -= m['net']
 
+        # Split future-monthly projection into fixed (user-flagged) + variable.
+        try:
+            fixed_variable_monthly = _split_fixed_variable_monthly(
+                budget_hist_rows, bank_tx_rows, today, months, link_type if link else 'expense'
+            )
+        except Exception:
+            logger.exception('fixed/variable split failed')
+            fixed_variable_monthly = []
+
         result = {
             'current_balance': current_balance,
             'real_balance': real_balance,
             'real_balance_date': real_balance_date.isoformat() if real_balance_date else None,
+            'fixed_variable_monthly': fixed_variable_monthly,
             'budget_income': round(budget_income, 2),
             'budget_expense': round(budget_expense, 2),
             'bank_expense': round(bank_expense, 2),

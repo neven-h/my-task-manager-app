@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, Pin } from 'lucide-react';
 
 const SYS = { border: '#000', light: '#666', accent: '#FF0000' };
 
@@ -12,6 +12,7 @@ const BudgetFilterBar = ({
     searchTerm, setSearchTerm,
     categoryFilter, setCategoryFilter,
     amountMin, setAmountMin, amountMax, setAmountMax,
+    onlyFixed, setOnlyFixed,
     clearFilters, hasActiveFilters, allCategories,
 }) => (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 16, padding: '10px 12px', border: `2px solid ${SYS.border}`, background: '#fafafa' }}>
@@ -29,6 +30,29 @@ const BudgetFilterBar = ({
             style={{ ...inputStyle, width: 80 }} />
         <input type="number" placeholder="Max ₪" value={amountMax} onChange={e => setAmountMax(e.target.value)}
             style={{ ...inputStyle, width: 80 }} />
+        {typeof setOnlyFixed === 'function' && (
+            <button
+                type="button"
+                onClick={() => setOnlyFixed(!onlyFixed)}
+                title="Show only entries marked as fixed monthly (הוראת קבע)"
+                style={{
+                    padding: '5px 10px',
+                    border: `2px solid ${SYS.border}`,
+                    background: onlyFixed ? '#d97706' : '#fff',
+                    color: onlyFixed ? '#fff' : SYS.border,
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontSize: '0.78rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.3px',
+                }}
+            >
+                <Pin size={12} {...(onlyFixed ? { fill: '#fff' } : {})} /> Only Fixed
+            </button>
+        )}
         {hasActiveFilters && (
             <button onClick={clearFilters} title="Clear filters"
                 style={{ padding: '5px 10px', border: `2px solid ${SYS.border}`, background: SYS.accent, color: '#fff', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.8rem' }}>

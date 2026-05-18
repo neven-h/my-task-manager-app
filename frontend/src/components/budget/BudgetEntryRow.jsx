@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Edit2, Trash2, Copy, ChevronRight, ChevronDown } from 'lucide-react';
+import { Edit2, Trash2, Copy, ChevronRight, ChevronDown, Pin, PinOff } from 'lucide-react';
 
 const SYS = {
     success: '#00AA00',
@@ -13,7 +13,7 @@ const fmt = (n) =>
 
 export const EMPTY_HISTORY = [];
 
-export const EntryRow = ({ entry, balance, cutoff, onEdit, onDuplicate, onDelete, loading, isExpanded, onToggleExpand, history, selectMode, isSelected, onToggleSelect }) => {
+export const EntryRow = ({ entry, balance, cutoff, onEdit, onDuplicate, onDelete, loading, isExpanded, onToggleExpand, history, selectMode, isSelected, onToggleSelect, onToggleFixed }) => {
     const [confirmDelete, setConfirmDelete] = useState(false);
     const isPast = entry.entry_date <= cutoff;
     const isIncome = entry.type === 'income';
@@ -96,6 +96,20 @@ export const EntryRow = ({ entry, balance, cutoff, onEdit, onDuplicate, onDelete
                         title={isExpanded ? 'Hide history' : 'Show history'}>
                         {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                     </button>
+                    {!isIncome && typeof onToggleFixed === 'function' && (
+                        <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onToggleFixed(entry.id, !entry.is_fixed); }}
+                            title={entry.is_fixed ? 'Unmark as fixed monthly' : 'Mark as fixed monthly (הוראת קבע)'}
+                            style={{
+                                background: 'none', border: 'none', padding: '3px 6px',
+                                cursor: 'pointer',
+                                color: entry.is_fixed ? '#d97706' : SYS.light,
+                            }}
+                        >
+                            {entry.is_fixed ? <Pin size={14} fill="#d97706" /> : <PinOff size={14} />}
+                        </button>
+                    )}
                     {confirmDelete ? (
                         <>
                             <button type="button" onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); onDelete(entry.id); }}

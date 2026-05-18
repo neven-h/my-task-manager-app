@@ -125,10 +125,31 @@ export const useBankTransactionCRUDHandlers = ({
     }, [activeTabId, selectedMonth, fetchAllTransactions, fetchMonthTransactions,
         fetchAllDescriptions, setDescriptionFilter, setError, setSuccess]);
 
+    // Toggle the user-managed "fixed monthly obligation" flag on a bank tx
+    // (e.g. הוראת קבע or recurring transfer). Refetches so totals re-split
+    // into Fixed/Variable in the linked budget tab.
+    const handleToggleFixed = useCallback(async (transactionId, nextFixed) => {
+        try {
+            const res = await fetch(`${API_BASE}/transactions/${transactionId}/fixed`, {
+                method: 'PATCH',
+                headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_fixed: !!nextFixed }),
+            });
+            if (!res.ok) return false;
+            if (selectedMonth === 'all') await fetchAllTransactions(activeTabId);
+            else await fetchMonthTransactions(selectedMonth, activeTabId);
+            await fetchTransactionStats(activeTabId);
+            return true;
+        } catch {
+            return false;
+        }
+    }, [activeTabId, selectedMonth, fetchAllTransactions, fetchMonthTransactions, fetchTransactionStats]);
+
     return {
         adoptOrphanedTransactions, handleCreateFirstTab, handleFileUpload,
         handleSaveTransactions, handleAddTransaction, handleUpdateTransaction,
         handleDeleteTransaction, handleDeleteMonth, handleBatchRename,
+        handleToggleFixed,
     };
 };
 

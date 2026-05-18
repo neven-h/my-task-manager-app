@@ -28,7 +28,10 @@ def get_transactions_by_month(payload, month_year):
                        month_year,
                        transaction_type,
                        upload_date,
-                       uploaded_by
+                       uploaded_by,
+                       category,
+                       comments,
+                       is_fixed
                 FROM bank_transactions
                 WHERE month_year = %s
             """

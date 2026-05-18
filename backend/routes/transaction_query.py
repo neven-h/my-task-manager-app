@@ -128,7 +128,8 @@ def get_all_transactions(payload):
                        upload_date,
                        uploaded_by,
                        category,
-                       comments
+                       comments,
+                       is_fixed
                 FROM bank_transactions
                 WHERE 1=1
             """

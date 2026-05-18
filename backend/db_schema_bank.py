@@ -29,6 +29,7 @@ def init_bank_tables(cursor, connection):
         ("amount_plain", "DECIMAL(14,4) DEFAULT NULL", "amount_plain"),
         ("category", "VARCHAR(100)", "category"),
         ("comments", "TEXT", "comments"),
+        ("is_fixed", "BOOLEAN NOT NULL DEFAULT FALSE", "is_fixed"),
     ]:
         try:
             cursor.execute(f"ALTER TABLE bank_transactions ADD COLUMN {col} {col_def}")
@@ -40,6 +41,7 @@ def init_bank_tables(cursor, connection):
     for idx_name, idx_col in [
         ("idx_uploaded_by", "uploaded_by"),
         ("idx_tab_id", "tab_id"),
+        ("idx_bank_isfixed", "tab_id, is_fixed"),
     ]:
         try:
             cursor.execute(f"ALTER TABLE bank_transactions ADD INDEX {idx_name} ({idx_col})")

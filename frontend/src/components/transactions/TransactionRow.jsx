@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MoreVertical, Edit2, Trash2 } from 'lucide-react';
+import { MoreVertical, Edit2, Trash2, Pin, PinOff } from 'lucide-react';
 import { useBankTransactionContext } from '../../context/BankTransactionContext';
 import { formatCurrency } from '../../utils/formatCurrency';
 import TransactionEditRow from './TransactionEditRow';
@@ -9,7 +9,7 @@ const TransactionRow = ({ transaction }) => {
     const {
         colors, editingTransaction, setEditingTransaction,
         expandedDescriptionId, setExpandedDescriptionId,
-        handleUpdateTransaction, handleDeleteTransaction,
+        handleUpdateTransaction, handleDeleteTransaction, handleToggleFixed,
         getDescriptionHistory, selectedIds, toggleSelected,
     } = useBankTransactionContext();
 
@@ -70,6 +70,14 @@ const TransactionRow = ({ transaction }) => {
                                             style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.55rem 0.85rem', background: 'none', border: 'none', borderBottom: `1px solid ${colors.border}`, cursor: 'pointer', fontFamily: '"Inter", sans-serif', fontSize: '0.85rem', fontWeight: 600, color: colors.text, textAlign: 'left' }}>
                                             <Edit2 size={13} /> Edit
                                         </button>
+                                        {typeof handleToggleFixed === 'function' && (
+                                            <button onClick={() => { handleToggleFixed(t.id, !t.is_fixed); setMenuOpen(false); }}
+                                                title="Mark as fixed monthly (הוראת קבע / recurring transfer)"
+                                                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.55rem 0.85rem', background: 'none', border: 'none', borderBottom: `1px solid ${colors.border}`, cursor: 'pointer', fontFamily: '"Inter", sans-serif', fontSize: '0.85rem', fontWeight: 600, color: t.is_fixed ? '#d97706' : colors.text, textAlign: 'left' }}>
+                                                {t.is_fixed ? <Pin size={13} fill="#d97706" /> : <PinOff size={13} />}
+                                                {t.is_fixed ? 'Unmark fixed' : 'Mark as fixed'}
+                                            </button>
+                                        )}
                                         <button onClick={() => { handleDeleteTransaction(t.id); setMenuOpen(false); }}
                                             style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.55rem 0.85rem', background: 'none', border: 'none', cursor: 'pointer', fontFamily: '"Inter", sans-serif', fontSize: '0.85rem', fontWeight: 600, color: colors.accent, textAlign: 'left' }}>
                                             <Trash2 size={13} /> Delete

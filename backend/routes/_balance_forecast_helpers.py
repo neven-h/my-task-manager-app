@@ -155,6 +155,117 @@ def _build_monthly_actuals(bank_rows, today, link_type='expense'):
     ]
 
 
+def _split_fixed_variable_monthly(budget_rows, bank_rows, today, n_ahead, link_type='expense'):
+    """Project the next n_ahead months split into fixed vs. variable expense.
+
+    Fixed = SUM(amount WHERE is_fixed) for the most recent full month,
+            projected forward verbatim each month (these are user-flagged
+            recurring obligations: הוראות קבע + recurring transfers).
+    Variable = avg(non-fixed expense) over the last 3 full months.
+
+    Returns a list of dicts: { month, fixed, variable, total }.
+    """
+    if today is None:
+        today = datetime.now().date()
+
+    def _month_floor(yr, mo):
+        return datetime(yr, mo, 1).date()
+
+    # Build last-3-months window (full calendar months ending with previous month).
+    cur_first = _month_floor(today.year, today.month)
+    months = []
+    yr, mo = today.year, today.month
+    for _ in range(3):
+        mo -= 1
+        if mo == 0:
+            mo = 12
+            yr -= 1
+        months.append((yr, mo))
+    months.reverse()  # oldest first
+    month_keys = [f'{y:04d}-{m:02d}' for y, m in months]
+
+    fixed_by_month = {mk: 0.0 for mk in month_keys}
+    variable_by_month = {mk: 0.0 for mk in month_keys}
+
+    def _to_date(v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            return datetime.strptime(v[:10], '%Y-%m-%d').date()
+        return v
+
+    for r in (budget_rows or []):
+        if r.get('type') != 'outcome':
+            continue
+        d = _to_date(r.get('entry_date'))
+        if d is None:
+            continue
+        mk = d.strftime('%Y-%m')
+        if mk not in fixed_by_month:
+            continue
+        try:
+            amt = float(r.get('amount') or 0)
+        except Exception:
+            continue
+        if bool(r.get('is_fixed')):
+            fixed_by_month[mk] += amt
+        else:
+            variable_by_month[mk] += amt
+
+    for r in (bank_rows or []):
+        d = _to_date(r.get('transaction_date'))
+        if d is None:
+            continue
+        mk = d.strftime('%Y-%m')
+        if mk not in fixed_by_month:
+            continue
+        try:
+            raw = float(r['amount_plain']) if r.get('amount_plain') is not None else float(decrypt_field(r['amount']))
+        except Exception:
+            continue
+        abs_amt = abs(raw)
+        # Mirror link_type semantics from _predict_bank.
+        if link_type == 'expense':
+            is_expense = True
+        elif link_type == 'income':
+            is_expense = False
+        else:  # mixed
+            is_expense = raw < 0
+        if not is_expense:
+            continue
+        if bool(r.get('is_fixed')):
+            fixed_by_month[mk] += abs_amt
+        else:
+            variable_by_month[mk] += abs_amt
+
+    # Fixed projection: most recent non-zero month, else avg of last 3 months.
+    recent_fixed = fixed_by_month[month_keys[-1]]
+    if recent_fixed <= 0:
+        nonzero = [v for v in fixed_by_month.values() if v > 0]
+        fixed_proj = (sum(nonzero) / len(nonzero)) if nonzero else 0.0
+    else:
+        fixed_proj = recent_fixed
+
+    var_values = list(variable_by_month.values())
+    variable_proj = (sum(var_values) / len(var_values)) if var_values else 0.0
+
+    out = []
+    yr, mo = today.year, today.month
+    for i in range(n_ahead):
+        mk = f'{yr:04d}-{mo:02d}'
+        out.append({
+            'month': mk,
+            'fixed': round(fixed_proj, 2),
+            'variable': round(variable_proj, 2),
+            'total': round(fixed_proj + variable_proj, 2),
+        })
+        mo += 1
+        if mo > 12:
+            mo = 1
+            yr += 1
+    return out
+
+
 def _merge_timeline(budget_preds, bank_preds, current_balance):
     """Merge predictions into a date-sorted timeline with running balance."""
     all_preds = []
