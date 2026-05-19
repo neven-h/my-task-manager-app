@@ -394,8 +394,11 @@ def get_monthly_summary(payload):
             'months': months_out,
         })
 
-    except ValueError as ve:
-        return jsonify({'error': str(ve)}), 400
+    except ValueError:
+        # Log the underlying validation failure server-side; do NOT echo
+        # exception text back to the client (py/stack-trace-exposure).
+        logger.warning('budget monthly-summary validation error', exc_info=True)
+        return jsonify({'error': 'Invalid or missing date parameter'}), 400
     except Exception:
         logger.exception('budget monthly-summary error')
         return jsonify({'error': 'An unexpected error occurred'}), 500
