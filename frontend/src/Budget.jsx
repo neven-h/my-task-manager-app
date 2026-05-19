@@ -8,6 +8,7 @@ import useBudgetStats from './hooks/useBudgetStats';
 import useBudgetFilters from './hooks/useBudgetFilters';
 import useBudgetRange from './hooks/useBudgetRange';
 import useBudgetActiveTab from './hooks/useBudgetActiveTab';
+import useBudgetMonthlySummary from './hooks/useBudgetMonthlySummary';
 import BudgetLinkBanner from './components/budget/BudgetLinkBanner';
 import BalanceForecast from './components/budget/BalanceForecast';
 import { SummaryCard } from './components/budget/BudgetSummaryCard';
@@ -25,6 +26,9 @@ import BudgetSelectionToolbar from './components/budget/BudgetSelectionToolbar';
 import BudgetMonthSidebar from './components/budget/BudgetMonthSidebar';
 import BudgetRangePanel from './components/budget/BudgetRangePanel';
 import BudgetCreateFirstTab from './components/budget/BudgetCreateFirstTab';
+import BudgetMonthlySummaryTable from './components/budget/BudgetMonthlySummaryTable';
+import API_BASE from './config';
+import { getAuthHeaders } from './api.js';
 
 const SYS = {
     primary: '#0000FF', success: '#00AA00', accent: '#FF0000',
@@ -104,7 +108,54 @@ const Budget = ({ onBackToTasks, renovationMode = false }) => {
     const income  = useMemo(() => tabEntries.filter(e => e.type === 'income'  && e.entry_date <= cutoff && (!dateFrom || e.entry_date >= dateFrom)).reduce((s, e) => s + e.amount, 0), [tabEntries, cutoff, dateFrom]);
     const outcome = useMemo(() => tabEntries.filter(e => e.type === 'outcome' && e.entry_date <= cutoff && (!dateFrom || e.entry_date >= dateFrom)).reduce((s, e) => s + e.amount, 0), [tabEntries, cutoff, dateFrom]);
     const { rangeOpen, setRangeOpen, rangeLoading, rangeResult, setRangeResult, customStart, setCustomStart, customEnd, setCustomEnd, endMinusDays, fetchRange, incomeForSummary, expenseForSummary, balanceForSummary, balanceBadgeForSummary } = useBudgetRange(activeTabId, cutoff, income, outcome, forecast, linkedTab);
+
+    // Per-saved-month summary (the new primary view) — fetches budget+bank
+    // totals from the backend using the SAME [start..end] window the rest of
+    // the page is filtering by, so linked-bank numbers don't leak across months.
+    // Falls back to a 6-month window when "All time" is selected.
+    const summaryStart = useMemo(() => {
+        if (dateFrom) return dateFrom;
+        const d = new Date(cutoff);
+        d.setMonth(d.getMonth() - 5);
+        d.setDate(1);
+        return d.toISOString().split('T')[0];
+    }, [dateFrom, cutoff]);
+    const { months: summaryMonths, loading: summaryLoading, error: summaryError } =
+        useBudgetMonthlySummary(activeTabId, summaryStart, cutoff);
+
+    // Scope the SummaryCards to selectedMonth when one is active. Falls back
+    // to the range-aware totals from useBudgetRange otherwise.
+    const monthRow = useMemo(
+        () => (selectedMonth ? summaryMonths.find((m) => m.month === selectedMonth) : null),
+        [summaryMonths, selectedMonth],
+    );
+    const scopedIncome  = monthRow ? monthRow.income  : incomeForSummary;
+    const scopedExpense = monthRow ? monthRow.expense : expenseForSummary;
+    const scopedBalance = monthRow && monthRow.end_balance != null ? monthRow.end_balance : balanceForSummary;
+    const scopedBadge   = monthRow ? null : balanceBadgeForSummary;
     const refreshForecast = useCallback(() => { if (linkedTab && activeTabId) fetchForecast(activeTabId, 3); }, [linkedTab, activeTabId, fetchForecast]);
+
+    // Toggle the user-managed "fixed monthly obligation" flag on a budget
+    // entry. Optimistic update via updateEntry so the row repaints; the
+    // monthly summary auto-refetches because the cache is invalidated
+    // server-side after PATCH.
+    const handleToggleFixed = useCallback(async (entryId, nextFixed) => {
+        try {
+            const res = await fetch(`${API_BASE}/budget/entries/${entryId}/fixed`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                body: JSON.stringify({ is_fixed: !!nextFixed }),
+            });
+            if (!res.ok) return;
+            // Refresh entries so the row reflects new is_fixed; the monthly
+            // summary hook will re-run when activeTabId-derived deps change,
+            // so trigger it by calling fetchEntries.
+            await fetchEntries();
+            refreshForecast();
+        } catch {
+            // best-effort; UI state will resync on next render
+        }
+    }, [fetchEntries, refreshForecast]);
 
     const openAdd = (type) => { setEditingEntry(null); setFormInitial(emptyForm(type)); setShowForm(true); setTimeout(() => document.getElementById('budget-form')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50); };
     const openDuplicate = (entry) => { setEditingEntry(null); setFormInitial({ type: entry.type, description: entry.description, amount: String(entry.amount), entry_date: today(), category: entry.category || '', notes: entry.notes || '' }); setShowForm(true); setTimeout(() => document.getElementById('budget-form')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50); };
@@ -172,6 +223,16 @@ const Budget = ({ onBackToTasks, renovationMode = false }) => {
 
                 <BudgetRangePanel rangeOpen={rangeOpen} rangeLoading={rangeLoading} rangeResult={rangeResult} cutoff={cutoff} setCutoff={setCutoff} activeTabId={activeTabId} customStart={customStart} setCustomStart={setCustomStart} customEnd={customEnd} setCustomEnd={setCustomEnd} fetchRange={fetchRange} endMinusDays={endMinusDays} setRangeResult={setRangeResult} setRangeOpen={setRangeOpen} dateFrom={dateFrom} setDateFrom={setDateFrom} datePreset={datePreset} setDatePreset={setDatePreset} applyPreset={applyPreset} />
 
+                {!renovationMode && (
+                    <BudgetMonthlySummaryTable
+                        months={summaryMonths}
+                        loading={summaryLoading}
+                        error={summaryError}
+                        selectedMonth={selectedMonth}
+                        onMonthClick={(m) => setSelectedMonth(m === selectedMonth ? null : m)}
+                    />
+                )}
+
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 24 }}>
                     {renovationMode ? (
                         <>
@@ -181,13 +242,13 @@ const Budget = ({ onBackToTasks, renovationMode = false }) => {
                         </>
                     ) : (
                         <>
-                            <SummaryCard icon={TrendingUp} label="Total Income" amount={incomeForSummary} color={SYS.success} sub="+" />
-                            <SummaryCard icon={TrendingDown} label="Total Expenses" amount={expenseForSummary} color={SYS.accent} sub="−" />
-                            <SummaryCard icon={Scale} label="Balance"
-                                amount={balanceForSummary}
-                                color={balanceForSummary >= 0 ? SYS.primary : SYS.accent}
-                                sub={balanceForSummary >= 0 ? '+' : '−'}
-                                badge={balanceBadgeForSummary} />
+                            <SummaryCard icon={TrendingUp} label={selectedMonth ? `Income · ${selectedMonth}` : 'Total Income'} amount={scopedIncome} color={SYS.success} sub="+" />
+                            <SummaryCard icon={TrendingDown} label={selectedMonth ? `Expenses · ${selectedMonth}` : 'Total Expenses'} amount={scopedExpense} color={SYS.accent} sub="−" />
+                            <SummaryCard icon={Scale} label={selectedMonth ? `End Balance · ${selectedMonth}` : 'Balance'}
+                                amount={scopedBalance}
+                                color={scopedBalance >= 0 ? SYS.primary : SYS.accent}
+                                sub={scopedBalance >= 0 ? '+' : '−'}
+                                badge={scopedBadge} />
                         </>
                     )}
                 </div>
@@ -219,6 +280,7 @@ const Budget = ({ onBackToTasks, renovationMode = false }) => {
                             getDescriptionHistory={getDescriptionHistory}
                             selectMode={selectMode} onToggleSelectMode={() => setSelectMode(m => !m)}
                             selectedIds={selectedIds} toggleSelect={toggleSelect} onSelectAll={selectAll}
+                            onToggleFixed={handleToggleFixed}
                             renovationMode={renovationMode} />
                     </div>
                 </div>

@@ -8,7 +8,7 @@ from .budget_helpers import ensure_budget_table, serialize_entry
 logger = logging.getLogger(__name__)
 budget_bp = Blueprint('budget', __name__)
 
-_ALLOWED_COLS = {'type', 'description', 'amount', 'entry_date', 'category', 'notes', 'tab_id'}
+_ALLOWED_COLS = {'type', 'description', 'amount', 'entry_date', 'category', 'notes', 'tab_id', 'is_fixed'}
 
 
 @budget_bp.route('/api/budget', methods=['GET'])
@@ -91,7 +91,7 @@ def update_budget_entry(payload, entry_id):
                 return jsonify({'error': 'Access denied'}), 403
 
             fields, params = [], []
-            for col in ('type', 'description', 'amount', 'entry_date', 'category', 'notes', 'tab_id'):
+            for col in ('type', 'description', 'amount', 'entry_date', 'category', 'notes', 'tab_id', 'is_fixed'):
                 if col not in data or col not in _ALLOWED_COLS:
                     continue
                 val = data[col]
@@ -101,6 +101,8 @@ def update_budget_entry(payload, entry_id):
                     val = (val or '').strip()
                 elif col in ('category', 'notes'):
                     val = (val or '').strip() or None
+                elif col == 'is_fixed':
+                    val = bool(val)
                 fields.append(f"{col} = %s")
                 params.append(val)
 

@@ -52,6 +52,8 @@ def ensure_budget_table(conn):
         "ALTER TABLE budget_entries ADD COLUMN source VARCHAR(20) DEFAULT 'manual'",
         "ALTER TABLE budget_entries ADD COLUMN notes TEXT",
         "ALTER TABLE budget_entries ADD COLUMN balance DECIMAL(14,2) DEFAULT NULL",
+        "ALTER TABLE budget_entries ADD COLUMN is_fixed BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE budget_entries ADD INDEX idx_budget_isfixed (tab_id, is_fixed)",
     ):
         try:
             cur.execute(ddl)

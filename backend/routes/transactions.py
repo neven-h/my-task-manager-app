@@ -1,8 +1,9 @@
+import hashlib
 from concurrent.futures import ThreadPoolExecutor
 from flask import Blueprint, request, jsonify, current_app
 from config import (
     get_db_connection, token_required,
-    encrypt_field, log_bank_transaction_access,
+    encrypt_field, decrypt_field, log_bank_transaction_access,
     allowed_file, UPLOAD_FOLDER,
 )
 from mysql.connector import Error
@@ -107,11 +108,72 @@ def save_transactions(payload):
 
             with ThreadPoolExecutor(max_workers=min(len(transactions), 8)) as ex:
                 encrypted = list(ex.map(_enc, transactions))
-            all_values = [
-                (ea, t['transaction_date'], ed, em, float(t['amount']), t['month_year'],
-                 t.get('transaction_type', 'credit'), username, tab_id)
-                for t, (ea, ed, em) in zip(transactions, encrypted)
-            ]
+
+            # ── Dedup against existing rows in this tab on overlapping dates.
+            # Key: (transaction_date, round(amount_plain,2), SHA1(lower(trim(description))))
+            # Bank descriptions are encrypted, so we must decrypt existing rows
+            # in the overlapping date range to compute the hash.
+            def _desc_hash(s):
+                return hashlib.sha1((s or '').strip().lower().encode('utf-8')).hexdigest()
+
+            dates_in_batch = sorted({str(t['transaction_date']) for t in transactions})
+            existing_keys = set()
+            if dates_in_batch:
+                dcur = connection.cursor(dictionary=True)
+                in_placeholders = ','.join(['%s'] * len(dates_in_batch))
+                dcur.execute(
+                    f"SELECT transaction_date, amount, amount_plain, description "
+                    f"FROM bank_transactions "
+                    f"WHERE tab_id = %s AND transaction_date IN ({in_placeholders})",
+                    (tab_id, *dates_in_batch),
+                )
+                for row in dcur.fetchall():
+                    try:
+                        if row.get('amount_plain') is not None:
+                            amt = round(float(row['amount_plain']), 2)
+                        else:
+                            amt = round(float(decrypt_field(row['amount'])), 2)
+                        desc = decrypt_field(row['description']) if row.get('description') else ''
+                        existing_keys.add((
+                            str(row['transaction_date']),
+                            amt,
+                            _desc_hash(desc),
+                        ))
+                    except Exception:
+                        continue
+                dcur.close()
+
+            all_values = []
+            kept_indices = []
+            skipped_duplicates = 0
+            for idx, (t, (ea, ed, em)) in enumerate(zip(transactions, encrypted)):
+                try:
+                    amt = round(float(t['amount']), 2)
+                except Exception:
+                    amt = 0.0
+                key = (
+                    str(t['transaction_date']),
+                    amt,
+                    _desc_hash(t.get('description') or ''),
+                )
+                if key in existing_keys:
+                    skipped_duplicates += 1
+                    continue
+                existing_keys.add(key)  # also prevent intra-batch duplicates
+                all_values.append(
+                    (ea, t['transaction_date'], ed, em, float(t['amount']), t['month_year'],
+                     t.get('transaction_type', 'credit'), username, tab_id)
+                )
+                kept_indices.append(idx)
+
+            if not all_values:
+                return jsonify({
+                    'success': True,
+                    'message': '0 transactions saved (all duplicates)',
+                    'skipped_duplicates': skipped_duplicates,
+                    'transaction_ids': [],
+                })
+
             cur.executemany(query, all_values)
             first_id = cur.lastrowid
             tx_ids = [str(first_id + i) for i in range(len(all_values))]
@@ -148,7 +210,8 @@ def save_transactions(payload):
             cur2.close()
             return jsonify({
                 'success': True,
-                'message': f'{len(transactions)} transactions saved successfully (encrypted)',
+                'message': f'{len(all_values)} transactions saved successfully (encrypted)',
+                'skipped_duplicates': skipped_duplicates,
                 'transaction_ids': [int(tid) for tid in tx_ids],
             })
 

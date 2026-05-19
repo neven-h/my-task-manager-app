@@ -1,4 +1,5 @@
 """Budget file upload — parse bank statements and batch-save budget entries."""
+import hashlib
 import logging
 import os
 import uuid
@@ -154,9 +155,53 @@ def save_budget_batch(payload):
             if not values:
                 return jsonify({'error': 'No valid entries after validation'}), 400
 
-            cursor.executemany(query, values)
+            # ── Dedup: skip rows already in DB for this tab.
+            # Key: (entry_date, amount, type, SHA1(lower(trim(description))))
+            def _desc_hash(s):
+                return hashlib.sha1((s or '').strip().lower().encode('utf-8')).hexdigest()
+
+            dates_in_batch = sorted({str(v[3]) for v in values})
+            existing_keys = set()
+            if dates_in_batch:
+                dcur = conn.cursor(dictionary=True)
+                in_placeholders = ','.join(['%s'] * len(dates_in_batch))
+                dcur.execute(
+                    f"SELECT entry_date, amount, type, description "
+                    f"FROM budget_entries "
+                    f"WHERE owner = %s AND tab_id = %s AND entry_date IN ({in_placeholders})",
+                    (username, tab_id, *dates_in_batch),
+                )
+                for row in dcur.fetchall():
+                    existing_keys.add((
+                        str(row['entry_date']),
+                        round(float(row['amount']), 2),
+                        row['type'],
+                        _desc_hash(row['description']),
+                    ))
+                dcur.close()
+
+            deduped_values = []
+            skipped_duplicates = 0
+            for v in values:
+                # v = (type, desc, amount, entry_date, category, notes, balance, owner, tab_id, source)
+                key = (str(v[3]), round(float(v[2]), 2), v[0], _desc_hash(v[1]))
+                if key in existing_keys:
+                    skipped_duplicates += 1
+                    continue
+                existing_keys.add(key)  # also prevent intra-batch duplicates
+                deduped_values.append(v)
+
+            if not deduped_values:
+                return jsonify({
+                    'success': True,
+                    'saved_count': 0,
+                    'skipped_duplicates': skipped_duplicates,
+                    'entry_ids': [],
+                })
+
+            cursor.executemany(query, deduped_values)
             first_id = cursor.lastrowid
-            entry_ids = list(range(first_id, first_id + len(values)))
+            entry_ids = list(range(first_id, first_id + len(deduped_values)))
 
             # Upsert daily balances if provided (one snapshot per date).
             if balances:
@@ -182,7 +227,8 @@ def save_budget_batch(payload):
 
             return jsonify({
                 'success': True,
-                'saved_count': len(values),
+                'saved_count': len(deduped_values),
+                'skipped_duplicates': skipped_duplicates,
                 'entry_ids': entry_ids,
             })
     except Exception:

@@ -30,6 +30,7 @@ export const BudgetEntryList = ({
     selectedIds,
     toggleSelect,
     onSelectAll,
+    onToggleFixed,
     renovationMode,
 }) => {
     // Balance keyed by entry id — use stored value from source file (יתרה column) only.
@@ -133,6 +134,7 @@ export const BudgetEntryList = ({
                         selectMode={selectMode}
                         isSelected={selectedIds?.has(e.id)}
                         onToggleSelect={toggleSelect}
+                        onToggleFixed={onToggleFixed}
                     />
                 ))
             ))}
