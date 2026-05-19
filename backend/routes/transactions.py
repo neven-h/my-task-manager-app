@@ -110,11 +110,13 @@ def save_transactions(payload):
                 encrypted = list(ex.map(_enc, transactions))
 
             # ── Dedup against existing rows in this tab on overlapping dates.
-            # Key: (transaction_date, round(amount_plain,2), SHA1(lower(trim(description))))
+            # Key: (transaction_date, round(amount_plain,2), SHA256(lower(trim(description))))
             # Bank descriptions are encrypted, so we must decrypt existing rows
-            # in the overlapping date range to compute the hash.
+            # in the overlapping date range to compute the hash. Use SHA-256
+            # (not SHA-1) to satisfy CodeQL py/weak-sensitive-data-hashing —
+            # descriptions can contain PII.
             def _desc_hash(s):
-                return hashlib.sha1((s or '').strip().lower().encode('utf-8')).hexdigest()
+                return hashlib.sha256((s or '').strip().lower().encode('utf-8')).hexdigest()
 
             dates_in_batch = sorted({str(t['transaction_date']) for t in transactions})
             existing_keys = set()

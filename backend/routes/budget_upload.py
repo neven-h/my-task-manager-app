@@ -156,9 +156,12 @@ def save_budget_batch(payload):
                 return jsonify({'error': 'No valid entries after validation'}), 400
 
             # ── Dedup: skip rows already in DB for this tab.
-            # Key: (entry_date, amount, type, SHA1(lower(trim(description))))
+            # Key: (entry_date, amount, type, SHA256(lower(trim(description))))
+            # SHA-256 (not SHA-1) to satisfy CodeQL py/weak-sensitive-data-hashing —
+            # descriptions can contain PII so we use a cryptographically strong
+            # hash even though the value is only used for in-memory dedup.
             def _desc_hash(s):
-                return hashlib.sha1((s or '').strip().lower().encode('utf-8')).hexdigest()
+                return hashlib.sha256((s or '').strip().lower().encode('utf-8')).hexdigest()
 
             dates_in_batch = sorted({str(v[3]) for v in values})
             existing_keys = set()
