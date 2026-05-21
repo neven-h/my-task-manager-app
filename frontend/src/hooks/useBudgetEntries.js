@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import API_BASE from '../config';
 import { getAuthHeaders } from '../api.js';
+import { SCOPE_SINGLE } from '../components/budget/budgetConstants';
 
 const BASE = `${API_BASE}/budget`;
 
@@ -51,13 +52,26 @@ const useBudgetEntries = () => {
         finally { setLoading(false); }
     }, []);
 
-    const deleteEntry = useCallback(async (id) => {
+    const deleteEntry = useCallback(async (id, opts = {}) => {
+        // opts.scope = SCOPE_SINGLE (default) | SCOPE_THIS_AND_FUTURE — for
+        // recurring chain deletes; the backend reads scope from JSON body
+        // or ?scope=.
+        const scope = opts.scope || SCOPE_SINGLE;
         setLoading(true); setError(null);
         try {
-            const res = await fetch(`${BASE}/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+            const init = { method: 'DELETE', headers: getAuthHeaders() };
+            if (scope !== SCOPE_SINGLE) {
+                init.body = JSON.stringify({ scope });
+            }
+            const res = await fetch(`${BASE}/${id}`, init);
             if (!res.ok) throw new Error((await res.json()).error || 'Failed to delete entry');
-            setEntries(prev => prev.filter(e => e.id !== id));
-            return true;
+            const body = await res.json().catch(() => ({}));
+            if (scope === SCOPE_SINGLE) {
+                setEntries(prev => prev.filter(e => e.id !== id));
+            }
+            // For chain deletes, the caller is expected to call fetchEntries()
+            // to resync — too many rows may have changed to patch locally.
+            return body || true;
         } catch (err) { setError(err.message); return false; }
         finally { setLoading(false); }
     }, []);

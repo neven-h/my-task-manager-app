@@ -10,10 +10,8 @@ import useBudgetRange from './hooks/useBudgetRange';
 import useBudgetActiveTab from './hooks/useBudgetActiveTab';
 import useBudgetMonthlySummary from './hooks/useBudgetMonthlySummary';
 import BudgetLinkBanner from './components/budget/BudgetLinkBanner';
-import BalanceForecast from './components/budget/BalanceForecast';
 import { SummaryCard } from './components/budget/BudgetSummaryCard';
 import { EntryForm } from './components/budget/BudgetEntryForm';
-import { ForecastSection } from './components/budget/BudgetForecastSection';
 import { BudgetTabBar } from './components/budget/BudgetTabBar';
 import { BudgetHeader } from './components/budget/BudgetHeader';
 import BudgetUploadModal from './components/budget/BudgetUploadModal';
@@ -27,6 +25,8 @@ import BudgetMonthSidebar from './components/budget/BudgetMonthSidebar';
 import BudgetRangePanel from './components/budget/BudgetRangePanel';
 import BudgetCreateFirstTab from './components/budget/BudgetCreateFirstTab';
 import BudgetMonthlySummaryTable from './components/budget/BudgetMonthlySummaryTable';
+import RecurringScopeModal from './components/budget/RecurringScopeModal';
+import { REPETITION_NONE, SCOPE_THIS_AND_FUTURE } from './components/budget/budgetConstants';
 import API_BASE from './config';
 import { getAuthHeaders } from './api.js';
 
@@ -50,9 +50,15 @@ const Budget = ({ onBackToTasks, renovationMode = false }) => {
     const { forecast, loading: forecastLoading, fetchForecast, clearForecast, lastUpdated, refresh } = useBalanceForecast();
 
     const [cutoff, setCutoff]                         = useState(today());
-    const defaultFrom = () => { const d = new Date(); d.setDate(d.getDate() - 30); return d.toISOString().split('T')[0]; };
+    // Default to the current calendar month so monthly salary lands inside
+    // the window cleanly. "Last 30 days" sliced salary at the day boundary
+    // and produced confusingly different income totals — switched to 'month'.
+    const defaultFrom = () => {
+        const d = new Date();
+        return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+    };
     const [dateFrom, setDateFrom]     = useState(defaultFrom());
-    const [datePreset, setDatePreset] = useState('30d');
+    const [datePreset, setDatePreset] = useState('month');
     const applyPreset = useCallback((preset) => {
         const now = new Date();
         const fmt = (d) => d.toISOString().split('T')[0];
@@ -99,12 +105,24 @@ const Budget = ({ onBackToTasks, renovationMode = false }) => {
     useEffect(() => { fetchEntries(); fetchTabs(); }, [fetchEntries, fetchTabs]);
     useEffect(() => {
         fetchLink(activeTabId); clearForecast(); setSelectedMonth(null); fetchMonthlyBalances(activeTabId);
-        const d = new Date(); d.setDate(d.getDate() - 30);
-        setDateFrom(d.toISOString().split('T')[0]);
-        setCutoff(new Date().toISOString().split('T')[0]);
-        setDatePreset('30d');
+        // Reset to "this month" on tab switch — see defaultFrom() rationale.
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        setDateFrom(monthStart.toISOString().split('T')[0]);
+        setCutoff(now.toISOString().split('T')[0]);
+        setDatePreset('month');
     }, [activeTabId, fetchLink, clearForecast, fetchMonthlyBalances]);
-    useEffect(() => { if (linkedTab && activeTabId) fetchForecast(activeTabId, 3); }, [linkedTab, activeTabId, fetchForecast]);
+    // Refetch the forecast whenever the visible date window changes so the
+    // linked-bank totals embedded in `forecast.bank_income/bank_expense`
+    // honor the same range as the rest of the page (filter-sync). Debounced
+    // to coalesce rapid preset clicks / date typing into a single request.
+    useEffect(() => {
+        if (!linkedTab || !activeTabId) return;
+        const handle = setTimeout(() => {
+            fetchForecast(activeTabId, { months: 3, start: dateFrom || undefined, end: cutoff });
+        }, 250);
+        return () => clearTimeout(handle);
+    }, [linkedTab, activeTabId, fetchForecast, dateFrom, cutoff]);
     const income  = useMemo(() => tabEntries.filter(e => e.type === 'income'  && e.entry_date <= cutoff && (!dateFrom || e.entry_date >= dateFrom)).reduce((s, e) => s + e.amount, 0), [tabEntries, cutoff, dateFrom]);
     const outcome = useMemo(() => tabEntries.filter(e => e.type === 'outcome' && e.entry_date <= cutoff && (!dateFrom || e.entry_date >= dateFrom)).reduce((s, e) => s + e.amount, 0), [tabEntries, cutoff, dateFrom]);
     const { rangeOpen, setRangeOpen, rangeLoading, rangeResult, setRangeResult, customStart, setCustomStart, customEnd, setCustomEnd, endMinusDays, fetchRange, incomeForSummary, expenseForSummary, balanceForSummary, balanceBadgeForSummary } = useBudgetRange(activeTabId, cutoff, income, outcome, forecast, linkedTab);
@@ -133,7 +151,10 @@ const Budget = ({ onBackToTasks, renovationMode = false }) => {
     const scopedExpense = monthRow ? monthRow.expense : expenseForSummary;
     const scopedBalance = monthRow && monthRow.end_balance != null ? monthRow.end_balance : balanceForSummary;
     const scopedBadge   = monthRow ? null : balanceBadgeForSummary;
-    const refreshForecast = useCallback(() => { if (linkedTab && activeTabId) fetchForecast(activeTabId, 3); }, [linkedTab, activeTabId, fetchForecast]);
+    const refreshForecast = useCallback(() => {
+        if (!linkedTab || !activeTabId) return;
+        fetchForecast(activeTabId, { months: 3, start: dateFrom || undefined, end: cutoff });
+    }, [linkedTab, activeTabId, fetchForecast, dateFrom, cutoff]);
 
     // Toggle the user-managed "fixed monthly obligation" flag on a budget
     // entry. Optimistic update via updateEntry so the row repaints; the
@@ -157,12 +178,72 @@ const Budget = ({ onBackToTasks, renovationMode = false }) => {
         }
     }, [fetchEntries, refreshForecast]);
 
-    const openAdd = (type) => { setEditingEntry(null); setFormInitial(emptyForm(type)); setShowForm(true); setTimeout(() => document.getElementById('budget-form')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50); };
-    const openDuplicate = (entry) => { setEditingEntry(null); setFormInitial({ type: entry.type, description: entry.description, amount: String(entry.amount), entry_date: today(), category: entry.category || '', notes: entry.notes || '' }); setShowForm(true); setTimeout(() => document.getElementById('budget-form')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50); };
-    const openEdit = (entry) => { setEditingEntry(entry); setFormInitial({ type: entry.type, description: entry.description, amount: String(entry.amount), entry_date: entry.entry_date, category: entry.category || '', notes: entry.notes || '' }); setShowForm(true); };
-    const handleSave = async (data) => { if (editingEntry) { const ok = await updateEntry(editingEntry.id, data); if (ok) { setShowForm(false); setEditingEntry(null); refreshForecast(); } } else { const ok = await createEntry({ ...data, tab_id: activeTabId }); if (ok) { setShowForm(false); refreshForecast(); } } };
-    const handleDelete = async (id) => { const ok = await deleteEntry(id); if (ok) refreshForecast(); return ok; };
-    const handleCancel  = () => { setShowForm(false); setEditingEntry(null); };
+    // Recurring scope picker state. `pendingScope.action` drives the modal;
+    // `editScope` is the scope chosen for the currently-edited entry so
+    // handleSave knows to forward it to the backend.
+    const [pendingScope, setPendingScope] = useState(null);
+    const [editScope, setEditScope] = useState(null);
+
+    const startEdit = (entry) => { setEditingEntry(entry); setFormInitial({ type: entry.type, description: entry.description, amount: String(entry.amount), entry_date: entry.entry_date, category: entry.category || '', notes: entry.notes || '' }); setShowForm(true); };
+
+    const openAdd = (type) => { setEditingEntry(null); setEditScope(null); setFormInitial(emptyForm(type)); setShowForm(true); setTimeout(() => document.getElementById('budget-form')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50); };
+    const openDuplicate = (entry) => { setEditingEntry(null); setEditScope(null); setFormInitial({ type: entry.type, description: entry.description, amount: String(entry.amount), entry_date: today(), category: entry.category || '', notes: entry.notes || '' }); setShowForm(true); setTimeout(() => document.getElementById('budget-form')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50); };
+    const openEdit = (entry) => {
+        if (entry && entry.recurring_id) {
+            setPendingScope({ entry, action: 'edit' });
+            return;
+        }
+        setEditScope(null);
+        startEdit(entry);
+    };
+    const handleSave = async (data) => {
+        if (editingEntry) {
+            const body = editScope ? { ...data, scope: editScope } : data;
+            const ok = await updateEntry(editingEntry.id, body);
+            if (ok) {
+                setShowForm(false);
+                setEditingEntry(null);
+                const scopeUsed = editScope;
+                setEditScope(null);
+                if (scopeUsed === SCOPE_THIS_AND_FUTURE) await fetchEntries();
+                refreshForecast();
+            }
+        } else {
+            const ok = await createEntry({ ...data, tab_id: activeTabId });
+            if (ok) {
+                setShowForm(false);
+                if (data.repetition && data.repetition !== REPETITION_NONE) await fetchEntries();
+                refreshForecast();
+            }
+        }
+    };
+    const handleDelete = async (id) => {
+        // Look up the row so we can detect recurring chains and prompt for scope.
+        const target = entries.find((e) => e.id === id);
+        if (target && target.recurring_id) {
+            setPendingScope({ entry: target, action: 'delete' });
+            return true; // suppress the row's inline confirm flow
+        }
+        const ok = await deleteEntry(id);
+        if (ok) refreshForecast();
+        return ok;
+    };
+    const handleScopeChoose = useCallback(async (scope) => {
+        const { entry, action } = pendingScope || {};
+        if (!entry) { setPendingScope(null); return; }
+        setPendingScope(null);
+        if (action === 'edit') {
+            setEditScope(scope);
+            startEdit(entry);
+        } else if (action === 'delete') {
+            const ok = await deleteEntry(entry.id, { scope });
+            if (ok) {
+                if (scope === SCOPE_THIS_AND_FUTURE) await fetchEntries();
+                refreshForecast();
+            }
+        }
+    }, [pendingScope, deleteEntry, fetchEntries, refreshForecast]);
+    const handleCancel  = () => { setShowForm(false); setEditingEntry(null); setEditScope(null); };
     const handleAddTab  = async () => { const name = newTabName.trim(); if (!name) return; const tab = await createTab(name); if (tab) { setNewTabName(''); setAddingTab(false); setActiveTabId(tab.id); } };
     const handleDuplicateTab = async (tabId) => { await duplicateTab(tabId); };
     const handleDeleteTab = async (tabId) => { const ok = await deleteTab(tabId); if (ok && activeTabId === tabId) setActiveTabId(tabs.find(t => t.id !== tabId)?.id ?? null); setConfirmDeleteTab(null); };
@@ -218,7 +299,7 @@ const Budget = ({ onBackToTasks, renovationMode = false }) => {
 
             <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 20px' }}>
                 {error && <div style={{ background: '#fff0f0', border: `2px solid ${SYS.accent}`, padding: '10px 14px', marginBottom: 16, color: SYS.accent, fontSize: '0.85rem', fontWeight: 600 }}>{error}</div>}
-                {showForm && <div id="budget-form"><EntryForm initial={formInitial} onSave={handleSave} onCancel={handleCancel} loading={loading} renovationMode={renovationMode} /></div>}
+                {showForm && <div id="budget-form"><EntryForm initial={formInitial} onSave={handleSave} onCancel={handleCancel} loading={loading} renovationMode={renovationMode} isEditing={!!editingEntry} /></div>}
                 {activeTabId && <BudgetLinkBanner budgetTabId={activeTabId} linkedTab={linkedTab} linkError={linkError} onSetLink={(txTabId, linkType) => setLink(activeTabId, txTabId, linkType)} onRemoveLink={() => removeLink(activeTabId)} />}
 
                 <BudgetRangePanel rangeOpen={rangeOpen} rangeLoading={rangeLoading} rangeResult={rangeResult} cutoff={cutoff} setCutoff={setCutoff} activeTabId={activeTabId} customStart={customStart} setCustomStart={setCustomStart} customEnd={customEnd} setCustomEnd={setCustomEnd} fetchRange={fetchRange} endMinusDays={endMinusDays} setRangeResult={setRangeResult} setRangeOpen={setRangeOpen} dateFrom={dateFrom} setDateFrom={setDateFrom} datePreset={datePreset} setDatePreset={setDatePreset} applyPreset={applyPreset} />
@@ -257,8 +338,6 @@ const Budget = ({ onBackToTasks, renovationMode = false }) => {
                 <BudgetExpenseChart chartData={chartData} />
                 <BudgetMonthlyChart monthlyTotals={monthlyTotals} />
 
-                {!renovationMode && <ForecastSection predictions={predictions} onFetch={() => fetchPredictions(3, activeTabId)} loading={loading} />}
-                {!renovationMode && <BalanceForecast forecast={forecast} onFetch={() => fetchForecast(activeTabId, 3)} onRefresh={() => refresh(activeTabId, 3)} loading={forecastLoading} linkedTab={linkedTab} lastUpdated={lastUpdated} />}
 
                 <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '1.5rem', alignItems: 'start' }}>
                     <BudgetMonthSidebar
@@ -287,6 +366,13 @@ const Budget = ({ onBackToTasks, renovationMode = false }) => {
 
             </div>
             <BudgetUploadModal show={showUpload} onClose={() => setShowUpload(false)} activeTabId={activeTabId} onComplete={() => { fetchEntries(); fetchMonthlyBalances(activeTabId); }} />
+            <RecurringScopeModal
+                open={!!pendingScope}
+                mode={pendingScope?.action === 'delete' ? 'delete' : 'edit'}
+                chainInfo={pendingScope?.entry ? { seq: pendingScope.entry.recurring_seq, total: pendingScope.entry.recurring_total } : null}
+                onChoose={handleScopeChoose}
+                onCancel={() => setPendingScope(null)}
+            />
         </div>
     );
 };

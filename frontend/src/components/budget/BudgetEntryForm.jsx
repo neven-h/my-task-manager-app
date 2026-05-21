@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { REPETITION_NONE, REPETITION_OPTIONS } from './budgetConstants';
 
 const SYS = {
     primary:   '#0000FF',
@@ -9,14 +10,35 @@ const SYS = {
     border:    '#000',
 };
 
-export const EntryForm = ({ initial, onSave, onCancel, loading, renovationMode }) => {
-    const [form, setForm] = useState(initial);
+export const EntryForm = ({ initial, onSave, onCancel, loading, renovationMode, isEditing = false }) => {
+    const [form, setForm] = useState(() => ({
+        repetition: REPETITION_NONE,
+        recurring_day: '',
+        ...initial,
+    }));
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+    const isRecurring = form.repetition && form.repetition !== REPETITION_NONE;
 
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!form.description.trim() || !form.amount || !form.entry_date) return;
-        onSave({ ...form, amount: parseFloat(form.amount) });
+        const payload = {
+            ...form,
+            amount: parseFloat(form.amount),
+        };
+        if (!isRecurring) {
+            // Strip recurring fields for one-off entries so the backend doesn't
+            // accidentally see partial config.
+            delete payload.recurring_day;
+            payload.repetition = REPETITION_NONE;
+        } else if (payload.recurring_day === '' || payload.recurring_day == null) {
+            // Default day-of-month to the day from entry_date.
+            payload.recurring_day = parseInt(form.entry_date.slice(8, 10), 10);
+        } else {
+            payload.recurring_day = parseInt(payload.recurring_day, 10);
+        }
+        onSave(payload);
     };
 
     const inputStyle = {
@@ -71,6 +93,34 @@ export const EntryForm = ({ initial, onSave, onCancel, loading, renovationMode }
                 <input style={inputStyle} placeholder="Category (optional)"
                     value={form.category} onChange={e => set('category', e.target.value)} />
             </div>
+
+            {/* Repetition (recurring scheduler) — only shown when creating a new
+                entry, not when editing one (editing uses RecurringScopeModal). */}
+            {!isEditing && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8, alignItems: 'center' }}>
+                    <select
+                        value={form.repetition || REPETITION_NONE}
+                        onChange={(e) => set('repetition', e.target.value)}
+                        style={{ ...inputStyle, background: '#fff' }}
+                    >
+                        {REPETITION_OPTIONS.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                    </select>
+                    {isRecurring && (
+                        <input
+                            type="number"
+                            min="1"
+                            max="31"
+                            placeholder="Day"
+                            title="Day of month for the charge (1–31). Defaults to the day from the entry date."
+                            value={form.recurring_day}
+                            onChange={(e) => set('recurring_day', e.target.value)}
+                            style={{ ...inputStyle, width: 90 }}
+                        />
+                    )}
+                </div>
+            )}
 
             {/* Notes */}
             <textarea style={{ ...inputStyle, resize: 'vertical', minHeight: 52 }}

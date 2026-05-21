@@ -4,7 +4,10 @@ import { getAuthHeaders } from '../api.js';
 
 /**
  * Extracts range-related state and logic for the Budget page.
- * Computes displayBal, incomeForSummary, expenseForSummary, balanceForSummary, balanceBadgeForSummary.
+ * Computes incomeForSummary, expenseForSummary, balanceForSummary (derived
+ * from Income − Expense — filter-sync-rules compliant), and statementBalance
+ * (the latest bank-statement balance at cutoff, kept SEPARATE because it
+ * answers a different question than the Balance card).
  */
 const useBudgetRange = (activeTabId, cutoff, income, outcome, forecast, linkedTab) => {
     const [fileBalance, setFileBalance] = useState(null);
@@ -36,16 +39,24 @@ const useBudgetRange = (activeTabId, cutoff, income, outcome, forecast, linkedTa
     }, [activeTabId, cutoff]);
 
     const net = income - outcome;
-    const displayBal = fileBalance ?? (forecast ? forecast.current_balance : net);
+    // Bank-statement balance (יתרה) at the cutoff date — kept as a separate,
+    // explicitly-labeled value. It is NOT used as the Balance card anymore
+    // because users expect Balance to mean "Income − Expense for the range,"
+    // not "latest bank statement number."
+    const statementBalance = fileBalance;
 
     const rangeActive = rangeResult && !rangeResult.error;
-    // When linked to a bank tab and forecast is loaded, include bank totals in the summary cards
+    // When linked to a bank tab and forecast is loaded, include bank totals.
+    // Round 2 fix: forecast is now fetched with the same start/end window the
+    // page uses, so these no longer leak all-time data into the cards.
     const bankIncome  = (!rangeActive && linkedTab && forecast) ? (forecast.bank_income  ?? 0) : 0;
     const bankExpense = (!rangeActive && linkedTab && forecast) ? (forecast.bank_expense ?? 0) : 0;
     const incomeForSummary  = rangeActive ? (rangeResult.income_total  ?? income)  : income  + bankIncome;
     const expenseForSummary = rangeActive ? (rangeResult.expense_total ?? outcome) : outcome + bankExpense;
-    const balanceForSummary = rangeActive && rangeResult.balance_as_of != null ? rangeResult.balance_as_of : displayBal;
-    const balanceBadgeForSummary = rangeActive ? null : (fileBalance == null && forecast && linkedTab ? '＋bank' : null);
+    // Derived per filter-sync-rules: Balance = Income − Expense for the same
+    // filtered window. No separate state, no stale snapshot.
+    const balanceForSummary = incomeForSummary - expenseForSummary;
+    const balanceBadgeForSummary = (linkedTab && forecast) ? '＋bank' : null;
 
     const endMinusDays = useCallback((endDateStr, days) => {
         if (!endDateStr) return '';
@@ -88,7 +99,7 @@ const useBudgetRange = (activeTabId, cutoff, income, outcome, forecast, linkedTa
         setCustomEnd,
         endMinusDays,
         fetchRange,
-        displayBal,
+        statementBalance,
         incomeForSummary,
         expenseForSummary,
         balanceForSummary,

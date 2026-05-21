@@ -17,11 +17,19 @@ const useBalanceForecast = () => {
     const [loading, setLoading] = useState(false);
     const [lastUpdated, setLastUpdated] = useState(null);
 
-    const fetchForecast = useCallback(async (tabId, months = 3, refresh = false) => {
+    // opts: { months, start, end, refresh }. `start`/`end` are the date
+    // window applied to the historical sums on the backend so linked-bank
+    // totals respect the same filter as the rest of the page (filter-sync).
+    const fetchForecast = useCallback(async (tabId, opts = {}) => {
+        // Back-compat: previous callers passed (tabId, monthsNumber).
+        if (typeof opts === 'number') opts = { months: opts };
+        const { months = 3, start, end, refresh = false } = opts;
         if (!tabId) { setForecast(null); return; }
         setLoading(true);
         try {
             const params = new URLSearchParams({ tab_id: tabId, months: String(months) });
+            if (start) params.set('start', start);
+            if (end) params.set('end', end);
             if (refresh) params.set('refresh', '1');
             const res = await fetch(`${API_BASE}/budget/balance-forecast?${params}`, { headers: getAuthHeaders() });
             if (!res.ok) throw new Error('Failed to fetch balance forecast');
@@ -32,8 +40,9 @@ const useBalanceForecast = () => {
         } finally { setLoading(false); }
     }, []);
 
-    const refresh = useCallback((tabId, months = 3) => {
-        return fetchForecast(tabId, months, true);
+    const refresh = useCallback((tabId, opts = {}) => {
+        if (typeof opts === 'number') opts = { months: opts };
+        return fetchForecast(tabId, { ...opts, refresh: true });
     }, [fetchForecast]);
 
     const clearForecast = useCallback(() => { setForecast(null); setLastUpdated(null); }, []);

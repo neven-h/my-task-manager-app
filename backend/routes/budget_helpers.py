@@ -4,6 +4,12 @@ from mysql.connector import Error as MySQLError
 
 logger = logging.getLogger(__name__)
 
+# Process-local guard so the table-ensure migrations only run once per worker.
+# Without this, every request paid for 12+ ALTER TABLE attempts that all
+# returned "Duplicate column" errors after the first request — measurable
+# latency on each call and noise in slow-query logs.
+_ENSURED = set()
+
 _CREATE_BUDGET_TABLE_SQL = """
     CREATE TABLE IF NOT EXISTS budget_entries (
         id          INT AUTO_INCREMENT PRIMARY KEY,
@@ -44,6 +50,8 @@ _CREATE_BUDGET_DAILY_BALANCES_SQL = """
 
 def ensure_budget_table(conn):
     """Guarantee budget_entries exists with all required columns."""
+    if 'budget_entries' in _ENSURED:
+        return
     cur = conn.cursor()
     cur.execute(_CREATE_BUDGET_TABLE_SQL)
     for ddl in (
@@ -54,6 +62,14 @@ def ensure_budget_table(conn):
         "ALTER TABLE budget_entries ADD COLUMN balance DECIMAL(14,2) DEFAULT NULL",
         "ALTER TABLE budget_entries ADD COLUMN is_fixed BOOLEAN NOT NULL DEFAULT FALSE",
         "ALTER TABLE budget_entries ADD INDEX idx_budget_isfixed (tab_id, is_fixed)",
+        # Recurring fixed entries: rows in the same chain share recurring_id
+        # (the root row's id); recurring_seq is 1-based position;
+        # recurring_total is the planned chain length (NULL = unlimited).
+        "ALTER TABLE budget_entries ADD COLUMN recurring_id INT NULL",
+        "ALTER TABLE budget_entries ADD COLUMN recurring_day TINYINT NULL",
+        "ALTER TABLE budget_entries ADD COLUMN recurring_total SMALLINT NULL",
+        "ALTER TABLE budget_entries ADD COLUMN recurring_seq SMALLINT NULL",
+        "ALTER TABLE budget_entries ADD INDEX idx_budget_recurring (recurring_id, entry_date)",
     ):
         try:
             cur.execute(ddl)
@@ -61,10 +77,13 @@ def ensure_budget_table(conn):
             if 'Duplicate column' not in str(e) and 'Duplicate key' not in str(e):
                 logger.warning('budget migration note: %s', e)
     cur.close()
+    _ENSURED.add('budget_entries')
 
 
 def ensure_budget_daily_balances_table(conn):
     """Guarantee budget_daily_balances exists with required columns and keys."""
+    if 'budget_daily_balances' in _ENSURED:
+        return
     cur = conn.cursor()
     cur.execute(_CREATE_BUDGET_DAILY_BALANCES_SQL)
     # (Best-effort) migrations for existing installations.
@@ -80,6 +99,7 @@ def ensure_budget_daily_balances_table(conn):
             if 'Duplicate column' not in str(e) and 'Duplicate key' not in str(e):
                 logger.warning('budget balances migration note: %s', e)
     cur.close()
+    _ENSURED.add('budget_daily_balances')
 
 
 def serialize_entry(e):
