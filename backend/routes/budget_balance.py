@@ -395,12 +395,25 @@ def get_monthly_summary(payload):
         })
 
     except ValueError:
-        # Log the underlying validation failure server-side; do NOT echo
-        # exception text back to the client (py/stack-trace-exposure).
-        logger.warning('budget monthly-summary validation error', exc_info=True)
+        # Log the underlying validation failure server-side with the raw
+        # query-string values so we can diagnose without leaking exception
+        # text to the client (py/stack-trace-exposure).
+        logger.warning(
+            'budget monthly-summary validation error tab_id=%r start=%r end=%r months=%r',
+            request.args.get('tab_id'),
+            request.args.get('start'),
+            request.args.get('end') or request.args.get('date'),
+            request.args.get('months'),
+            exc_info=True,
+        )
         return jsonify({'error': 'Invalid or missing date parameter'}), 400
     except Exception:
-        logger.exception('budget monthly-summary error')
+        logger.exception(
+            'budget monthly-summary error tab_id=%r start=%r end=%r',
+            request.args.get('tab_id'),
+            request.args.get('start'),
+            request.args.get('end') or request.args.get('date'),
+        )
         return jsonify({'error': 'An unexpected error occurred'}), 500
 
 

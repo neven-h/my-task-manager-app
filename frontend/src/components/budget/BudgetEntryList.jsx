@@ -102,7 +102,6 @@ export const BudgetEntryList = ({
                 <div style={{ width: 90, flexShrink: 0 }}>Date</div>
                 <div style={{ flex: 1, minWidth: 0 }}>Description</div>
                 <div style={{ flexShrink: 0 }}>Amount</div>
-                <div style={{ width: 90, flexShrink: 0, textAlign: 'right', borderLeft: '2px solid #ddd', paddingLeft: 10 }}>Balance</div>
                 <div style={{ width: 80, flexShrink: 0 }} />
             </div>
 

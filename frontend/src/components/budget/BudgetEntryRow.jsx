@@ -62,8 +62,36 @@ export const EntryRow = ({ entry, balance, cutoff, onEdit, onDuplicate, onDelete
                     <div style={{
                         fontWeight: 600, fontSize: '0.9rem',
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        display: 'flex', alignItems: 'center', gap: 6,
                     }}>
-                        {entry.description}
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {entry.description}
+                        </span>
+                        {entry.recurring_id && (
+                            <span
+                                title={
+                                    entry.recurring_total
+                                        ? `Recurring ${entry.recurring_seq} of ${entry.recurring_total} (day ${entry.recurring_day})`
+                                        : `Recurring · unlimited (day ${entry.recurring_day})`
+                                }
+                                style={{
+                                    flexShrink: 0,
+                                    padding: '1px 6px',
+                                    border: `1.5px solid #d97706`,
+                                    background: '#fff7ed',
+                                    color: '#d97706',
+                                    fontSize: '0.66rem',
+                                    fontWeight: 800,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.4px',
+                                    borderRadius: 2,
+                                }}
+                            >
+                                {entry.recurring_total
+                                    ? `${entry.recurring_seq}/${entry.recurring_total}`
+                                    : '∞'}
+                            </span>
+                        )}
                     </div>
                     {(entry.category || entry.notes) && (
                         <div style={{ fontSize: '0.74rem', color: SYS.light, marginTop: 2 }}>
@@ -77,17 +105,6 @@ export const EntryRow = ({ entry, balance, cutoff, onEdit, onDuplicate, onDelete
                     {sign}{fmt(entry.amount)}
                 </div>
 
-                {/* Balance (יתרה) */}
-                {balance != null && (
-                    <div style={{
-                        fontWeight: 700, fontSize: '0.85rem', flexShrink: 0,
-                        width: 90, textAlign: 'right',
-                        color: balance >= 0 ? SYS.success : SYS.accent,
-                        borderLeft: `2px solid #eee`, paddingLeft: 10,
-                    }}>
-                        {fmt(balance)}
-                    </div>
-                )}
 
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: 4, flexShrink: 0 }} onClick={stop}>
