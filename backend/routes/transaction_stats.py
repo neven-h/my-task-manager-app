@@ -25,8 +25,9 @@ def get_transaction_stats(payload):
             if not tab_id or tab_id == 'null' or tab_id == 'undefined':
                 return jsonify({'by_type': [], 'monthly_by_type': []})
 
-            # Build filters
-            filters = ["tab_id = %s"]
+            # Build filters. is_excluded = 0 is applied unconditionally so the
+            # stats panel agrees with the Budget Monthly Summary (filter-sync).
+            filters = ["tab_id = %s", "is_excluded = 0"]
             params = [tab_id]
 
             if start_date:

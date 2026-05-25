@@ -128,12 +128,12 @@ export const useBankTransactionCRUDHandlers = ({
     // Toggle the user-managed "fixed monthly obligation" flag on a bank tx
     // (e.g. הוראת קבע or recurring transfer). Refetches so totals re-split
     // into Fixed/Variable in the linked budget tab.
-    const handleToggleFixed = useCallback(async (transactionId, nextFixed) => {
+    const _toggleBoolFlag = useCallback(async (transactionId, urlSlug, fieldName, nextValue) => {
         try {
-            const res = await fetch(`${API_BASE}/transactions/${transactionId}/fixed`, {
+            const res = await fetch(`${API_BASE}/transactions/${transactionId}/${urlSlug}`, {
                 method: 'PATCH',
                 headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
-                body: JSON.stringify({ is_fixed: !!nextFixed }),
+                body: JSON.stringify({ [fieldName]: !!nextValue }),
             });
             if (!res.ok) return false;
             if (selectedMonth === 'all') await fetchAllTransactions(activeTabId);
@@ -145,11 +145,20 @@ export const useBankTransactionCRUDHandlers = ({
         }
     }, [activeTabId, selectedMonth, fetchAllTransactions, fetchMonthTransactions, fetchTransactionStats]);
 
+    const handleToggleFixed = useCallback(
+        (id, next) => _toggleBoolFlag(id, 'fixed', 'is_fixed', next),
+        [_toggleBoolFlag],
+    );
+    const handleToggleExcluded = useCallback(
+        (id, next) => _toggleBoolFlag(id, 'excluded', 'is_excluded', next),
+        [_toggleBoolFlag],
+    );
+
     return {
         adoptOrphanedTransactions, handleCreateFirstTab, handleFileUpload,
         handleSaveTransactions, handleAddTransaction, handleUpdateTransaction,
         handleDeleteTransaction, handleDeleteMonth, handleBatchRename,
-        handleToggleFixed,
+        handleToggleFixed, handleToggleExcluded,
     };
 };
 

@@ -31,7 +31,8 @@ def get_transactions_by_month(payload, month_year):
                        uploaded_by,
                        category,
                        comments,
-                       is_fixed
+                       is_fixed,
+                       is_excluded
                 FROM bank_transactions
                 WHERE month_year = %s
             """
