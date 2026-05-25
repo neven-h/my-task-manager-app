@@ -30,6 +30,10 @@ def init_bank_tables(cursor, connection):
         ("category", "VARCHAR(100)", "category"),
         ("comments", "TEXT", "comments"),
         ("is_fixed", "BOOLEAN NOT NULL DEFAULT FALSE", "is_fixed"),
+        # is_excluded: user flag to drop a bank txn out of every total/summary
+        # (internal transfers between own accounts, refunds, etc.). Stacks
+        # with is_fixed: a row can be both excluded and fixed.
+        ("is_excluded", "BOOLEAN NOT NULL DEFAULT FALSE", "is_excluded"),
     ]:
         try:
             cursor.execute(f"ALTER TABLE bank_transactions ADD COLUMN {col} {col_def}")
@@ -42,6 +46,7 @@ def init_bank_tables(cursor, connection):
         ("idx_uploaded_by", "uploaded_by"),
         ("idx_tab_id", "tab_id"),
         ("idx_bank_isfixed", "tab_id, is_fixed"),
+        ("idx_bank_excluded", "tab_id, is_excluded"),
     ]:
         try:
             cursor.execute(f"ALTER TABLE bank_transactions ADD INDEX {idx_name} ({idx_col})")

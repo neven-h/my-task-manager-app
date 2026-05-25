@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MoreVertical, Edit2, Trash2, Pin, PinOff } from 'lucide-react';
+import { MoreVertical, Edit2, Trash2, Pin, PinOff, EyeOff, Eye } from 'lucide-react';
 import { useBankTransactionContext } from '../../context/BankTransactionContext';
 import { formatCurrency } from '../../utils/formatCurrency';
 import TransactionEditRow from './TransactionEditRow';
@@ -9,7 +9,8 @@ const TransactionRow = ({ transaction }) => {
     const {
         colors, editingTransaction, setEditingTransaction,
         expandedDescriptionId, setExpandedDescriptionId,
-        handleUpdateTransaction, handleDeleteTransaction, handleToggleFixed,
+        handleUpdateTransaction, handleDeleteTransaction,
+        handleToggleFixed, handleToggleExcluded,
         getDescriptionHistory, selectedIds, toggleSelected,
     } = useBankTransactionContext();
 
@@ -31,7 +32,11 @@ const TransactionRow = ({ transaction }) => {
 
     return (
         <React.Fragment>
-            <tr style={{ borderBottom: isExpanded ? 'none' : `1px solid ${colors.border}`, background: isSelected ? '#e8f0fe' : undefined }}>
+            <tr style={{
+                borderBottom: isExpanded ? 'none' : `1px solid ${colors.border}`,
+                background: isSelected ? '#e8f0fe' : undefined,
+                opacity: t.is_excluded ? 0.45 : 1,
+            }}>
                 {isEditing ? (
                     <TransactionEditRow editingTransaction={editingTransaction} setEditingTransaction={setEditingTransaction} isSelected={isSelected} toggleSelected={toggleSelected} colors={colors} handleUpdateTransaction={handleUpdateTransaction} transactionId={t.id} />
                 ) : (
@@ -76,6 +81,14 @@ const TransactionRow = ({ transaction }) => {
                                                 style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.55rem 0.85rem', background: 'none', border: 'none', borderBottom: `1px solid ${colors.border}`, cursor: 'pointer', fontFamily: '"Inter", sans-serif', fontSize: '0.85rem', fontWeight: 600, color: t.is_fixed ? '#d97706' : colors.text, textAlign: 'left' }}>
                                                 {t.is_fixed ? <Pin size={13} fill="#d97706" /> : <PinOff size={13} />}
                                                 {t.is_fixed ? 'Unmark fixed' : 'Mark as fixed'}
+                                            </button>
+                                        )}
+                                        {typeof handleToggleExcluded === 'function' && (
+                                            <button onClick={() => { handleToggleExcluded(t.id, !t.is_excluded); setMenuOpen(false); }}
+                                                title="Exclude this transaction from all summary totals (e.g. internal transfer, refund)"
+                                                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '0.55rem 0.85rem', background: 'none', border: 'none', borderBottom: `1px solid ${colors.border}`, cursor: 'pointer', fontFamily: '"Inter", sans-serif', fontSize: '0.85rem', fontWeight: 600, color: t.is_excluded ? '#6b7280' : colors.text, textAlign: 'left' }}>
+                                                {t.is_excluded ? <Eye size={13} /> : <EyeOff size={13} />}
+                                                {t.is_excluded ? 'Include in totals' : 'Exclude from totals'}
                                             </button>
                                         )}
                                         <button onClick={() => { handleDeleteTransaction(t.id); setMenuOpen(false); }}

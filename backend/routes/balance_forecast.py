@@ -109,7 +109,7 @@ def balance_forecast(payload):
                 bank_sum_sql = (
                     "SELECT amount, amount_plain, transaction_date, is_fixed "
                     "FROM bank_transactions "
-                    "WHERE tab_id = %s"
+                    "WHERE tab_id = %s AND is_excluded = 0"
                 )
                 bank_sum_params = [tx_tab_id]
                 if hist_start:
@@ -139,10 +139,12 @@ def balance_forecast(payload):
                     except Exception:
                         continue
 
-                # Get bank transaction predictions (24-month window)
+                # Get bank transaction predictions (24-month window).
+                # Excluded rows don't contribute to the forecast either —
+                # filter-sync rule applies uniformly.
                 cur.execute(
                     "SELECT description, amount, amount_plain, transaction_date, transaction_type "
-                    "FROM bank_transactions WHERE tab_id = %s"
+                    "FROM bank_transactions WHERE tab_id = %s AND is_excluded = 0"
                     " AND transaction_date >= DATE_SUB(NOW(), INTERVAL 24 MONTH)"
                     + ("" if user_role == 'shared' else " AND (uploaded_by = %s OR uploaded_by IS NULL)")
                     + " ORDER BY transaction_date ASC, id ASC",

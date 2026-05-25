@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { EntryRow, EMPTY_HISTORY } from './BudgetEntryRow';
+import BudgetQuickAddRow from './BudgetQuickAddRow';
 
 const SYS = {
     primary: '#0000FF',
@@ -31,6 +32,7 @@ export const BudgetEntryList = ({
     toggleSelect,
     onSelectAll,
     onToggleFixed,
+    onQuickCreate,
     renovationMode,
 }) => {
     // Balance keyed by entry id — use stored value from source file (יתרה column) only.
@@ -54,6 +56,17 @@ export const BudgetEntryList = ({
 
     return (
         <div style={{ background: SYS.bg, border: `3px solid ${SYS.border}`, overflow: 'hidden' }}>
+            {/* Quick-add row: persistent inline form so logging an entry doesn't
+                require clicking +Income/+Expense first. The full form (recurring,
+                notes, etc.) still opens from the header buttons. */}
+            {typeof onQuickCreate === 'function' && (
+                <BudgetQuickAddRow
+                    tabEntries={entries}
+                    onCreate={onQuickCreate}
+                    loading={loading}
+                    renovationMode={renovationMode}
+                />
+            )}
             {/* List header */}
             <div style={{
                 display: 'flex', alignItems: 'center', gap: 6,

@@ -26,6 +26,7 @@ import BudgetRangePanel from './components/budget/BudgetRangePanel';
 import BudgetCreateFirstTab from './components/budget/BudgetCreateFirstTab';
 import BudgetMonthlySummaryTable from './components/budget/BudgetMonthlySummaryTable';
 import RecurringScopeModal from './components/budget/RecurringScopeModal';
+import BudgetMonthDrilldown from './components/budget/BudgetMonthDrilldown';
 import { REPETITION_NONE, SCOPE_THIS_AND_FUTURE } from './components/budget/budgetConstants';
 import API_BASE from './config';
 import { getAuthHeaders } from './api.js';
@@ -155,6 +156,15 @@ const Budget = ({ onBackToTasks, renovationMode = false }) => {
         if (!linkedTab || !activeTabId) return;
         fetchForecast(activeTabId, { months: 3, start: dateFrom || undefined, end: cutoff });
     }, [linkedTab, activeTabId, fetchForecast, dateFrom, cutoff]);
+
+    // Inline quick-add: minimal create flow used by BudgetQuickAddRow at the
+    // top of the entry list. Returns truthy on success so the row can clear.
+    const handleQuickCreate = useCallback(async (data) => {
+        if (!activeTabId) return false;
+        const ok = await createEntry({ ...data, tab_id: activeTabId });
+        if (ok) refreshForecast();
+        return !!ok;
+    }, [activeTabId, createEntry, refreshForecast]);
 
     // Toggle the user-managed "fixed monthly obligation" flag on a budget
     // entry. Optimistic update via updateEntry so the row repaints; the
@@ -360,7 +370,11 @@ const Budget = ({ onBackToTasks, renovationMode = false }) => {
                             selectMode={selectMode} onToggleSelectMode={() => setSelectMode(m => !m)}
                             selectedIds={selectedIds} toggleSelect={toggleSelect} onSelectAll={selectAll}
                             onToggleFixed={handleToggleFixed}
+                            onQuickCreate={handleQuickCreate}
                             renovationMode={renovationMode} />
+                        {!renovationMode && (
+                            <BudgetMonthDrilldown linkedTab={linkedTab} selectedMonth={selectedMonth} />
+                        )}
                     </div>
                 </div>
 

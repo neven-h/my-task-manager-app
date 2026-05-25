@@ -89,3 +89,41 @@ def toggle_transaction_fixed(payload, transaction_id):
     except Exception:
         logger.exception('Failed to toggle bank transaction is_fixed')
         return jsonify({'error': 'An internal error occurred'}), 500
+
+
+@fixed_flag_bp.route('/api/transactions/<int:transaction_id>/excluded', methods=['PATCH'])
+@token_required
+def toggle_transaction_excluded(payload, transaction_id):
+    """Toggle the is_excluded flag — drops a bank tx out of every total."""
+    username = payload.get('username')
+    user_role = payload.get('role')
+    data = request.get_json(silent=True) or {}
+    if 'is_excluded' not in data:
+        return jsonify({'error': 'is_excluded is required'}), 400
+    is_excluded = _coerce_bool(data['is_excluded'])
+    try:
+        with get_db_connection() as conn:
+            cur = conn.cursor(dictionary=True)
+            if user_role != 'admin':
+                cur.execute(
+                    "SELECT bt.id FROM bank_transactions bt "
+                    "JOIN transaction_tabs tt ON bt.tab_id = tt.id "
+                    "WHERE bt.id = %s AND tt.owner = %s",
+                    (transaction_id, username),
+                )
+                if not cur.fetchone():
+                    return jsonify({'error': 'Transaction not found or access denied'}), 404
+            else:
+                cur.execute("SELECT id FROM bank_transactions WHERE id = %s", (transaction_id,))
+                if not cur.fetchone():
+                    return jsonify({'error': 'Transaction not found'}), 404
+            cur.execute(
+                "UPDATE bank_transactions SET is_excluded = %s WHERE id = %s",
+                (is_excluded, transaction_id),
+            )
+            conn.commit()
+        invalidate_balance_forecast_cache(username)
+        return jsonify({'id': transaction_id, 'is_excluded': is_excluded})
+    except Exception:
+        logger.exception('Failed to toggle bank transaction is_excluded')
+        return jsonify({'error': 'An internal error occurred'}), 500

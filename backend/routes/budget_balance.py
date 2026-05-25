@@ -288,10 +288,13 @@ def get_monthly_summary(payload):
                 link_type = (link.get('link_type') or 'expense')
 
                 # SAME date range applied to bank rows — the root-cause fix.
+                # is_excluded rows (user-flagged internal transfers etc.)
+                # must never count toward totals (filter-sync uniformity).
                 sql = (
                     "SELECT transaction_date, amount, amount_plain, is_fixed "
                     "FROM bank_transactions "
-                    "WHERE tab_id = %s AND transaction_date >= %s AND transaction_date <= %s"
+                    "WHERE tab_id = %s AND transaction_date >= %s AND transaction_date <= %s "
+                    "AND is_excluded = 0"
                 )
                 params = [tx_tab_id, start, end]
                 if user_role != 'shared':
