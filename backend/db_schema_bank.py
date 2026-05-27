@@ -1,5 +1,42 @@
 """Schema initialization for bank and transaction tables."""
+import logging
 from mysql.connector import Error
+
+logger = logging.getLogger(__name__)
+
+# Per-process guard so the self-healing migration only runs once per worker.
+# Endpoints that read columns added after the initial schema (is_fixed,
+# is_excluded) call ensure_bank_columns(conn) on first hit; subsequent
+# requests no-op.
+_BANK_COLUMNS_ENSURED = False
+
+
+def ensure_bank_columns(conn):
+    """Idempotently add post-initial-schema columns to bank_transactions.
+
+    Lets a freshly-deployed app heal a DB that hasn't seen init_db() yet
+    (e.g. when the process didn't restart after deploy). Cheap after the
+    first call per process. Safe to call from any read endpoint that
+    references is_fixed / is_excluded.
+    """
+    global _BANK_COLUMNS_ENSURED
+    if _BANK_COLUMNS_ENSURED:
+        return
+    cur = conn.cursor()
+    for ddl in (
+        "ALTER TABLE bank_transactions ADD COLUMN is_fixed BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE bank_transactions ADD COLUMN is_excluded BOOLEAN NOT NULL DEFAULT FALSE",
+        "ALTER TABLE bank_transactions ADD INDEX idx_bank_isfixed (tab_id, is_fixed)",
+        "ALTER TABLE bank_transactions ADD INDEX idx_bank_excluded (tab_id, is_excluded)",
+    ):
+        try:
+            cur.execute(ddl)
+        except Error as e:
+            msg = str(e)
+            if 'Duplicate column' not in msg and 'Duplicate key' not in msg:
+                logger.warning('bank columns migration note: %s', e)
+    cur.close()
+    _BANK_COLUMNS_ENSURED = True
 
 
 def init_bank_tables(cursor, connection):

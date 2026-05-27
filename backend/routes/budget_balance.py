@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify
 from config import get_db_connection, token_required, decrypt_field
 from routes.budget_helpers import ensure_budget_daily_balances_table
+from db_schema_bank import ensure_bank_columns
 
 logger = logging.getLogger(__name__)
 budget_balance_bp = Blueprint('budget_balance', __name__)
@@ -241,6 +242,7 @@ def get_monthly_summary(payload):
 
         with get_db_connection() as conn:
             ensure_budget_daily_balances_table(conn)
+            ensure_bank_columns(conn)
             cur = conn.cursor(dictionary=True)
 
             # 1. Budget entries grouped by month, split by is_fixed

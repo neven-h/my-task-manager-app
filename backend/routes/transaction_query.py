@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app
 from config import get_db_connection, token_required, decrypt_field, log_bank_transaction_access
+from db_schema_bank import ensure_bank_columns
 from mysql.connector import Error
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -113,6 +114,7 @@ def get_all_transactions(payload):
         tab_id = request.args.get('tab_id')
 
         with get_db_connection() as connection:
+            ensure_bank_columns(connection)
             cursor = connection.cursor(dictionary=True)
 
             # Build query based on role

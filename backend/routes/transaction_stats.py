@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app
 from config import get_db_connection, token_required, decrypt_field
+from db_schema_bank import ensure_bank_columns
 from mysql.connector import Error
 from concurrent.futures import ThreadPoolExecutor
 
@@ -19,6 +20,7 @@ def get_transaction_stats(payload):
         tab_id = request.args.get('tab_id')
 
         with get_db_connection() as connection:
+            ensure_bank_columns(connection)
             cursor = connection.cursor(dictionary=True)
 
             # Require tab_id for strict tab separation
