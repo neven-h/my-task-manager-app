@@ -7,6 +7,7 @@ uses it to split expenses into fixed vs. variable buckets.
 import logging
 from flask import Blueprint, request, jsonify
 from config import get_db_connection, token_required
+from db_schema_bank import ensure_bank_columns
 from ._balance_forecast_helpers import invalidate_balance_forecast_cache
 from .budget_helpers import ensure_budget_table
 
@@ -65,6 +66,7 @@ def toggle_transaction_fixed(payload, transaction_id):
     is_fixed = _coerce_bool(data['is_fixed'])
     try:
         with get_db_connection() as conn:
+            ensure_bank_columns(conn)
             cur = conn.cursor(dictionary=True)
             if user_role != 'admin':
                 cur.execute(
@@ -103,6 +105,7 @@ def toggle_transaction_excluded(payload, transaction_id):
     is_excluded = _coerce_bool(data['is_excluded'])
     try:
         with get_db_connection() as conn:
+            ensure_bank_columns(conn)
             cur = conn.cursor(dictionary=True)
             if user_role != 'admin':
                 cur.execute(

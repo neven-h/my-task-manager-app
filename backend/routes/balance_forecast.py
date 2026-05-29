@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 
 from flask import Blueprint, request, jsonify
 from config import get_db_connection, token_required, decrypt_field
+from db_schema_bank import ensure_bank_columns
 from .forecast_engine import cache_get, cache_set
 from ._balance_forecast_helpers import (
     _predict_budget, _predict_bank, _merge_timeline, _build_monthly_actuals,
@@ -48,6 +49,7 @@ def balance_forecast(payload):
         cutoff = today + timedelta(days=months * 30)
 
         with get_db_connection() as conn:
+            ensure_bank_columns(conn)
             cur = conn.cursor(dictionary=True)
 
             # 1. Current balance from budget entries
