@@ -24,7 +24,8 @@
     "picomatch": "^4.0.4",
     "@xmldom/xmldom": "^0.9.10",
     "uuid": "^14.0.0",
-    "postcss": "^8.5.12"
+    "postcss": "^8.5.12",
+    "tmp": "0.2.6"
   },
   "scripts": {
     "dev": "vite",
