@@ -1,0 +1,7 @@
+[settings]
+# python-build-standalone tarballs older than mid-2024 (e.g. the 3.11.7
+# 20240107 build) have no GitHub artifact attestations, which newer mise
+# versions refuse to install. Railway/Railpack runs mise at build time, and
+# dashboard env vars don't reliably reach that sandbox, so disable the check
+# here in-repo. Scoped to python only.
+python.github_attestations = false
