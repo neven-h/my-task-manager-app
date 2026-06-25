@@ -2,6 +2,7 @@
 Shared utility helpers: task serialization, error handling, file validation, CSV sanitization.
 """
 import os
+from collections import Counter
 from datetime import timedelta
 from flask import jsonify
 
@@ -43,6 +44,35 @@ def sanitize_csv_field(value):
             value = "'" + value
         return value.replace('"', '""')
     return value
+
+
+# ==================== TRANSACTION IMPORT DEDUP ====================
+
+def select_non_duplicate_indices(incoming_keys, existing_counts):
+    """
+    Occurrence-multiplicity dedup for transaction import.
+
+    Given the per-row dedup keys of an incoming batch (in order) and a mapping of
+    how many times each key already exists in the target tab, return
+    ``(kept_indices, skipped_count)``.
+
+    A row is skipped only while its running occurrence index is still below the
+    key's existing multiplicity. This keeps re-importing the same statement
+    idempotent while preserving genuinely-distinct rows that share the same
+    date+amount+description (which a presence-only set would silently collapse —
+    the cause of rows going missing on export→import round-trips).
+    """
+    seen = Counter()
+    kept = []
+    skipped = 0
+    for idx, key in enumerate(incoming_keys):
+        if seen[key] < existing_counts.get(key, 0):
+            seen[key] += 1
+            skipped += 1
+            continue
+        seen[key] += 1
+        kept.append(idx)
+    return kept, skipped
 
 
 # ==================== ERROR HANDLING ====================
