@@ -1,4 +1,5 @@
 import hashlib
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from flask import Blueprint, request, jsonify, current_app
 from config import (
@@ -6,6 +7,7 @@ from config import (
     encrypt_field, decrypt_field, log_bank_transaction_access,
     allowed_file, UPLOAD_FOLDER,
 )
+from helpers import select_non_duplicate_indices
 from mysql.connector import Error
 from werkzeug.utils import secure_filename
 import pandas as pd
@@ -111,6 +113,13 @@ def save_transactions(payload):
 
             # ── Dedup against existing rows in this tab on overlapping dates.
             # Key: (transaction_date, round(amount_plain,2), SHA256(lower(trim(description))))
+            # Dedup is by OCCURRENCE MULTIPLICITY, not mere presence: we count how
+            # many times each key already exists in the tab and skip an incoming
+            # row only while its running occurrence index is still below that count.
+            # This keeps re-importing the same statement idempotent while preserving
+            # genuinely-distinct transactions that share the same date+amount+
+            # description (e.g. two identical purchases on the same day) — those used
+            # to be silently collapsed.
             # Bank descriptions are encrypted, so we must decrypt existing rows
             # in the overlapping date range to compute the hash. Use SHA-256
             # (not SHA-1) to satisfy CodeQL py/weak-sensitive-data-hashing —
@@ -119,7 +128,7 @@ def save_transactions(payload):
                 return hashlib.sha256((s or '').strip().lower().encode('utf-8')).hexdigest()
 
             dates_in_batch = sorted({str(t['transaction_date']) for t in transactions})
-            existing_keys = set()
+            existing_counts = Counter()
             if dates_in_batch:
                 dcur = connection.cursor(dictionary=True)
                 in_placeholders = ','.join(['%s'] * len(dates_in_batch))
@@ -136,37 +145,36 @@ def save_transactions(payload):
                         else:
                             amt = round(float(decrypt_field(row['amount'])), 2)
                         desc = decrypt_field(row['description']) if row.get('description') else ''
-                        existing_keys.add((
+                        existing_counts[(
                             str(row['transaction_date']),
                             amt,
                             _desc_hash(desc),
-                        ))
+                        )] += 1
                     except Exception:
                         continue
                 dcur.close()
 
-            all_values = []
-            kept_indices = []
-            skipped_duplicates = 0
-            for idx, (t, (ea, ed, em)) in enumerate(zip(transactions, encrypted)):
+            def _row_key(t):
                 try:
                     amt = round(float(t['amount']), 2)
                 except Exception:
                     amt = 0.0
-                key = (
-                    str(t['transaction_date']),
-                    amt,
-                    _desc_hash(t.get('description') or ''),
-                )
-                if key in existing_keys:
-                    skipped_duplicates += 1
-                    continue
-                existing_keys.add(key)  # also prevent intra-batch duplicates
+                return (str(t['transaction_date']), amt, _desc_hash(t.get('description') or ''))
+
+            incoming_keys = [_row_key(t) for t in transactions]
+            # Occurrence-multiplicity dedup: skip a row only while its running
+            # occurrence index is below the key's existing multiplicity in the tab;
+            # genuine in-file repeats (same date+amount+description) are kept.
+            kept_indices, skipped_duplicates = select_non_duplicate_indices(
+                incoming_keys, existing_counts)
+            all_values = []
+            for idx in kept_indices:
+                t = transactions[idx]
+                ea, ed, em = encrypted[idx]
                 all_values.append(
                     (ea, t['transaction_date'], ed, em, float(t['amount']), t['month_year'],
                      t.get('transaction_type', 'credit'), username, tab_id)
                 )
-                kept_indices.append(idx)
 
             if not all_values:
                 return jsonify({
