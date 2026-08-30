@@ -10,23 +10,25 @@
     "lucide-react": "^0.263.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.22.3"
+    "react-router-dom": "^7.18.3"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
     "@vitejs/plugin-react": "^4.0.0",
-    "vite": "^7.3.2"
+    "vite": "^7.3.6"
   },
   "overrides": {
-    "tar": "7.5.16",
+    "tar": "^7.5.22",
     "minimatch": "^3.1.4",
     "yauzl": ">=3.2.1",
     "picomatch": "^4.0.4",
     "@xmldom/xmldom": "^0.9.10",
     "uuid": "^14.0.0",
-    "postcss": "^8.5.12",
+    "postcss": "^8.5.26",
     "tmp": "0.2.7",
-    "esbuild": ">=0.28.1"
+    "esbuild": ">=0.28.1",
+    "brace-expansion": "^1.1.18",
+    "sharp": "^0.35.4"
   },
   "scripts": {
     "dev": "vite",
