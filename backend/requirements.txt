@@ -15,10 +15,11 @@ cryptography==50.0.1
 pyotp==2.9.0
 qrcode==7.4.2
 Pillow==12.3.0
-yfinance==1.1.0
+yfinance==1.7.0
 cloudinary==1.44.1
 anthropic>=0.40.0
-bank-csv-normalizer @ https://github.com/neven-h/csv_parsing/archive/refs/heads/master.zip
+# Pinned to a commit SHA: a moving 'master' zip is unauditable and can change under us.
+bank-csv-normalizer @ https://github.com/neven-h/csv_parsing/archive/96bc928c8e7c3e5dce2f682c98996da7a1fc2da0.zip
 # Deep learning forecast engine disabled — Chronos T5 OOM-killed gunicorn workers on Railway
 # Statistical IQR fallback (in forecast_engine.py) is used instead
 # chronos-forecasting
