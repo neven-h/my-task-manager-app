@@ -94,6 +94,8 @@ _origins = [
     'capacitor://localhost',
     'ionic://localhost',
     'http://localhost',
+    'https://localhost',
+    'http://127.0.0.1',
 ]
 _seen = set()
 ALLOWED_FRONTEND_ORIGINS = [o for o in _origins if not (o in _seen or _seen.add(o))]

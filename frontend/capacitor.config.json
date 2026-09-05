@@ -2,6 +2,9 @@
   "appId": "com.drpitz.taskmanager",
   "appName": "Task Manager",
   "webDir": "dist",
+  "server": {
+    "cleartext": true
+  },
   "plugins": {
     "CapacitorHttp": {
       "enabled": true
