@@ -347,6 +347,8 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = App/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "";
+				"INFOPLIST_KEY_CFBundleDisplayName[sdk=iphoneos*]" = "Dr Pitz Club";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Dr. Pitz Club needs full calendar access to add your tasks as calendar events.";
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "Dr. Pitz Club needs calendar access to add your tasks as events.";
@@ -377,6 +379,8 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = App/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "";
+				"INFOPLIST_KEY_CFBundleDisplayName[sdk=iphoneos*]" = "Dr Pitz Club";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Dr. Pitz Club needs full calendar access to add your tasks as calendar events.";
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "Dr. Pitz Club needs calendar access to add your tasks as events.";
