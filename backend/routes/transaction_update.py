@@ -7,6 +7,15 @@ from mysql.connector import Error
 
 transaction_update_bp = Blueprint('transaction_update', __name__)
 
+
+def _month_year(data):
+    """YYYY-MM from payload, falling back to transaction_date."""
+    raw = str(data.get('month_year') or data.get('transaction_date') or '').strip()
+    if len(raw) >= 7 and raw[4] == '-':
+        return raw[:7]
+    return None
+
+
 @transaction_update_bp.route('/api/transactions/<int:transaction_id>', methods=['PUT'])
 @token_required
 def update_transaction(payload, transaction_id):
@@ -14,7 +23,7 @@ def update_transaction(payload, transaction_id):
     try:
         username = payload['username']
         user_role = payload['role']
-        data = request.json
+        data = request.json or {}
 
         with get_db_connection() as connection:
             cursor = connection.cursor()
@@ -29,6 +38,12 @@ def update_transaction(payload, transaction_id):
                 )
                 if not cursor.fetchone():
                     return jsonify({'error': 'Transaction not found or access denied'}), 404
+
+            month_year = _month_year(data)
+            if not month_year or not data.get('transaction_date'):
+                return jsonify({'error': 'transaction_date is required'}), 400
+            if not data.get('description'):
+                return jsonify({'error': 'description is required'}), 400
 
             # Encrypt sensitive fields
             encrypted_account = encrypt_field(data.get('account_number', ''))
@@ -52,7 +67,7 @@ def update_transaction(payload, transaction_id):
                 data['transaction_date'],
                 encrypted_description,
                 encrypted_amount,
-                data['month_year'],
+                month_year,
                 encrypted_account,
                 data.get('transaction_type', 'credit'),
                 data.get('category', ''),
@@ -81,7 +96,7 @@ def add_manual_transaction(payload):
     """Add a transaction manually with encryption"""
     try:
         username = payload['username']
-        data = request.json
+        data = request.json or {}
         tab_id = data.get('tab_id')
 
         # Require tab_id for strict tab separation
@@ -99,6 +114,12 @@ def add_manual_transaction(payload):
             if not cursor.fetchone():
                 return jsonify({'error': 'Tab not found or access denied'}), 404
 
+            month_year = _month_year(data)
+            if not month_year or not data.get('transaction_date'):
+                return jsonify({'error': 'transaction_date is required'}), 400
+            if not data.get('description'):
+                return jsonify({'error': 'description is required'}), 400
+
             # Encrypt sensitive fields
             encrypted_account = encrypt_field(data.get('account_number', ''))
             encrypted_description = encrypt_field(data['description'])
@@ -114,7 +135,7 @@ def add_manual_transaction(payload):
                 data['transaction_date'],
                 encrypted_description,
                 encrypted_amount,
-                data['month_year'],
+                month_year,
                 data.get('transaction_type', 'credit'),
                 username,
                 tab_id,
@@ -130,7 +151,7 @@ def add_manual_transaction(payload):
                 username=username,
                 action='MANUAL_ADD',
                 transaction_ids=str(transaction_id),
-                month_year=data.get('month_year')
+                month_year=month_year
             )
 
             return jsonify({

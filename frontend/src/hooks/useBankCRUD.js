@@ -100,7 +100,10 @@ const useBankCRUD = ({ uploadedData, setUploadedData, selectedMonth, setSelected
                 body: JSON.stringify({ ...newTransaction, tab_id: activeTabId })
             });
             const data = await response.json();
-            if (!response.ok) console.error(data.error || 'Failed to add transaction');
+            if (!response.ok) {
+                setError(data.error || 'Failed to add transaction');
+                return false;
+            }
             setSuccess('Transaction added successfully');
             return true;
         } catch (err) {
@@ -121,7 +124,10 @@ const useBankCRUD = ({ uploadedData, setUploadedData, selectedMonth, setSelected
                 body: JSON.stringify(editingData)
             });
             const data = await response.json();
-            if (!response.ok) console.error(data.error || 'Failed to update transaction');
+            if (!response.ok) {
+                setError(data.error || 'Failed to update transaction');
+                return false;
+            }
             setSuccess('Transaction updated successfully');
             return true;
         } catch (err) {

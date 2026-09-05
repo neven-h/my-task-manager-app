@@ -81,6 +81,7 @@ const MobileBankTransactionsView = ({ authUser, authRole, onBack }) => {
     }, [activeTabId, selectedMonth, setError]);
 
     const handleOpenEdit = (t) => {
+        setError(null);
         setEditingTransaction(t);
         const d = t.transaction_date;
         setNewTransaction({
@@ -92,6 +93,7 @@ const MobileBankTransactionsView = ({ authUser, authRole, onBack }) => {
     };
 
     const handleOpenAdd = () => {
+        setError(null);
         setEditingTransaction(null);
         setNewTransaction({ ...EMPTY_TX, transaction_date: new Date().toISOString().split('T')[0] });
         setShowAddForm(true);
@@ -195,7 +197,7 @@ const MobileBankTransactionsView = ({ authUser, authRole, onBack }) => {
 
             <MobileBankTransactionForm showAddForm={showAddForm} editingTransaction={editingTransaction}
                 newTransaction={newTransaction} setNewTransaction={setNewTransaction}
-                loading={loading} onSave={handleSaveTransaction}
+                loading={loading} error={error} onSave={handleSaveTransaction}
                 onClose={() => { setShowAddForm(false); setEditingTransaction(null); }} />
             <MobileBankUpload show={showUpload} onClose={() => setShowUpload(false)}
                 tabs={tabs} activeTabId={activeTabId} onSaved={handleUploadSaved} />

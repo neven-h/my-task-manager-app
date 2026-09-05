@@ -8,6 +8,7 @@ const MobileBankTransactionForm = ({
     newTransaction,
     setNewTransaction,
     loading,
+    error,
     onSave,
     onClose
 }) => {
@@ -48,6 +49,12 @@ const MobileBankTransactionForm = ({
                         <X size={28}/>
                     </button>
                 </div>
+
+                {error && (
+                    <div style={{ padding: '10px 14px', background: '#fef2f2', color: '#FF3B30', fontSize: '0.85rem', fontWeight: 600, marginBottom: 12 }}>
+                        {error}
+                    </div>
+                )}
 
                 <div style={{display: 'flex', flexDirection: 'column', gap: '16px'}}>
                     <div>

@@ -11,6 +11,8 @@
 		4258357A2F72E9BA00C7E6B1 /* BiometricsPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 425835792F72E9BA00C7E6B1 /* BiometricsPlugin.swift */; };
 		4288275F2F6C34C000CF07EE /* CalendarPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4288275E2F6C34C000CF07EE /* CalendarPlugin.swift */; };
 		428827602F6C34C000CF07EE /* CalendarPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = 4288275D2F6C34C000CF07EE /* CalendarPlugin.m */; };
+		42B39564304C53CA0007B74F /* Algorithms in Frameworks */ = {isa = PBXBuildFile; productRef = 42B39563304C53CA0007B74F /* Algorithms */; };
+		42CC12342F9A0000001A0002 /* MyViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42CC12352F9A0000001A0001 /* MyViewController.swift */; };
 		42FFC1222F630A2800AB487D /* BiometricAuthPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42FFC1212F630A2800AB487D /* BiometricAuthPlugin.swift */; };
 		42FFC1242F630A4700AB487D /* BiometricAuthPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = 42FFC1232F630A4700AB487D /* BiometricAuthPlugin.m */; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
@@ -20,7 +22,6 @@
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
-		42CC12342F9A0000001A0002 /* MyViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42CC12352F9A0000001A0001 /* MyViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,11 +33,11 @@
 		42948CD62F6858AB00D4CE8C /* LoginPage-DWOvkNZX.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "LoginPage-DWOvkNZX.js"; sourceTree = "<group>"; };
 		42948CD72F6858B900D4CE8C /* SettingsPage-CqEj8Azt.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "SettingsPage-CqEj8Azt.js"; sourceTree = "<group>"; };
 		42948CD82F685B1100D4CE8C /* LoginPage-DWOvkNZX 2.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = "LoginPage-DWOvkNZX 2.js"; sourceTree = "<group>"; };
+		42CC12352F9A0000001A0001 /* MyViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyViewController.swift; sourceTree = "<group>"; };
 		42FFC1212F630A2800AB487D /* BiometricAuthPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiometricAuthPlugin.swift; sourceTree = "<group>"; };
 		42FFC1232F630A4700AB487D /* BiometricAuthPlugin.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BiometricAuthPlugin.m; sourceTree = "<group>"; };
-		42FFC1252F630DD100AB487D /* Info 2.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info 2.plist"; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
-		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		504EC3041FED79650016851F /* Dr. Pitz Club.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Dr. Pitz Club.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		504EC30C1FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		504EC30E1FED79650016851F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -44,7 +45,6 @@
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
-		42CC12352F9A0000001A0001 /* MyViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyViewController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -52,6 +52,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				42B39564304C53CA0007B74F /* Algorithms in Frameworks */,
 				4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -75,7 +76,7 @@
 		504EC3051FED79650016851F /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				504EC3041FED79650016851F /* App.app */,
+				504EC3041FED79650016851F /* Dr. Pitz Club.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,7 +96,6 @@
 				50B271D01FEDC1A000F3C39B /* public */,
 				42FFC1212F630A2800AB487D /* BiometricAuthPlugin.swift */,
 				42FFC1232F630A4700AB487D /* BiometricAuthPlugin.m */,
-				42FFC1252F630DD100AB487D /* Info 2.plist */,
 				425835792F72E9BA00C7E6B1 /* BiometricsPlugin.swift */,
 				42CC12352F9A0000001A0001 /* MyViewController.swift */,
 			);
@@ -120,9 +120,10 @@
 			name = App;
 			packageProductDependencies = (
 				4D22ABE82AF431CB00220026 /* CapApp-SPM */,
+				42B39563304C53CA0007B74F /* Algorithms */,
 			);
 			productName = App;
-			productReference = 504EC3041FED79650016851F /* App.app */;
+			productReference = 504EC3041FED79650016851F /* Dr. Pitz Club.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -133,7 +134,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastSwiftUpdateCheck = 0920;
-				LastUpgradeCheck = 2630;
+				LastUpgradeCheck = 2650;
 				TargetAttributes = {
 					504EC3031FED79650016851F = {
 						CreatedOnToolsVersion = 9.2;
@@ -153,6 +154,7 @@
 			mainGroup = 504EC2FB1FED79650016851F;
 			packageReferences = (
 				D4C12C0A2AAA248700AAC8A2 /* XCLocalSwiftPackageReference "CapApp-SPM" */,
+				42B39562304C53CA0007B74F /* XCRemoteSwiftPackageReference "swift-algorithms" */,
 			);
 			productRefGroup = 504EC3051FED79650016851F /* Products */;
 			projectDirPath = "";
@@ -252,6 +254,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 8GL3A2RK66;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -314,6 +317,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 8GL3A2RK66;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -342,7 +346,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 8GL3A2RK66;
 				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Dr. Pitz Club needs full calendar access to add your tasks as calendar events.";
@@ -356,8 +359,8 @@
 				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = "-ObjC";
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
-				PRODUCT_BUNDLE_IDENTIFIER = com.drpitz.taskmanager;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = drpitz.club.WorldWidePitz;
+				PRODUCT_NAME = "Dr. Pitz Club";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -373,7 +376,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 8GL3A2RK66;
 				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "Dr. Pitz Club needs full calendar access to add your tasks as calendar events.";
@@ -387,7 +389,7 @@
 				MARKETING_VERSION = 1.0;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = com.drpitz.taskmanager;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = "Dr. Pitz Club";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -427,7 +429,23 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		42B39562304C53CA0007B74F /* XCRemoteSwiftPackageReference "swift-algorithms" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-algorithms.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.2.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
+		42B39563304C53CA0007B74F /* Algorithms */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 42B39562304C53CA0007B74F /* XCRemoteSwiftPackageReference "swift-algorithms" */;
+			productName = Algorithms;
+		};
 		4D22ABE82AF431CB00220026 /* CapApp-SPM */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = D4C12C0A2AAA248700AAC8A2 /* XCLocalSwiftPackageReference "CapApp-SPM" */;

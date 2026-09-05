@@ -85,7 +85,7 @@ def create_portfolio_entry(payload):
             return jsonify({
                 'id': entry_id,
                 'message': 'Portfolio entry created successfully'
-            }, 201)
+            }), 201
 
     except Error as e:
         current_app.logger.error('portfolio db error: %s', e, exc_info=True)
