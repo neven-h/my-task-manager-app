@@ -1,6 +1,6 @@
 {
-  "appId": "com.drpitz.taskmanager",
-  "appName": "Task Manager",
+  "appId": "drpitz.club.WorldWidePitz",
+  "appName": "Dr Pitz Club",
   "webDir": "dist",
   "server": {
     "cleartext": true
