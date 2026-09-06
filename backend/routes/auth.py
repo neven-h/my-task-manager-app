@@ -1,4 +1,6 @@
-from flask import Blueprint, request, jsonify, current_app
+import os
+
+from flask import Blueprint, request, jsonify, current_app, send_from_directory
 from config import (
     limiter, get_db_connection, USERS,
     DEBUG, handle_error, validate_password,
@@ -8,6 +10,24 @@ import bcrypt
 import re
 
 auth_bp = Blueprint('auth', __name__)
+
+_PUBLIC_PAGES_DIR = os.path.realpath(os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    'frontend',
+    'public',
+))
+
+
+@auth_bp.route('/support', methods=['GET'])
+def support_page():
+    """Public App Store support page."""
+    return send_from_directory(_PUBLIC_PAGES_DIR, 'support.html')
+
+
+@auth_bp.route('/privacy', methods=['GET'])
+def privacy_page():
+    """Public App Store privacy policy."""
+    return send_from_directory(_PUBLIC_PAGES_DIR, 'privacy.html')
 
 @auth_bp.route('/api/health', methods=['GET'])
 def health_check():
