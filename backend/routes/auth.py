@@ -12,9 +12,8 @@ import re
 auth_bp = Blueprint('auth', __name__)
 
 _PUBLIC_PAGES_DIR = os.path.realpath(os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    'frontend',
-    'public',
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    'static',
 ))
 
 
