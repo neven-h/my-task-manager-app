@@ -7,11 +7,13 @@ const BG_MOBILE_URL = import.meta.env.VITE_BG_MOBILE_URL || '/background-mobile.
 const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
 
 const LandingPage = ({ onEnter, onSignUp }) => {
-    const isMobile = window.innerWidth <= 768;
+    const isIPad = /iPad/.test(navigator.userAgent)
+        || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const useMobileBackground = window.innerWidth <= 768 || isIPad;
     return (
         <div style={{
             minHeight: '100vh',
-            background: isMobile
+            background: useMobileBackground
                 ? `url(${BG_MOBILE_URL}) center/cover no-repeat, linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)`
                 : `url(${BG_URL}) 20% 50%/cover no-repeat, linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)`,
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
