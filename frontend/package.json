@@ -22,7 +22,7 @@
     "minimatch": "^3.1.4",
     "yauzl": ">=3.2.1",
     "picomatch": "^4.0.4",
-    "@xmldom/xmldom": "^0.9.10",
+    "@xmldom/xmldom": "^0.9.12",
     "uuid": "^14.0.0",
     "postcss": "^8.5.26",
     "tmp": "0.2.7",
