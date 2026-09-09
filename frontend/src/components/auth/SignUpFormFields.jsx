@@ -24,7 +24,8 @@ const SignUpFormFields = ({
         <div style={{ marginBottom: '20px' }}>
             <label style={labelStyle}>Username *</label>
             <input type="text" name="username" value={formData.username} onChange={handleChange}
-                required minLength={3} pattern="[a-zA-Z0-9_]+" style={inputStyle} placeholder="username" />
+                required minLength={3} pattern="[a-zA-Z0-9_]+" style={inputStyle} placeholder="username"
+                autoCapitalize="none" autoCorrect="off" spellCheck={false} />
             <small style={{ color: '#666', fontSize: '0.8rem' }}>
                 Letters, numbers, and underscores only (min 3 chars)
             </small>

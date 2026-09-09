@@ -24,6 +24,7 @@ const LoginForm = ({ username, password, onUsernameChange, onPasswordChange }) =
                     <input
                         type="text" value={username} onChange={(e) => onUsernameChange(e.target.value)}
                         required placeholder="Enter username" style={inputStyle}
+                        autoCapitalize="none" autoCorrect="off" spellCheck={false}
                         onFocus={(e) => Object.assign(e.target.style, focusStyle)}
                         onBlur={(e) => Object.assign(e.target.style, blurStyle)}
                     />
