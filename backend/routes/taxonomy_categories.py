@@ -79,18 +79,18 @@ def update_delete_category(payload, category_id):
             with get_db_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
 
-                cursor.execute("SELECT owner FROM categories_master WHERE category_id = %s", (category_id,))
-                row = cursor.fetchone()
-                if not row:
+                cursor.execute(
+                    "SELECT owner FROM categories_master WHERE category_id = %s AND owner = %s",
+                    (category_id, username),
+                )
+                if not cursor.fetchone():
                     return jsonify({'error': 'Category not found'}), 404
-                if row['owner'] != username:
-                    return jsonify({'error': 'Access denied'}), 403
 
                 cursor.execute("""
                                UPDATE categories_master
                                SET label = %s, color = %s, icon = %s
-                               WHERE category_id = %s
-                               """, (label, color, icon, category_id))
+                               WHERE category_id = %s AND owner = %s
+                               """, (label, color, icon, category_id, username))
                 connection.commit()
 
                 if cursor.rowcount == 0:
@@ -106,14 +106,17 @@ def update_delete_category(payload, category_id):
             with get_db_connection() as connection:
                 cursor = connection.cursor(dictionary=True)
 
-                cursor.execute("SELECT owner FROM categories_master WHERE category_id = %s", (category_id,))
-                row = cursor.fetchone()
-                if not row:
+                cursor.execute(
+                    "SELECT owner FROM categories_master WHERE category_id = %s AND owner = %s",
+                    (category_id, username),
+                )
+                if not cursor.fetchone():
                     return jsonify({'error': 'Category not found'}), 404
-                if row['owner'] != username:
-                    return jsonify({'error': 'Access denied'}), 403
 
-                cursor.execute("DELETE FROM categories_master WHERE category_id = %s", (category_id,))
+                cursor.execute(
+                    "DELETE FROM categories_master WHERE category_id = %s AND owner = %s",
+                    (category_id, username),
+                )
                 connection.commit()
 
                 if cursor.rowcount == 0:

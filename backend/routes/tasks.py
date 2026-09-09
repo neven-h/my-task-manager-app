@@ -61,6 +61,16 @@ def get_tasks(payload):
             if include_drafts != 'true':
                 where_clause += " AND (is_draft = FALSE OR is_draft IS NULL)"
 
+            # Ownership scoping, matching /api/stats: an admin sees everything,
+            # the 'shared' role sees the shared pool, and everyone else sees
+            # only what they created. Without this the list returned every
+            # account's tasks to every authenticated user.
+            if user_role == 'shared':
+                where_clause += " AND shared = TRUE"
+            elif user_role != 'admin':
+                where_clause += " AND created_by = %s AND created_by IS NOT NULL"
+                params.append(username)
+
             if DEBUG:
                 print(f"User: {username}, Role: {user_role}, Where: {where_clause}, Params: {params}")
 
