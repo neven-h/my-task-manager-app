@@ -9,10 +9,10 @@ taxonomy_clients_bp = Blueprint('taxonomy_clients', __name__)
 # Clients
 # ================================
 
-@taxonomy_clients_bp.route('/api/clients', methods=['GET', 'POST'])
+@taxonomy_clients_bp.route('/api/clients', methods=['GET', 'POST', 'DELETE'])
 @token_required
 def manage_clients_list(payload):
-    """Get list of clients or create a new one"""
+    """Get the client list, create a client, or delete one of your own."""
     username = payload['username']
     user_role = payload['role']
 
@@ -83,5 +83,35 @@ def manage_clients_list(payload):
         except Error as e:
             if 'Duplicate entry' in str(e):
                 return jsonify({'error': 'Client already exists'}), 409
+            current_app.logger.error('taxonomy db error: %s', e, exc_info=True)
+            return jsonify({'error': 'A database error occurred'}), 500
+
+    elif request.method == 'DELETE':
+        # Remove a client record you own. Deliberately narrow: it deletes the
+        # row in `clients` only and never touches tasks — the admin-only
+        # DELETE /api/clients/<name> is the endpoint that deletes a client's
+        # tasks, and that behaviour is unchanged. The name comes from a query
+        # parameter or a JSON body so this can share the /api/clients rule
+        # without shadowing that admin route.
+        body = request.get_json(silent=True) or {}
+        name = (request.args.get('name') or body.get('name') or '').strip()
+        if not name:
+            return jsonify({'error': 'Client name is required'}), 400
+
+        try:
+            with get_db_connection() as connection:
+                cursor = connection.cursor()
+                cursor.execute(
+                    "DELETE FROM clients WHERE name = %s AND owner = %s",
+                    (name, username),
+                )
+                deleted = cursor.rowcount
+                connection.commit()
+
+            if deleted == 0:
+                return jsonify({'error': 'Client not found'}), 404
+            return jsonify({'success': True, 'deleted': deleted})
+
+        except Error as e:
             current_app.logger.error('taxonomy db error: %s', e, exc_info=True)
             return jsonify({'error': 'A database error occurred'}), 500

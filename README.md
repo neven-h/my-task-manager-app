@@ -240,6 +240,32 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 
 ---
 
+## App Review demo data
+
+`backend/demo_seed/` fills the permanent App Store review account with
+realistic, entirely fictional sample data — clients, tasks, monthly budgets and
+bank transactions — so a reviewer never lands on empty screens. Every write
+goes through the app's own REST API using the demo account's JWT, so it is
+scoped to that account by the same ownership checks the clients use.
+
+```bash
+export DEMO_ACCOUNT_USERNAME='...'      # never committed
+export DEMO_ACCOUNT_PASSWORD='...'
+cd backend
+
+python demo_seed/seed_demo_account.py --dry-run     # preview, contacts nothing
+python demo_seed/seed_demo_account.py               # seed the local backend
+python demo_seed/seed_demo_account.py --api-base <url>          # seed a remote one
+python demo_seed/seed_demo_account.py --api-base <url> --verify-only
+python demo_seed/seed_demo_account.py --api-base <url> --cleanup
+```
+
+Seeded records carry a `[dpc-seed:v1/<slug>]` marker, so re-running creates no
+duplicates and `--cleanup` removes only what the seed created. Tests live in
+`backend/tests/test_demo_seed.py`.
+
+---
+
 ## Deployment
 
 | Service | Platform |
