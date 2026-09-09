@@ -7,6 +7,7 @@ from config import (
     encrypt_field, decrypt_field, log_bank_transaction_access,
     allowed_file, UPLOAD_FOLDER,
 )
+from db_schema_bank import ensure_transaction_tab_balance_columns
 from helpers import select_non_duplicate_indices
 from mysql.connector import Error
 from werkzeug.utils import secure_filename
@@ -195,14 +196,7 @@ def save_transactions(payload):
             # Persist the real bank balance from the יתרה column if provided
             if last_balance is not None:
                 try:
-                    cur.execute(
-                        "ALTER TABLE transaction_tabs ADD COLUMN IF NOT EXISTS "
-                        "last_known_balance DECIMAL(14,2) DEFAULT NULL",
-                    )
-                    cur.execute(
-                        "ALTER TABLE transaction_tabs ADD COLUMN IF NOT EXISTS "
-                        "balance_date DATE DEFAULT NULL",
-                    )
+                    ensure_transaction_tab_balance_columns(connection)
                     cur.execute(
                         "UPDATE transaction_tabs SET last_known_balance = %s, balance_date = %s "
                         "WHERE id = %s AND owner = %s",

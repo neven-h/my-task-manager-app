@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app
 from config import get_db_connection, token_required
+from db_schema_bank import ensure_transaction_tab_balance_columns
 from mysql.connector import Error
 
 transaction_tabs_bp = Blueprint('transaction_tabs', __name__)
@@ -100,17 +101,7 @@ def set_tab_balance(payload, tab_id):
             if tab['owner'] != username and payload.get('role') != 'admin':
                 return jsonify({'error': 'Access denied'}), 403
 
-            # Add columns if they don't exist yet (migration-safe)
-            for ddl in (
-                "ALTER TABLE transaction_tabs ADD COLUMN IF NOT EXISTS "
-                "last_known_balance DECIMAL(14,2) DEFAULT NULL",
-                "ALTER TABLE transaction_tabs ADD COLUMN IF NOT EXISTS "
-                "balance_date DATE DEFAULT NULL",
-            ):
-                try:
-                    cursor.execute(ddl)
-                except Exception:
-                    pass
+            ensure_transaction_tab_balance_columns(connection)
 
             cursor.execute(
                 "UPDATE transaction_tabs SET last_known_balance = %s, balance_date = %s "

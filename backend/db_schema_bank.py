@@ -39,6 +39,34 @@ def ensure_bank_columns(conn):
     _BANK_COLUMNS_ENSURED = True
 
 
+_TAB_BALANCE_COLUMNS_ENSURED = False
+
+
+def ensure_transaction_tab_balance_columns(conn):
+    """Idempotently add the balance columns to transaction_tabs.
+
+    MySQL has no ALTER TABLE ... ADD COLUMN IF NOT EXISTS (that is MariaDB
+    syntax), so the callers that used it were silently failing and then
+    erroring on the follow-up UPDATE. Same duplicate-tolerant pattern the rest
+    of this module uses. Cheap after the first call per process.
+    """
+    global _TAB_BALANCE_COLUMNS_ENSURED
+    if _TAB_BALANCE_COLUMNS_ENSURED:
+        return
+    cur = conn.cursor()
+    for ddl in (
+        "ALTER TABLE transaction_tabs ADD COLUMN last_known_balance DECIMAL(14,2) DEFAULT NULL",
+        "ALTER TABLE transaction_tabs ADD COLUMN balance_date DATE DEFAULT NULL",
+    ):
+        try:
+            cur.execute(ddl)
+        except Error as e:
+            if 'Duplicate column' not in str(e):
+                logger.warning('transaction_tabs balance column migration note: %s', e)
+    cur.close()
+    _TAB_BALANCE_COLUMNS_ENSURED = True
+
+
 def init_bank_tables(cursor, connection):
     """Create and migrate bank_transactions, transaction_tabs, and audit_log tables."""
     cursor.execute("""

@@ -2,6 +2,7 @@
 import logging
 from flask import Blueprint, request, jsonify
 from config import get_db_connection, token_required
+from .budget_helpers import ensure_budget_table
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,11 @@ _orphan_cleanup_done = False
 
 def _ensure_tabs_table(conn):
     global _orphan_cleanup_done
+    # budget_entries.tab_id is added by ensure_budget_table(), not by the
+    # CREATE TABLE in db_schema_misc. On a database that has never served a
+    # /api/budget request the orphan cleanup below would otherwise fail with
+    # "Unknown column 'tab_id'" and turn this endpoint into a 500.
+    ensure_budget_table(conn)
     cursor = conn.cursor()
     cursor.execute(_CREATE_BUDGET_TABS_SQL)
     if not _orphan_cleanup_done:

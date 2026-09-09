@@ -151,10 +151,10 @@ def get_monthly_balances(payload):
             cur = conn.cursor(dictionary=True)
             cur.execute("""
                 SELECT t.month, t.balance FROM (
-                    SELECT DATE_FORMAT(entry_date, '%%Y-%%m') AS month,
+                    SELECT CONCAT(YEAR(entry_date), '-', LPAD(MONTH(entry_date), 2, '0')) AS month,
                            balance,
                            ROW_NUMBER() OVER (
-                               PARTITION BY DATE_FORMAT(entry_date, '%%Y-%%m')
+                               PARTITION BY CONCAT(YEAR(entry_date), '-', LPAD(MONTH(entry_date), 2, '0'))
                                ORDER BY entry_date DESC, id DESC
                            ) AS rn
                     FROM budget_entries
@@ -247,7 +247,7 @@ def get_monthly_summary(payload):
 
             # 1. Budget entries grouped by month, split by is_fixed
             cur.execute(
-                "SELECT DATE_FORMAT(entry_date, '%%Y-%%m') AS month, "
+                "SELECT CONCAT(YEAR(entry_date), '-', LPAD(MONTH(entry_date), 2, '0')) AS month, "
                 "COALESCE(SUM(CASE WHEN type='income' THEN amount ELSE 0 END), 0) AS income, "
                 "COALESCE(SUM(CASE WHEN type='outcome' THEN amount ELSE 0 END), 0) AS expense, "
                 "COALESCE(SUM(CASE WHEN type='outcome' AND is_fixed=1 THEN amount ELSE 0 END), 0) AS fixed_expense "

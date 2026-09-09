@@ -55,7 +55,7 @@ def get_stats(payload):
             by_client = cursor.fetchall()
 
             cursor.execute(f"""
-                SELECT DATE_FORMAT(task_date, '%Y-%m') as month,
+                SELECT CONCAT(YEAR(task_date), '-', LPAD(MONTH(task_date), 2, '0')) as month,
                        COUNT(*) as count, SUM(duration) as total_duration
                 FROM tasks {where_clause}
                 GROUP BY month ORDER BY month DESC LIMIT 12
