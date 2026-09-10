@@ -6,8 +6,8 @@ const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica 
 const LandingButtons = ({ onEnter, onSignUp }) => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' }}>
         <button onClick={onEnter} style={{
-            display: 'inline-flex', alignItems: 'center', gap: '12px', padding: '18px 50px',
-            fontSize: '1.2rem', fontWeight: '700', fontFamily: FONT, color: 'white',
+            display: 'inline-flex', alignItems: 'center', gap: '12px', padding: '18px clamp(28px, 9vw, 50px)',
+            fontSize: '1.2rem', fontWeight: '700', fontFamily: FONT, color: 'white', whiteSpace: 'nowrap',
             background: 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)',
             border: 'none', borderRadius: '50px', cursor: 'pointer', transition: 'all 0.3s ease',
             boxShadow: '0 10px 40px rgba(220,53,69,0.4)', textTransform: 'uppercase', letterSpacing: '2px',
