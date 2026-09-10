@@ -5,10 +5,13 @@ const PROD_API = 'https://my-task-manager-app-production.up.railway.app/api';
 const LOCAL_API = 'http://127.0.0.1:5001/api';
 
 function resolveApiBase() {
-    if (typeof location !== 'undefined' && location.protocol === 'capacitor:') {
-        const injected = window['__DPC_API_BASE'];
-        if (typeof injected === 'string' && injected) return injected;
-    }
+    // __DPC_API_BASE is injected only by simulator builds (MyViewController.swift
+    // guards it with #if targetEnvironment(simulator)), so it is never present on
+    // a device or in TestFlight. The old code additionally required
+    // location.protocol === 'capacitor:', which does not hold in the WKWebView, so
+    // the override never applied and simulator builds silently used production.
+    const injected = typeof window !== 'undefined' ? window['__DPC_API_BASE'] : undefined;
+    if (typeof injected === 'string' && injected) return injected;
     // The custom api.drpitz.club DNS currently presents an invalid certificate.
     // Production must use Railway's secure public domain until that DNS is fixed.
     if (import.meta.env.PROD) return PROD_API;
