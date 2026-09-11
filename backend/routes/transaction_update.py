@@ -1,3 +1,5 @@
+import math
+
 from flask import Blueprint, request, jsonify, current_app
 from config import (
     get_db_connection, token_required,
@@ -14,6 +16,19 @@ def _month_year(data):
     if len(raw) >= 7 and raw[4] == '-':
         return raw[:7]
     return None
+
+
+def _amount(data):
+    """Finite float from payload['amount'], or None if missing/invalid.
+
+    Stored in amount_plain, which read paths prefer over the encrypted
+    amount — so every write must keep the two in sync.
+    """
+    try:
+        value = float(data.get('amount'))
+    except (TypeError, ValueError):
+        return None
+    return value if math.isfinite(value) else None
 
 
 @transaction_update_bp.route('/api/transactions/<int:transaction_id>', methods=['PUT'])
@@ -44,6 +59,9 @@ def update_transaction(payload, transaction_id):
                 return jsonify({'error': 'transaction_date is required'}), 400
             if not data.get('description'):
                 return jsonify({'error': 'description is required'}), 400
+            amount = _amount(data)
+            if amount is None:
+                return jsonify({'error': 'amount must be a number'}), 400
 
             # Encrypt sensitive fields
             encrypted_account = encrypt_field(data.get('account_number', ''))
@@ -55,6 +73,7 @@ def update_transaction(payload, transaction_id):
                     SET transaction_date = %s,
                         description      = %s,
                         amount           = %s,
+                        amount_plain     = %s,
                         month_year       = %s,
                         account_number   = %s,
                         transaction_type = %s,
@@ -67,6 +86,7 @@ def update_transaction(payload, transaction_id):
                 data['transaction_date'],
                 encrypted_description,
                 encrypted_amount,
+                amount,
                 month_year,
                 encrypted_account,
                 data.get('transaction_type', 'credit'),
@@ -119,6 +139,9 @@ def add_manual_transaction(payload):
                 return jsonify({'error': 'transaction_date is required'}), 400
             if not data.get('description'):
                 return jsonify({'error': 'description is required'}), 400
+            amount = _amount(data)
+            if amount is None:
+                return jsonify({'error': 'amount must be a number'}), 400
 
             # Encrypt sensitive fields
             encrypted_account = encrypt_field(data.get('account_number', ''))
@@ -127,14 +150,15 @@ def add_manual_transaction(payload):
 
             query = """
                 INSERT INTO bank_transactions
-                (account_number, transaction_date, description, amount, month_year, transaction_type, uploaded_by, tab_id, category, comments)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                (account_number, transaction_date, description, amount, amount_plain, month_year, transaction_type, uploaded_by, tab_id, category, comments)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """
             cursor.execute(query, (
                 encrypted_account,
                 data['transaction_date'],
                 encrypted_description,
                 encrypted_amount,
+                amount,
                 month_year,
                 data.get('transaction_type', 'credit'),
                 username,

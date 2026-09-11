@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app
 from config import (
     get_db_connection, admin_required,
     encrypt_field, decrypt_field,
@@ -134,6 +134,54 @@ def backfill_amount_plain(payload):
     except Exception as e:
         current_app.logger.error('backfill_amount_plain error: %s', e, exc_info=True)
         return jsonify({'error': 'Backfill failed'}), 500
+
+
+@admin_migrations_bp.route('/api/migrate-resync-amount-plain', methods=['POST'])
+@admin_required
+def resync_amount_plain(payload):
+    """Rewrite amount_plain wherever it disagrees with the encrypted amount.
+
+    Transaction edits used to update only the encrypted amount, leaving a stale
+    amount_plain that read paths prefer. Walks the table 200 rows per call by id;
+    pass the returned next_after_id as ?after_id= until done is true."""
+    try:
+        after_id = request.args.get('after_id', 0, type=int)
+        with get_db_connection() as connection:
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute(
+                "SELECT id, amount, amount_plain FROM bank_transactions "
+                "WHERE id > %s ORDER BY id LIMIT 200", (after_id,)
+            )
+            rows = cursor.fetchall()
+
+            batch = []
+            failed = 0
+            for row in rows:
+                try:
+                    # decrypt_field returns legacy plaintext as-is
+                    val = round(float(decrypt_field(row['amount'])), 4)
+                except Exception:
+                    failed += 1
+                    continue
+                if row['amount_plain'] is None or float(row['amount_plain']) != val:
+                    batch.append((val, row['id']))
+            if batch:
+                connection.cursor().executemany(
+                    "UPDATE bank_transactions SET amount_plain = %s WHERE id = %s", batch
+                )
+                connection.commit()
+
+            return jsonify({
+                'success': True,
+                'scanned': len(rows),
+                'updated': len(batch),
+                'failed': failed,
+                'next_after_id': rows[-1]['id'] if rows else after_id,
+                'done': len(rows) < 200,
+            })
+    except Exception as e:
+        current_app.logger.error('resync_amount_plain error: %s', e, exc_info=True)
+        return jsonify({'error': 'Resync failed'}), 500
 
 
 @admin_migrations_bp.route('/api/admin/migrate-db', methods=['POST'])
