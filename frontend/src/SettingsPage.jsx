@@ -2,6 +2,7 @@ import React from 'react';
 import { Shield, CheckCircle, Scan } from 'lucide-react';
 import useSecuritySettings from './hooks/useSecuritySettings';
 import useBiometricAuth from './hooks/useBiometricAuth';
+import useIsNarrowScreen from './hooks/useIsNarrowScreen';
 import SettingsHeader from './components/settings/SettingsHeader';
 import TwoFactorCard from './components/settings/TwoFactorCard';
 import ChangePasswordForm from './components/settings/ChangePasswordForm';
@@ -16,6 +17,7 @@ import CategoriesTagsSection from './components/settings/CategoriesTagsSection';
 const SettingsPage = () => {
     const settings = useSecuritySettings();
     const biometric = useBiometricAuth();
+    const narrow = useIsNarrowScreen();
 
     if (settings.loading) {
         return (
@@ -44,13 +46,16 @@ const SettingsPage = () => {
 
     return (
         <div style={{
-            minHeight: '100vh',
+            minHeight: '100dvh',
             background: '#F2F2F7',
-            padding: '40px 20px',
+            // Clear the status bar / notch on iOS, and tighten the gutters on phones
+            padding: narrow
+                ? 'calc(env(safe-area-inset-top, 0px) + 12px) 12px calc(env(safe-area-inset-bottom, 0px) + 24px)'
+                : 'calc(env(safe-area-inset-top, 0px) + 40px) 20px calc(env(safe-area-inset-bottom, 0px) + 40px)',
             fontFamily: 'Inter, sans-serif'
         }}>
             <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-                <SettingsHeader />
+                <SettingsHeader compact={narrow} />
 
                 {settings.success && (
                     <div style={{
@@ -72,7 +77,7 @@ const SettingsPage = () => {
                 <div style={{
                     background: 'white',
                     borderRadius: settings.success ? '0' : '0 0 16px 16px',
-                    padding: '40px',
+                    padding: narrow ? '20px 16px' : '40px',
                     boxShadow: '0 10px 40px rgba(0,0,0,0.15)'
                 }}>
                     <div style={{

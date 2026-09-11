@@ -1,11 +1,14 @@
 import React, { useRef, useState } from 'react';
 import useSwipeDown from './hooks/useSwipeDown';
+import useKeyboardInset from './hooks/useKeyboardInset';
 
 const SPRING = 'cubic-bezier(0.22,1,0.36,1)';
 
 const IOSBottomSheet = ({ isOpen, onClose, children, maxHeight = '85dvh', height }) => {
     const scrollRef = useRef(null);
     const [closing, setClosing] = useState(false);
+    // Lift the sheet above the on-screen keyboard (WKWebView does not resize for it)
+    const keyboardInset = useKeyboardInset();
 
     const handleClose = () => {
         setClosing(true);
@@ -31,14 +34,15 @@ const IOSBottomSheet = ({ isOpen, onClose, children, maxHeight = '85dvh', height
                 }}
             />
             <div style={{
-                position: 'fixed', left: 0, right: 0, bottom: 0,
+                position: 'fixed', left: 0, right: 0, bottom: keyboardInset,
                 background: '#fff', borderTop: '3px solid #000',
-                maxHeight: height || maxHeight, height: height || 'auto',
+                maxHeight: keyboardInset ? `calc(${height || maxHeight} - ${keyboardInset}px)` : (height || maxHeight),
+                height: height ? (keyboardInset ? `calc(${height} - ${keyboardInset}px)` : height) : 'auto',
                 overflowY: 'hidden', display: 'flex', flexDirection: 'column',
                 transform: visible ? `translateY(${dragY}px)` : 'translateY(100%)',
                 transition: dragY > 0 ? 'none' : `transform 260ms ${SPRING}`,
                 zIndex: 301,
-                paddingBottom: 'env(safe-area-inset-bottom, 0)',
+                paddingBottom: keyboardInset ? 0 : 'env(safe-area-inset-bottom, 0)',
                 animation: visible && dragY === 0 ? 'iosSheetUp 250ms ease-out' : undefined,
             }}>
                 <style>{`@keyframes iosSheetUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>

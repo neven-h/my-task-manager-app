@@ -7,6 +7,27 @@ import {
     disableBiometric,
 } from '../utils/biometricPlugin';
 
+// Session-scoped flag: once the user explicitly logs out (or dismisses the Face ID prompt),
+// stop auto-prompting on every visit to the login page until the app is relaunched.
+// The manual "Sign in with Face ID" button keeps working regardless.
+const AUTO_PROMPT_SUPPRESSED_KEY = 'biometricAutoPromptSuppressed';
+
+const sessionStore = () => {
+    try { return window.sessionStorage; } catch { return null; }
+};
+
+export function suppressBiometricAutoPrompt() {
+    sessionStore()?.setItem(AUTO_PROMPT_SUPPRESSED_KEY, '1');
+}
+
+export function clearBiometricAutoPromptSuppression() {
+    sessionStore()?.removeItem(AUTO_PROMPT_SUPPRESSED_KEY);
+}
+
+export function isBiometricAutoPromptSuppressed() {
+    return sessionStore()?.getItem(AUTO_PROMPT_SUPPRESSED_KEY) === '1';
+}
+
 /**
  * Hook that wraps the native BiometricAuth Capacitor plugin.
  *

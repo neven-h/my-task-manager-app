@@ -5,7 +5,11 @@ import API_BASE from './config';
 import storage, { STORAGE_KEYS } from './utils/storage';
 import LoginForm from './components/auth/LoginForm';
 import TwoFactorForm from './components/auth/TwoFactorForm';
-import useBiometricAuth from './hooks/useBiometricAuth';
+import useBiometricAuth, {
+    isBiometricAutoPromptSuppressed,
+    suppressBiometricAutoPrompt,
+    clearBiometricAutoPromptSuppression,
+} from './hooks/useBiometricAuth';
 
 const LoginPage = ({ onLogin, onBack }) => {
     const [username, setUsername] = useState('');
@@ -26,20 +30,26 @@ const LoginPage = ({ onLogin, onBack }) => {
         storage.set(STORAGE_KEYS.AUTH_ROLE, data.role);
         storage.set(STORAGE_KEYS.USERNAME, data.username);
         storage.set(STORAGE_KEYS.ROLE, data.role);
+        clearBiometricAutoPromptSuppression();
         onLogin(data.token, data.username, data.role);
     };
 
-    // Auto-trigger biometric login on mount if available + enabled
+    // Auto-trigger biometric login on mount if available + enabled.
+    // Skipped after an explicit logout or a dismissed prompt (until the app is relaunched);
+    // the "Sign in with Face ID" button below still triggers it on demand.
     useEffect(() => {
         if (biometricTriedRef.current || !biometric.available || !biometric.enabled) return;
+        if (isBiometricAutoPromptSuppressed()) return;
         biometricTriedRef.current = true;
 
         (async () => {
             setLoading(true);
             const result = await biometric.login();
             if (!result?.token) {
+                // Face ID dismissed or failed — fall through to password form and don't nag again
+                suppressBiometricAutoPrompt();
                 setLoading(false);
-                return; // Face ID dismissed or failed — fall through to password form
+                return;
             }
             // Validate the stored token is still valid
             try {
