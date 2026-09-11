@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, current_app
 from config import (
     limiter, get_db_connection, USERS,
     generate_jwt_token, token_required,
+    encrypt_field, decrypt_field,
 )
 import pyotp
 import qrcode
@@ -67,12 +68,12 @@ def setup_2fa(payload):
             import base64 as b64
             qr_code_base64 = b64.b64encode(buffer.getvalue()).decode('utf-8')
 
-            # Store the secret temporarily (will be activated when user verifies)
+            # Store the secret encrypted (will be activated when user verifies)
             cursor.execute("""
                 UPDATE users
                 SET two_factor_secret = %s
                 WHERE id = %s
-            """, (secret, user['id']))
+            """, (encrypt_field(secret), user['id']))
             connection.commit()
 
             return jsonify({
@@ -115,7 +116,7 @@ def enable_2fa(payload):
                 return jsonify({'error': 'No 2FA setup found. Please setup 2FA first.'}), 400
 
             # Verify the code
-            totp = pyotp.TOTP(user['two_factor_secret'])
+            totp = pyotp.TOTP(decrypt_field(user['two_factor_secret']))
             if not totp.verify(code, valid_window=1):
                 return jsonify({'error': 'Invalid verification code'}), 401
 
@@ -164,7 +165,7 @@ def verify_2fa():
                 return jsonify({'error': 'Invalid username or verification code'}), 401
 
             # Verify TOTP code
-            totp = pyotp.TOTP(user['two_factor_secret'])
+            totp = pyotp.TOTP(decrypt_field(user['two_factor_secret']))
             if totp.verify(code, valid_window=1):
                 # Valid TOTP code
                 token = generate_jwt_token(user['username'], user['role'])
