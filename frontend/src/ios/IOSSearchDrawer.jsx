@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Search } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { THEME, FONT_STACK } from './theme';
@@ -16,6 +16,15 @@ const fieldStyle = {
 
 const IOSSearchDrawer = ({ isOpen, onClose }) => {
     const { filters, setFilters, allCategories, allTags, clients, fetchTasks, clearFilters } = useTaskContext();
+    const searchInputRef = useRef(null);
+
+    // Focus the keyword field only after the sheet has slid into place. Focusing while the
+    // sheet is still translated off-screen makes WebKit open the keyboard over nothing.
+    useEffect(() => {
+        if (!isOpen) return undefined;
+        const t = setTimeout(() => searchInputRef.current?.focus({ preventScroll: true }), 300);
+        return () => clearTimeout(t);
+    }, [isOpen]);
 
     const updateFilter = (key, value) => setFilters(f => ({ ...f, [key]: value }));
 
@@ -45,7 +54,8 @@ const IOSSearchDrawer = ({ isOpen, onClose }) => {
                     <div>
                         <label style={labelStyle}>Keywords</label>
                         <input
-                            type="text" placeholder="Search tasks..." autoFocus
+                            ref={searchInputRef}
+                            type="text" placeholder="Search tasks..."
                             value={filters.search || ''}
                             onChange={e => updateFilter('search', e.target.value)}
                             style={fieldStyle}

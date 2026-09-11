@@ -23,11 +23,12 @@ const TwoFactorCard = ({
                     <h3 style={{
                         fontSize: '1.2rem',
                         fontWeight: 700,
-                        marginBottom: '8px',
+                        margin: '0 0 8px 0',
                         color: '#111',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '12px'
+                        flexWrap: 'wrap',
+                        gap: '8px 12px'
                     }}>
                         Two-Factor Authentication
                         {twoFactorEnabled ? (

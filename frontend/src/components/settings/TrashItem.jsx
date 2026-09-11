@@ -17,8 +17,9 @@ const TrashItem = ({ item, onRestore, onPermanentDelete, restoring, confirmDelet
             style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 16,
-                padding: '16px 20px',
+                flexWrap: 'wrap',
+                gap: 12,
+                padding: '14px 16px',
                 background: '#fff',
                 border: '2px solid #e5e7eb',
                 borderRadius: 12,
@@ -36,11 +37,11 @@ const TrashItem = ({ item, onRestore, onPermanentDelete, restoring, confirmDelet
                 <Icon size={20} color={config.color} />
             </div>
 
-            <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: 4 }}>
+            <div style={{ flex: '1 1 180px', minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: 4, overflowWrap: 'anywhere' }}>
                     {item.item_name || `${config.label} #${item.item_id}`}
                 </div>
-                <div style={{ display: 'flex', gap: 16, fontSize: '0.8rem', color: '#6b7280' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 12px', fontSize: '0.8rem', color: '#6b7280' }}>
                     <span style={{
                         padding: '2px 8px',
                         background: `${config.color}15`,

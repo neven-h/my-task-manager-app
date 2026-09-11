@@ -2,6 +2,7 @@ import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import API_BASE from './config';
 import storage, { STORAGE_KEYS } from './utils/storage';
+import { suppressBiometricAutoPrompt } from './hooks/useBiometricAuth';
 
 const LandingPage = lazy(() => import('./LandingPage'));
 const LoginPage = lazy(() => import('./LoginPage'));
@@ -57,6 +58,8 @@ const App = () => {
   };
 
   const handleLogout = () => {
+    // The user chose to sign out — don't immediately pop Face ID on the login page.
+    suppressBiometricAutoPrompt();
     storage.clearAuth();
     setAuthToken(null);
     setAuthUser(null);
