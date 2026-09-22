@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Brain, ChevronDown, ChevronUp, RefreshCw, TrendingUp, AlertTriangle, PiggyBank } from 'lucide-react';
 import { useBankTransactionContext } from '../../context/BankTransactionContext';
+import AIConsentNotice from './AIConsentNotice';
+import { hasAIConsent, setAIConsent } from '../../utils/aiConsent';
 
 const VERDICT = {
     stable:   { bg: '#16a34a', label: '↔ Stable' },
@@ -49,10 +51,17 @@ const Card = ({ label, Icon, color, bg, items }) => {
 const AIAdvisorPanel = () => {
     const { aiAdvisor, aiAdvisorLoading, fetchAIAdvisor, activeTabId } = useBankTransactionContext();
     const [open, setOpen] = useState(false);
+    const [consented, setConsented] = useState(hasAIConsent);
 
     const toggle = () => {
-        if (!open && !aiAdvisor) fetchAIAdvisor();
+        if (!open && !aiAdvisor && consented) fetchAIAdvisor();
         setOpen(v => !v);
+    };
+
+    const allowAI = () => {
+        setAIConsent(true);
+        setConsented(true);
+        fetchAIAdvisor();
     };
 
     if (!activeTabId) return null;
@@ -76,14 +85,14 @@ const AIAdvisorPanel = () => {
                         padding: '1px 7px', fontSize: '0.62rem', fontWeight: 700,
                         border: '1px solid rgba(255,255,255,0.35)', letterSpacing: '0.05em',
                     }}>Claude AI</span>
-                    {data && !isFallback && (
+                    {consented && data && !isFallback && (
                         <span style={{ background: verdict.bg, color: '#fff', padding: '1px 8px', fontSize: '0.72rem', fontWeight: 800 }}>
                             {verdict.label}
                         </span>
                     )}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    {open && (
+                    {open && consented && (
                         <button
                             onClick={(e) => { e.stopPropagation(); fetchAIAdvisor(true); }}
                             disabled={aiAdvisorLoading}
@@ -101,7 +110,14 @@ const AIAdvisorPanel = () => {
                 </div>
             </div>
 
-            {open && (
+            {/* Consent gate — nothing is sent to Anthropic until the user allows it */}
+            {open && !consented && (
+                <div style={{ background: '#fff' }}>
+                    <AIConsentNotice onAllow={allowAI} onDecline={() => setOpen(false)} />
+                </div>
+            )}
+
+            {open && consented && (
                 <div style={{ background: '#fff' }}>
                     {/* Loading */}
                     {aiAdvisorLoading && (

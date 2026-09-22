@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Brain, RefreshCw } from 'lucide-react';
 import { THEME, FONT_STACK } from '../../theme';
+import AIConsentNotice from '../../../components/transactions/AIConsentNotice';
+import { hasAIConsent, setAIConsent } from '../../../utils/aiConsent';
 
 const VERDICT_STYLES = {
     healthy:    { bg: THEME.success, label: 'Healthy' },
@@ -36,10 +38,17 @@ const Section = ({ title, items, accentColor }) => {
 
 const MobileAIAdvisorPanel = ({ aiAdvisor, aiAdvisorLoading, fetchAIAdvisor, activeTabId }) => {
     const [open, setOpen] = useState(false);
+    const [consented, setConsented] = useState(hasAIConsent);
 
     const toggle = () => {
-        if (!open && !aiAdvisor) fetchAIAdvisor();
+        if (!open && !aiAdvisor && consented) fetchAIAdvisor();
         setOpen(v => !v);
+    };
+
+    const allowAI = () => {
+        setAIConsent(true);
+        setConsented(true);
+        fetchAIAdvisor();
     };
 
     if (!activeTabId) return null;
@@ -76,7 +85,7 @@ const MobileAIAdvisorPanel = ({ aiAdvisor, aiAdvisorLoading, fetchAIAdvisor, act
                         </span>
                     )}
                 </div>
-                {data && !isFallback && !open && (
+                {consented && data && !isFallback && !open && (
                     <span style={{
                         fontSize: '0.72rem', fontWeight: 700,
                         background: verdictStyle.bg, color: '#fff',
@@ -87,8 +96,19 @@ const MobileAIAdvisorPanel = ({ aiAdvisor, aiAdvisorLoading, fetchAIAdvisor, act
                 )}
             </button>
 
+            {/* Consent gate — nothing is sent to Anthropic until the user allows it */}
+            {open && !consented && (
+                <div style={{
+                    background: '#fff',
+                    borderRadius: '0 0 12px 12px',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                }}>
+                    <AIConsentNotice onAllow={allowAI} onDecline={() => setOpen(false)} />
+                </div>
+            )}
+
             {/* Expanded body */}
-            {open && (
+            {open && consented && (
                 <div style={{
                     background: '#fff',
                     borderRadius: '0 0 12px 12px',

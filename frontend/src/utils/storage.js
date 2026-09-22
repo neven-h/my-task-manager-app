@@ -19,6 +19,9 @@ export const STORAGE_KEYS = {
     USER_ROLE:       'userRole',          // legacy duplicate of AUTH_ROLE
     BIOMETRIC_ENABLED: 'biometricEnabled', // Face ID / biometric login enabled flag
 
+    // Privacy
+    AI_CONSENT: 'aiConsent',              // per-user prefix: `aiConsent:<username>`
+
     // View state
     LAST_ACTIVE_VIEW:     'lastActiveView',
     ACTIVE_TAB_ID:        'activeTabId',
