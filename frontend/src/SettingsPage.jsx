@@ -7,6 +7,7 @@ import SettingsHeader from './components/settings/SettingsHeader';
 import TwoFactorCard from './components/settings/TwoFactorCard';
 import ChangePasswordForm from './components/settings/ChangePasswordForm';
 import DisplayPreferencesSection from './components/settings/DisplayPreferencesSection';
+import AIPrivacySection from './components/settings/AIPrivacySection';
 import DangerZoneSection from './components/settings/DangerZoneSection';
 import DisableTwoFactorModal from './components/settings/DisableTwoFactorModal';
 import DeleteAccountModal from './components/settings/DeleteAccountModal';
@@ -174,6 +175,8 @@ const SettingsPage = () => {
                             toggleRtl={settings.toggleRtl}
                         />
                     )}
+
+                    <AIPrivacySection />
 
                     <DangerZoneSection
                         onOpenDeleteModal={() => settings.setShowDeleteModal(true)}
