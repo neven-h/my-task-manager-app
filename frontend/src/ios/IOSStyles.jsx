@@ -111,6 +111,16 @@ const IOSStyles = () => (
           background: #fff;
         }
 
+        /* WebKit gives date/time inputs a min-content width wider than half the phone,
+           which pushed the Date/Time row off the right edge */
+        input[type="date"], input[type="time"] {
+          -webkit-appearance: none;
+          appearance: none;
+          display: block;
+          min-width: 0;
+          min-height: 48px;
+        }
+
         input:focus, textarea:focus, select:focus {
           outline: none;
           border-color: ${THEME.primary};

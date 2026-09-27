@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { Search } from 'lucide-react';
+import React from 'react';
+import { Search, SlidersHorizontal } from 'lucide-react';
 import { useTaskContext } from '../context/TaskContext';
 import { THEME, FONT_STACK } from './theme';
 import IOSBottomSheet from './IOSBottomSheet';
@@ -16,15 +16,6 @@ const fieldStyle = {
 
 const IOSSearchDrawer = ({ isOpen, onClose }) => {
     const { filters, setFilters, allCategories, allTags, clients, fetchTasks, clearFilters } = useTaskContext();
-    const searchInputRef = useRef(null);
-
-    // Focus the keyword field only after the sheet has slid into place. Focusing while the
-    // sheet is still translated off-screen makes WebKit open the keyboard over nothing.
-    useEffect(() => {
-        if (!isOpen) return undefined;
-        const t = setTimeout(() => searchInputRef.current?.focus({ preventScroll: true }), 300);
-        return () => clearTimeout(t);
-    }, [isOpen]);
 
     const updateFilter = (key, value) => setFilters(f => ({ ...f, [key]: value }));
 
@@ -44,24 +35,12 @@ const IOSSearchDrawer = ({ isOpen, onClose }) => {
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                     <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, textTransform: 'uppercase', fontFamily: FONT_STACK }}>
-                        <Search size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
-                        Search & Filter
+                        <SlidersHorizontal size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
+                        Filters
                     </h2>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {/* Keywords */}
-                    <div>
-                        <label style={labelStyle}>Keywords</label>
-                        <input
-                            ref={searchInputRef}
-                            type="text" placeholder="Search tasks..."
-                            value={filters.search || ''}
-                            onChange={e => updateFilter('search', e.target.value)}
-                            style={fieldStyle}
-                        />
-                    </div>
-
                     {/* Status */}
                     <div>
                         <label style={labelStyle}>Status</label>

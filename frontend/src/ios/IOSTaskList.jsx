@@ -54,7 +54,9 @@ const IOSTaskList = ({ filterMode }) => {
                 onDelete={deleteSelectedTasks}
                 onClear={clearSelection}
             />
-            {loading ? (
+            {/* Only show the loading state on first load — replacing the list on every refresh
+                collapsed the page and made it jump to the top */}
+            {loading && tasks.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: THEME.muted }}>
                     Loading...
                 </div>

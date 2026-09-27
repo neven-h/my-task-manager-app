@@ -12,7 +12,7 @@ const btnStyle = {
     justifyContent: 'center',
 };
 
-const IOSHeader = ({ onMenuOpen, onSearchOpen }) => (
+const IOSHeader = ({ onMenuOpen, onSearchOpen, children }) => (
     <div style={{
         position: 'sticky',
         top: 0,
@@ -51,6 +51,7 @@ const IOSHeader = ({ onMenuOpen, onSearchOpen }) => (
                 </button>
             </div>
         </div>
+        {children}
     </div>
 );
 

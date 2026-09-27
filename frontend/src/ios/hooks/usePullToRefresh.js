@@ -10,7 +10,10 @@ const usePullToRefresh = ({ onRefresh, threshold = 60 } = {}) => {
     const handleTouchStart = useCallback((e) => {
         if (refreshing) return;
         startY.current = e.touches[0].clientY;
-        locked.current = null;
+        // The container is not a scroll box — the window scrolls. Only arm the pull when the
+        // page is already at the very top; otherwise every downward drag mid-list was hijacked.
+        const scrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop;
+        locked.current = scrollTop > 0 ? 'other' : null;
     }, [refreshing]);
 
     const handleTouchMove = useCallback((e) => {
@@ -21,10 +24,6 @@ const usePullToRefresh = ({ onRefresh, threshold = 60 } = {}) => {
             locked.current = dy > 0 ? 'down' : 'other';
         }
         if (locked.current !== 'down') return;
-
-        const el = containerRef.current;
-        const scrollTop = el ? el.scrollTop : (document.documentElement.scrollTop || document.body.scrollTop);
-        if (scrollTop > 5) return;
 
         if (dy > 0) {
             e.preventDefault();

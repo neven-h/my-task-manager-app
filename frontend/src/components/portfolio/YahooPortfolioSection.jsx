@@ -5,6 +5,7 @@ import { getAuthHeaders } from '../../api.js';
 import YahooImportForm from './YahooImportForm';
 import YahooPortfolioSummary from './YahooPortfolioSummary';
 import YahooHoldingsTable from './YahooHoldingsTable';
+import YahooHoldingEditForm from './YahooHoldingEditForm';
 
 const YahooPortfolioSection = ({ colors, authUser, defaultExpanded = false }) => {
     const [showYahooPortfolio, setShowYahooPortfolio] = useState(defaultExpanded);
@@ -12,6 +13,7 @@ const YahooPortfolioSection = ({ colors, authUser, defaultExpanded = false }) =>
     const [yahooSummary, setYahooSummary] = useState(null);
     const [yahooLoading, setYahooLoading] = useState(false);
     const [showImportForm, setShowImportForm] = useState(false);
+    const [editingHolding, setEditingHolding] = useState(null);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(null);
 
@@ -51,6 +53,13 @@ const YahooPortfolioSection = ({ colors, authUser, defaultExpanded = false }) =>
     const handleImported = async (msg) => {
         setSuccess(msg);
         setShowImportForm(false);
+        await fetchYahooHoldings();
+    };
+
+    const handleEdited = async (msg) => {
+        setError(null);
+        setSuccess(msg);
+        setEditingHolding(null);
         await fetchYahooHoldings();
     };
 
@@ -122,7 +131,12 @@ const YahooPortfolioSection = ({ colors, authUser, defaultExpanded = false }) =>
                             </div>
                         )
                     ) : (
-                        <YahooHoldingsTable colors={colors} holdings={yahooHoldings} onDelete={handleDelete} onClear={handleClear} />
+                        <>
+                            {editingHolding && (
+                                <YahooHoldingEditForm key={editingHolding.id} colors={colors} holding={editingHolding} onSaved={handleEdited} onCancel={() => setEditingHolding(null)} />
+                            )}
+                            <YahooHoldingsTable colors={colors} holdings={yahooHoldings} onDelete={handleDelete} onClear={handleClear} onEdit={setEditingHolding} />
+                        </>
                     )}
                 </>
             )}

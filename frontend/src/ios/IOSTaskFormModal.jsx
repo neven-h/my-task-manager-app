@@ -54,7 +54,7 @@ const IOSTaskFormModal = () => {
                                 onChange={e => { update('description', e.target.value); autoSize(e.target); }}
                                 placeholder="Task description..." style={{ minHeight: '44px', maxHeight: '300px', overflow: 'auto' }} />
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px', marginBottom: '16px' }}>
                             <div><label style={labelStyle}>Date</label><input type="date" value={formData.task_date} onChange={e => update('task_date', e.target.value)} /></div>
                             <div><label style={labelStyle}>Time</label><input type="time" value={formData.task_time} onChange={e => update('task_time', e.target.value)} /></div>
                         </div>

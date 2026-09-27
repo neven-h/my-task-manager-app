@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import useSwipeDown from './hooks/useSwipeDown';
 import useKeyboardInset from './hooks/useKeyboardInset';
 
@@ -22,7 +23,9 @@ const IOSBottomSheet = ({ isOpen, onClose, children, maxHeight = '85dvh', height
     const visible = isOpen && !closing;
     const backdropOpacity = visible ? Math.max(0, 1 - dragY / 300) : 0;
 
-    return (
+    // Portal to <body>: sheets opened from a task card otherwise live inside the list's
+    // pull-to-refresh container, whose touch handlers swallowed drags inside the sheet.
+    return createPortal(
         <>
             <div
                 onClick={handleClose}
@@ -60,7 +63,8 @@ const IOSBottomSheet = ({ isOpen, onClose, children, maxHeight = '85dvh', height
                     {children}
                 </div>
             </div>
-        </>
+        </>,
+        document.body
     );
 };
 

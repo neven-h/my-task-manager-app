@@ -20,6 +20,7 @@ import IOSQuickAdd from './IOSQuickAdd';
 import IOSPullToRefresh from './IOSPullToRefresh';
 import IOSSidebar from './IOSSidebar';
 import IOSSearchDrawer from './IOSSearchDrawer';
+import IOSSearchBar from './IOSSearchBar';
 import IOSTaskFormModal from './IOSTaskFormModal';
 import IOSBulkTaskModal from './IOSBulkTaskModal';
 import IOSShareTaskModal from './IOSShareTaskModal';
@@ -70,6 +71,8 @@ const IOSTaskTrackerInner = () => {
     const [showSidebar, setShowSidebar] = useState(false);
     const [filterMode, setFilterMode] = useState('all');
     const [showSearchDrawer, setShowSearchDrawer] = useState(false);
+    const [showSearchBar, setShowSearchBar] = useState(false);
+    const openSearch = useCallback(() => setShowSearchBar(true), []);
     const [showUploadFlow, setShowUploadFlow] = useState(false);
 
     useEffect(() => {
@@ -114,17 +117,22 @@ const IOSTaskTrackerInner = () => {
     return (
         <div style={{ minHeight: '100dvh', background: THEME.bg, paddingBottom: '20px', fontFamily: FONT_STACK }}>
             <IOSStyles />
-            <IOSHeader onMenuOpen={() => setShowSidebar(true)} onSearchOpen={() => setShowSearchDrawer(true)} />
+            <IOSHeader onMenuOpen={() => setShowSidebar(true)} onSearchOpen={showSearchBar ? undefined : openSearch}>
+                {showSearchBar && (
+                    <IOSSearchBar onClose={() => setShowSearchBar(false)} onOpenFilters={() => setShowSearchDrawer(true)} />
+                )}
+            </IOSHeader>
 
             <IOSPullToRefresh onRefresh={fetchTasks}>
-                <IOSTaskActions />
-                <IOSFilterBar filterMode={filterMode} setFilterMode={setFilterMode} />
+                {/* While searching, results go straight under the search bar so they stay above the keyboard */}
+                {!showSearchBar && <IOSTaskActions />}
+                {!showSearchBar && <IOSFilterBar filterMode={filterMode} setFilterMode={setFilterMode} />}
                 <IOSActiveFilterBanner />
                 <IOSTaskList filterMode={filterMode} />
             </IOSPullToRefresh>
             <IOSQuickAdd />
 
-            <IOSSidebar isOpen={showSidebar} onClose={() => setShowSidebar(false)} onOpenSearch={() => setShowSearchDrawer(true)} onOpenUpload={() => setShowUploadFlow(true)} />
+            <IOSSidebar isOpen={showSidebar} onClose={() => setShowSidebar(false)} onOpenSearch={openSearch} onOpenUpload={() => setShowUploadFlow(true)} />
             <IOSSearchDrawer isOpen={showSearchDrawer} onClose={() => setShowSearchDrawer(false)} />
 
             <MobileUploadFlow
