@@ -51,6 +51,8 @@
 	<string>Dr. Pitz Club needs calendar access to add your tasks as events.</string>
 	<key>NSCalendarsWriteOnlyAccessUsageDescription</key>
 	<string>Dr. Pitz Club needs write access to add tasks to your calendar.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Dr. Pitz Club uses the camera so you can take a photo and attach it to a task.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Use Face ID to quickly and securely sign in.</string>
 	<key>UILaunchStoryboardName</key>
