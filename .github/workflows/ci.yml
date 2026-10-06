@@ -32,6 +32,10 @@ jobs:
         working-directory: ./frontend
         run: npm run build
 
+      - name: Check iOS permission descriptions
+        working-directory: ./frontend
+        run: node ci/check-ios-permissions.cjs
+
   backend-check:
     name: Backend Check
     runs-on: ubuntu-latest
@@ -56,3 +60,38 @@ jobs:
         working-directory: ./backend
         run: |
           python -m compileall -q .
+
+      - name: Run backend tests
+        working-directory: ./backend
+        run: python -m unittest discover -s tests
+
+  ios-build:
+    name: iOS Build Check
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.12.0'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build web app and sync iOS project
+        working-directory: ./frontend
+        run: |
+          npm ci
+          npm run build
+          npx cap sync ios
+
+      - name: Build iOS app for the simulator
+        working-directory: ./frontend/ios/App
+        run: |
+          xcodebuild build \
+            -project App.xcodeproj \
+            -scheme App \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO

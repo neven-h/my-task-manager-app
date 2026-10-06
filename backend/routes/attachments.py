@@ -5,6 +5,7 @@ from config import (
 )
 import cloudinary.uploader
 from mysql.connector import Error
+from werkzeug.exceptions import RequestEntityTooLarge
 from werkzeug.utils import secure_filename
 import os
 import uuid
@@ -128,6 +129,8 @@ def upload_task_attachment(payload, task_id):
             )
             row = cursor.fetchone()
         return jsonify(_attachment_to_json(row)), 201
+    except RequestEntityTooLarge:
+        return jsonify({'error': 'File is too large (max 16 MB)'}), 413
     except Error as e:
         current_app.logger.error('attachments db error on upload: %s', e, exc_info=True)
         return jsonify({'error': 'A database error occurred'}), 500
