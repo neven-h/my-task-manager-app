@@ -46,7 +46,6 @@ const useTaskFetch = () => {
 
     const fetchTasks = useCallback(async (filterParams) => {
         try {
-            setLoading(true);
             const params = filterParams || new URLSearchParams();
             const response = await fetch(`${API_BASE}/tasks?${params}`, { headers: getAuthHeaders() });
             let data = await response.json();
@@ -56,8 +55,6 @@ const useTaskFetch = () => {
             setError('Failed to fetch tasks');
             console.error('Error fetching tasks:', err);
             return [];
-        } finally {
-            setLoading(false);
         }
     }, []);
 
