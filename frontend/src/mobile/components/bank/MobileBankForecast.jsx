@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Zap, MoreHorizontal, X, RotateCcw } from 'lucide-react';
 import { FONT_STACK } from '../../theme';
+import { clickable } from '../../../utils/a11yClick';
 import {
     groupPredictions, GROUP_META, humanFrequency, humanBasis, activePredictions,
     trendArrow, confidenceLabel, loadDismissed, saveDismissed, emptyStateMessage,
@@ -26,7 +27,7 @@ const MobilePredRow = ({ p, isLast, onDismiss, onRestore }) => {
             textDecoration: p._dismissed ? 'line-through' : 'none',
             transition: 'opacity 0.2s',
         }}>
-            <div onClick={() => !p._dismissed && setExpanded(e => !e)}
+            <div {...clickable(() => !p._dismissed && setExpanded(e => !e))}
                 style={{
                     display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px',
                     borderBottom: isLast ? 'none' : `0.5px solid ${IOS.separator}`,

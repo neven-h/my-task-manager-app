@@ -9,6 +9,7 @@ import IOSTaskCardAttachments from './IOSTaskCardAttachments';
 import IOSTaskDetailModal from './IOSTaskDetailModal';
 import renderDescription from '../utils/renderDescription';
 
+import { clickable } from '../utils/a11yClick';
 const SNAP_WIDTH = 88;
 
 const DeleteConfirmModal = ({ onConfirm, onCancel }) => (
@@ -170,7 +171,7 @@ const IOSTaskCard = ({ task }) => {
                                         : <Circle size={26} color={THEME.accent} strokeWidth={2.5} />}
                                 </button>
                             )}
-                            <div onClick={handleCardTap} style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}>
+                            <div {...clickable(handleCardTap)} style={{ flex: 1, minWidth: 0, cursor: 'pointer' }}>
                                 <h3 dir="auto" style={{ fontSize: '1rem', fontWeight: 600, margin: 0, lineHeight: 1.4, textDecoration: isCompleted ? 'line-through' : 'none', color: isCompleted ? '#8E8E93' : '#000', fontFamily: FONT_STACK, wordBreak: 'break-word', unicodeBidi: 'plaintext' }}>
                                     {task.title}
                                 </h3>

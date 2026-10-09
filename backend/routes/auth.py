@@ -28,6 +28,12 @@ def privacy_page():
     """Public App Store privacy policy."""
     return send_from_directory(_PUBLIC_PAGES_DIR, 'privacy.html')
 
+
+@auth_bp.route('/accessibility', methods=['GET'])
+def accessibility_page():
+    """Public accessibility statement (Hebrew + English)."""
+    return send_from_directory(_PUBLIC_PAGES_DIR, 'accessibility.html')
+
 @auth_bp.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint that reports app and database status."""

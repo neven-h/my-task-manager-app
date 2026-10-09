@@ -4,6 +4,7 @@ import { useBankTransactionContext } from '../../context/BankTransactionContext'
 import AIConsentNotice from './AIConsentNotice';
 import { hasAIConsent, setAIConsent } from '../../utils/aiConsent';
 
+import { clickable } from '../../utils/a11yClick';
 const VERDICT = {
     stable:   { bg: '#16a34a', label: '↔ Stable' },
     rising:   { bg: '#d97706', label: '↑ Rising' },
@@ -73,7 +74,7 @@ const AIAdvisorPanel = () => {
     return (
         <div style={{ marginBottom: '1.5rem', border: '3px solid #000', boxShadow: '4px 4px 0 #000' }}>
             {/* Header */}
-            <div onClick={toggle} style={{
+            <div {...clickable(toggle)} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '12px 20px', background: '#000', color: '#fff',
                 cursor: 'pointer', userSelect: 'none',

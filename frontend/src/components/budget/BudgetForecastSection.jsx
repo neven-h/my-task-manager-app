@@ -3,6 +3,7 @@ import { Zap, MoreHorizontal, X, RotateCcw } from 'lucide-react';
 import { groupPredictions, GROUP_META, humanFrequency, humanBasis, activePredictions } from '../../utils/forecastHelpers';
 import { WhatIfControls } from '../transactions/WhatIfControls';
 
+import { clickable } from '../../utils/a11yClick';
 const SYS = {
     primary:   '#0000FF',
     success:   '#00AA00',
@@ -27,7 +28,7 @@ const BudgetPredRow = ({ p, onDismiss, onRestore }) => {
             textDecoration: p._dismissed ? 'line-through' : 'none',
             transition: 'opacity 0.2s',
         }}>
-            <div onClick={() => !p._dismissed && setExpanded(e => !e)}
+            <div {...clickable(() => !p._dismissed && setExpanded(e => !e))}
                 style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 16px', cursor: 'pointer', fontSize: '0.82rem' }}>
                 <div style={{ width: 8, height: 8, background: amtColor, flexShrink: 0, borderRadius: '50%' }} />
                 <div style={{ width: 80, flexShrink: 0, fontWeight: 600, color: SYS.light }}>

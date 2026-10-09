@@ -1,0 +1,14 @@
+/* One keyboard-focus indicator for the whole app. !important is required because many
+   components set `outline: none` inline, which would otherwise hide focus completely. */
+:focus-visible {
+  outline: 3px solid #6c2bd9 !important;
+  outline-offset: 2px !important;
+}
+
+/* iOS (WKWebView and Safari): follow the device's Dynamic Type size. Every rem in the app
+   scales from this root size. */
+@supports (-webkit-touch-callout: none) {
+  html {
+    font: -apple-system-body;
+  }
+}

@@ -12,6 +12,7 @@ import MobileWhatIfControls from './MobileWhatIfControls';
 import AnomalyCard from './MobileAnomalyCard';
 import MobileBalanceInput from './MobileBalanceInput';
 
+import { clickable } from '../../../utils/a11yClick';
 const IOS = {
     green: '#34C759', red: '#FF3B30', blue: '#007AFF', teal: '#30B0C7',
     orange: '#FF9500', label: '#8E8E93', sep: 'rgba(0,0,0,0.08)',
@@ -61,7 +62,7 @@ const MobileTransactionBalanceForecast = ({ activeTabId }) => {
 
     return (
         <div style={{ padding: '8px 16px 4px', fontFamily: FONT_STACK }}>
-            <div onClick={toggle} style={{
+            <div {...clickable(toggle)} style={{
                 background: 'linear-gradient(135deg, #0f766e 0%, #0891b2 100%)',
                 borderRadius: open ? '16px 16px 0 0' : 16, padding: '13px 16px',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
