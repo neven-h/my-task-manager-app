@@ -1,6 +1,7 @@
 import React from 'react';
 import { Edit2, Trash2 } from 'lucide-react';
 
+import { clickable } from '../../utils/a11yClick';
 const FONT_STACK = '"Inter", "Helvetica Neue", Calibri, sans-serif';
 
 const ClientCard = ({ client, isSelected, editingClient, newClientName, colors, onSelect, onStartEdit, onCancelEdit, onNameChange, onRename, onDelete }) => {
@@ -29,7 +30,7 @@ const ClientCard = ({ client, isSelected, editingClient, newClientName, colors, 
                 }
             }}
         >
-            <div onClick={() => onSelect(client.client)} style={{ padding: '1.5rem' }}>
+            <div {...clickable(() => onSelect(client.client))} style={{ padding: '1.5rem' }}>
                 <div style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '1rem', color: colors.text }}>
                     {client.client}
                 </div>

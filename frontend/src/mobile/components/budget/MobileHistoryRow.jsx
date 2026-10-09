@@ -1,6 +1,7 @@
 import React, { memo, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
+import { clickable } from '../../../utils/a11yClick';
 const IOS = {
     bg: '#F2F2F7', card: '#fff', separator: 'rgba(0,0,0,0.08)',
     green: '#34C759', red: '#FF3B30', blue: '#007AFF', muted: '#8E8E93',
@@ -25,7 +26,7 @@ const HistoryRow = memo(({ m, isLast }) => {
 
     return (
         <div style={{ borderBottom: isLast ? 'none' : `0.5px solid ${IOS.separator}` }}>
-            <div onClick={() => setExp(v => !v)} style={{
+            <div {...clickable(() => setExp(v => !v))} style={{
                 display: 'flex', alignItems: 'center', gap: 10,
                 padding: '10px 16px', cursor: 'pointer',
             }}>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { MoreHorizontal, X, RotateCcw } from 'lucide-react';
 import { humanFrequency, humanBasis, trendArrow, confidenceLabel } from '../../utils/forecastHelpers';
 
+import { clickable } from '../../utils/a11yClick';
 const fmt = (n) => Math.abs(n).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const PredRow = ({ p, onDismiss, onRestore }) => {
@@ -12,7 +13,7 @@ const PredRow = ({ p, onDismiss, onRestore }) => {
 
     return (
         <div style={{ borderBottom: '1px dashed #e5e7eb', opacity: p._dismissed ? 0.35 : 1, textDecoration: p._dismissed ? 'line-through' : 'none', transition: 'opacity 0.2s' }}>
-            <div onClick={() => !p._dismissed && setExpanded(e => !e)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', cursor: 'pointer', fontSize: '0.85rem' }}>
+            <div {...clickable(() => !p._dismissed && setExpanded(e => !e))} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', cursor: 'pointer', fontSize: '0.85rem' }}>
                 <div style={{ width: 70, flexShrink: 0, fontWeight: 700, color: '#555', fontSize: '0.8rem' }}>
                     {new Date(p.predicted_date + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                 </div>

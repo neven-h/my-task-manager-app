@@ -4,6 +4,7 @@ import { useBankTransactionContext } from '../../context/BankTransactionContext'
 import { groupPredictions, activePredictions, loadDismissed, saveDismissed, emptyStateMessage } from '../../utils/forecastHelpers';
 import GroupSection from './TransactionForecastGroup';
 
+import { clickable } from '../../utils/a11yClick';
 const fmt = (n) => Math.abs(n).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const TransactionForecast = () => {
@@ -36,7 +37,7 @@ const TransactionForecast = () => {
 
     return (
         <div style={{ marginBottom: '1.5rem', border: '2px solid #e0e0e0', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-            <div onClick={toggle} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: '#64748b', color: '#fff', cursor: 'pointer', userSelect: 'none' }}>
+            <div {...clickable(toggle)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: '#64748b', color: '#fff', cursor: 'pointer', userSelect: 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 800, fontSize: '0.95rem', letterSpacing: '0.3px' }}>
                     <Sparkles size={18} />
                     AI Forecast

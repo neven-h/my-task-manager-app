@@ -5,6 +5,7 @@ import { formatCurrency } from '../../utils/formatCurrency';
 import TransactionEditRow from './TransactionEditRow';
 import TransactionHistoryRows from './TransactionHistoryRows';
 
+import { keyActivate } from '../../utils/a11yClick';
 const TransactionRow = ({ transaction }) => {
     const {
         colors, editingTransaction, setEditingTransaction,
@@ -49,7 +50,7 @@ const TransactionRow = ({ transaction }) => {
                         </td>
                         <td onClick={() => setExpandedDescriptionId(isExpanded ? null : t.id)}
                             style={{ padding: '0.65rem 0.75rem', fontSize: '0.9rem', color: colors.text, cursor: 'pointer', position: 'relative' }}>
-                            <span style={{ borderBottom: `1px dashed ${colors.textLight}`, paddingBottom: '1px' }}>{t.description}</span>
+                            <span {...keyActivate(() => setExpandedDescriptionId(isExpanded ? null : t.id))} aria-expanded={isExpanded} style={{ borderBottom: `1px dashed ${colors.textLight}`, paddingBottom: '1px' }}>{t.description}</span>
                             {t.comments && <span title={t.comments} style={{ marginLeft: 6, fontSize: '0.75rem', color: colors.textLight }}>💬</span>}
                         </td>
                         <td style={{ padding: '0.65rem 0.75rem', fontSize: '0.85rem', color: colors.textLight }}>

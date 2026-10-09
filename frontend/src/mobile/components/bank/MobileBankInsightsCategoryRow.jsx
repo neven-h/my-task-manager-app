@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { fmtAmount, fmtMonth, barWidth, trendArrow } from '../../../utils/insightsHelpers';
 
+import { clickable } from '../../../utils/a11yClick';
 const IOS = {
     separator: 'rgba(0,0,0,0.08)', green: '#34C759', red: '#FF3B30',
     blue: '#007AFF', muted: '#8E8E93',
@@ -20,7 +21,7 @@ const CategoryRow = ({ cat, rank, isLast }) => {
 
     return (
         <div style={{ borderBottom: isLast ? 'none' : `0.5px solid ${IOS.separator}` }}>
-            <div onClick={() => setExpanded(e => !e)} style={{
+            <div {...clickable(() => setExpanded(e => !e))} style={{
                 display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', fontSize: '0.85rem',
             }}>
                 <span style={{

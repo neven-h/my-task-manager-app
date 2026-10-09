@@ -3,6 +3,7 @@ import { BarChart3, ChevronDown, ChevronUp } from 'lucide-react';
 import { useBankTransactionContext } from '../../context/BankTransactionContext';
 import InsightsDataPanel from './InsightsDataPanel';
 
+import { clickable } from '../../utils/a11yClick';
 // ── Main component ───────────────────────────────────────────────────────────
 const TransactionInsights = () => {
     const { spendingInsights, insightsLoading, fetchSpendingInsights, activeTabId } = useBankTransactionContext();
@@ -26,7 +27,7 @@ const TransactionInsights = () => {
             borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
         }}>
             {/* Header */}
-            <div onClick={toggle} style={{
+            <div {...clickable(toggle)} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: '14px 20px', background: '#64748b', color: '#fff',
                 cursor: 'pointer', userSelect: 'none',
