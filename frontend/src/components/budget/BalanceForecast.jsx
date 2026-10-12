@@ -4,6 +4,7 @@ import { MonthlyOutlook } from './BudgetMonthlyOutlook';
 import BudgetTimelinePanel from './BudgetTimelinePanel';
 import relativeTime from '../../utils/relativeTime';
 
+import { clickable } from '../../utils/a11yClick';
 // Inject spin keyframe once
 if (typeof document !== 'undefined' && !document.getElementById('bf-spin')) {
     const s = document.createElement('style');
@@ -104,7 +105,7 @@ const BalanceForecast = ({ forecast, onFetch, onRefresh, loading, linkedTab, las
                     </span>
                 )}
                 {open && (
-                    <span onClick={e => { e.stopPropagation(); onRefresh(); }} title="Refresh forecast"
+                    <span {...clickable(e => { e.stopPropagation(); onRefresh(); }, { 'aria-label': 'Refresh forecast' })} title="Refresh forecast"
                         style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', padding: 4 }}>
                         <RefreshCw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
                     </span>

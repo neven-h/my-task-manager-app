@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Edit2, Trash2, Copy, ChevronRight, ChevronDown, Pin, PinOff } from 'lucide-react';
 
+import { clickable } from '../../utils/a11yClick';
 const SYS = {
     success: '#00AA00',
     accent:  '#FF0000',
@@ -32,7 +33,7 @@ export const EntryRow = ({ entry, balance, cutoff, onEdit, onDuplicate, onDelete
 
     return (
         <>
-            <div onClick={handleRowClick}
+            <div {...clickable(handleRowClick)}
                 style={{
                     display: 'flex', alignItems: 'center', gap: 12,
                     padding: '10px 16px',
@@ -42,7 +43,7 @@ export const EntryRow = ({ entry, balance, cutoff, onEdit, onDuplicate, onDelete
                 }}>
                 {/* Select checkbox */}
                 {selectMode && (
-                    <div onClick={(e) => { e.stopPropagation(); onToggleSelect(entry.id); }}
+                    <div {...clickable((e) => { e.stopPropagation(); onToggleSelect(entry.id); }, { role: 'checkbox', 'aria-checked': isSelected })}
                         style={{ width: 20, height: 20, borderRadius: 4, border: `2px solid ${isSelected ? SYS.success : SYS.border}`,
                             background: isSelected ? SYS.success : '#fff', cursor: 'pointer', flexShrink: 0,
                             display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '0.7rem', fontWeight: 800 }}>

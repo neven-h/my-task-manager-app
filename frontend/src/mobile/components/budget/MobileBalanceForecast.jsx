@@ -5,6 +5,7 @@ import MonthCard from './MobileMonthCard';
 import MobileForecastTimeline from './MobileForecastTimeline';
 import relativeTime from '../../../utils/relativeTime';
 
+import { clickable } from '../../../utils/a11yClick';
 // Inject spin keyframe once
 if (typeof document !== 'undefined' && !document.getElementById('bf-spin')) {
     const s = document.createElement('style');
@@ -104,7 +105,7 @@ const MobileBalanceForecast = ({ forecast, onFetch, onRefresh, loading, linkedTa
                     </span>
                 )}
                 {open && (
-                    <span onClick={e => { e.stopPropagation(); onRefresh(); }}
+                    <span {...clickable(e => { e.stopPropagation(); onRefresh(); }, { 'aria-label': 'Refresh forecast' })}
                         style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', padding: 4 }}>
                         <RefreshCw size={13} style={{ color: open ? '#fff' : IOS.blue, animation: loading ? 'spin 1s linear infinite' : 'none' }} />
                     </span>

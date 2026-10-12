@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { fmtAmount, fmtMonth, barWidth, trendArrow } from '../../utils/insightsHelpers';
 
+import { clickable } from '../../utils/a11yClick';
 const TrendIcon = ({ trend }) => {
     if (trend === 'up')   return <TrendingUp   size={14} style={{ color: '#dc2626' }} />;
     if (trend === 'down') return <TrendingDown size={14} style={{ color: '#16a34a' }} />;
@@ -19,7 +20,7 @@ const InsightsCategoryRow = ({ cat, rank }) => {
 
     return (
         <div style={{ borderBottom: '1px solid #e5e7eb' }}>
-            <div onClick={() => setExpanded(e => !e)} style={{
+            <div {...clickable(() => setExpanded(e => !e))} style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: '10px 16px', cursor: 'pointer', fontSize: '0.85rem',
             }}>

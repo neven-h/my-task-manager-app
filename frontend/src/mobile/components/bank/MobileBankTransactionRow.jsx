@@ -4,6 +4,7 @@ import { formatCurrency } from '../../../utils/formatCurrency';
 import { THEME } from '../../theme';
 import useSwipeGesture from '../../../ios/hooks/useSwipeGesture';
 
+import { clickable } from '../../../utils/a11yClick';
 const SPRING = 'cubic-bezier(0.22,1,0.36,1)';
 
 const MobileBankTransactionRow = ({ transaction, onEdit, onDelete, isLast, selectMode, isSelected, onToggle, onBatchRename }) => {
@@ -27,7 +28,7 @@ const MobileBankTransactionRow = ({ transaction, onEdit, onDelete, isLast, selec
                     <Trash2 size={20} color="#fff" />
                 </div>
             )}
-            <div onClick={selectMode ? () => onToggle(transaction.id) : undefined}
+            <div {...(selectMode ? clickable(() => onToggle(transaction.id)) : {})}
                 style={{ padding: '14px 16px', background: isSelected ? 'rgba(0,122,255,0.08)' : '#fff', display: 'flex', alignItems: 'center', gap: '12px', transform: selectMode ? 'none' : `translateX(${swipeOffset}px)`, transition: swipeOffset === 0 ? `transform 300ms ${SPRING}` : 'none', borderBottom: isLast ? 'none' : '0.5px solid rgba(0,0,0,0.08)', position: 'relative', zIndex: 1 }}
                 {...(selectMode ? {} : { onTouchStart: handlers.onTouchStart, onTouchMove: handlers.onTouchMove, onTouchEnd: handlers.onTouchEnd })}
             >

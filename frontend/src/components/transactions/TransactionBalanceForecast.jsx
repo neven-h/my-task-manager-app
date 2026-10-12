@@ -11,6 +11,7 @@ import { HealthCard, AnomalyCard } from './HealthCard';
 import API_BASE from '../../config';
 import { getAuthHeaders } from '../../api.js';
 
+import { clickable } from '../../utils/a11yClick';
 const TransactionBalanceForecast = () => {
     const { activeTabId, tabs, setTabs } = useBankTransactionContext();
 
@@ -98,7 +99,7 @@ const TransactionBalanceForecast = () => {
             overflow: 'hidden',
         }}>
             {/* ── Header ───────────────────────────────────────────────────── */}
-            <div onClick={toggle} style={{
+            <div {...clickable(toggle)} style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 padding: isDesktop ? '16px 24px' : '14px 20px',
                 background: '#000',

@@ -88,6 +88,7 @@ frontend/ios/App/App.xcodeproj/project.xcworkspace/
 frontend/public/*
 !frontend/public/privacy.html
 !frontend/public/support.html
+!frontend/public/accessibility.html
 
 # Xcode
 *.xcworkspace

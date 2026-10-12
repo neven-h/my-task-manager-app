@@ -8,6 +8,7 @@ import { THEME, FONT_STACK } from './theme';
 import sanitizeUrl from '../utils/sanitizeUrl';
 import storage, { STORAGE_KEYS } from '../utils/storage';
 
+import { clickable } from '../utils/a11yClick';
 const labelStyle = {
     display: 'block', marginBottom: '8px', fontWeight: 700,
     fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px'
@@ -70,7 +71,7 @@ const IOSTaskFormModal = () => {
                             <label style={labelStyle}>Categories</label>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                                 {allCategories.map(cat => (
-                                    <div key={cat.id} className={`category-pill ${formData.categories.includes(cat.id) ? 'selected' : ''}`} onClick={() => toggleCategory(cat.id)}>{cat.label}</div>
+                                    <div key={cat.id} className={`category-pill ${formData.categories.includes(cat.id) ? 'selected' : ''}`} {...clickable(() => toggleCategory(cat.id), { 'aria-pressed': formData.categories.includes(cat.id) })}>{cat.label}</div>
                                 ))}
                             </div>
                         </div>

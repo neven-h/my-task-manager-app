@@ -1,6 +1,7 @@
 import React, { memo, useState } from 'react';
 import { Edit2, Trash2 } from 'lucide-react';
 
+import { clickable } from '../../../utils/a11yClick';
 const IOS = {
     card:      '#fff',
     separator: 'rgba(0,0,0,0.08)',
@@ -42,7 +43,7 @@ export const EntryRow = memo(({ entry, balance, onEdit, onDelete, isLast, isExpa
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     {/* Select checkbox */}
                     {selectMode && (
-                        <div onClick={(e) => { e.stopPropagation(); onToggleSelect(entry.id); }}
+                        <div {...clickable((e) => { e.stopPropagation(); onToggleSelect(entry.id); }, { role: 'checkbox', 'aria-checked': isSelected })}
                             style={{
                                 width: 20, height: 20, borderRadius: '50%',
                                 border: `2px solid ${isSelected ? '#007AFF' : 'rgba(0,0,0,0.2)'}`,
