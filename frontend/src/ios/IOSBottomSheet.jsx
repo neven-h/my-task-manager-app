@@ -55,8 +55,8 @@ const IOSBottomSheet = ({ isOpen, onClose, children, maxHeight = '85dvh', height
                     <div style={{ width: 36, height: 5, background: 'rgba(0,0,0,0.18)', borderRadius: 3 }} />
                 </div>
 
-                {/* Scrollable content */}
-                <div ref={scrollRef} style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                {/* Scrollable content. Auto-height sheets size to content: a 0 basis would collapse it to 0px. */}
+                <div ref={scrollRef} style={{ flex: height ? '1 1 0' : '0 1 auto', minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
                     {children}
                 </div>
             </div>
