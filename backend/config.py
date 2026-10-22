@@ -56,8 +56,6 @@ from auth_utils import (      # noqa: E402
     USERS,
 )
 from crypto import (          # noqa: E402
-    DATA_ENCRYPTION_KEY,
-    cipher_suite,
     encrypt_field,
     decrypt_field,
     log_bank_transaction_access,

@@ -1,10 +1,16 @@
 """
 Data encryption/decryption helpers and bank transaction audit logging.
+
+Rotation: with DATA_ENCRYPTION_KEY_PREVIOUS set beside a new
+DATA_ENCRYPTION_KEY, everything writes with the new key and reads accept
+either, until rekey.py (run by init_db at every boot) has rewritten what the
+old one made. A value that opens under no key is an error, never data.
 """
 import os
 import base64
+from functools import lru_cache
 
-from cryptography.fernet import Fernet
+from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 from flask import request
 
 from auth_utils import IS_CI
@@ -12,22 +18,39 @@ from auth_utils import IS_CI
 
 # ==================== ENCRYPTION SETUP ====================
 
-if IS_CI:
-    DATA_ENCRYPTION_KEY = base64.urlsafe_b64encode(b'0' * 32)
-else:
-    encryption_key = os.getenv('DATA_ENCRYPTION_KEY')
-    if not encryption_key:
-        raise ValueError("DATA_ENCRYPTION_KEY environment variable must be set for production")
-    try:
-        DATA_ENCRYPTION_KEY = encryption_key.encode()
-        Fernet(DATA_ENCRYPTION_KEY)  # Validate key
-    except Exception:
-        raise ValueError(
-            "DATA_ENCRYPTION_KEY is invalid. "
-            "Generate with: python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'"
-        )
+_KEY_HELP = ("Generate with: python -c 'from cryptography.fernet import Fernet; "
+             "print(Fernet.generate_key().decode())'")
 
-cipher_suite = Fernet(DATA_ENCRYPTION_KEY)
+# What encrypt_field stores: base64 of a Fernet token, which starts "gAAAAA".
+TOKEN_PREFIX = base64.urlsafe_b64encode(b"gAAAAA").decode()
+
+
+def _keys():
+    """The key ring, current first: what writes, then what may still read."""
+    if IS_CI and not os.getenv('DATA_ENCRYPTION_KEY'):
+        current = base64.urlsafe_b64encode(b'0' * 32).decode()
+    else:
+        current = os.getenv('DATA_ENCRYPTION_KEY')
+    if not current:
+        raise ValueError("DATA_ENCRYPTION_KEY environment variable must be set for production")
+    previous = os.getenv('DATA_ENCRYPTION_KEY_PREVIOUS')
+    return [current] + ([previous] if previous else [])
+
+
+@lru_cache(maxsize=1)
+def _ring():
+    try:
+        return MultiFernet([Fernet(key.encode()) for key in _keys()])
+    except (ValueError, TypeError):
+        raise ValueError(f"DATA_ENCRYPTION_KEY or DATA_ENCRYPTION_KEY_PREVIOUS is invalid. {_KEY_HELP}")
+
+
+@lru_cache(maxsize=1)
+def _current():
+    return Fernet(_keys()[0].encode())
+
+
+_ring()  # fail at boot, not on the first request
 
 
 # ==================== ENCRYPT / DECRYPT ====================
@@ -36,25 +59,32 @@ def encrypt_field(value: str) -> str:
     """Encrypt a sensitive field value."""
     if not value:
         return value
-    try:
-        encrypted = cipher_suite.encrypt(value.encode())
-        return base64.urlsafe_b64encode(encrypted).decode('utf-8')
-    except Exception as e:
-        print(f"Encryption error: {e}")
-        raise
+    return base64.urlsafe_b64encode(_ring().encrypt(value.encode())).decode('utf-8')
 
 
 def decrypt_field(encrypted_value: str) -> str:
-    """Decrypt a sensitive field value. Returns plaintext on success, original on failure."""
+    """Decrypt a sensitive field value. Raises InvalidToken when no key in the
+    ring opens it: ciphertext must never be shown, or saved again, as data."""
     if not encrypted_value:
         return encrypted_value
+    token = base64.urlsafe_b64decode(encrypted_value.encode('utf-8'))
+    return _ring().decrypt(token).decode('utf-8')
+
+
+def rekey_value(stored):
+    """-> `stored` rewritten under the current key, or None when it already is.
+    A value that is not one of our tokens is legacy plaintext and is encrypted.
+    Raises InvalidToken for a token no key in the ring opens."""
+    if not stored:
+        return None
+    if not stored.startswith(TOKEN_PREFIX):
+        return encrypt_field(stored)
+    token = base64.urlsafe_b64decode(stored.encode('utf-8'))
     try:
-        decoded = base64.urlsafe_b64decode(encrypted_value.encode('utf-8'))
-        decrypted = cipher_suite.decrypt(decoded)
-        return decrypted.decode('utf-8')
-    except Exception as e:
-        print(f"Decryption warning: {e}")
-        return encrypted_value  # Return as-is for legacy plaintext migration
+        _current().decrypt(token)
+        return None
+    except InvalidToken:
+        return base64.urlsafe_b64encode(_ring().rotate(token)).decode('utf-8')
 
 
 # ==================== AUDIT LOGGING ====================

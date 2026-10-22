@@ -238,6 +238,17 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 
 > ⚠️ Back up your `DATA_ENCRYPTION_KEY` securely. If lost, encrypted transaction data cannot be recovered.
 
+### Rotating `DATA_ENCRYPTION_KEY`
+
+Never just swap it: every encrypted value would stop opening (and `decrypt_field` raises rather than show ciphertext).
+
+1. Generate a new key and save it in your password manager beside the old one.
+2. In one change of the Railway variables, set `DATA_ENCRYPTION_KEY_PREVIOUS=<old>` and `DATA_ENCRYPTION_KEY=<new>`. On restart, `init_db` runs `backend/rekey.py`, which re-encrypts `bank_transactions` (account number, description, amount) and `users.two_factor_secret` under the new key.
+3. Check the deploy log for `rekey: ...` with no values left that no key opens, then delete `DATA_ENCRYPTION_KEY_PREVIOUS`.
+4. The 2FA secrets were readable with the old key: re-enrol 2FA.
+
+A new encrypted column must be added to `rekey.ENCRYPTED`.
+
 ---
 
 ## App Review demo data
