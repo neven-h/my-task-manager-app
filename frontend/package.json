@@ -9,10 +9,10 @@
     "@capacitor/ios": "^8.5.3",
     "@sentry/capacitor": "4.4.0",
     "@sentry/react": "10.69.0",
-    "lucide-react": "^0.263.1",
+    "lucide-react": "^1.61.0",
     "react": "^18.2.0",
     "react-dom": "^19.3.1",
-    "react-router-dom": "^7.18.3"
+    "react-router-dom": "^7.18.4"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
