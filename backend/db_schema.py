@@ -31,6 +31,8 @@ def init_db():
         init_portfolio_tables(cursor, connection)
         init_misc_tables(cursor, connection)
         init_renovation_tables(cursor, connection)
+        from rekey import rekey_all  # needs DATA_ENCRYPTION_KEY; import lazily
+        rekey_all(cursor)  # legacy plaintext and a key rotation, every boot
 
         connection.commit()
         print("Database initialized successfully")
