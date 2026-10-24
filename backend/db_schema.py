@@ -12,7 +12,7 @@ from db_schema_renovation import init_renovation_tables
 
 
 def init_db():
-    """Initialize database and create all tables."""
+    """Initialize database and create all tables. -> True on success."""
     connection = None
     cursor = None
     try:
@@ -36,9 +36,11 @@ def init_db():
 
         connection.commit()
         print("Database initialized successfully")
+        return True
 
     except Error as e:
         print(f"Error initializing database: {e}")
+        return False
     finally:
         if connection and connection.is_connected():
             if cursor:

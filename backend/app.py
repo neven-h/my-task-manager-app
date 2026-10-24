@@ -4,7 +4,7 @@ Registers all route blueprints and initializes the database.
 """
 import logging
 import os
-from config import app, init_db
+from config import app
 
 _logger = logging.getLogger(__name__)
 
@@ -139,18 +139,13 @@ app.register_blueprint(admin_migrations_bp)
 app.register_blueprint(trash_bp)
 app.register_blueprint(renovation_bp)
 app.register_blueprint(ai_advisor_bp)
-
-# Initialize database on import (works with gunicorn)
-try:
-    init_db()
-    _logger.info("Database initialized successfully")
-except Exception:
-    _logger.error(
-        "Database initialization failed — app will start but DB operations may fail",
-        exc_info=True,
-    )
+# The schema is set up by db_setup.py, once per deploy and before the web
+# process starts, never on import: gunicorn must answer health checks in
+# seconds, not after a pass over every table.
 
 
 if __name__ == '__main__':
+    from config import init_db
+    init_db()  # local development: no deploy step runs db_setup.py here
     debug = os.getenv('FLASK_DEBUG', 'false').lower() == 'true'
     app.run(debug=debug, host='0.0.0.0', port=5001)
