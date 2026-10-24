@@ -3,8 +3,7 @@ import Capacitor
 import LocalAuthentication
 
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
-    var window: UIWindow?
+class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
@@ -43,13 +42,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
     
-    @available(iOS, introduced: 2.0, deprecated: 26.0, message: "Use UIScene lifecycle and handle URLs via UIScene.ConnectionOptions.URLContexts.")
-    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
-        // Called when the app was launched with a url. Feel free to add additional processing here,
-        // but if you want the App API to support tracking app url opens, make sure to keep this call
-        return ApplicationDelegateProxy.shared.application(app, open: url, options: options)
-    }
-    
     // Convenience: Trigger Face ID/Passcode auth from native side if you need to wire it to a button.
     // Example usage from a view controller: (UIApplication.shared.delegate as? AppDelegate)?.authenticateWithBiometrics(reason: "Sign in with Face ID") { success, error in
     //     // handle result
@@ -83,4 +75,24 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
     }
 
+}
+
+// The app's window lives in a scene (UIScene lifecycle). iOS now refuses to
+// launch apps that don't adopt it: they stop with a trap the moment they open.
+// UIKit loads Main.storyboard into `window` (Info.plist, UIApplicationSceneManifest);
+// links and universal links reach Capacitor through its scene proxy.
+class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+    var window: UIWindow?
+
+    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+        SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)
+    }
+
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        SceneDelegateProxy.shared.scene(scene, openURLContexts: URLContexts)
+    }
+
+    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        SceneDelegateProxy.shared.scene(scene, continue: userActivity)
+    }
 }
