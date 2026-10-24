@@ -1,6 +1,6 @@
 import json
 from flask import Blueprint, request, jsonify, current_app
-from config import get_db_connection, handle_error, DEBUG, init_db, admin_required
+from config import get_db_connection, handle_error, DEBUG, admin_required
 from mysql.connector import Error
 
 admin_bp = Blueprint('admin', __name__)
@@ -213,11 +213,3 @@ def delete_description_rule(payload, rule_id):
         current_app.logger.error('description_rules DELETE error: %s', e, exc_info=True)
         return jsonify({'error': 'Database error'}), 500
 
-
-# Initialize database on import (works with gunicorn)
-try:
-    init_db()
-    print("✓ Database initialized successfully")
-except Exception as e:
-    print(f"⚠ Warning: Database initialization failed: {e}")
-    print("⚠ App will start but database operations will fail until MySQL is configured")

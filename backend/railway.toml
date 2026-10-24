@@ -1,4 +1,5 @@
 [deploy]
+preDeployCommand = "python db_setup.py"
 healthcheckPath = "/api/health"
 healthcheckTimeout = 30
 restartPolicyType = "ON_FAILURE"

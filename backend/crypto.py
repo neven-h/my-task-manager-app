@@ -3,7 +3,7 @@ Data encryption/decryption helpers and bank transaction audit logging.
 
 Rotation: with DATA_ENCRYPTION_KEY_PREVIOUS set beside a new
 DATA_ENCRYPTION_KEY, everything writes with the new key and reads accept
-either, until rekey.py (run by init_db at every boot) has rewritten what the
+either, until rekey.py (run by db_setup.py at every deploy) has rewritten what the
 old one made. A value that opens under no key is an error, never data.
 """
 import os

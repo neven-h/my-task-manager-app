@@ -1,10 +1,10 @@
 """Bring every encrypted value to the current DATA_ENCRYPTION_KEY.
 
-init_db runs this at every boot. Outside a rotation it only encrypts legacy
+init_db runs this once per deploy (db_setup.py). Outside a rotation it only encrypts legacy
 plaintext left from before encryption at rest (decrypt_field no longer passes
 it through). During one (DATA_ENCRYPTION_KEY_PREVIOUS set beside a new
 DATA_ENCRYPTION_KEY) it also rewrites what the old key made. Idempotent: a
-value already under the current key is left alone. When the boot log shows
+value already under the current key is left alone. When the deploy log shows
 nothing left under the old key, delete DATA_ENCRYPTION_KEY_PREVIOUS.
 """
 from cryptography.fernet import InvalidToken
