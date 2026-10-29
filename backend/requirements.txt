@@ -17,7 +17,7 @@ qrcode==7.4.2
 Pillow==13.0.0
 yfinance==1.7.0
 cloudinary==1.46.3
-anthropic>=1.17.0
+anthropic>=2.3.0
 # Pinned to a commit SHA: a moving 'master' zip is unauditable and can change under us.
 bank-csv-normalizer @ https://github.com/neven-h/csv_parsing/archive/96bc928c8e7c3e5dce2f682c98996da7a1fc2da0.zip
 # Deep learning forecast engine disabled — Chronos T5 OOM-killed gunicorn workers on Railway
