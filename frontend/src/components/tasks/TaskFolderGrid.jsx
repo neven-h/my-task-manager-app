@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Folder, FolderPlus, Inbox, Layers, Pencil } from 'lucide-react';
-import { useTaskContext } from '../../context/TaskContext';
+import { useTaskContext, taskInCategories } from '../../context/TaskContext';
 import TaskFolderEditor from './TaskFolderEditor';
 
 const tileStyle = (color) => ({
@@ -38,18 +38,12 @@ const TaskFolderGrid = () => {
     const [editing, setEditing] = useState(null); // null = closed, {} = new folder, folder = edit
 
     const counts = useMemo(() => {
-        const byCat = {};
-        for (const t of allTasks) {
-            const c = byCat[t.category] || (byCat[t.category] = { open: 0, total: 0 });
-            c.total += 1;
-            if (t.status !== 'completed') c.open += 1;
-        }
-        const sum = (cats) => cats.reduce((acc, cat) => ({
-            open: acc.open + (byCat[cat]?.open || 0), total: acc.total + (byCat[cat]?.total || 0),
-        }), { open: 0, total: 0 });
+        const tally = (list) => ({ open: list.filter(t => t.status !== 'completed').length, total: list.length });
         const filed = new Set(folders.flatMap(f => f.categories));
-        const unfiledCats = Object.keys(byCat).filter(c => !filed.has(c));
-        return { sum, unfiledCats, all: sum(Object.keys(byCat)), unfiled: sum(unfiledCats) };
+        const unfiledTasks = allTasks.filter(t => !taskInCategories(t, filed));
+        const unfiledCats = [...new Set(unfiledTasks.map(t => t.category))];
+        const byFolder = Object.fromEntries(folders.map(f => [f.id, tally(allTasks.filter(t => taskInCategories(t, new Set(f.categories))))]));
+        return { byFolder, unfiledCats, all: tally(allTasks), unfiled: tally(unfiledTasks) };
     }, [allTasks, folders]);
 
     const labels = (cats) => cats.map(getCategoryLabel).join(', ');
@@ -63,7 +57,7 @@ const TaskFolderGrid = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 14 }}>
                     <Tile icon={Layers} color="#000" name="All tasks" {...counts.all} onOpen={() => setActiveFolder('all')} />
                     {folders.map(f => (
-                        <Tile key={f.id} icon={Folder} color={f.color} name={f.name} {...counts.sum(f.categories)}
+                        <Tile key={f.id} icon={Folder} color={f.color} name={f.name} {...counts.byFolder[f.id]}
                             detail={f.categories.length ? labels(f.categories) : 'No categories yet'}
                             onOpen={() => setActiveFolder(f.id)} onEdit={() => setEditing(f)} />
                     ))}

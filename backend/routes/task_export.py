@@ -10,6 +10,22 @@ import io
 task_export_bp = Blueprint('task_export', __name__)
 
 
+def _folder_filter(args):
+    """SQL for the open task folder: folder_only / folder_except are comma-separated category ids.
+    A task matches when its primary category or any of its categories is in the list
+    (the same rule as the folder view in frontend/src/context/TaskContext.jsx)."""
+    sql, params = '', []
+    for key, negate in (('folder_only', False), ('folder_except', True)):
+        cats = [c.strip() for c in (args.get(key) or '').split(',') if c.strip()][:200]
+        if not cats:
+            continue
+        hit = ' OR '.join(["category = %s OR FIND_IN_SET(%s, COALESCE(categories, ''))"] * len(cats))
+        sql += f" AND {'NOT ' if negate else ''}({hit})"
+        for c in cats:
+            params.extend([c, c])
+    return sql, params
+
+
 @task_export_bp.route('/api/export/csv', methods=['GET'])
 @token_required
 def export_csv(payload):
@@ -33,6 +49,10 @@ def export_csv(payload):
             if category and category != 'all':
                 query += " AND category = %s"
                 params.append(category)
+
+            folder_sql, folder_params = _folder_filter(request.args)
+            query += folder_sql
+            params.extend(folder_params)
 
             if status and status != 'all':
                 query += " AND status = %s"
@@ -105,6 +125,10 @@ def export_hours_report(payload):
             if category and category != 'all':
                 query += " AND category = %s"
                 params.append(category)
+
+            folder_sql, folder_params = _folder_filter(request.args)
+            query += folder_sql
+            params.extend(folder_params)
 
             if status and status != 'all':
                 query += " AND status = %s"

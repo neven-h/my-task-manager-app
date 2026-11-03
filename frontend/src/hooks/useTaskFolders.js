@@ -21,7 +21,7 @@ const useTaskFolders = (setError) => {
     const saveFolder = useCallback(async ({ id, name, color, categories }) => {
         const res = await fetch(id ? `${API_BASE}/task-folders/${id}` : `${API_BASE}/task-folders`, {
             method: id ? 'PUT' : 'POST',
-            headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             body: JSON.stringify({ name, color, categories }),
         });
         if (!res.ok) {

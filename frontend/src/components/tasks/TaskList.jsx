@@ -6,7 +6,7 @@ import TaskMultiSelectBar from './TaskMultiSelectBar';
 
 const TaskList = () => {
     const {
-        isAdmin, isLimitedUser, loading, tasks,
+        isAdmin, isLimitedUser, loading, tasks, allTasks,
         taskViewMode, setTaskViewMode,
         completedTasks, uncompletedTasks,
         openNewTaskForm, setShowBulkInput,
@@ -128,6 +128,10 @@ const TaskList = () => {
             {loading ? (
                 <div style={{textAlign: 'center', padding: '64px', fontSize: '1.1rem', color: '#666'}}>
                     Loading...
+                </div>
+            ) : tasks.length === 0 && allTasks.length > 0 ? (
+                <div style={{ textAlign: 'center', padding: '64px', border: '3px solid #000', background: '#f8f8f8' }}>
+                    <p style={{ fontSize: '1.2rem', fontWeight: 700, color: '#666' }}>No tasks in this folder</p>
                 </div>
             ) : tasks.length === 0 ? (
                 <div style={{

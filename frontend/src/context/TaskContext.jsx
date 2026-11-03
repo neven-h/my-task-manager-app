@@ -10,6 +10,10 @@ import { getAuthHeaders } from '../api';
 
 const TaskContext = createContext(null);
 
+/** A task belongs to a folder when any of its categories is in the folder (same rule as routes/task_export.py). */
+export const taskInCategories = (task, categorySet) =>
+    (task.categories?.length ? task.categories : [task.category]).some(c => categorySet.has(c));
+
 export const useTaskContext = () => {
     const ctx = useContext(TaskContext);
     if (!ctx) throw new Error('useTaskContext must be used within a TaskProvider');
@@ -106,18 +110,30 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
         if (authUser && authRole) loadTasks(debouncedFilters);
     }, [debouncedFilters, authUser, authRole]);
 
-    // A search or filter on the folder grid shows matching tasks from every folder
-    const shownFolder = activeFolder ?? (hasActiveFilters ? 'all' : null);
+    // Folders scope only the task list; stats and other views always see every task.
+    // A search or filter on the folder grid shows matching tasks from every folder.
+    const onTaskList = appView === 'tasks' && view === 'list';
+    const shownFolder = !onTaskList ? 'all' : activeFolder ?? (hasActiveFilters ? 'all' : null);
+
+    // Categories the shown folder selects: { only } for a folder, { except } for Unfiled, null for everything
+    const folderScope = useMemo(() => {
+        if (shownFolder === null || shownFolder === 'all') return null;
+        if (shownFolder === 'unfiled') return { except: folders.flatMap(f => f.categories) };
+        return { only: folders.find(f => f.id === shownFolder)?.categories || [] };
+    }, [folders, shownFolder]);
 
     const folderTasks = useMemo(() => {
-        if (shownFolder === null || shownFolder === 'all') return tasks;
-        if (shownFolder === 'unfiled') {
-            const filed = new Set(folders.flatMap(f => f.categories));
-            return tasks.filter(t => !filed.has(t.category));
+        if (!folderScope) return tasks;
+        const inScope = new Set(folderScope.only || folderScope.except);
+        return tasks.filter(t => taskInCategories(t, inScope) === !!folderScope.only);
+    }, [tasks, folderScope]);
+
+    // The open folder was deleted (here or on another device): go back to the grid
+    useEffect(() => {
+        if (typeof activeFolder === 'number' && !folders.some(f => f.id === activeFolder)) {
+            setActiveFolder(null);
         }
-        const cats = new Set(folders.find(f => f.id === shownFolder)?.categories || []);
-        return tasks.filter(t => cats.has(t.category));
-    }, [tasks, folders, shownFolder]);
+    }, [folders, activeFolder]);
 
     const { completedTasks, uncompletedTasks } = useMemo(() => ({
         completedTasks: folderTasks.filter(t => t.status === 'completed'),
@@ -180,13 +196,28 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
     const createCategory = useCallback((name, color, icon) => createCategoryRaw(name, color, icon, authUser), [createCategoryRaw, authUser]);
     const deleteCategory = useCallback((categoryId) => deleteCategoryRaw(categoryId), [deleteCategoryRaw]);
     const createTag = useCallback((tagName) => createTagRaw(tagName, authUser), [createTagRaw, authUser]);
-    const exportToCSV = useCallback(async () => exportToCSVRaw(buildFilterParams()), [buildFilterParams, exportToCSVRaw]);
-    const exportHoursReport = useCallback(async () => exportHoursReportRaw(buildFilterParams()), [buildFilterParams, exportHoursReportRaw]);
+    // Exports follow the open folder too (folder_only / folder_except in routes/task_export.py)
+    const exportParams = useCallback(() => {
+        const params = buildFilterParams();
+        if (folderScope?.only) params.append('folder_only', folderScope.only.join(',') || '-');
+        if (folderScope?.except?.length) params.append('folder_except', folderScope.except.join(','));
+        return params;
+    }, [buildFilterParams, folderScope]);
+    const exportToCSV = useCallback(async () => exportToCSVRaw(exportParams()), [exportParams, exportToCSVRaw]);
+    const exportHoursReport = useCallback(async () => exportHoursReportRaw(exportParams()), [exportParams, exportHoursReportRaw]);
     const importHoursReport = useCallback(async (event) => {
         if (await importHoursReportRaw(event)) { await loadTasks(); await fetchStats(); await fetchClients(); }
     }, [importHoursReportRaw, loadTasks, fetchStats, fetchClients]);
 
-    const { submitTask, submitBulkTasks, shareTask } = useTaskSubmit({ setLoading, setError, setTasks, loadTasks, fetchStats, fetchClients });
+    const { submitTask: submitTaskRaw, submitBulkTasks, shareTask } = useTaskSubmit({ setLoading, setError, setTasks, loadTasks, fetchStats, fetchClients });
+    // A new task with no category, added inside a folder, gets the folder's first category so it stays in view
+    const submitTask = useCallback((formData, editingTask) => {
+        const folderCat = folderScope?.only?.[0];
+        if (!editingTask && folderCat && !(formData.categories?.length)) {
+            return submitTaskRaw({ ...formData, categories: [folderCat] }, editingTask);
+        }
+        return submitTaskRaw(formData, editingTask);
+    }, [submitTaskRaw, folderScope]);
 
     const selection = useTaskSelection({ tasks, setTasks, getCategoryLabel, fetchStats });
 

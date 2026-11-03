@@ -8,7 +8,7 @@ const PAGE_SIZE = 30;
 
 const IOSTaskList = ({ filterMode }) => {
     const {
-        tasks, loading,
+        tasks, allTasks, loading,
         selectedIds, clearSelection,
         exportSelectedTasks, shareSelectedTasks, deleteSelectedTasks,
     } = useTaskContext();
@@ -60,7 +60,7 @@ const IOSTaskList = ({ filterMode }) => {
                 </div>
             ) : filteredTasks.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: THEME.muted }}>
-                    No tasks found
+                    {tasks.length === 0 && allTasks.length > 0 ? 'No tasks in this folder' : 'No tasks found'}
                 </div>
             ) : (
                 <>

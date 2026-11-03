@@ -79,6 +79,8 @@ def manage_folders(payload):
             connection.commit()
             return jsonify({'id': folder_id, 'name': name, 'color': color, 'position': position, 'categories': categories}), 201
     except Error as e:
+        if getattr(e, 'errno', None) == 1062:  # another save claimed one of these categories at the same moment
+            return jsonify({'error': 'A category was just added to another folder. Please try again.'}), 409
         current_app.logger.error('task folders db error: %s', e, exc_info=True)
         return jsonify({'error': 'A database error occurred'}), 500
 
@@ -112,5 +114,7 @@ def update_delete_folder(payload, folder_id):
             connection.commit()
             return jsonify({'success': True})
     except Error as e:
+        if getattr(e, 'errno', None) == 1062:  # another save claimed one of these categories at the same moment
+            return jsonify({'error': 'A category was just added to another folder. Please try again.'}), 409
         current_app.logger.error('task folders db error: %s', e, exc_info=True)
         return jsonify({'error': 'A database error occurred'}), 500
