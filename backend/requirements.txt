@@ -7,7 +7,7 @@ openpyxl==3.1.5
 chardet==7.7.0
 python-dotenv==1.2.4
 Werkzeug==3.1.9
-gunicorn==23.0.0
+gunicorn==26.2.0
 bcrypt==4.1.2
 PyJWT==2.15.1
 Flask-Limiter==4.1.1
