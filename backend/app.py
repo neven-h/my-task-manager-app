@@ -28,6 +28,7 @@ from routes.attachments_serve import attachments_serve_bp
 from routes.task_export import task_export_bp
 from routes.task_import import task_import_bp
 from routes.taxonomy_categories import taxonomy_categories_bp
+from routes.task_folders import task_folders_bp
 from routes.taxonomy_tags import taxonomy_tags_bp
 from routes.taxonomy_clients import taxonomy_clients_bp
 from routes.portfolio import portfolio_bp
@@ -94,6 +95,7 @@ app.register_blueprint(attachments_serve_bp)
 app.register_blueprint(task_export_bp)
 app.register_blueprint(task_import_bp)
 app.register_blueprint(taxonomy_categories_bp)
+app.register_blueprint(task_folders_bp)
 app.register_blueprint(taxonomy_tags_bp)
 app.register_blueprint(taxonomy_clients_bp)
 app.register_blueprint(portfolio_bp)

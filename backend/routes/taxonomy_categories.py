@@ -117,9 +117,15 @@ def update_delete_category(payload, category_id):
                     "DELETE FROM categories_master WHERE category_id = %s AND owner = %s",
                     (category_id, username),
                 )
+                deleted = cursor.rowcount
+                # Drop it from task folders too, so a later category with the same id starts unfiled
+                cursor.execute(
+                    "DELETE FROM task_folder_categories WHERE category_id = %s AND owner = %s",
+                    (category_id, username),
+                )
                 connection.commit()
 
-                if cursor.rowcount == 0:
+                if deleted == 0:
                     return jsonify({'error': 'Category not found'}), 404
 
                 return jsonify({'success': True})

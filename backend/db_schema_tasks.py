@@ -80,3 +80,26 @@ def init_tasks_tables(cursor, connection):
         print("Added cloudinary columns to task_attachments")
     except Exception as e:
         print(f"Note: {e}")
+
+    # Folders group categories on the task home screen. A category sits in at most one folder per owner.
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS task_folders (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            owner VARCHAR(255) NOT NULL,
+            name VARCHAR(100) NOT NULL,
+            color VARCHAR(7) DEFAULT '#0000FF',
+            position INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_owner (owner)
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS task_folder_categories (
+            folder_id INT NOT NULL,
+            owner VARCHAR(255) NOT NULL,
+            category_id VARCHAR(50) NOT NULL,
+            PRIMARY KEY (folder_id, category_id),
+            UNIQUE KEY uniq_owner_category (owner, category_id),
+            FOREIGN KEY (folder_id) REFERENCES task_folders(id) ON DELETE CASCADE
+        )
+    """)
