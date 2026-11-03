@@ -8,18 +8,18 @@ COLOR_DEFAULT = '#0000FF'
 
 
 def _clean_payload(data):
-    """Return (name, color, categories) from a request body, or raise ValueError."""
+    """Return ((name, color, categories), None), or (None, message) when the body is invalid."""
     name = (data.get('name') or '').strip()
     if not name or len(name) > 100:
-        raise ValueError('Folder name is required (max 100 characters)')
+        return None, 'Folder name is required (max 100 characters)'
     color = data.get('color') or COLOR_DEFAULT
     if not (isinstance(color, str) and len(color) == 7 and color.startswith('#')):
         color = COLOR_DEFAULT
     categories = data.get('categories') or []
     if not isinstance(categories, list):
-        raise ValueError('categories must be a list')
+        return None, 'categories must be a list'
     categories = sorted({str(c).strip()[:50] for c in categories if str(c).strip()})
-    return name, color, categories
+    return (name, color, categories), None
 
 
 def _set_categories(cursor, folder_id, owner, categories):
@@ -64,10 +64,10 @@ def manage_folders(payload):
             if request.method == 'GET':
                 return jsonify(_list_folders(cursor, owner))
 
-            try:
-                name, color, categories = _clean_payload(request.json or {})
-            except ValueError as e:
-                return jsonify({'error': str(e)}), 400
+            cleaned, problem = _clean_payload(request.json or {})
+            if problem:
+                return jsonify({'error': problem}), 400
+            name, color, categories = cleaned
             cursor.execute("SELECT COALESCE(MAX(position), -1) + 1 AS pos FROM task_folders WHERE owner = %s", (owner,))
             position = cursor.fetchone()['pos']
             cursor.execute(
@@ -100,10 +100,10 @@ def update_delete_folder(payload, folder_id):
                 connection.commit()
                 return jsonify({'success': True})
 
-            try:
-                name, color, categories = _clean_payload(request.json or {})
-            except ValueError as e:
-                return jsonify({'error': str(e)}), 400
+            cleaned, problem = _clean_payload(request.json or {})
+            if problem:
+                return jsonify({'error': problem}), 400
+            name, color, categories = cleaned
             cursor.execute(
                 "UPDATE task_folders SET name = %s, color = %s WHERE id = %s AND owner = %s",
                 (name, color, folder_id, owner),
