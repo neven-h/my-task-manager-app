@@ -13,7 +13,7 @@ PyJWT==2.15.1
 Flask-Limiter==4.1.1
 cryptography==50.0.2
 pyotp==2.10.0
-qrcode==7.4.2
+qrcode==8.2
 Pillow==13.0.0
 yfinance==1.7.0
 cloudinary==1.46.3
