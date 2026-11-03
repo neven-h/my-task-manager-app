@@ -3,6 +3,7 @@ import useTaskData from '../hooks/useTaskData';
 import useTaskFilters from '../hooks/useTaskFilters';
 import useTaskSubmit from '../hooks/useTaskSubmit';
 import useTaskSelection from '../hooks/useTaskSelection';
+import useTaskFolders from '../hooks/useTaskFolders';
 import storage, { STORAGE_KEYS } from '../utils/storage';
 import API_BASE from '../config';
 import { getAuthHeaders } from '../api';
@@ -32,6 +33,10 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
 
     const filterData = useTaskFilters();
     const { filters, setFilters, taskViewMode, setTaskViewMode, debouncedFilters, buildFilterParams, hasActiveFilters, clearFilters } = filterData;
+
+    const { folders, fetchFolders, saveFolder, deleteFolder } = useTaskFolders(setError);
+    // Task home: null = folder grid, 'all' = every task, 'unfiled' = categories in no folder, number = a folder id
+    const [activeFolder, setActiveFolder] = useState(null);
 
     const [appView, setAppView] = useState('tasks');
     const [view, setView] = useState('list');
@@ -92,7 +97,7 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
             loadTasks()
                 .catch(err => { console.error('Error loading tasks:', err); setError('Failed to load initial data. Please refresh the page.'); })
                 .finally(() => setLoading(false));
-            Promise.all([fetchCategories(), fetchTags(), fetchClients(), fetchStats()])
+            Promise.all([fetchCategories(), fetchTags(), fetchClients(), fetchStats(), fetchFolders()])
                 .catch(err => console.error('Error loading background data:', err));
         }
     }, [authUser, authRole]);
@@ -101,10 +106,23 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
         if (authUser && authRole) loadTasks(debouncedFilters);
     }, [debouncedFilters, authUser, authRole]);
 
+    // A search or filter on the folder grid shows matching tasks from every folder
+    const shownFolder = activeFolder ?? (hasActiveFilters ? 'all' : null);
+
+    const folderTasks = useMemo(() => {
+        if (shownFolder === null || shownFolder === 'all') return tasks;
+        if (shownFolder === 'unfiled') {
+            const filed = new Set(folders.flatMap(f => f.categories));
+            return tasks.filter(t => !filed.has(t.category));
+        }
+        const cats = new Set(folders.find(f => f.id === shownFolder)?.categories || []);
+        return tasks.filter(t => cats.has(t.category));
+    }, [tasks, folders, shownFolder]);
+
     const { completedTasks, uncompletedTasks } = useMemo(() => ({
-        completedTasks: tasks.filter(t => t.status === 'completed'),
-        uncompletedTasks: tasks.filter(t => t.status === 'uncompleted')
-    }), [tasks]);
+        completedTasks: folderTasks.filter(t => t.status === 'completed'),
+        uncompletedTasks: folderTasks.filter(t => t.status === 'uncompleted')
+    }), [folderTasks]);
 
     const getCategoryLabel = useCallback((id) => allCategories.find(c => c.id === id)?.label ?? id, [allCategories]);
     const getStatusColor = useCallback((status) => ({ completed: { bg: '#FFD500', border: '#000', color: '#000' }, uncompleted: { bg: '#FF0000', border: '#000', color: '#fff' } })[status] || { bg: '#FF0000', border: '#000', color: '#fff' }, []);
@@ -183,8 +201,9 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
     const value = useMemo(() => ({
         authToken, authRole, authUser, isAdmin, isSharedUser, isLimitedUser, onLogout,
         navVisibility, setNavVisibility,
-        tasks, allCategories, allTags, clients, stats, loading, error, setError,
+        tasks: folderTasks, allTasks: tasks, allCategories, allTags, clients, stats, loading, error, setError,
         completedTasks, uncompletedTasks,
+        folders, saveFolder, deleteFolder, activeFolder: shownFolder, setActiveFolder,
         filters, setFilters, taskViewMode, setTaskViewMode, buildFilterParams,
         hasActiveFilters, clearFilters,
         appView, setAppView, view, setView,
@@ -210,8 +229,9 @@ export const TaskProvider = ({ authToken, authRole, authUser, onLogout, children
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }), [
         authToken, authRole, authUser, onLogout,
-        tasks, allCategories, allTags, clients, stats, loading, error, setError,
+        tasks, folderTasks, allCategories, allTags, clients, stats, loading, error, setError,
         completedTasks, uncompletedTasks,
+        folders, saveFolder, deleteFolder, shownFolder,
         filters, setFilters, taskViewMode, setTaskViewMode, buildFilterParams,
         hasActiveFilters, clearFilters,
         appView, setAppView, view, setView,

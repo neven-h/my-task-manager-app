@@ -33,6 +33,8 @@ USER_DATA_DELETIONS = (
     ('watched_stocks', 'username'),
     ('yahoo_portfolio', 'username'),
     ('tags', 'owner'),
+    ('task_folder_categories', 'owner'),
+    ('task_folders', 'owner'),
     ('categories_master', 'owner'),
     ('clients', 'owner'),
     ('trash', 'owner'),

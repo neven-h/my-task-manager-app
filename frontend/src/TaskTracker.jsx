@@ -15,6 +15,8 @@ import TaskMobileTabBar from './components/tasks/TaskMobileTabBar';
 import TaskMobileSidebar from './components/tasks/TaskMobileSidebar';
 import TaskSidebar from './components/tasks/TaskSidebar';
 import TaskList from './components/tasks/TaskList';
+import TaskFolderGrid from './components/tasks/TaskFolderGrid';
+import TaskFolderBar from './components/tasks/TaskFolderBar';
 import TaskStatsView from './components/tasks/TaskStatsView';
 import TaskFormModal from './components/tasks/TaskFormModal';
 import BulkTaskModal from './components/tasks/BulkTaskModal';
@@ -22,7 +24,7 @@ import ShareTaskModal from './components/tasks/ShareTaskModal';
 import CalendarChoiceModal from './components/tasks/CalendarChoiceModal';
 
 const TaskTrackerInner = () => {
-    const { appView, setAppView, view, error, setError, authUser, authRole } = useTaskContext();
+    const { appView, setAppView, view, error, setError, authUser, authRole, activeFolder } = useTaskContext();
 
     const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [showMobileSidebar, setShowMobileSidebar] = useState(false);
@@ -114,7 +116,7 @@ const TaskTrackerInner = () => {
             <div style={{display: 'flex', minHeight: 'calc(100vh - 180px)'}}>
                 <TaskSidebar isVisible={showSidebar} />
                 <div style={{flex: 1, padding: 'var(--content-padding, 48px)', transition: 'all 0.3s ease', minWidth: 0}}>
-                    {view === 'list' ? <TaskList /> : <TaskStatsView />}
+                    {view !== 'list' ? <TaskStatsView /> : activeFolder === null ? <TaskFolderGrid /> : <><TaskFolderBar /><TaskList /></>}
                 </div>
             </div>
 

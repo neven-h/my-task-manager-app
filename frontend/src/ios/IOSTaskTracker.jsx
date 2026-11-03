@@ -16,6 +16,8 @@ import IOSTaskActions from './IOSTaskActions';
 import IOSFilterBar from './IOSFilterBar';
 import IOSActiveFilterBanner from './IOSActiveFilterBanner';
 import IOSTaskList from './IOSTaskList';
+import TaskFolderGrid from '../components/tasks/TaskFolderGrid';
+import TaskFolderBar from '../components/tasks/TaskFolderBar';
 import IOSQuickAdd from './IOSQuickAdd';
 import IOSPullToRefresh from './IOSPullToRefresh';
 import IOSSidebar from './IOSSidebar';
@@ -66,7 +68,7 @@ const SwipeBackView = ({ onBack, children }) => {
 };
 
 const IOSTaskTrackerInner = () => {
-    const { appView, setAppView, authUser, authRole, error, setError, fetchTasks } = useTaskContext();
+    const { appView, setAppView, authUser, authRole, error, setError, fetchTasks, activeFolder } = useTaskContext();
     const [showSidebar, setShowSidebar] = useState(false);
     const [filterMode, setFilterMode] = useState('all');
     const [showSearchDrawer, setShowSearchDrawer] = useState(false);
@@ -118,9 +120,16 @@ const IOSTaskTrackerInner = () => {
 
             <IOSPullToRefresh onRefresh={fetchTasks}>
                 <IOSTaskActions />
-                <IOSFilterBar filterMode={filterMode} setFilterMode={setFilterMode} />
-                <IOSActiveFilterBanner />
-                <IOSTaskList filterMode={filterMode} />
+                {activeFolder === null ? (
+                    <div style={{ padding: '0 16px 16px' }}><TaskFolderGrid /></div>
+                ) : (
+                    <>
+                        <div style={{ padding: '0 16px' }}><TaskFolderBar /></div>
+                        <IOSFilterBar filterMode={filterMode} setFilterMode={setFilterMode} />
+                        <IOSActiveFilterBanner />
+                        <IOSTaskList filterMode={filterMode} />
+                    </>
+                )}
             </IOSPullToRefresh>
             <IOSQuickAdd />
 
